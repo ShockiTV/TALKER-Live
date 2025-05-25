@@ -22,3 +22,6 @@ put it in the openAi_API_KEY.key file as it was a text file
 4. run mic.bat
 5. if it says everything's okay, keep it running and launch the game
 6. you should be able to start speaking using the left alt key
+
+### experimental alternative to python install
+run the talkermic.exe and give it your key when prompted. Should work without the need for any installation.
