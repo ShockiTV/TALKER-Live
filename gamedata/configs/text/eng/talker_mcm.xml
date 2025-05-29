@@ -10,6 +10,23 @@
     <string id="ui_mcm_talker_gpt_version">
         <text>GPT Model for dialogue</text>
     </string>
+    <!-- LANGUAGE SELECTION -->
+    <string id="ui_mcm_talker_language">
+        <text>Dialogue language</text>
+    </string>
+    <string id="ui_mcm_lst_Any">
+        <text>Any</text>
+    </string>
+    <string id="ui_mcm_lst_English">
+        <text>English</text>
+    </string>
+    <string id="ui_mcm_lst_Ukrainian">
+        <text>Ukrainian</text>
+    </string>
+    <string id="ui_mcm_lst_Russian">
+        <text>Russian</text>
+    </string>
+    <!-- GPT MODELS -->
     <string id="ui_mcm_lst_gpt-4o">
         <text>GPT-4o</text>
     </string>

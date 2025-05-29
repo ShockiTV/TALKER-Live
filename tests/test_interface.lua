@@ -40,4 +40,5 @@ function testCheckFormatSanityWithNoFormatStringsButWithEventObjects()
     luaunit.assertFalse(result)
 end
 
+
 os.exit(luaunit.LuaUnit.run())
