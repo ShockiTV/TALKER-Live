@@ -25,3 +25,27 @@ put it in the openAi_API_KEY.key file as it was a text file
 
 ### experimental alternative to python install
 run the talkermic.exe and give it your key when prompted. Should work without the need for any installation.
+
+
+### credits
+Many thanks to
+- [balls of pure diamond](https://www.youtube.com/@BallsOfPureDiamond), for making cool youtube videos and helping me brainstorm, playtest and stay hyped
+- the many extremely helpful modders in the Anomaly discord
+- RavenAscendant
+- NLTP_ASHES
+- Thial
+- xcvb
+- momopate
+- Darkasleif
+- Mirrowel
+- ThorsDecree
+- Encrypterr
+- lethrington
+- Dunc
+- Demonized
+- Majorowsky
+- beemanbp03
+- Tosox
+- abbihors, for boldly going where no stalker mod has gone before
+- (Buckwheat in Russian) helping investigate pollnet
+- many more who I rudely forgot
