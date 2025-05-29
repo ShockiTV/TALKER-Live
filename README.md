@@ -30,22 +30,23 @@ run the talkermic.exe and give it your key when prompted. Should work without th
 ## credits
 Many thanks to
 - [balls of pure diamond](https://www.youtube.com/@BallsOfPureDiamond), for making cool youtube videos and helping me brainstorm, playtest and stay hyped
+- ThorsDecree
 - the many extremely helpful modders in the Anomaly discord
+- Tosox
 - RavenAscendant
 - NLTP_ASHES
 - Thial
+- Lucy
 - xcvb
 - momopate
 - Darkasleif
 - Mirrowel
-- ThorsDecree
 - Encrypterr
 - lethrington
 - Dunc
 - Demonized
 - Majorowsky
 - beemanbp03
-- Tosox
 - abbihors, for boldly going where no stalker mod has gone before
 - (Buckwheat in Russian) helping investigate pollnet
 - many more who I rudely forgot
