@@ -4,7 +4,6 @@ local language = {
   en = { short = "en", long = "English" },
   uk = { short = "uk", long = "Ukrainian" },
   ru = { short = "ru", long = "Russian" },
-
   fr = { short = "fr", long = "French" },
   de = { short = "de", long = "German" },
   es = { short = "es", long = "Spanish" },
@@ -14,13 +13,14 @@ local language = {
   ja = { short = "ja", long = "Japanese" }
 }
 
--- Optional helpers
 function language.to_short(long_name)
+  local name = long_name:lower()
   for _, v in pairs(language) do
-    if v.long:lower() == long_name:lower() then
+    if v and v.long:lower() == name then
       return v.short
     end
   end
+  return nil
 end
 
 function language.to_long(short_code)
