@@ -141,7 +141,7 @@ function prompt_builder.create_dialogue_request_prompt(speaker, memories)
     end
 
     local messages = {
-        system_message(config.DIALOGUE_PROMPT)
+        system_message(config.dialogue_prompt())
     }
 
     for _, memory in ipairs(last_ten_memories) do
@@ -169,6 +169,7 @@ function prompt_builder.create_dialogue_request_prompt(speaker, memories)
         .. ", "
         .. (get_faction_speaking_style(speaker.faction) or "")
         .. " manner."))
+    table.insert(messages, system_message("Reply only in " .. config.language()))
     return messages
 end
 
@@ -177,7 +178,7 @@ end
 --------------------------------------------------------------------------------
 function prompt_builder.create_transcription_prompt(names)
     logger.info("Creating transcription prompt")
-    local prompt = "STALKER setting, nearby characters are: "
+    local prompt = "STALKER games setting, nearby characters are: "
     for i, name in ipairs(names) do
         prompt = prompt .. name
         if i < #names then

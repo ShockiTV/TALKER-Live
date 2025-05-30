@@ -2,7 +2,6 @@
 package.path = package.path .. ";./bin/lua/?.lua;"
 local logger = require('framework.logger')
 local microphone_recorder = require('interface.recorder')
-local interface = require('interface.interface')
 local config = talker_mcm
 
 -- Import game interface modules

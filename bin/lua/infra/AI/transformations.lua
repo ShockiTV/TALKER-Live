@@ -26,7 +26,7 @@ function is_too_far_to_speak(character)
     local distance = game.get_distance_to_player(character.game_id) 
     local result = distance > config.NPC_SPEAK_DISTANCE
     if result == true then
-        logger.debug("too far too speak %s at distance %s when max distance is %s ", character.game_id, distance, config.NPC_SPEAK_DISTANCE)
+        logger.debug("too far to speak %s at distance %s when max distance is %s ", character.game_id, distance, config.NPC_SPEAK_DISTANCE)
     end
     return result
 end

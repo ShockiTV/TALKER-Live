@@ -6,6 +6,7 @@ local mic = {}
 
 -- Import necessary modules
 local file_io = require("infra.file_io")
+local config = require('interface.config')
 
 -- File paths in the temporary directory (must match Python script)
 local COMMAND_FILE = "/talker_mic_io_commands"
@@ -14,7 +15,7 @@ local TRANSCRIPTION_FILE = "/talker_mic_io_transcription"
 -- Commands (must match Python script)
 local COMMANDS = {
     LISTENING = "LISTENING",
-    START = "START-",
+    START = "START",
     STOP = "STOP",
     TRANSCRIBING = "TRANSCRIBING",
     DONE = "DONE"
@@ -55,11 +56,17 @@ end
 
 -- Start recording with an optional transcription prompt
 function mic.start(transcription_prompt)
-    if mic_on then
-        return -- Already recording
-    end
+    if mic_on then return end          -- already recording
     mic_on = true
-    send_to_microphone(COMMANDS.START .. (transcription_prompt or ""))
+
+    -- convert long name from config.language() → ISO-639-1 code
+    local lang_code = config.language_short()
+
+    -- build “START-<lang>-<prompt>”
+    send_to_microphone(string.format("%s-%s-%s",
+        COMMANDS.START,                -- already ends with '-'
+        lang_code,
+        transcription_prompt or ""))
 end
 
 -- Stop recording

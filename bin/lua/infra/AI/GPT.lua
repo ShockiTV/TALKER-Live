@@ -1,123 +1,79 @@
-local gpt = {}
-
--- Dependencies
-package.path = package.path .. ";./bin/lua/?.lua;"
-local http_module = require("infra.HTTP.HTTP")
-local logger = require("framework.logger")
-local json = require("infra.HTTP.json")
-local file_io = require("infra.file_io")
+-- gpt.lua
+local http   = require("infra.HTTP.HTTP")
+local json   = require("infra.HTTP.json")
+local log    = require("framework.logger")
 local config = require("interface.config")
 
--- Constants
-gpt.model_smart = "gpt-4-turbo"
-gpt.model_mid = "gpt-4o"
-gpt.model_fast = "gpt-4o-mini"
-gpt.model_fine_tuned_dialogue = "ft:gpt-4o-2024-08-06:personal::A721Jmn6"
-gpt.model_fine_tuned_pick_speaker = "ft:gpt-4o-mini-2024-07-18:personal::A9ndhQlH"
+local gpt = {}
 
--- TODO allow tweaking by the user
--- Configuration
-gpt.config_determinist = {
-    temperature = 0.0,
-    top_p = 1.0,
-    max_tokens = 150,
-    frequency_penalty = 0.0,
-    presence_penalty = 0.0
+-- model registry
+local MODEL = {
+  smart        = config.dialogue_model(),
+  mid          = "gpt-4o",
+  fast         = "gpt-4o-mini",
+  fine_dialog  = "ft:gpt-4o-2024-08-06:personal::A721Jmn6",
+  fine_speaker = "ft:gpt-4o-mini-2024-07-18:personal::A9ndhQlH",
 }
 
-gpt.config_creative = {
-    temperature = 0.9,
-    top_p = 1.0,
-    max_tokens = 150,
-    frequency_penalty = 0.0,
-    presence_penalty = 0.0
+-- sampling presets
+local PRESET = {
+  creative = {temperature=0.9 ,max_tokens=150,top_p=1,frequency_penalty=0,presence_penalty=0},
+  strict   = {temperature=0.0 ,max_tokens=150,top_p=1,frequency_penalty=0,presence_penalty=0},
 }
 
--- Private variables
-local api_key
+-- helpers --------------------------------------------------------------
+local API_URL = "https://api.openai.com/v1/chat/completions"
+local API_KEY = config.OPENAI_API_KEY
 
--- Helper functions
-local function load_api_key()
-    api_key = config.OPENAI_API_KEY
+local function build_body(messages, opts)
+  opts = opts or PRESET.creative
+  return {
+    model             = opts.model or MODEL.smart,
+    messages          = messages,           -- plain Lua table
+    temperature       = opts.temperature,
+    top_p             = opts.top_p,
+    max_tokens        = opts.max_tokens,
+    frequency_penalty = opts.frequency_penalty,
+    presence_penalty  = opts.presence_penalty,
+  }
 end
 
-local function construct_request_body(messages, config, model)
-    config = config or gpt.config_creative
-    model = model or gpt.model_smart
+local function send(messages, cb, opts)
+  assert(type(cb)=="function","callback required")
 
-    for i, msg in ipairs(messages) do
-        if type(msg) == "table" and msg.content then
-            msg.content = msg.content:gsub('"', "'")
-        end
+  local headers = {
+    ["Content-Type"]  = "application/json",
+    ["Authorization"] = "Bearer "..API_KEY,
+  }
+
+  local body_tbl = build_body(messages, opts)
+  log.http("GPT request: %s", json.encode(body_tbl)) -- encode only for log
+
+  return http.send_async_request(API_URL, "POST", headers, body_tbl, function(resp, err)
+    if resp and resp.error then
+        err = resp.error
+    end 
+    if err or (resp and resp.error) then
+      log.error("gpt error: error:" .. (err or "no-err") .. " body:" .. json.encode(resp))
+      error("gpt error: error:" ..  (err or "no-err") .. " body:" .. json.encode(resp))
     end
-
-    return {
-        model = model,
-        messages = messages,
-        temperature = config.temperature,
-        top_p = config.top_p,
-        max_tokens = config.max_tokens,
-        frequency_penalty = config.frequency_penalty,
-        presence_penalty = config.presence_penalty
-    }
+    local answer = resp.choices and resp.choices[1] and resp.choices[1].message
+    log.debug("GPT response: %s", answer and answer.content)
+    cb(answer and answer.content)
+  end)
 end
 
-function save_training_data(messages, response_message)
-    -- convert to a json string and append to a jsonl file
-    local file = "training_data/unsorted_training_data.jsonl"
-    local combined_messages = {}
-    for _, message in ipairs(messages) do
-        table.insert(combined_messages, message)
-    end
-    table.insert(combined_messages, response_message)
-    file_io.write(file, json.encode(combined_messages) .. "\n")
+-- public shortcuts -----------------------------------------------------
+function gpt.generate_dialogue(msgs, cb)
+  return send(msgs, cb, PRESET.creative)
 end
 
--- Core functionality
-function gpt.send_request(messages, callback, config, model)
-    if not api_key then load_api_key() end
-
-    -- configure the request
-    local POST = "POST"
-    local url = "https://api.openai.com/v1/chat/completions"
-    local headers = {
-        ["Content-Type"] = "application/json",
-        ["Authorization"] = "Bearer " .. api_key
-    }
-    -- construct the request body
-    local body = construct_request_body(messages, config, model)
-    logger.http("Sending request: %s",  body.messages)
-    
-
-    -- Send the request, then call the callback with the response for the sake of async
-    return http_module.send_async_request(url, POST, headers, body, function(response, errorResponse, request_id)
-        if errorResponse or response.error then
-            local message = "Error in GPT request: " .. (response.error.message)
-            logger.error(message)
-            -- throw an error
-            error(message)
-            return true
-        else
-            local response_message = response.choices[1].message
-            -- save_training_data(messages, response_message)
-            local content = response_message.content
-            logger.http("Received response:",content)
-            callback(content)
-        end
-    end)
+function gpt.pick_speaker(msgs, cb)
+  return send(msgs, cb, {model=MODEL.fast, temperature=0.0, max_tokens=30})
 end
 
--- Interface
-function gpt.summarize_story(messages, callback)
-    return gpt.send_request(messages, callback, gpt.config_determinist, gpt.model_fast)
-end
-
-function gpt.pick_speaker(messages, callback)
-    return gpt.send_request(messages, callback, gpt.config_determinist, gpt.model_fast)
-end
-
-function gpt.generate_dialogue(messages, callback)
-    return gpt.send_request(messages, callback, gpt.config_creative, gpt.model_smart)
+function gpt.summarize_story(msgs, cb)
+  return send(msgs, cb, {model=MODEL.fast, temperature=0.2, max_tokens=100})
 end
 
 return gpt

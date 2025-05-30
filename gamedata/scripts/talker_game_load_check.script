@@ -1,4 +1,5 @@
 local game = require("infra.game_adapter")
+local log = require('framework.logger')
 
 -- Function called when the game starts
 local modules = {
@@ -12,6 +13,7 @@ local modules = {
 
 -- intentionally duplicated
 function display_hud_message(input)
+    log.info("displaying: " .. input)
     actor_menu.set_msg(1, input, 3)
 end
 
@@ -23,14 +25,14 @@ function check_loaded_modules()
         end)
         if not status or not result then
             all_loaded = false
-            display_hud_message(name .. " not loaded")
+            display_hud_message("TALKER module " .. name .. " not loaded")
         end
     end
     if game.is_mock() then
         display_hud_message('Looks like a testing module is loaded, not normal in game. Tell Dan.')
     end
     if all_loaded then
-        display_hud_message("All modules loaded")
+        display_hud_message("All TALKER modules loaded")
     end
 end
 
