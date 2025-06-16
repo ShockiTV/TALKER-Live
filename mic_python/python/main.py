@@ -105,8 +105,11 @@ class CommandHandler(FileSystemEventHandler):
         self.recorder = recorder
 
     def on_modified(self, event):
-        if os.path.abspath(event.src_path) == os.path.abspath(COMMAND_FILE):
-            self._handle_command()
+        try:
+            if os.path.abspath(event.src_path) == os.path.abspath(COMMAND_FILE):
+                self._handle_command()
+        except Exception as e:
+            logging.warning("Error handling update: %s", e)
 
     # ─────────────── core ────────────────
     def _handle_command(self):
