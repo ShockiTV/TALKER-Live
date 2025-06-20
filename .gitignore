@@ -37,7 +37,7 @@ documentation
 pollnet
 logs
 .vscode/settings.json
-mic_python/openAi_API_KEY.key
 mic_python/python/__pycache__/
 mic_python/python/build/
 mic_python/python/main.spec
+openAi_API_KEY.key

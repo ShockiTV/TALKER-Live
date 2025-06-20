@@ -11,6 +11,7 @@ from watchdog.observers import Observer
 from files import read_file, write_to_file
 from recorder import Recorder
 from whisper_api import load_openai_api_key, transcribe_audio_file
+from banner import print_banner
 
 ####################################################################################################
 # CONFIG
@@ -25,9 +26,6 @@ logging.basicConfig(
         logging.FileHandler("talker.log", encoding="utf-8")  # persistent log
     ],
 )
-
-# Configuration
-API_KEY_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'openAi_API_KEY.key')
 
 # Get the system's temporary directory
 TEMP_DIR = tempfile.gettempdir()
@@ -52,7 +50,10 @@ COMMANDS = {
 
 def main():
     try:
-        load_openai_api_key(API_KEY_PATH)
+        print("-"*50)
+        print_banner("TALKER")
+        print("-"*50)
+        load_openai_api_key()
         recorder = Recorder(AUDIO_FILE)
         Path(COMMAND_FILE).touch()
 
@@ -62,7 +63,7 @@ def main():
         observer.start()
 
         logging.info("Observer running, watching %s", COMMAND_FILE)
-        print("TALKER STT ready.")
+        print("You can now use the in-game key to talk.")
         while True:
             time.sleep(1)
 
