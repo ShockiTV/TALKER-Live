@@ -1,0 +1,40 @@
+package.path = package.path .. ";./bin/lua/?.lua;"
+local interface = require("interface.interface")
+local game = require("infra.game_adapter")
+local log = require('framework.logger')
+
+
+--------------------------------------------------------------------------------------------
+-- CALLBACK
+--------------------------------------------------------------------------------------------
+
+function actor_on_weapon_jammed()
+    local unformatted_description = "%s's weapon jammed!"
+    local player = game.get_player_character()
+    interface.register_game_event_near_player(unformatted_description, {player})
+end
+
+--------------------------------------------------------------------------------------------
+-- Bubble Wrap
+--------------------------------------------------------------------------------------------
+
+local function safe_actor_on_weapon_jammed()
+    local status, err = pcall(function()
+        actor_on_weapon_jammed()
+    end)
+    if not status then
+        log.error("Error in actor_on_weapon_jammed: " .. err)
+    end
+end
+
+--------------------------------------------------------------------------------------------
+-- On Game Start
+--------------------------------------------------------------------------------------------
+
+function on_game_start()
+    RegisterScriptCallback("actor_on_weapon_jammed", safe_actor_on_weapon_jammed)
+end
+
+function is_loaded()
+    return true
+end
