@@ -16,15 +16,12 @@ https://www.howtogeek.com/885918/how-to-get-an-openai-api-key/
 put it in the openAi_API_KEY.key file as it was a text file
 
 ### the game
-1. place TALKER in a new mod folder, unpacked
-2. install python if you dont have it already
-3. run mic_python/intall_requirements.bat
-4. run mic.bat
-5. if it says everything's okay, keep it running and launch the game
-6. you should be able to start speaking using the left alt key
+1. place TALKER in a new mod folder, unpacked (For Gamma this is in E:\GAMMA\mods)
+2. run talker_mic.exe and paste in your key
+3. if it says everything's okay, keep it running and launch the game
+4. you should be able to start speaking using the left alt key
 
-### experimental alternative to python install
-run the talkermic.exe and give it your key when prompted. Should work without the need for any installation.
+If you dont want to use the mic, you can still use the exe to add the key and then close it.
 
 
 ## credits
