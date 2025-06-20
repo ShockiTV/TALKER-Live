@@ -23,11 +23,14 @@ put it in the openAi_API_KEY.key file as it was a text file
 
 If you dont want to use the mic, you can still use the exe to add the key and then close it.
 
+## Cheeki Breekivideo
+- [![Cheeki Breeki](https://img.youtube.com/vi/WmM-PPKTA8s/0.jpg)](https://www.youtube.com/watch?v=WmM-PPKTA8s)
 
 ## credits
 Many thanks to
 - [balls of pure diamond](https://www.youtube.com/@BallsOfPureDiamond), for making cool youtube videos and helping me brainstorm, playtest and stay hyped
-- ThorsDecree
+- ThorsDecree for helping playtest
+- [Cheeki Breeki](https://www.youtube.com/@CheekiBreekiTv)
 - the many extremely helpful modders in the Anomaly discord
 - Tosox
 - RavenAscendant
