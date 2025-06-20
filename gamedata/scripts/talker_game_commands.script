@@ -36,7 +36,7 @@ function display_message(sender_id, message)
     local sender = queries.get_obj_by_id(sender_id)
     if not queries.is_living_character(sender) then return end -- this also blocks mutants
 
-    local showtime = 5000 -- calculate_showtime(message)
+    local showtime = 8000
     local sender_name = determine_sender_name(sender)
     local image = get_character_icon(sender)
     send_news_tip(sender_name, message, image, showtime)
