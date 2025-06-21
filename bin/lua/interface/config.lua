@@ -48,7 +48,7 @@ function c.custom_dialogue_model()
 end
 
 function c.custom_dialogue_model_fast()
-    return cfg("custom_ai_model_fast", "google/gemini-2.0-flash-001")
+    return cfg("custom_ai_model_fast", "openai/gpt-4o-mini")
 end
 
 
