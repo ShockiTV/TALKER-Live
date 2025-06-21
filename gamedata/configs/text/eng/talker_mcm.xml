@@ -10,6 +10,19 @@
     <string id="ui_mcm_talker_gpt_version">
         <text>GPT Model for dialogue</text>
     </string>
+    <string id="ui_mcm_talker_ai_model_method">
+        <text>Which method/site to use for models</text>
+    </string>
+    <string id="ui_mcm_talker_custom_ai_model">
+        <text>Custom model for dialouge</text>
+    </string>
+    <!-- MODEL MODE SLECTION -->
+    <string id="ui_mcm_lst_open-ai">
+        <text>OpenAI</text>
+    </string>
+    <string id="ui_mcm_lst_open-router-ai">
+        <text>OpenRouter AI</text>
+    </string>
     <!-- LANGUAGE SELECTION -->
     <string id="ui_mcm_talker_language">
         <text>Dialogue language</text>

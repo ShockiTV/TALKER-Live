@@ -10,7 +10,6 @@
 package.path = package.path .. ";./bin/lua/?.lua"
 
 local transformations = require "infra.AI.transformations"
-local model = require("infra.AI.GPT")
 local prompt_builder = require("infra.AI.prompt_builder")
 local logger = require("framework.logger")
 local memory_store = require("domain.repo.memory_store")
@@ -18,6 +17,17 @@ local config = require("interface.config")
 local dialogue_cleaner = require("infra.AI.dialogue_cleaner")
 
 
+local gpt_model = require("infra.AI.GPT")
+local openrouter = require("infra.AI.OpenRouterAI")
+
+local ModelList = {
+    [0] = gpt_model,
+    [1] = openrouter,
+}
+
+local model = function()
+    return ModelList[config.modelmethod()]
+end
 
 local AI_request = {}
 AI_request.__index = AI_request
