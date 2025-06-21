@@ -44,9 +44,12 @@ local DEFAULT_LANGUAGE = language.any.long
 
 
 function c.custom_dialogue_model()
-    return cfg("custom_ai_model", "deepseek/deepseek-chat-v3-0324")
+    return cfg("custom_ai_model", "google/gemini-2.0-flash-001")
 end
 
+function c.custom_dialogue_model_fast()
+    return cfg("custom_ai_model_fast", "google/gemini-2.0-flash-001")
+end
 
 
 function c.language()
