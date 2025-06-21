@@ -54,8 +54,8 @@ local function send(messages, cb, opts)
         err = resp.error
     end 
     if err or (resp and resp.error) then
-      log.error("gpt error: error:" .. (err or "no-err") .. " body:" .. json.encode(resp))
-      error("gpt error: error:" ..  (err or "no-err") .. " body:" .. json.encode(resp))
+      log.error("gpt error: error:" .. json.encode(err or "no-err") .. " body:" .. json.encode(resp))
+      error("gpt error: error:" ..  json.encode(err or "no-err") .. " body:" .. json.encode(resp))
     end
     local answer = resp.choices and resp.choices[1] and resp.choices[1].message
     log.debug("GPT response: %s", answer and answer.content)
