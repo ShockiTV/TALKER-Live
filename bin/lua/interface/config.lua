@@ -2,20 +2,42 @@
 local game_config = talker_mcm
 local language = require("infra.language")
 
-local function load_api_key()
-    local f = io.open("openAi_API_KEY.key", "r")
-    if f then return f:read("*a") end
-    local key = os.getenv("OPENAI_API_KEY")
-    if key == "" then error("Could not find OpenAI API key file") end
-    return key
-end
+
+local c = {}
 
 -- helper
 local function cfg(key, default)
     return (game_config and game_config.get and game_config.get(key)) or default
 end
 
-local c = {}
+function c.modelmethod()
+    return tonumber(cfg("ai_model_method", 0))
+end
+
+local filenames = {
+    [0] = "openAi_API_KEY.key",
+    [1] = "openRouter_API_KEY.key",
+}
+
+local function load_api_key()
+    local fname = filenames[c.modelmethod()]
+    if fname == nil then
+        fname = "openAi_API_KEY.key"
+    end
+    print("Loading Keyfile "..fname)
+    local f = io.open(fname, "r")
+    if f then 
+        return f:read("*a") 
+    end
+    local key = os.getenv("OPENAI_API_KEY")
+    if key == "" then 
+        error("Could not find OpenAI API key file") 
+    end
+    return key
+end
+
+
+
 
 -- static values
 c.EVENT_WITNESS_RANGE  = 25
@@ -28,6 +50,14 @@ c.OPENAI_API_KEY       = load_api_key()
 local DEFAULT_LANGUAGE = language.any.long
 
 -- dynamic getters
+
+
+function c.custom_dialogue_model()
+    return cfg("custom_ai_model", "deepseek/deepseek-chat-v3-0324")
+end
+
+
+
 function c.language()
     return cfg("language", DEFAULT_LANGUAGE)
 end
