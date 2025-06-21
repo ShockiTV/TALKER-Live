@@ -23,7 +23,7 @@ local PRESET = {
 
 -- helpers --------------------------------------------------------------
 local API_URL = "https://openrouter.ai/api/v1/chat/completions"
-local API_KEY = config.OPENAI_API_KEY
+local API_KEY = config.OPENROUTER_API_KEY
 
 local function build_body(messages, opts)
   opts = opts or PRESET.creative
