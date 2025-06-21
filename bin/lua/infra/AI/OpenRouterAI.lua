@@ -1,10 +1,10 @@
--- gpt.lua
+-- OpenRouterAI.lua
 local http   = require("infra.HTTP.HTTP")
 local json   = require("infra.HTTP.json")
 local log    = require("framework.logger")
 local config = require("interface.config")
 
-local gpt = {}
+local openrouter = {}
 
 -- model registry
 local MODEL = {
@@ -38,6 +38,8 @@ local function build_body(messages, opts)
   }
 end
 
+
+
 local function send(messages, cb, opts)
   assert(type(cb)=="function","callback required")
 
@@ -47,33 +49,33 @@ local function send(messages, cb, opts)
   }
 
   local body_tbl = build_body(messages, opts)
-  log.http("GPT request: %s", json.encode(body_tbl)) -- encode only for log
+  log.http("OPENROUTER request: %s", json.encode(body_tbl)) -- encode only for log
 
   return http.send_async_request(API_URL, "POST", headers, body_tbl, function(resp, err)
     if resp and resp.error then
         err = resp.error
     end 
     if err or (resp and resp.error) then
-      log.error("gpt error: error:" .. (err or "no-err") .. " body:" .. json.encode(resp))
-      error("gpt error: error:" ..  (err or "no-err") .. " body:" .. json.encode(resp))
+      log.error("OPENROUTER error: error:" .. (json.encode(err) or "no-err") .. " body:" .. json.encode(resp))
+      error("OPENROUTER error: error:" ..  (json.encode(err) or "no-err") .. " body:" .. json.encode(resp))
     end
     local answer = resp.choices and resp.choices[1] and resp.choices[1].message
-    log.debug("GPT response: %s", answer and answer.content)
+    log.debug("OPENROUTER response: %s", answer and answer.content)
     cb(answer and answer.content)
   end)
 end
 
 -- public shortcuts -----------------------------------------------------
-function gpt.generate_dialogue(msgs, cb)
+function openrouter.generate_dialogue(msgs, cb)
   return send(msgs, cb, PRESET.creative)
 end
 
-function gpt.pick_speaker(msgs, cb)
+function openrouter.pick_speaker(msgs, cb)
   return send(msgs, cb, {model=MODEL.fast, temperature=0.0, max_tokens=30})
 end
 
-function gpt.summarize_story(msgs, cb)
+function openrouter.summarize_story(msgs, cb)
   return send(msgs, cb, {model=MODEL.fast, temperature=0.2, max_tokens=100})
 end
 
-return gpt
+return openrouter
