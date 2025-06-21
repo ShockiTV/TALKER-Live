@@ -9,10 +9,10 @@ local openrouter = {}
 -- model registry
 local MODEL = {
   smart        = config.custom_dialogue_model(),
-  mid          = "deepseek/deepseek-chat-v3-0324",
-  fast         = "deepseek/deepseek-chat-v3-0324",
-  fine_dialog  = "deepseek/deepseek-chat-v3-0324",
-  fine_speaker = "deepseek/deepseek-chat-v3-0324",
+  mid          = config.custom_dialogue_model(),
+  fast         = config.custom_dialogue_model_fast(),
+  fine_dialog  = config.custom_dialogue_model(),
+  fine_speaker = config.custom_dialogue_model(),
 }
 
 -- sampling presets

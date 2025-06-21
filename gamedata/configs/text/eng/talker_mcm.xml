@@ -14,7 +14,10 @@
         <text>Which method/site to use for models</text>
     </string>
     <string id="ui_mcm_talker_custom_ai_model">
-        <text>Custom model for dialouge</text>
+        <text>Custom model for dialogue</text>
+    </string>
+    <string id="ui_mcm_talker_custom_ai_model_fast">
+        <text>Fast Custom Model for non dialogue</text>
     </string>
     <!-- MODEL MODE SLECTION -->
     <string id="ui_mcm_lst_open-ai">
