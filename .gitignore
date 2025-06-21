@@ -41,3 +41,4 @@ mic_python/python/__pycache__/
 mic_python/python/build/
 mic_python/python/main.spec
 openAi_API_KEY.key
+*.key
