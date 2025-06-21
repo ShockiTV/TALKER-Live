@@ -23,8 +23,8 @@ function on_mcm_load()
             {
                 id = "ai_model_method",
                 type = "radio_h",
-                val = "open-ai",
-                def = "open-ai",
+                val = 0,
+                def = 0,
                 content = {
                     {"0", "open-ai"},
                     {"1", "open-router-ai"},
@@ -33,9 +33,16 @@ function on_mcm_load()
             {
                 id = "custom_ai_model",
                 type = "input",
-                val = "deepseek/deepseek-chat-v3-0324",
-                def = "deepseek/deepseek-chat-v3-0324",
+                val = "google/gemini-2.0-flash-001",
+                def = "google/gemini-2.0-flash-001",
             },
+            {
+                id = "custom_ai_model_fast",
+                type = "input",
+                val = "google/gemini-2.0-flash-001",
+                def = "google/gemini-2.0-flash-001",
+            },
+ 
             -- Language Selection
             {
                 id = "language",
