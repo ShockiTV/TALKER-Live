@@ -87,7 +87,8 @@ local defaults = {
     ["gpt_version"] = "gpt-4o",
     ["language"] = language.any.long,
     ["ai_model_method"] = 0,
-    ["open_router_model"] = "google/gemini-2.0-flash-001",
+    ["custom_ai_model"] = "google/gemini-2.0-flash-001",
+    ["custom_ai_model_fast"] = "gpt-4o-mini",
 }
 
 -- Function to retrieve the configuration value
