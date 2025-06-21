@@ -28,7 +28,6 @@ function on_mcm_load()
                 content = {
                     {"0", "open-ai"},
                     {"1", "open-router-ai"},
-                    {"2", "llm-api-key-proxy"},
                 }
             },
             {
