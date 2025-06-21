@@ -14,22 +14,12 @@ function c.modelmethod()
     return tonumber(cfg("ai_model_method", 0))
 end
 
-local filenames = {
-    [0] = "openAi_API_KEY.key",
-    [1] = "openRouter_API_KEY.key",
-}
-
-local function load_api_key()
-    local fname = filenames[c.modelmethod()]
-    if fname == nil then
-        fname = "openAi_API_KEY.key"
-    end
-    print("Loading Keyfile "..fname)
-    local f = io.open(fname, "r")
+local function load_api_key(FileName)
+    local f = io.open(openAi_API_KEY.key, "r")
     if f then 
         return f:read("*a") 
     end
-    local key = os.getenv("OPENAI_API_KEY")
+    local key = os.getenv(FileName)
     if key == "" then 
         error("Could not find OpenAI API key file") 
     end
@@ -45,7 +35,8 @@ c.NPC_SPEAK_DISTANCE   = 20
 c.BASE_DIALOGUE_CHANCE = 0.25
 c.player_speaks        = false
 c.SHOW_HUD_MESSAGES    = true
-c.OPENAI_API_KEY       = load_api_key()
+c.OPENAI_API_KEY       = load_api_key("openAi_API_KEY.key")
+c.OPENROUTER_API_KEY = load_api_key("openRouter_API_KEY.key")
 
 local DEFAULT_LANGUAGE = language.any.long
 
