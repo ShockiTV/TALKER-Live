@@ -23,8 +23,8 @@ function on_mcm_load()
             {
                 id = "ai_model_method",
                 type = "radio_h",
-                val = 0,
-                def = 0,
+                val = "0",
+                def = "0",
                 content = {
                     {"0", "open-ai"},
                     {"1", "open-router-ai"},
