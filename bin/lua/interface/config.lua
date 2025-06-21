@@ -15,11 +15,11 @@ function c.modelmethod()
 end
 
 local function load_api_key(FileName)
-    local f = io.open(openAi_API_KEY.key, "r")
+    local f = io.open(FileName, "r")
     if f then 
         return f:read("*a") 
     end
-    local key = os.getenv(FileName)
+    local key = os.getenv("OPENAI_API_KEY")
     if key == "" then 
         error("Could not find OpenAI API key file") 
     end
