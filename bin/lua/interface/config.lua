@@ -15,13 +15,30 @@ function c.modelmethod()
 end
 
 local function load_api_key(FileName)
-    local f = io.open(FileName, "r")
-    if f then 
-        return f:read("*a") 
+    local FileNameKey = FileName..".key"
+    local FilenameLowercaseTXT = string.lower(FileName)..".txt"
+    -- Try TALKER-relative path
+    local f = io.open("..\\"..FileNameKey, "r")
+    if f then return f:read("*a") end
+
+    -- Try alternate filename
+    f = io.open("..\\"..FilenameLowercaseTXT, "r")
+    if f then return f:read("*a") end
+
+    -- Try Windows temp dir
+    local temp_path = os.getenv("TEMP") or os.getenv("TMP")
+    if temp_path then
+        f = io.open(temp_path .. "\\"..FileNameKey, "r")
+        if f then return f:read("*a") end
+
+        f = io.open(temp_path .. "\\"..FilenameLowercaseTXT, "r")
+        if f then return f:read("*a") end
     end
+
+    -- Try env var
     local key = os.getenv("OPENAI_API_KEY")
-    if key == "" then 
-        error("Could not find OpenAI API key file") 
+    if not key or key == "" then
+        error("Could not find OpenAI API key file or environment variable")
     end
     return key
 end
@@ -35,8 +52,8 @@ c.NPC_SPEAK_DISTANCE   = 20
 c.BASE_DIALOGUE_CHANCE = 0.25
 c.player_speaks        = false
 c.SHOW_HUD_MESSAGES    = true
-c.OPENAI_API_KEY       = load_api_key("openAi_API_KEY.key")
-c.OPENROUTER_API_KEY = load_api_key("openRouter_API_KEY.key")
+c.OPENAI_API_KEY       = load_api_key("openAi_API_KEY")
+c.OPENROUTER_API_KEY = load_api_key("openRouter_API_KEY")
 
 local DEFAULT_LANGUAGE = language.any.long
 
