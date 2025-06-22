@@ -52,16 +52,20 @@ local function send(messages, cb, opts)
   return http.send_async_request(API_URL, "POST", headers, body_tbl, function(resp, err)
     if resp and resp.error then
         err = resp.error
-    end 
+    end
     if err or (resp and resp.error) then
-      log.error("gpt error: error:" .. (err or "no-err") .. " body:" .. json.encode(resp))
-      error("gpt error: error:" ..  (err or "no-err") .. " body:" .. json.encode(resp))
+      local err_str = type(err) == "table" and json.encode(err) or tostring(err)
+      log.error("gpt error: error:" .. err_str .. " body:" .. json.encode(resp))
+      error("gpt error: error:" .. err_str .. " body:" .. json.encode(resp))
     end
     local answer = resp.choices and resp.choices[1] and resp.choices[1].message
     log.debug("GPT response: %s", answer and answer.content)
     cb(answer and answer.content)
   end)
 end
+
+
+
 
 -- public shortcuts -----------------------------------------------------
 function gpt.generate_dialogue(msgs, cb)
