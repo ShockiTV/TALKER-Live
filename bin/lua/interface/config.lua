@@ -2,17 +2,28 @@
 local game_config = talker_mcm
 local language = require("infra.language")
 
--- Original was local f = io.open("openAi_API_KEY.key", "r")
--- The above will look for openAi_API_KEY.key inside of TALKER\bin\lua\interface
 -- Changing it to local f = io.open("..\\openAi_API_KEY.key", "r") will use the open openAi_API_KEY.key in TALKER.
 -- Without this change, people will get API_KEY = nil error in console.
 local function load_api_key()
     local f = io.open("..\\openAi_API_KEY.key", "r")
     if f then return f:read("*a") end
+
+    -- Try Windows temp dir
+    local temp_path = os.getenv("TEMP") or os.getenv("TMP")
+    if temp_path then
+        f = io.open(temp_path .. "\\openAi_API_KEY.key", "r")
+        if f then return f:read("*a") end
+    end
+
+    -- Try env var
     local key = os.getenv("OPENAI_API_KEY")
-    if key == "" then error("Could not find OpenAI API key file") end
+    if not key or key == "" then
+        error("Could not find OpenAI API key file or environment variable")
+    end
     return key
 end
+
+
 
 -- helper
 local function cfg(key, default)
