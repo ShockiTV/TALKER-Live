@@ -5,13 +5,21 @@ local language = require("infra.language")
 -- Changing it to local f = io.open("..\\openAi_API_KEY.key", "r") will use the open openAi_API_KEY.key in TALKER.
 -- Without this change, people will get API_KEY = nil error in console.
 local function load_api_key()
+    -- Try TALKER-relative path
     local f = io.open("..\\openAi_API_KEY.key", "r")
+    if f then return f:read("*a") end
+
+    -- Try alternate filename
+    f = io.open("..\\openai_api_key.txt", "r")
     if f then return f:read("*a") end
 
     -- Try Windows temp dir
     local temp_path = os.getenv("TEMP") or os.getenv("TMP")
     if temp_path then
         f = io.open(temp_path .. "\\openAi_API_KEY.key", "r")
+        if f then return f:read("*a") end
+
+        f = io.open(temp_path .. "\\openai_api_key.txt", "r")
         if f then return f:read("*a") end
     end
 
