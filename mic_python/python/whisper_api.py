@@ -43,7 +43,7 @@ def transcribe_audio_file(audio_path: str,
 # LOAD OR CREATE KEY
 ################################################################################################
 
-API_KEY_FILE = Path("your_config_dir") / "openai_api_key.txt"
+API_KEY_FILE = Path(".") / "openai_api_key.txt"
 TEMP_API_KEY_FILE = Path(os.getenv("TEMP")) / "openai_api_key.txt"
 
 def load_openai_api_key():
