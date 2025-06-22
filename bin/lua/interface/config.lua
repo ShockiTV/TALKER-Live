@@ -65,7 +65,7 @@ function c.dialogue_model()
 end
 
 function c.dialogue_prompt()
-    return ("You are a character for the harsh setting of STALKER. Swear if appropriate. " ..
+    return ("You are a dialogue generator for the harsh setting of STALKER. Swear if appropriate. " ..
             "Limit your reply to one sentence of dialogue. " ..
             "Write ONLY dialogue and make it without quotations or leading with the character name. Avoid cliche and corny dialogue " ..
             "Write dialogue that is realistic and appropriate for the tone of the STALKER setting and surroundings. " ..
