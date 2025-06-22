@@ -43,42 +43,48 @@ def transcribe_audio_file(audio_path: str,
 # LOAD OR CREATE KEY
 ################################################################################################
 
+API_KEY_FILE = Path(".") / "openai_api_key.txt"
+TEMP_API_KEY_FILE = Path(os.getenv("TEMP")) / "openai_api_key.txt"
+
 def load_openai_api_key():
-    """Load the OpenAI API key from a file, validate it, or prompt until it's valid."""
+    """Prompt for OpenAI API key if not found or invalid. Test before saving to config and temp."""
     while True:
-        if not API_KEY_FILE.exists():
-            api_key = input("Enter your OpenAI API key: ").strip()
-            if not api_key:
-                print("[ERROR] No API key provided.")
-                continue
-            API_KEY_FILE.write_text(api_key, encoding="utf-8")
-            print(f"API key saved to: {API_KEY_FILE}")
-        else:
+        if API_KEY_FILE.exists():
             api_key = API_KEY_FILE.read_text(encoding="utf-8").strip()
+        else:
+            api_key = input("Enter your OpenAI API key: ").strip()
 
         if not api_key:
-            print("[ERROR] OpenAI API key file is empty.")
-            API_KEY_FILE.unlink(missing_ok=True)
+            print("[ERROR] No API key provided.")
             continue
 
         openai.api_key = api_key
 
         try:
             test_key()
-            break  # success
+            # Only save after successful test
+            API_KEY_FILE.write_text(api_key, encoding="utf-8")
+            TEMP_API_KEY_FILE.write_text(api_key, encoding="utf-8")
+            print(f"API key saved to: {API_KEY_FILE}")
+            print(f"API key also saved to: {TEMP_API_KEY_FILE}")
+            break
         except openai.AuthenticationError:
             print("\n[ERROR] Invalid API key.")
             print("→ Visit https://platform.openai.com/account/api-keys to get a valid key.")
             print("→ Please enter a new key.\n")
-            API_KEY_FILE.unlink(missing_ok=True)
+            if API_KEY_FILE.exists():
+                API_KEY_FILE.unlink(missing_ok=True)
+            if TEMP_API_KEY_FILE.exists():
+                TEMP_API_KEY_FILE.unlink(missing_ok=True)
         except openai.PermissionDeniedError:
             print("\n[ERROR] No funds on key or otherwise permission denied.")
-            API_KEY_FILE.unlink(missing_ok=True)
+            if API_KEY_FILE.exists():
+                API_KEY_FILE.unlink(missing_ok=True)
+            if TEMP_API_KEY_FILE.exists():
+                TEMP_API_KEY_FILE.unlink(missing_ok=True)
         except Exception as e:
             print("\n[ERROR] Unexpected error while validating API key:", str(e))
             raise SystemExit(1)
-
-
 
 ################################################################################################
 # TEST KEY
