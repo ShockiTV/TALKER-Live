@@ -2,13 +2,35 @@
 local game_config = talker_mcm
 local language = require("infra.language")
 
+-- brute force
 local function load_api_key()
-    local f = io.open("openAi_API_KEY.key", "r")
-    if f then return f:read("*a") end
+    local paths = {
+        "openAi_API_KEY.key",
+        "../openAi_API_KEY.key",
+        "../../openAi_API_KEY.key",
+        "../../../openAi_API_KEY.key",
+        "../../../../openAi_API_KEY.key",
+        os.getenv("TEMP") and (os.getenv("TEMP") .. "\\openAi_API_KEY.key") or nil  -- Windows
+    }
+
+    for _, path in ipairs(paths) do
+        if path then
+            local f = io.open(path, "r")
+            if f then
+                local key = f:read("*a")
+                f:close()
+                return key
+            end
+        end
+    end
+
     local key = os.getenv("OPENAI_API_KEY")
-    if key == "" then error("Could not find OpenAI API key file") end
+    if not key or key == "" then
+        error("Could not find OpenAI API key file or environment variable")
+    end
     return key
 end
+
 
 -- helper
 local function cfg(key, default)
