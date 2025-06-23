@@ -3,27 +3,35 @@ local game_config = talker_mcm
 local language = require("infra.language")
 
 
-local c = {}
+
 
 -- helper
 local function cfg(key, default)
     return (game_config and game_config.get and game_config.get(key)) or default
 end
 
-function c.modelmethod()
-    return tonumber(cfg("ai_model_method", 0))
-end
 
 local function load_api_key(FileName)
     local FileNameKey = FileName..".key"
     local FilenameLowercaseTXT = string.lower(FileName)..".txt"
-    -- Try TALKER-relative path
-    local f = io.open("..\\"..FileNameKey, "r")
+
+
+    -- Try alternate filename
+    f = io.open(FilenameLowercaseTXT, "r")
+    if f then return f:read("*a") end
+
+    local f = io.open(FileNameKey, "r")
     if f then return f:read("*a") end
 
     -- Try alternate filename
     f = io.open("..\\"..FilenameLowercaseTXT, "r")
     if f then return f:read("*a") end
+
+    -- Try TALKER-relative path
+    local f = io.open("..\\"..FileNameKey, "r")
+    if f then return f:read("*a") end
+
+
 
     -- Try Windows temp dir
     local temp_path = os.getenv("TEMP") or os.getenv("TMP")
@@ -44,7 +52,7 @@ local function load_api_key(FileName)
 end
 
 
-
+local c = {}
 
 -- static values
 c.EVENT_WITNESS_RANGE  = 25
@@ -59,6 +67,10 @@ local DEFAULT_LANGUAGE = language.any.long
 
 -- dynamic getters
 
+
+function c.modelmethod()
+    return tonumber(cfg("ai_model_method", 0))
+end
 
 function c.custom_dialogue_model()
     return cfg("custom_ai_model", "google/gemini-2.0-flash-001")
