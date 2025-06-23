@@ -11,6 +11,7 @@ local MODEL = {
   smart        = config.dialogue_model(),
   mid          = "gpt-4o",
   fast         = "gpt-4o-mini",
+  -- fine tuned models, sadly will only work for my account
   fine_dialog  = "ft:gpt-4o-2024-08-06:personal::A721Jmn6",
   fine_speaker = "ft:gpt-4o-mini-2024-07-18:personal::A9ndhQlH",
 }
@@ -38,8 +39,8 @@ local function build_body(messages, opts)
   }
 end
 
-local function send(messages, cb, opts)
-  assert(type(cb)=="function","callback required")
+local function send(messages, callback, opts)
+  assert(type(callback)=="function","callback required")
 
   local headers = {
     ["Content-Type"]  = "application/json",
@@ -60,24 +61,21 @@ local function send(messages, cb, opts)
     end
     local answer = resp.choices and resp.choices[1] and resp.choices[1].message
     log.debug("GPT response: %s", answer and answer.content)
-    cb(answer and answer.content)
+    callback(answer and answer.content)
   end)
 end
 
-
-
-
 -- public shortcuts -----------------------------------------------------
-function gpt.generate_dialogue(msgs, cb)
-  return send(msgs, cb, PRESET.creative)
+function gpt.generate_dialogue(msgs, callback)
+  return send(msgs, callback, PRESET.creative)
 end
 
-function gpt.pick_speaker(msgs, cb)
-  return send(msgs, cb, {model=MODEL.fast, temperature=0.0, max_tokens=30})
+function gpt.pick_speaker(msgs, callback)
+  return send(msgs, callback, {model=MODEL.fast, temperature=0.0, max_tokens=30})
 end
 
-function gpt.summarize_story(msgs, cb)
-  return send(msgs, cb, {model=MODEL.fast, temperature=0.2, max_tokens=100})
+function gpt.summarize_story(msgs, callback)
+  return send(msgs, callback, {model=MODEL.fast, temperature=0.2, max_tokens=100})
 end
 
 return gpt
