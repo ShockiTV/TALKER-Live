@@ -42,7 +42,7 @@ local c = {}
 
 -- static values
 c.EVENT_WITNESS_RANGE  = 25
-c.NPC_SPEAK_DISTANCE   = 20
+c.NPC_SPEAK_DISTANCE   = 30
 c.BASE_DIALOGUE_CHANCE = 0.25
 c.player_speaks        = false
 c.SHOW_HUD_MESSAGES    = true
