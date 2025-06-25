@@ -21,10 +21,12 @@ local dialogue_cleaner = require("infra.AI.dialogue_cleaner")
 
 local gpt_model = require("infra.AI.GPT")
 local openrouter = require("infra.AI.OpenRouterAI")
+local local_model = require("infra.AI.local_ollama")
 
 local ModelList = {
     [0] = gpt_model,
     [1] = openrouter,
+    [2] = local_model,
 }
 
 local model = function()
@@ -87,7 +89,7 @@ end
 -- Core functions
 ------------------------------------------------------------------------------------------
 
-function check_if_id_in_recent_events(recent_events, picked_speaker_id)
+local function check_if_id_in_recent_events(recent_events, picked_speaker_id)
     local latest_event = recent_events[#recent_events]
     local witnesses = latest_event.witnesses
     for _, witness in ipairs(witnesses) do
@@ -99,7 +101,7 @@ function check_if_id_in_recent_events(recent_events, picked_speaker_id)
     return false
 end
 
-function is_valid_speaker(recent_events, picked_speaker_id)
+local function is_valid_speaker(recent_events, picked_speaker_id)
     -- check if speaker id was in recent events
     if not check_if_id_in_recent_events(recent_events, picked_speaker_id) then
         logger.warn("AI did not pick a valid speaker: " .. picked_speaker_id)

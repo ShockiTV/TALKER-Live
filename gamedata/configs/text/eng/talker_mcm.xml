@@ -26,6 +26,9 @@
     <string id="ui_mcm_lst_open-router-ai">
         <text>OpenRouter AI</text>
     </string>
+    <string id="ui_mcm_lst_local-deepseek">
+        <text>Local</text>
+    </string>
     <!-- LANGUAGE SELECTION -->
     <string id="ui_mcm_talker_language">
         <text>Dialogue language</text>
