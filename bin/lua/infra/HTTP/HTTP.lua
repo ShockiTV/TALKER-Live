@@ -23,7 +23,7 @@ function M.send_request(url, method, headers, body_tbl)
   if method:upper() == "POST" then
     -- body_tbl = utf8_tbl(body_tbl)
     -- encode to JSON
-    body = json.encode(body_tbl)
+    local body = json.encode(body_tbl)
     body = json.convert_to_utf8(body)
 
     logger.http("HTTP body: %s", json.encode(body))
