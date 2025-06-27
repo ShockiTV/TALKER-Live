@@ -33,9 +33,16 @@ local API_URL = config.OLLAMA_URL or "http://localhost:11434/api/chat"
 
 local function build_body(messages, opts)
   opts = opts or PRESET.creative
+
+  -- force all roles to "user"
+  local user_msgs = {}
+  for _, msg in ipairs(messages) do
+    table.insert(user_msgs, {role = "user", content = msg.content})
+  end
+
   return {
     model    = opts.model or MODEL.smart,
-    messages = messages,
+    messages = user_msgs,
     stream   = false,
     options  = {
       temperature       = opts.temperature,
@@ -46,7 +53,6 @@ local function build_body(messages, opts)
     },
   }
 end
-
 local function send(messages, callback, opts)
   assert(type(callback)=="function","callback required")
 
