@@ -26,6 +26,13 @@ If you dont want to use the mic, you can still use the exe to add the key and th
 ## Cheeki Breekivideo
 - [![Cheeki Breeki](https://img.youtube.com/vi/WmM-PPKTA8s/0.jpg)](https://www.youtube.com/watch?v=WmM-PPKTA8s)
 
+## using local models
+1. install ollama
+2. ollama pull llama3.2
+3. ollama pull llama3.2:1b
+4. ollama serve
+5. run game and pick local models
+
 ## credits
 Many thanks to
 - [balls of pure diamond](https://www.youtube.com/@BallsOfPureDiamond), for making cool youtube videos and helping me brainstorm, playtest and stay hyped
