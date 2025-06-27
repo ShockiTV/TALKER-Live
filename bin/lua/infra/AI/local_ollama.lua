@@ -44,13 +44,13 @@ local function build_body(messages, opts)
     model    = opts.model or MODEL.smart,
     messages = user_msgs,
     stream   = false,
-    options  = {
-      temperature       = opts.temperature,
-      top_p             = opts.top_p,
-      num_predict       = opts.max_tokens,
-      repeat_penalty    = opts.frequency_penalty,
-      presence_penalty  = opts.presence_penalty,
-    },
+    -- options  = { seems to break ollama for now
+    --   temperature       = opts.temperature,
+    --   top_p             = opts.top_p,
+    --   num_predict       = opts.max_tokens,
+    --   repeat_penalty    = opts.frequency_penalty,
+    --   presence_penalty  = opts.presence_penalty,
+    -- },
   }
 end
 local function send(messages, callback, opts)
