@@ -13,10 +13,13 @@ local DEEPSEEK_SMART = "deepseek-r1:32b"
 
 local NEMO = "nemotron-mini:4b"
 
+local LLAMA = "llama3.2"
+local LLAMA_small="llama3.2:1b"
+
 -- model registry
 local MODEL = {
-  smart = NEMO,
-  fast  = NEMO
+  smart = LLAMA,
+  fast  = LLAMA_small
 }
 
 -- sampling presets
