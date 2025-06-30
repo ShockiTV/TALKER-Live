@@ -10,7 +10,7 @@ from watchdog.observers import Observer
 
 from files import read_file, write_to_file
 from recorder import Recorder
-from whisper_api import load_openai_api_key, transcribe_audio_file
+from whisper_local import load_openai_api_key, transcribe_audio_file
 from banner import print_banner
 
 ####################################################################################################
