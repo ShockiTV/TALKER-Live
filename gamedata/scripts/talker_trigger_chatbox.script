@@ -1,0 +1,111 @@
+--| based on Chernobyl Relay Chat
+
+-- Options
+local option = {
+	chatKey = DIK_keys.DIK_RETURN,
+	closeChat = true,
+}
+
+-- Variables
+local chatBox
+local showChatBox = false
+local ChatBoxEnabled = true
+
+local function process_player_input(input)
+	printf("Player input: %s", input)
+end
+
+local function update()
+	if chatBox and not chatBox.focus then
+		chatBox.editBox:CaptureFocus(true)
+		chatBox.focus = true
+	end
+	
+	if showChatBox and ChatBoxEnabled then
+		showChatBox = false
+		chatBox = ChatBox()
+		chatBox:ShowDialog()
+		Register_UI("ChatBox","talker_chat")
+	end
+end
+
+local function onKeyPress(dik)
+	if dik == option.chatKey and not chatBox then
+		showChatBox = true
+	end
+end
+
+local function onDeath(whoID)
+	if chatBox then
+		ChatBox:Cancel()
+	end
+	ChatBoxEnabled = false
+end
+
+function actor_on_net_destroy()
+	if chatBox then
+		ChatBox:Cancel()
+	end	
+end
+
+function on_game_start()
+	ChatBoxEnabled = true
+	AddUniqueCall(update)
+	RegisterScriptCallback("actor_on_before_death", onDeath)
+	RegisterScriptCallback("actor_on_net_destroy", actor_on_net_destroy)
+	RegisterScriptCallback("on_key_press", onKeyPress)
+end
+
+----------------------------------------------GUI------------------------------------------------------
+
+class "ChatBox" (CUIScriptWnd)
+function ChatBox:__init() super()
+	
+	self:SetWndRect(Frect():set(0, 0, 400, 200))
+	self.xml = CScriptXmlInit()
+	self.xml:ParseFile("crc_chatbox.xml")
+	
+	self.xml:InitStatic("background", self)
+	self.xml:InitFrame("frame", self)
+	
+	self.editBox = self.xml:InitEditBox("edit_box", self)
+	
+	self:Register(self.xml:Init3tButton("button_send", self), "button_send")
+	self:Register(self.xml:Init3tButton("button_close", self), "button_close")
+	
+	self:AddCallback("button_send", ui_events.BUTTON_CLICKED, self.Send, self)
+	self:AddCallback("button_close", ui_events.BUTTON_CLICKED, self.Cancel, self)
+
+	self.focus = false
+end
+
+function ChatBox:OnKeyboard(dik, keyboard_action)
+	CUIScriptWnd.OnKeyboard(self, dik, keyboard_action)
+	if keyboard_action == ui_events.WINDOW_KEY_PRESSED then
+		if dik == DIK_keys.DIK_RETURN or dik == DIK_keys.DIK_NUMPADENTER then
+			self:Send()
+		elseif dik == DIK_keys.DIK_ESCAPE then
+			self:Cancel()
+		end
+	end
+	return true
+end
+
+function ChatBox:Send()
+	local input = self.editBox:GetText()
+	if input and input ~= "" then
+		self.editBox:SetText("")
+		process_player_input(input)
+	end
+	if option.closeChat then
+		self:Cancel()
+	else
+		chatBox.editBox:CaptureFocus(true)
+	end
+end
+
+function ChatBox:Cancel()
+	chatBox:HideDialog()
+	Unregister_UI("ChatBox")
+	chatBox = nil
+end
