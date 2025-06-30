@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<window>
+
+	<frame x="412" y="372" width="200" height="24" stretch="1">
+		<texture r="0" g="0" b="0" a="150">ui_icons_PDA_tooltips</texture>
+	</frame>
+
+	<edit_box x="412" y="372" width="200" height="24">
+		<texture>ui_inGame2_edit_box_1</texture>
+		<text x="3" font="letterica18" vert_align="c"/>
+	</edit_box>
+
+	<message x="412" y="323" width="200" height="39">
+		<icon x="20" y="-14" width="41" height="29" stretch="1"/>
+		
+		<title x="66" y="-14" width="200" height="29">
+			<text font="letterica16" color="ui_5" vert_align="t"/>
+		</title>
+
+		<message_text x="66" y="-14" width="200" height="29" complex_mode="1">
+			<text font="letterica16" color="ui_1" vert_align="b"/>
+		</message_text>
+	</message>
+
+</window>
