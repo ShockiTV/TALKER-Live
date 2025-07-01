@@ -1,4 +1,6 @@
 --| based on Chernobyl Relay Chat
+package.path = package.path .. ";./bin/lua/?.lua;"
+local interface = require('interface.interface')
 
 -- Options
 local option = {
@@ -12,7 +14,7 @@ local showChatBox = false
 local ChatBoxEnabled = true
 
 local function process_player_input(input)
-	printf("Player input: %s", input)
+	interface.player_character_speaks(input)
 end
 
 local function update()
@@ -45,7 +47,7 @@ end
 function actor_on_net_destroy()
 	if chatBox then
 		ChatBox:Cancel()
-	end	
+	end
 end
 
 function on_game_start()
@@ -63,19 +65,11 @@ function ChatBox:__init() super()
 	
 	self:SetWndRect(Frect():set(0, 0, 400, 200))
 	self.xml = CScriptXmlInit()
-	self.xml:ParseFile("crc_chatbox.xml")
+	self.xml:ParseFile("talker_chatbox.xml")
 	
-	self.xml:InitStatic("background", self)
 	self.xml:InitFrame("frame", self)
 	
 	self.editBox = self.xml:InitEditBox("edit_box", self)
-	
-	self:Register(self.xml:Init3tButton("button_send", self), "button_send")
-	self:Register(self.xml:Init3tButton("button_close", self), "button_close")
-	
-	self:AddCallback("button_send", ui_events.BUTTON_CLICKED, self.Send, self)
-	self:AddCallback("button_close", ui_events.BUTTON_CLICKED, self.Cancel, self)
-
 	self.focus = false
 end
 
