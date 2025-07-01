@@ -22,12 +22,13 @@ local INTERACTION_DISTANCE = 1
 local LAST_ANOMALY_COMMENT = 0
 
 function is_valid_event(anomaly)
-    result =
+    local player = queries.get_player()
+    is_valid =
         game.is_cooldown_over(LAST_ANOMALY_COMMENT, ANOMALY_COMMENT_CD) and
-        queries.distance_between(db.actor, anomaly) > INTERACTION_DISTANCE
+        queries.distance_between(player, anomaly) > INTERACTION_DISTANCE
     -- reset cooldown
-    if result then LAST_ANOMALY_COMMENT = queries.get_game_time_ms() end
-    return result
+    if is_valid then LAST_ANOMALY_COMMENT = queries.get_game_time_ms() end
+    return is_valid
 end
 
 ----------------------------------------------------------------------------------------------------

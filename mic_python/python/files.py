@@ -1,10 +1,9 @@
 import logging
 
-
 def read_file(file_path):
     """Reads and returns the content of a file."""
     try:
-        with open(file_path, 'r') as file:
+        with open(file_path, 'r', encoding='utf-8') as file:
             content = file.read().strip()
         return content
     except Exception as e:
