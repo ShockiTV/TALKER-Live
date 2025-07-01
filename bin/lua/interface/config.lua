@@ -11,42 +11,42 @@ local function cfg(key, default)
 end
 
 
+local function is_valid_key(key)
+    return key and key:match("^sk%-[%w%-_]+") and #key >= 20
+end
+
+local function try_load(path)
+    local f = io.open(path, "r")
+    if f then
+        local key = f:read("*a")
+        f:close()
+        if is_valid_key(key) then return key end
+    end
+    return nil
+end
+
 local function load_api_key(FileName)
-    local FileNameKey = FileName..".key"
-    local FilenameLowercaseTXT = string.lower(FileName)..".txt"
+    local paths = {
+        string.lower(FileName)..".txt",
+        FileName..".key",
+        "..\\"..string.lower(FileName)..".txt",
+        "..\\"..FileName..".key"
+    }
 
-
-    -- Try alternate filename
-    f = io.open(FilenameLowercaseTXT, "r")
-    if f then return f:read("*a") end
-
-    local f = io.open(FileNameKey, "r")
-    if f then return f:read("*a") end
-
-    -- Try alternate filename
-    f = io.open("..\\"..FilenameLowercaseTXT, "r")
-    if f then return f:read("*a") end
-
-    -- Try TALKER-relative path
-    local f = io.open("..\\"..FileNameKey, "r")
-    if f then return f:read("*a") end
-
-
-
-    -- Try Windows temp dir
     local temp_path = os.getenv("TEMP") or os.getenv("TMP")
     if temp_path then
-        f = io.open(temp_path .. "\\"..FileNameKey, "r")
-        if f then return f:read("*a") end
-
-        f = io.open(temp_path .. "\\"..FilenameLowercaseTXT, "r")
-        if f then return f:read("*a") end
+        table.insert(paths, temp_path.."\\"..FileName..".key")
+        table.insert(paths, temp_path.."\\"..string.lower(FileName)..".txt")
     end
 
-    -- Try env var
+    for _, path in ipairs(paths) do
+        local key = try_load(path)
+        if key then return key end
+    end
+
     local key = os.getenv("OPENAI_API_KEY")
-    if not key or key == "" then
-        error("Could not find OpenAI API key file or environment variable")
+    if not is_valid_key(key) then
+        error("Could not find valid OpenAI API key in files or environment variable")
     end
     return key
 end
