@@ -61,7 +61,7 @@ def load_openai_api_key():
         openai.api_key = api_key
 
         try:
-            test_key()
+            test_transcription_service()
             # Only save after successful test
             API_KEY_FILE.write_text(api_key, encoding="utf-8")
             TEMP_API_KEY_FILE.write_text(api_key, encoding="utf-8")
@@ -90,7 +90,7 @@ def load_openai_api_key():
 # TEST KEY
 ################################################################################################
 
-def test_key():
+def test_transcription_service():
     prompt = "Say 'Key successfully loaded!'"
     print(ask_gpt(prompt, "gpt-4o-mini"))
 
