@@ -44,9 +44,17 @@ function get_item_description(item)
     return ui_item.get_sec_name(get_technical_name(item))
 end
 
+function get_item_name(item)
+    return ui_item.get_sec_name(item:section())
+end
+
 function is_weapon(item)
     must_exist(item, "is_weapon")
     return IsWeapon(item)
+end
+
+local function is_artifact(obj)
+    return obj:is_artefact() -- base game
 end
 
 -- PLAYER
