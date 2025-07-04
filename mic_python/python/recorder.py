@@ -33,9 +33,11 @@ class Recorder:
         timestamp = int(time.time())
         return os.path.join(temp_dir, f"recording_{timestamp}.ogg")
 
-    def start_recording(self):
+    def start_recording(self, silence_grace_period=0):
         """
         Starts recording audio from the microphone.
+
+        :param silence_grace_period: Duration in seconds to ignore silence at the beginning of the recording.
         """
         with self._lock:
             if self._recording:
@@ -54,7 +56,7 @@ class Recorder:
             print("Recording started.")
 
         # Start a thread to monitor silence and stop recording
-        threading.Thread(target=self._monitor_silence, daemon=True).start()
+        threading.Thread(target=self._monitor_silence, args=(silence_grace_period,), daemon=True).start()
 
     def stop_recording(self):
         """
@@ -71,6 +73,7 @@ class Recorder:
                 self._stream = None
 
             self._save_audio()
+            print("Recording stopped due to silence.")
             # print("Recording stopped and audio saved to:", self.output_file)
 
     def is_recording(self):
@@ -96,10 +99,11 @@ class Recorder:
         with self._lock:
             self._last_audio_level = audio_level
 
-    def _monitor_silence(self):
+    def _monitor_silence(self, silence_grace_period=0):
         """
         Monitors audio levels and stops recording after silence is detected.
         """
+        start_time = time.time()
         while True:
             with self._lock:
                 if not self._recording:
@@ -107,10 +111,10 @@ class Recorder:
                 audio_level = self._last_audio_level
 
             if audio_level is not None:
-                # Debugging: Uncomment the following line to see audio levels
-                # print(f"Audio level: {audio_level}")
-
-                if audio_level < self.silence_level:
+                # Check if we are within the grace period
+                if time.time() - start_time < silence_grace_period:
+                    self._silence_start = None # Reset silence timer during grace period
+                elif audio_level < self.silence_level:
                     if self._silence_start is None:
                         self._silence_start = time.time()
                     elif (time.time() - self._silence_start) >= self.silence_threshold:

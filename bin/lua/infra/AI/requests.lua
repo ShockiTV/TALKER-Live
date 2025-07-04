@@ -22,11 +22,13 @@ local dialogue_cleaner = require("infra.AI.dialogue_cleaner")
 local gpt_model = require("infra.AI.GPT")
 local openrouter = require("infra.AI.OpenRouterAI")
 local local_model = require("infra.AI.local_ollama")
+local proxy_model = require("infra.AI.proxy")
 
 local ModelList = {
     [0] = gpt_model,
     [1] = openrouter,
     [2] = local_model,
+    [3] = proxy_model,
 }
 
 local model = function()

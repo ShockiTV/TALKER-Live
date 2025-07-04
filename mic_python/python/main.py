@@ -10,8 +10,8 @@ from watchdog.observers import Observer
 
 from files import read_file, write_to_file
 from recorder import Recorder
-from whisper_local import load_openai_api_key, transcribe_audio_file
 from banner import print_banner
+import importlib
 
 ####################################################################################################
 # CONFIG
@@ -53,7 +53,20 @@ def main():
         print("-"*50)
         print_banner("TALKER")
         print("-"*50)
-        load_openai_api_key()
+
+        # Determine the provider from command-line arguments
+        provider = "gemini_proxy"  # Default provider
+        if len(sys.argv) > 1:
+            provider_arg = sys.argv[1]
+            if provider_arg in ["whisper_local", "whisper_api", "gemini_proxy"]:
+                provider = provider_arg
+        
+        # Dynamically import the selected provider
+        transcription_module = importlib.import_module(provider)
+        load_api_key = getattr(transcription_module, "load_openai_api_key")
+        transcribe_audio_file_func = getattr(transcription_module, "transcribe_audio_file")
+
+        load_api_key()
         recorder = Recorder(AUDIO_FILE)
         Path(COMMAND_FILE).touch()
 
@@ -123,13 +136,24 @@ class CommandHandler(FileSystemEventHandler):
 
     def _record_session(self, prompt: str = '', language: str | None = DEFAULT_LANG):
         try:
+            # The provider is already determined in the main function, so we can reuse it here.
+            provider = "gemini_proxy"  # Default provider
+            if len(sys.argv) > 1:
+                provider_arg = sys.argv[1]
+                if provider_arg in ["whisper_local", "whisper_api", "gemini_proxy"]:
+                    provider = provider_arg
+            
+            # Dynamically import the selected provider
+            transcription_module = importlib.import_module(provider)
+            transcribe_audio_file_func = getattr(transcription_module, "transcribe_audio_file")
+
             write_to_file(COMMAND_FILE, COMMANDS['LISTENING'])
             self.recorder.start_recording()
             while self.recorder.is_recording():
                 time.sleep(0.1)
 
             write_to_file(COMMAND_FILE, COMMANDS['TRANSCRIBING'])
-            text = transcribe_audio_file(AUDIO_FILE, prompt, language)
+            text = transcribe_audio_file_func(AUDIO_FILE, prompt=prompt, lang=language)
             write_to_file(TRANSCRIPTION_FILE, text)
             write_to_file(COMMAND_FILE, COMMANDS['DONE'])
 

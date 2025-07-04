@@ -29,19 +29,46 @@ function on_mcm_load()
                     {"0", "open-ai"},
                     {"1", "open-router-ai"},
                     {"2", "local-deepseek"},
+                    {"3", "proxy"},
                 }
             },
             {
                 id = "custom_ai_model",
                 type = "input",
-                val = "google/gemini-2.0-flash-001",
-                def = "google/gemini-2.0-flash-001",
+                val = "gemini/gemini-2.5-flash",
+                def = "gemini/gemini-2.5-flash",
             },
             {
                 id = "custom_ai_model_fast",
                 type = "input",
-                val = "openai/gpt-4o-mini",
-                def = "openai/gpt-4o-mini",
+                val = "gemini/gemini-2.5-flash-lite-preview-06-17",
+                def = "gemini/gemini-2.5-flash-lite-preview-06-17",
+            },
+            {
+                id = "reasoning_level",
+                type = "radio_h",
+                val = "-1",
+                def = "-1",
+                content = {
+                    {"-1", "Auto"},
+                    {"0", "None"},
+                    {"1", "Low"},
+                    {"2", "Medium"},
+                    {"3", "High"},
+                },
+                name = "ui_mcm_talker_reasoning_level"
+            },
+            {
+                id = "voice_provider",
+                type = "radio_h",
+                val = "0",
+                def = "2",
+                content = {
+                    {"0", "local-whisper"},
+                    {"1", "openai-whisper"},
+                    {"2", "gemini-proxy"},
+                },
+                name = "ui_mcm_talker_voice_provider"
             },
  
             -- Language Selection
@@ -90,6 +117,8 @@ local defaults = {
     ["ai_model_method"] = 0,
     ["custom_ai_model"] = "google/gemini-2.0-flash-001",
     ["custom_ai_model_fast"] = "openai/gpt-4o-mini",
+    ["voice_provider"] = 2,
+    ["reasoning_level"] = -1,
 }
 
 -- Function to retrieve the configuration value
