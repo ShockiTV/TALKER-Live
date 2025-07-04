@@ -5,7 +5,7 @@ on:
     branches:
       - main
       - dev
-      - 'proxy'
+      - proxy
 
 jobs:
   build:
@@ -29,11 +29,15 @@ jobs:
       working-directory: mic_python/python
       run: ./build.bat
 
+    - name: Get short SHA
+      id: sha
+      run: echo "sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
     - name: Create Release and Upload Asset
       uses: softprops/action-gh-release@v1
       with:
         files: mic_python/python/dist/talker_mic.exe
-        tag_name: build-${{ github.run_number }}
-        name: Build ${{ github.run_number }}
+        tag_name: ${{ steps.sha.outputs.sha }}
+        name: Build ${{ steps.sha.outputs.sha }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
