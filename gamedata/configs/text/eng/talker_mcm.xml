@@ -20,7 +20,7 @@
         <text>Fast Model for non dialogue</text>
     </string>
     <string id="ui_mcm_talker_reasoning_level">
-        <text>Reasoning Level</text>
+        <text>(Proxy) Reasoning Level (Best Auto or None)</text>
     </string>
     <string id="ui_mcm_talker_voice_provider">
         <text>Voice Provider</text>
