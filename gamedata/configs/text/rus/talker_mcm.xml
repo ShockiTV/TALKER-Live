@@ -2,28 +2,28 @@
 <string_table>
     <!-- GENERAL OPTIONS -->
     <string id="ui_mcm_talker_title">
-        <text>РќР°СЃС‚СЂРѕР№РєРё T.A.L.K.E.R.</text>
+        <text>Настройки T.A.L.K.E.R.</text>
     </string>
     <string id="ui_mcm_menu_talker">
         <text>T.A.L.K.E.R.</text>
     </string>
     <string id="ui_mcm_talker_gpt_version">
-        <text>РњРѕРґРµР»СЊ GPT РґР»СЏ РґРёР°Р»РѕРіРѕРІ</text>
+        <text>Модель GPT для диалогов</text>
     </string>
     <string id="ui_mcm_talker_ai_model_method">
-        <text>РљР°РєРѕР№ РјРµС‚РѕРґ/СЃР°Р№С‚ РёСЃРїРѕР»СЊР·РѕРІР°С‚СЊ РґР»СЏ РјРѕРґРµР»РµР№</text>
+        <text>Какой метод/сайт использовать для моделей</text>
     </string>
     <string id="ui_mcm_talker_custom_ai_model">
-        <text>РњРѕРґРµР»СЊ РґР»СЏ РґРёР°Р»РѕРіРѕРІ</text>
+        <text>Модель для диалогов</text>
     </string>
     <string id="ui_mcm_talker_custom_ai_model_fast">
-        <text>Р‘С‹СЃС‚СЂР°СЏ РјРѕРґРµР»СЊ РґР»СЏ РЅРµ-РґРёР°Р»РѕРіРѕРІ</text>
+        <text>Быстрая модель для не-диалогов</text>
     </string>
     <string id="ui_mcm_talker_reasoning_level">
-        <text>РЈСЂРѕРІРµРЅСЊ СЂР°Р·РјС‹С€Р»РµРЅРёР№</text>
+        <text>Уровень размышлений</text>
     </string>
     <string id="ui_mcm_talker_voice_provider">
-        <text>РџСЂРѕРІР°Р№РґРµСЂ СЂР°СЃРїРѕР·РЅР°РІР°РЅРёСЏ РіРѕР»РѕСЃР°</text>
+        <text>Провайдер распознавания голоса</text>
     </string>
     <!-- MODEL MODE SLECTION -->
     <string id="ui_mcm_lst_open-ai">
@@ -33,30 +33,30 @@
         <text>OpenRouter AI</text>
     </string>
     <string id="ui_mcm_lst_local-deepseek">
-        <text>Р›РѕРєР°Р»СЊРЅС‹Р№</text>
+        <text>Локальный</text>
     </string>
     <string id="ui_mcm_lst_proxy">
-        <text>РџСЂРѕРєСЃРё</text>
+        <text>Прокси</text>
     </string>
     <!-- REASONING LEVEL -->
     <string id="ui_mcm_lst_Auto">
-        <text>РђРІС‚Рѕ</text>
+        <text>Авто</text>
     </string>
     <string id="ui_mcm_lst_None">
-        <text>РќРµС‚</text>
+        <text>Нет</text>
     </string>
     <string id="ui_mcm_lst_Low">
-        <text>РќРёР·РєРёР№</text>
+        <text>Низкий</text>
     </string>
     <string id="ui_mcm_lst_Medium">
-        <text>РЎСЂРµРґРЅРёР№</text>
+        <text>Средний</text>
     </string>
     <string id="ui_mcm_lst_High">
-        <text>Р’С‹СЃРѕРєРёР№</text>
+        <text>Высокий</text>
     </string>
     <!-- VOICE PROVIDER -->
     <string id="ui_mcm_lst_local-whisper">
-        <text>Р›РѕРєР°Р»СЊРЅС‹Р№ Whisper</text>
+        <text>Локальный Whisper</text>
     </string>
     <string id="ui_mcm_lst_openai-whisper">
         <text>OpenAI Whisper</text>
@@ -66,19 +66,19 @@
     </string>
     <!-- LANGUAGE SELECTION -->
     <string id="ui_mcm_talker_language">
-        <text>РЇР·С‹Рє РґРёР°Р»РѕРіР°</text>
+        <text>Язык диалога</text>
     </string>
     <string id="ui_mcm_lst_Any">
-        <text>Р›СЋР±РѕР№</text>
+        <text>Любой</text>
     </string>
     <string id="ui_mcm_lst_English">
-        <text>РђРЅРіР»РёР№СЃРєРёР№</text>
+        <text>Английский</text>
     </string>
     <string id="ui_mcm_lst_Ukrainian">
-        <text>РЈРєСЂР°РёРЅСЃРєРёР№</text>
+        <text>Украинский</text>
     </string>
     <string id="ui_mcm_lst_Russian">
-        <text>Р СѓСЃСЃРєРёР№</text>
+        <text>Русский</text>
     </string>
     <!-- GPT MODELS -->
     <string id="ui_mcm_lst_gpt-4o">
@@ -92,12 +92,12 @@
     </string>
     <!-- SPEAK KEY CONFIGURATION -->
     <string id="ui_mcm_talker_speak_key_title">
-        <text>РќР°СЃС‚СЂРѕР№РєР° РєР»Р°РІРёС€Рё СЂР°Р·РіРѕРІРѕСЂР°</text>
+        <text>Настройка клавиши разговора</text>
     </string>
     <string id="ui_mcm_talker_speak_key_description">
-        <text>РќР°СЃС‚СЂРѕР№С‚Рµ РєР»Р°РІРёС€Сѓ, РёСЃРїРѕР»СЊР·СѓРµРјСѓСЋ РґР»СЏ РЅР°С‡Р°Р»Р° СЂР°Р·РіРѕРІРѕСЂР°.</text>
+        <text>Настройте клавишу, используемую для начала разговора.</text>
     </string>
     <string id="ui_mcm_talker_speak_key">
-        <text>РљР»Р°РІРёС€Р° РІРІРѕРґР° СЃ РјРёРєСЂРѕС„РѕРЅР°.</text>
+        <text>Клавиша ввода с микрофона.</text>
     </string>
 </string_table>

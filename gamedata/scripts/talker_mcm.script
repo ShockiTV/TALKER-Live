@@ -26,10 +26,10 @@ function on_mcm_load()
                 val = "0",
                 def = "0",
                 content = {
-                    {"0", "ui_mcm_lst_open-ai"},
-                    {"1", "ui_mcm_lst_open-router-ai"},
-                    {"2", "ui_mcm_lst_local-deepseek"},
-                    {"3", "ui_mcm_lst_proxy"},
+                    {"0", "open-ai"},
+                    {"1", "open-router-ai"},
+                    {"2", "local-deepseek"},
+                    {"3", "proxy"},
                 }
             },
             {
@@ -50,11 +50,11 @@ function on_mcm_load()
                 val = "-1",
                 def = "-1",
                 content = {
-                    {"-1", "ui_mcm_lst_Auto"},
-                    {"0", "ui_mcm_lst_None"},
-                    {"1", "ui_mcm_lst_Low"},
-                    {"2", "ui_mcm_lst_Medium"},
-                    {"3", "ui_mcm_lst_High"},
+                    {"-1", "Auto"},
+                    {"0", "None"},
+                    {"1", "Low"},
+                    {"2", "Medium"},
+                    {"3", "High"},
                 },
                 name = "ui_mcm_talker_reasoning_level"
             },
@@ -64,9 +64,9 @@ function on_mcm_load()
                 val = "0",
                 def = "2",
                 content = {
-                    {"0", "ui_mcm_lst_local-whisper"},
-                    {"1", "ui_mcm_lst_openai-whisper"},
-                    {"2", "ui_mcm_lst_gemini-proxy"},
+                    {"0", "local-whisper"},
+                    {"1", "openai-whisper"},
+                    {"2", "gemini-proxy"},
                 },
                 name = "ui_mcm_talker_voice_provider"
             },
