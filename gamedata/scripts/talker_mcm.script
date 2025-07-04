@@ -24,7 +24,7 @@ function on_mcm_load()
                 id = "ai_model_method",
                 type = "radio_h",
                 val = "0",
-                def = "0",
+                def = "3",
                 content = {
                     {"0", "open-ai"},
                     {"1", "open-router-ai"},
@@ -114,9 +114,9 @@ local defaults = {
     ["speak_key"] = DIK_keys.DIK_LMENU,
     ["gpt_version"] = "gpt-4o",
     ["language"] = language.any.long,
-    ["ai_model_method"] = 0,
-    ["custom_ai_model"] = "google/gemini-2.0-flash-001",
-    ["custom_ai_model_fast"] = "openai/gpt-4o-mini",
+    ["ai_model_method"] = 3,
+    ["custom_ai_model"] = "google/gemini-2.5-flash",
+    ["custom_ai_model_fast"] = "google/gemini-2.5-flash-lite-preview-06-17",
     ["voice_provider"] = 2,
     ["reasoning_level"] = -1,
 }
