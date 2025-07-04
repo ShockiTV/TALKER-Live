@@ -34,17 +34,17 @@ goto menu
 
 :gemini
 echo Launching with Gemini Proxy...
-start "TALKER Mic - Gemini Proxy" main.exe gemini_proxy
+start "TALKER Mic - Gemini Proxy" talker_mic.exe gemini_proxy
 goto end
 
 :whisper_local
 echo Launching with Whisper Local...
-start "TALKER Mic - Whisper Local" main.exe whisper_local
+start "TALKER Mic - Whisper Local" talker_mic.exe whisper_local
 goto end
 
 :whisper_api
 echo Launching with Whisper API...
-start "TALKER Mic - Whisper API" main.exe whisper_api
+start "TALKER Mic - Whisper API" talker_mic.exe whisper_api
 goto end
 
 :exit
