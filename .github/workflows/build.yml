@@ -1,11 +1,14 @@
 name: Build and Release Executable
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
       - dev
       - proxy
+    paths:
+      - 'mic_python/python/**'
 
 jobs:
   build:
