@@ -25,7 +25,7 @@ local function try_load(path)
     return nil
 end
 
-local function load_api_key(FileName)
+local function load_api_key(FileName, env_var_name)
     local paths = {
         string.lower(FileName)..".txt",
         FileName..".key",
@@ -44,11 +44,12 @@ local function load_api_key(FileName)
         if key then return key end
     end
 
-    local key = os.getenv("OPENAI_API_KEY")
-    if not is_valid_key(key) then
-        error("Could not find valid OpenAI API key in files or environment variable")
+    if env_var_name then
+        local key = os.getenv(env_var_name)
+        if is_valid_key(key) then return key end
     end
-    return key
+
+    return nil
 end
 
 
@@ -60,8 +61,27 @@ c.NPC_SPEAK_DISTANCE   = 30
 c.BASE_DIALOGUE_CHANCE = 0.25
 c.player_speaks        = false
 c.SHOW_HUD_MESSAGES    = true
-c.OPENAI_API_KEY       = load_api_key("openAi_API_KEY")
-c.OPENROUTER_API_KEY = load_api_key("openRouter_API_KEY")
+c.PROXY_API_KEY      = "VerysecretKey"
+
+function c.get_openai_api_key()
+    if not c._openai_api_key then
+        c._openai_api_key = load_api_key("openAi_API_KEY", "OPENAI_API_KEY")
+    end
+    if not c._openai_api_key then
+        print("TALKER: Could not find valid OpenAI API key in files or environment variable")
+    end
+    return c._openai_api_key
+end
+
+function c.get_openrouter_api_key()
+    if not c._openrouter_api_key then
+        c._openrouter_api_key = load_api_key("openRouter_API_KEY", "OPENROUTER_API_KEY")
+    end
+    if not c._openrouter_api_key then
+        print("TALKER: Could not find valid OpenRouter API key in files or environment variable")
+    end
+    return c._openrouter_api_key
+end
 
 local DEFAULT_LANGUAGE = language.any.long
 
@@ -72,12 +92,20 @@ function c.modelmethod()
     return tonumber(cfg("ai_model_method", 0))
 end
 
+function c.voice_provider()
+    return tonumber(cfg("voice_provider", 0))
+end
+
 function c.custom_dialogue_model()
     return cfg("custom_ai_model", "google/gemini-2.0-flash-001")
 end
 
 function c.custom_dialogue_model_fast()
     return cfg("custom_ai_model_fast", "openai/gpt-4o-mini")
+end
+
+function c.reasoning_level()
+    return tonumber(cfg("reasoning_level", -1))
 end
 
 
