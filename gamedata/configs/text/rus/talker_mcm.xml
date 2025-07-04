@@ -20,7 +20,7 @@
         <text>Быстрая модель для не-диалогов</text>
     </string>
     <string id="ui_mcm_talker_reasoning_level">
-        <text>Уровень размышлений</text>
+        <text>(Прокси) Уровень размышлений (Лучше Авто или Нет)</text>
     </string>
     <string id="ui_mcm_talker_voice_provider">
         <text>Провайдер распознавания голоса</text>
