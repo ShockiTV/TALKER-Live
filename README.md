@@ -8,18 +8,27 @@ You will need openAI api credits to be able to use this mod! Changing the LLM mo
 
 This mod is provided free of charge with open code, practice your own due diligence and set spending limits on your account. I have tested for bugs that could cause large amounts of requests but that does not mean it's impossible!
 
+## Requirements
+### LLM API Key Proxy
+New provider (Free or paid, but made for free) now requires the use of the [LLM-API-Key-Proxy](https://github.com/Mirrowel/LLM-API-Key-Proxy). This proxy allows for rotating API keys, which helps to avoid rate-limiting issues and provides a more stable experience.
+
+Please follow the instructions on the [LLM-API-Key-Proxy GitHub page](https://github.com/Mirrowel/LLM-API-Key-Proxy) to install and configure the proxy.
+
+### talker_mic.exe
+You must grab the `talker_mic.exe` from the [releases page](https://github.com/Mirrowel/TALKER/releases) and place it in the root folder of the mod.
+
 ## installation instructions
 Best to use [Mod Organizer](https://lazystalker.blogspot.com/2020/11/mod-organizer-2-stalker-anomaly-setup.html)
 
-### get an openapi key
+### get an openapi key(if using openAI)
 https://www.howtogeek.com/885918/how-to-get-an-openai-api-key/
 put it in the openAi_API_KEY.key file as it was a text file
 
-### the game
-1. place TALKER in a new mod folder, unpacked (For Gamma this is in E:\GAMMA\mods)
-2. run talker_mic.exe and paste in your key
-3. if it says everything's okay, keep it running and launch the game
-4. you should be able to start speaking using the left alt key
+1.  **Install and configure the requirements listed above.**
+2.  Place TALKER in a new mod folder, unpacked (For Gamma this is in E:\GAMMA\mods)
+3.  Run `talker_mic.exe` and paste in your key(if asked).
+4.  If it says everything's okay, keep it running and launch the game.
+5.  You should be able to start speaking using the left alt key.
 
 If you dont want to use the mic, you can still use the exe to add the key and then close it.
 
