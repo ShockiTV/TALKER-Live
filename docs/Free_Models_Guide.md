@@ -152,6 +152,20 @@ Nvidia offers an even wider selection of high-quality models than Chutes, making
 **A Note on Rate Limits**
 *   Like Chutes, Nvidia's rate limits are not officially published. They appear to be generous and dependent on server load, but it's always best to use the service reasonably.
 
+### How to Get an Nvidia API Key
+
+**Step 1: Create and Verify Your Account**
+*   Go to [build.nvidia.com](https://build.nvidia.com/) and create a new account or log in to an existing one.
+*   You will need to verify your account with a phone number and email address to proceed.
+
+**Step 2: Generate Your API Key**
+*   Once you are logged in, navigate to the main dashboard.
+*   Click the **"Get API Key"** button to generate your unique key.
+
+**Step 3: Add the Key to the Proxy**
+*   Run the `setup_env.bat` script from the LLM-API-Key-Proxy.
+*   When prompted, paste in your Nvidia API key.
+
 ### Available Models
 
 Here are some of the notable models available through Nvidia's API:
