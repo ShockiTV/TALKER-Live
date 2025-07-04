@@ -24,7 +24,6 @@ local PRESET = {
 
 -- helpers --------------------------------------------------------------
 local API_URL = "https://api.openai.com/v1/chat/completions"
-local API_KEY = config.OPENAI_API_KEY
 
 local function build_body(messages, opts)
   opts = opts or PRESET.creative
@@ -42,9 +41,15 @@ end
 local function send(messages, callback, opts)
   assert(type(callback)=="function","callback required")
 
+  local api_key = config.get_openai_api_key()
+  if not api_key then
+    log.error("OpenAI API key not found. Cannot send request.")
+    return
+  end
+
   local headers = {
     ["Content-Type"]  = "application/json",
-    ["Authorization"] = "Bearer "..API_KEY,
+    ["Authorization"] = "Bearer "..api_key,
   }
 
   local body_tbl = build_body(messages, opts)

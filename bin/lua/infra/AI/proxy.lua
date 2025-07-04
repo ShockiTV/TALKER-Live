@@ -1,10 +1,10 @@
--- OpenRouterAI.lua
+-- proxy.lua
 local http   = require("infra.HTTP.HTTP")
 local json   = require("infra.HTTP.json")
 local log    = require("framework.logger")
 local config = require("interface.config")
 
-local openrouter = {}
+local proxy = {}
 
 -- model registry
 local MODEL = {
@@ -17,16 +17,19 @@ local MODEL = {
 
 -- sampling presets
 local PRESET = {
-  creative = {temperature=0.9 ,max_tokens=150,top_p=1,frequency_penalty=0,presence_penalty=0},
-  strict   = {temperature=0.0 ,max_tokens=150,top_p=1,frequency_penalty=0,presence_penalty=0},
+  creative = {temperature=0.9 ,top_p=1,frequency_penalty=0,presence_penalty=0},
+  strict   = {temperature=0.0 ,top_p=1,frequency_penalty=0,presence_penalty=0},
 }
 
 -- helpers --------------------------------------------------------------
-local API_URL = "https://openrouter.ai/api/v1/chat/completions"
+local API_URL = "http://127.0.0.1:8000/v1/chat/completions"
+local API_KEY = config.PROXY_API_KEY
 
 local function build_body(messages, opts)
   opts = opts or PRESET.creative
-  return {
+  local reasoning_level = config.reasoning_level()
+
+  local body = {
     model             = opts.model or MODEL.smart,
     messages          = messages,           -- plain Lua table
     temperature       = opts.temperature,
@@ -35,6 +38,23 @@ local function build_body(messages, opts)
     frequency_penalty = opts.frequency_penalty,
     presence_penalty  = opts.presence_penalty,
   }
+
+  if reasoning_level == -1 then
+    body.thinking = {
+      type = "enabled",
+      budget_tokens = -1
+    }
+  else
+    local reasoning_map = {
+      [0] = "disable",
+      [1] = "low",
+      [2] = "medium",
+      [3] = "high",
+    }
+    body.reasoning_effort = reasoning_map[reasoning_level]
+  end
+
+  return body
 end
 
 
@@ -42,45 +62,39 @@ end
 local function send(messages, cb, opts)
   assert(type(cb)=="function","callback required")
 
-  local api_key = config.get_openrouter_api_key()
-  if not api_key then
-    log.error("OpenRouter API key not found. Cannot send request.")
-    return
-  end
-
   local headers = {
     ["Content-Type"]  = "application/json",
-    ["Authorization"] = "Bearer "..api_key,
+    ["Authorization"] = "Bearer "..API_KEY,
   }
 
   local body_tbl = build_body(messages, opts)
-  log.http("OPENROUTER request: %s", json.encode(body_tbl)) -- encode only for log
+  log.http("PROXY request: %s", json.encode(body_tbl)) -- encode only for log
 
   return http.send_async_request(API_URL, "POST", headers, body_tbl, function(resp, err)
     if resp and resp.error then
         err = resp.error
     end 
     if err or (resp and resp.error) then
-      log.error("OPENROUTER error: error:" .. json.encode(err or "no-err") .. " body:" .. json.encode(resp))
-      error("OPENROUTER error: error:" ..  json.encode(err or "no-err")  .. " body:" .. json.encode(resp))
+      log.error("PROXY error: error:" .. json.encode(err or "no-err") .. " body:" .. json.encode(resp))
+      error("PROXY error: error:" ..  json.encode(err or "no-err")  .. " body:" .. json.encode(resp))
     end
     local answer = resp.choices and resp.choices[1] and resp.choices[1].message
-    log.debug("OPENROUTER response: %s", answer and answer.content)
+    log.debug("PROXY response: %s", answer and answer.content)
     cb(answer and answer.content)
   end)
 end
 
 -- public shortcuts -----------------------------------------------------
-function openrouter.generate_dialogue(msgs, cb)
+function proxy.generate_dialogue(msgs, cb)
   return send(msgs, cb, PRESET.creative)
 end
 
-function openrouter.pick_speaker(msgs, cb)
-  return send(msgs, cb, {model=MODEL.fast, temperature=0.0, max_tokens=30})
+function proxy.pick_speaker(msgs, cb)
+  return send(msgs, cb, {model=MODEL.fast, temperature=0.0})
 end
 
-function openrouter.summarize_story(msgs, cb)
-  return send(msgs, cb, {model=MODEL.fast, temperature=0.2, max_tokens=100})
+function proxy.summarize_story(msgs, cb)
+  return send(msgs, cb, {model=MODEL.fast, temperature=0.2})
 end
 
-return openrouter
+return proxy
