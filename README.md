@@ -40,12 +40,45 @@ If you are using a paid service (OpenAI and Openrouter support only) and prefer 
 
 ### Step 3: Launch and Play
 1.  If you are using the API Proxy (Option A), make sure `proxy_app.exe` is running.
-2.  Launch S.T.A.L.K.E.R. Anomaly.
-3.  You can now talk to NPCs using two methods:
-    *   **Voice Chat**: Run `launch_mic.bat` and select your preferred transcription service. For most users, **Gemini via API Proxy** is the recommended choice for its stability and performance. Keep the launcher window open while you play, and hold `Left Alt` to speak.
-    *   **Text Chat**: Press `Enter` to open a chat box and type.
+2.  If you plan to use voice chat, run `launch_mic.bat` and select your preferred transcription service.
+3.  Launch S.T.A.L.K.E.R. Anomaly.
 
-**Note on API Keys & `launch_mic.bat`**: If you chose the Direct API Key (Option B) and don't want to create the `.key` file manually, you can run `launch_mic.bat` once. It will ask for your key and save it for you. After this one-time setup, you only need to run the launcher when you want to use voice chat.
+### Step 4: Configure In-Game Settings (MCM)
+Once in-game, you need to configure TALKER in the Mod Configuration Menu (MCM) before you can start talking to NPCs.
+
+1.  **Open the MCM**: Open the MCM from the main menu.
+2.  **Select AI Model Method**: Find the **"AI Model Method"** setting and select the option that matches your setup:
+    *   **proxy**: If you are using the recommended API Proxy.
+    *   **open-ai** or **open-router-ai**: If you are using a direct API key.
+3.  **Set Your Custom Models (Proxy Users)**: If you are using the proxy, you can specify which models to use.
+    *   **Custom AI Model**: Enter the full name of your primary model. 
+        *   **Example**: `gemini/gemini-2.5-flash` for Gemini, `chutes/deepseek-ai/DeepSeek-V3` for Chutes, or `nvidia_nim/deepseek-ai/deepseek-r1` for Nvidia.
+    *   **Custom AI Model Fast**: Enter the name of a smaller, faster, secondary model for less complex tasks.
+        *   **Example**: `gemini/gemini-2.5-flash-lite-preview-06-17`.
+
+    **Important Note on Model Names (Provider Prefixes)**
+    When using the proxy, you must include a **provider prefix** in the model name. This tells the proxy which service to send the request to. Think of it like an address for your AI model.
+
+    The format is always `provider_name/model_name`.
+
+    Here are the prefixes for some of the supported providers:
+    *   **Gemini**: `gemini/` (e.g., `gemini/gemini-2.5-flash`)
+    *   **Chutes**: `chutes/` (e.g., `chutes/deepseek-ai/DeepSeek-V3`)
+    *   **Nvidia**: `nvidia_nim/` (e.g., `nvidia_nim/deepseek-ai/deepseek-r1`)
+
+    You must use the full, correct name for the model to work. You can find a list of some of the available models and their full names in the [Free Models Guide](docs/Free_Models_Guide.md).
+    Refer to the [LLM API Proxy documentation](https://github.com/Mirrowel/LLM-API-Key-Proxy) for more information.
+4.  **Configure Reasoning Level**: This setting controls how much "thinking" a model does.
+    *   **Auto**: The model decides the appropriate level of reasoning. **This is the recommended setting.**
+    *   **None**: Disables reasoning entirely.
+    *   **Low, Medium, High**: Manually sets the reasoning level. Higher levels can result in more detailed responses but will be slower.
+5.  **Set Voice Provider (Proxy Users)**: To use the proxy for voice transcription, set the **"Voice Provider"** to **"gemini-proxy"**. (NOT IMPLEMENTED YET)
+
+Now you're ready to play! You can talk to NPCs using two methods:
+*   **Voice Chat**: Hold `Left Alt` to speak.
+*   **Text Chat**: Press `Enter` to open a chat box and type.
+
+**Note on API Keys & `launch_mic.bat`**: If you chose the Direct API Key and don't want to create the `.key` file manually, you can run `launch_mic.bat` once. It will ask for your key and save it for you. After this one-time setup, you only need to run the launcher when you want to use voice chat.
 
 ---
 
