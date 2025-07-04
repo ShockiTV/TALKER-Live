@@ -25,17 +25,17 @@ Gemini and Gemma models offer a range of options, each with different trade-offs
 
 **Gemini Models**
 
-| Model Name (Provider Prefix)                     | Speed      | Intelligence | Dynamic Reasoning | Notes                                                                                                   |
-| ------------------------------------------------ | ---------- | ------------ | ----------------- | ------------------------------------------------------------------------------------------------------- |
-| `gemini/gemini-2.5-pro`                          | Slowest    | Smartest     | Yes               | The most powerful model, ideal for complex dialogue and reasoning.                                      |
-| `gemini/gemini-2.5-flash`                        | Fast       | Smart        | Yes               | **Recommended for most tasks.** A great balance of speed and intelligence.                              |
-| `gemini/gemini-2.5-flash-lite-preview-06-17`     | Fastest    | Decent       | Yes                | The quickest model, perfect for fast-paced interactions where intelligence is less critical.               |
+| Model Name (Provider Prefix)                     | Speed      | Intelligence | Notes                                                                                                                                                               |
+| ------------------------------------------------ | ---------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `gemini/gemini-2.5-pro`                          | Slowest    | Smartest     | The most powerful model, ideal for complex dialogue and reasoning. Even as the "slowest" Gemini model, it's still faster than most non-Gemini models.                  |
+| `gemini/gemini-2.5-flash`                        | Fast       | Smart        | **Recommended for most tasks.** A great balance of speed and intelligence, making it a versatile choice for both general use and thinking mode.                       |
+| `gemini/gemini-2.5-flash-lite-preview-06-17`     | Fastest    | Decent       | The quickest model, perfect for fast-paced interactions where raw speed is the top priority.                                                                        |
 
 **Gemma Models**
 
-| Model Name (Provider Prefix)       | Speed      | Intelligence | Dynamic Reasoning | Notes                                                                                                   |
-| ---------------------------------- | ---------- | ------------ | ----------------- | ------------------------------------------------------------------------------------------------------- |
-| `gemini/gemma-3-27b-it`            | Fast       | Good         | No                | A strong performer that cannot reason. With enough keys, its high rate limit allows for virtually unlimited use, making it a great fallback option. |
+| Model Name (Provider Prefix)       | Speed      | Intelligence | Notes                                                                                                                                                               |
+| ---------------------------------- | ---------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `gemini/gemma-3-27b-it`            | Fast       | Good         | A strong performer that cannot reason. With enough keys, its high rate limit allows for virtually unlimited use, making it a great fallback option for non-reasoning tasks. |
 
 **Free Tier Rate Limits (Per key)**
 
