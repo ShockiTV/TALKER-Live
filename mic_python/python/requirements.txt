@@ -6,4 +6,3 @@ watchdog
 httpx
 faster-whisper
 requests
-pyinstaller
