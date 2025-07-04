@@ -1,4 +1,11 @@
 @echo off
+IF NOT EXIST talker_mic.exe (
+    echo talker_mic.exe not found.
+    echo Please download it from the latest release on GitHub:
+    echo https://github.com/Mirrowel/TALKER/releases
+    pause
+    exit
+)
 :menu
 cls
 echo ===============================================
