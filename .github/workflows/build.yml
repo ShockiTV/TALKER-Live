@@ -31,7 +31,8 @@ jobs:
 
     - name: Get short SHA
       id: sha
-      run: echo "sha=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+      run: echo "sha=$(git rev-parse --short HEAD)" >> $env:GITHUB_OUTPUT
+      shell: pwsh
 
     - name: Create Release and Upload Asset
       uses: softprops/action-gh-release@v1
