@@ -2,28 +2,28 @@
 <string_table>
     <!-- GENERAL OPTIONS -->
     <string id="ui_mcm_talker_title">
-        <text>T.A.L.K.E.R. Options</text>
+        <text>Настройки T.A.L.K.E.R.</text>
     </string>
     <string id="ui_mcm_menu_talker">
         <text>T.A.L.K.E.R.</text>
     </string>
     <string id="ui_mcm_talker_gpt_version">
-        <text>GPT Model for dialogue</text>
+        <text>Модель GPT для диалогов</text>
     </string>
     <string id="ui_mcm_talker_ai_model_method">
-        <text>Which method/site to use for models</text>
+        <text>Какой метод/сайт использовать для моделей</text>
     </string>
     <string id="ui_mcm_talker_custom_ai_model">
-        <text>Model for dialogue</text>
+        <text>Модель для диалогов</text>
     </string>
     <string id="ui_mcm_talker_custom_ai_model_fast">
-        <text>Fast Model for non dialogue</text>
+        <text>Быстрая модель для не-диалогов</text>
     </string>
     <string id="ui_mcm_talker_reasoning_level">
-        <text>Reasoning Level</text>
+        <text>Уровень размышлений</text>
     </string>
     <string id="ui_mcm_talker_voice_provider">
-        <text>Voice Provider</text>
+        <text>Провайдер распознавания голоса</text>
     </string>
     <!-- MODEL MODE SLECTION -->
     <string id="ui_mcm_lst_open-ai">
@@ -33,30 +33,30 @@
         <text>OpenRouter AI</text>
     </string>
     <string id="ui_mcm_lst_local-deepseek">
-        <text>Local</text>
+        <text>Локальный</text>
     </string>
     <string id="ui_mcm_lst_proxy">
-        <text>Proxy</text>
+        <text>Прокси</text>
     </string>
     <!-- REASONING LEVEL -->
     <string id="ui_mcm_lst_Auto">
-        <text>Auto</text>
+        <text>Авто</text>
     </string>
     <string id="ui_mcm_lst_None">
-        <text>None</text>
+        <text>Нет</text>
     </string>
     <string id="ui_mcm_lst_Low">
-        <text>Low</text>
+        <text>Низкий</text>
     </string>
     <string id="ui_mcm_lst_Medium">
-        <text>Medium</text>
+        <text>Средний</text>
     </string>
     <string id="ui_mcm_lst_High">
-        <text>High</text>
+        <text>Высокий</text>
     </string>
     <!-- VOICE PROVIDER -->
     <string id="ui_mcm_lst_local-whisper">
-        <text>Local Whisper</text>
+        <text>Локальный Whisper</text>
     </string>
     <string id="ui_mcm_lst_openai-whisper">
         <text>OpenAI Whisper</text>
@@ -66,19 +66,19 @@
     </string>
     <!-- LANGUAGE SELECTION -->
     <string id="ui_mcm_talker_language">
-        <text>Dialogue language</text>
+        <text>Язык диалога</text>
     </string>
     <string id="ui_mcm_lst_Any">
-        <text>Any</text>
+        <text>Любой</text>
     </string>
     <string id="ui_mcm_lst_English">
-        <text>English</text>
+        <text>Английский</text>
     </string>
     <string id="ui_mcm_lst_Ukrainian">
-        <text>Ukrainian</text>
+        <text>Украинский</text>
     </string>
     <string id="ui_mcm_lst_Russian">
-        <text>Russian</text>
+        <text>Русский</text>
     </string>
     <!-- GPT MODELS -->
     <string id="ui_mcm_lst_gpt-4o">
@@ -92,12 +92,12 @@
     </string>
     <!-- SPEAK KEY CONFIGURATION -->
     <string id="ui_mcm_talker_speak_key_title">
-        <text>Speak Key Configuration</text>
+        <text>Настройка клавиши разговора</text>
     </string>
     <string id="ui_mcm_talker_speak_key_description">
-        <text>Configure the key used to initiate speaking.</text>
+        <text>Настройте клавишу, используемую для начала разговора.</text>
     </string>
     <string id="ui_mcm_talker_speak_key">
-        <text>Microphone input key.</text>
+        <text>Клавиша ввода с микрофона.</text>
     </string>
 </string_table>
