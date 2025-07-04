@@ -36,9 +36,10 @@ jobs:
 
     - name: Create Release and Upload Asset
       uses: softprops/action-gh-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         files: mic_python/python/dist/talker_mic.exe
         tag_name: ${{ steps.sha.outputs.sha }}
         name: Build ${{ steps.sha.outputs.sha }}
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        target_commitish: ${{ github.sha }}
