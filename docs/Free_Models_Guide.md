@@ -2,6 +2,12 @@
 
 This guide provides a detailed walkthrough for setting up and using free AI models with TALKER. The best way to use free models is with the [LLM-API-Key-Proxy](https://github.com/Mirrowel/LLM-API-Key-Proxy), which helps you avoid rate limits and manage multiple API keys.
 
+---
+
+### A Note on Thinking Models
+
+"Thinking" models are designed for complex reasoning, which means they are often **considerably slower** than their non-thinking counterparts. For general use in the mod, **non-thinking models are usually the better choice** for a more responsive experience. However, **Gemini models are a notable exception**; their exceptional speed (Even Gemini Pro, which is faster and smarter than any other model on this list) makes them a powerful and viable option for thinking mode (In Auto MCM setting).
+
 ## Supported Free Providers
 1.  **Gemini (Recommended)**: Gemini is known for its exceptional speed and solid intelligence, often outperforming other free services by a significant margin. This makes it an excellent choice for the "thinking mode" feature in TALKER, providing quick and coherent responses.
 2.  **Chutes**: Chutes provides access to a diverse range of powerful models, including DeepSeek, Qwen, and Llama4. While this variety is a major advantage, be aware that popular, high-demand models can sometimes be unreliable or temporarily unavailable. Even with key rotation, a model that is down will not be accessible, so it's wise to have backup models or providers in mind.
@@ -137,4 +143,24 @@ Chutes offers a wide range of models with varying performance. A general rule of
 
 ## 3. Nvidia
 
-*Instructions for obtaining and using Nvidia API keys will be added soon.*
+Nvidia offers an even wider selection of high-quality models than Chutes, making it a powerful option for experimentation. However, there are a few key limitations to keep in mind.
+
+**Account and API Key Limitations**
+*   You can only create one API key per Nvidia account.
+*   Creating a new account requires phone number verification, which makes it difficult to acquire multiple keys.
+
+**A Note on Rate Limits**
+*   Like Chutes, Nvidia's rate limits are not officially published. They appear to be generous and dependent on server load, but it's always best to use the service reasonably.
+
+### Available Models
+
+Here are some of the notable models available through Nvidia's API:
+
+| Model Name (Provider Prefix)                               | Notes                                                                                                                                      |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `nvidia_nim/nvidia/llama-3.1-nemotron-ultra-253b-v1`       | A massive, powerful model that excels at complex reasoning and dialogue. (Thinking model by default in the mod)                                |
+| `nvidia_nim/nvidia/llama-3.3-nemotron-super-49b-v1`        | A smaller but still very capable version of Nemotron, offering a good balance of performance and intelligence. (Thinking model by default in the mod) |
+| `nvidia_nim/deepseek-ai/deepseek-r1-0528`                  | The latest and most powerful version of DeepSeek-R1, excellent for reasoning tasks.                                                        |
+| `nvidia_nim/deepseek-ai/deepseek-r1`                       | The base version of DeepSeek-R1, a solid all-arounder.                                                                                     |
+| `nvidia_nim/qwen/qwen3-235b-a22b`                          | A very large model from the Qwen family, capable of high-quality output but may be slower. (Thinking model by default in the mod)             |
+| `nvidia_nim/google/gemma-3-27b-it`                         | A powerful model from Google that is a great alternative to other options.                                                                 |
