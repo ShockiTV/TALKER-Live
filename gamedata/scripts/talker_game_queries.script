@@ -53,7 +53,7 @@ function is_weapon(item)
     return IsWeapon(item)
 end
 
-local function is_artifact(obj)
+function is_artifact(obj)
     return obj:is_artefact() -- base game
 end
 
