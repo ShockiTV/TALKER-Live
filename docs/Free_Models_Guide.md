@@ -66,6 +66,8 @@ Follow these steps to get the maximum number of free keys from a single Google a
 *   Repeat this process until Google Cloud no longer allows you to create new projects (usually around 12).
 
 **Step 4: Generate an API Key for Each Project**
+**WARNING**: It is strongly recommended **not** to use your main Google account for creating API keys. There have been reports of accounts being affected, though the exact reasons are unclear. To be safe, create a separate, dedicated Google account for generating API keys.
+
 *   Now, go to the [Google AI Studio API Key Page](https://aistudio.google.com/app/apikey).
 *   Click the **"Create API key"** button.
 *   A dropdown menu will appear. Select one of the projects you just created.
