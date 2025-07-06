@@ -2,28 +2,30 @@ name: Build and Release Executable
 
 on:
   workflow_dispatch:
+    inputs:
+      manual_previous_tag:
+        description: 'Optional: Manually set the previous tag to generate the changelog from.'
+        required: false
+        default: ''
   push:
-    branches:
-      - main
-      - dev
-      - proxy
     paths:
       - 'mic_python/python/**'
+      - '.github/workflows/build.yml'
+      - 'cliff.toml'
 
 jobs:
   build:
     runs-on: windows-latest
-    permissions:
-      contents: write
-
+    outputs:
+      sha: ${{ steps.version.outputs.sha }}
     steps:
     - name: Check out repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
-        python-version: '3.12'  # Specify the Python version you want to use
+        python-version: '3.12'
 
     - name: Install dependencies
       run: |
@@ -36,16 +38,255 @@ jobs:
       run: ./build.bat
 
     - name: Get short SHA
-      id: sha
-      run: echo "sha=$(git rev-parse --short HEAD)" >> $env:GITHUB_OUTPUT
+      id: version
       shell: pwsh
+      run: |
+        $sha = git rev-parse --short HEAD
+        echo "sha=$sha" >> $env:GITHUB_OUTPUT
 
-    - name: Create Release and Upload Asset
-      uses: softprops/action-gh-release@v1
+    - name: Archive build artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: talker-mic-build-${{ steps.version.outputs.sha }}
+        path: |
+          mic_python/python/dist/talker_mic.exe
+          launch_mic.bat
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+    - name: Check out repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Fetch all tags and history
+      shell: bash
+      run: git fetch --prune --tags
+
+    - name: Generate Build Version
+      id: version
+      shell: bash
+      run: |
+        BRANCH_NAME=${{ github.ref_name }}
+        BASE_VERSION=$(date +'%Y.%m.%d')-${{ needs.build.outputs.sha }}
+        if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+          VERSION="$BASE_VERSION-${{ github.run_attempt }}"
+        else
+          VERSION="$BASE_VERSION"
+        fi
+        
+        # Define all naming components
+        echo "release_title=Build ($BRANCH_NAME): $VERSION" >> $GITHUB_OUTPUT
+        echo "release_tag=$BRANCH_NAME/build-$VERSION" >> $GITHUB_OUTPUT
+        echo "archive_version_part=$BRANCH_NAME-$VERSION" >> $GITHUB_OUTPUT
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "timestamp=$(date -u +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_OUTPUT
+
+    - name: Download build artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: talker-mic-build-${{ needs.build.outputs.sha }}
+        path: release-assets
+
+    - name: Archive release files
+      id: archive
+      shell: bash
+      run: |
+        ARCHIVE_NAME="TALKER-Mic-${{ steps.version.outputs.archive_version_part }}.zip"
+        cd release-assets
+        zip ../$ARCHIVE_NAME *
+        cd ..
+        echo "ASSET_PATH=$ARCHIVE_NAME" >> $GITHUB_OUTPUT
+
+    - name: Install git-cliff
+      shell: bash
+      run: |
+        LATEST_CLIFF_URL=$(curl -s https://api.github.com/repos/orhun/git-cliff/releases/latest | jq -r '.assets[] | select(.name | endswith("x86_64-unknown-linux-gnu.tar.gz")) | .browser_download_url')
+        curl -L $LATEST_CLIFF_URL | tar xz
+        sudo mv git-cliff-*/git-cliff /usr/local/bin/
+
+    - name: Prepare git-cliff config
+      shell: bash
+      run: |
+        # Inject the GitHub repo URL into your template
+        sed -i "s|{{ repository_url }}|https://github.com/${GITHUB_REPOSITORY}|g" .github/cliff.toml
+        echo "✅ cliff.toml:"
+        head -20 .github/cliff.toml
+
+    - name: Generate Changelog
+      id: changelog
+      shell: bash
+      run: |
+        BRANCH_NAME=${{ github.ref_name }}
+        if [ -n "${{ github.event.inputs.manual_previous_tag }}" ]; then
+          echo "Manual tag provided: ${{ github.event.inputs.manual_previous_tag }}"
+          LAST_TAG="${{ github.event.inputs.manual_previous_tag }}"
+        else
+          echo "No manual tag, searching for latest tag on branch '$BRANCH_NAME'..."
+          LAST_TAG=$(git describe --tags --abbrev=0 --match="$BRANCH_NAME/build-*" 2>/dev/null || echo "")
+        fi
+        
+        echo "✅ Using tag: $LAST_TAG"
+        
+        if [ -n "$LAST_TAG" ]; then
+          # Standard run: A previous tag was found.
+          echo "🔍 Generating changelog for range: $LAST_TAG..HEAD"
+        git-cliff \
+          --config .github/cliff.toml \
+            --strip all \
+            --output changelog.md \
+            "$LAST_TAG..HEAD"
+        else
+          # First run: No previous tag found.
+          echo "⚠️ No previous build tag found. Generating initial release changelog."
+          echo "## Initial Release" > changelog.md
+          echo "" >> changelog.md
+          echo "This is the first automated build release using this format. Future releases will contain a detailed list of changes." >> changelog.md
+        fi
+
+        # This part of the script remains to handle the output
+        if [ -s changelog.md ]; then
+          echo "✅ Changelog generated successfully"
+          CHANGELOG_B64=$(base64 -w 0 changelog.md)
+          echo "changelog_b64=$CHANGELOG_B64" >> $GITHUB_OUTPUT
+          echo "has_changelog=true" >> $GITHUB_OUTPUT
+          echo "previous_tag=$LAST_TAG" >> $GITHUB_OUTPUT
+        else
+          # This is now a true error condition
+          echo "❌ Critical error: Changelog is empty after generation."
+          echo "has_changelog=false" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Debug artifact contents
+      shell: bash
+      run: |
+        echo "🔍 Debugging artifact contents..."
+        echo "Current directory:"
+        pwd
+        echo ""
+        echo "Release assets directory contents:"
+        ls -la release-assets/ || echo "release-assets directory not found"
+        echo ""
+        echo "All files in current directory:"
+        find . -name "*.exe" -o -name "*.bat" -o -name ".env*" | head -20
+        echo ""
+        echo "Directory structure:"
+        find release-assets -type f 2>/dev/null || echo "No files found in release-assets"
+
+    - name: Generate Build Metadata
+      id: metadata
+      shell: bash
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        files: mic_python/python/dist/talker_mic.exe
-        tag_name: ${{ steps.sha.outputs.sha }}
-        name: Build ${{ steps.sha.outputs.sha }}
-        target_commitish: ${{ github.sha }}
+      run: |
+        # Find the executable file
+        EXE_FILE=$(find release-assets -name "talker_mic.exe" -type f | head -1)
+        
+        if [ -n "$EXE_FILE" ]; then
+          BUILD_SIZE=$(du -sh "$EXE_FILE" | cut -f1)
+          echo "✅ Found executable at: $EXE_FILE (Size: $BUILD_SIZE)"
+        else
+          # Fallback: look for any .exe file
+          EXE_FILE=$(find release-assets -name "*.exe" -type f | head -1)
+          if [ -n "$EXE_FILE" ]; then
+            BUILD_SIZE=$(du -sh "$EXE_FILE" | cut -f1)
+            echo "✅ Found executable at: $EXE_FILE (Size: $BUILD_SIZE)"
+          else
+            BUILD_SIZE="Unknown"
+            echo "⚠️ No executable file found"
+          fi
+        fi
+        
+        COMMIT_COUNT=$(git rev-list --count HEAD)
+        
+        # Generate rich contributor list
+        if [ -n "${{ steps.changelog.outputs.previous_tag }}" ]; then
+          echo "✅ Found previous tag, getting contributors since ${{ steps.changelog.outputs.previous_tag }}"
+          CONTRIBUTOR_LOG=$(git log ${{ steps.changelog.outputs.previous_tag }}..HEAD --format='%ae' | sort -u)
+        else
+          echo "⚠️ No previous tag found, getting author of the last commit."
+          CONTRIBUTOR_LOG=$(git log -1 --format='%ae')
+        fi
+        CONTRIBUTORS_LIST=""
+        while read -r email; do
+          # Find user by email
+          USER_INFO=$(gh api "search/users?q=$email+in:email" --jq '.items[0]')
+          if [ -n "$USER_INFO" ]; then
+            USERNAME=$(echo "$USER_INFO" | jq -r '.login')
+            AVATAR_URL=$(echo "$USER_INFO" | jq -r '.avatar_url')
+            CONTRIBUTORS_LIST="$CONTRIBUTORS_LIST [![$USERNAME](https://images.weserv.nl/?url=$AVATAR_URL&w=32&h=32&fit=cover&mask=circle)](https://github.com/$USERNAME) "
+          fi
+        done <<< "$CONTRIBUTOR_LOG"
+        
+        echo "build_size=$BUILD_SIZE" >> $GITHUB_OUTPUT
+        echo "commit_count=$COMMIT_COUNT" >> $GITHUB_OUTPUT
+        echo "contributors_list=$CONTRIBUTORS_LIST" >> $GITHUB_OUTPUT
+        
+        echo "📊 Build metadata:"
+        echo "  - Size: $BUILD_SIZE"
+        echo "  - Commits: $COMMIT_COUNT"
+        echo "  - Contributors: $CONTRIBUTORS_LIST"
+
+    - name: Create Release
+      shell: bash
+      run: |
+        # Prepare changelog content
+        if [ "${{ steps.changelog.outputs.has_changelog }}" == "true" ]; then
+          echo "${{ steps.changelog.outputs.changelog_b64 }}" | base64 -d > decoded_changelog.md
+          CHANGELOG_CONTENT=$(cat decoded_changelog.md)
+        else
+          CHANGELOG_CONTENT="No significant changes detected in this release."
+        fi
+
+        # Prepare the full release notes in a temporary file
+        if [ -n "${{ steps.changelog.outputs.previous_tag }}" ]; then
+          CHANGELOG_URL="**Full Changelog**: https://github.com/${{ github.repository }}/compare/${{ steps.changelog.outputs.previous_tag }}...${{ steps.version.outputs.release_tag }}"
+        else
+          CHANGELOG_URL=""
+        fi
+
+        cat > releasenotes.md <<-EOF
+        ## Build Information
+        | Field | Value |
+        |-------|-------|
+        | 📦 **Version** | \`${{ steps.version.outputs.version }}\` |
+        | 💾 **Binary Size** | \`${{ steps.metadata.outputs.build_size }}\` |
+        | 🔗 **Commit** | [\`${{ needs.build.outputs.sha }}\`](https://github.com/${{ github.repository }}/commit/${{ github.sha }}) |
+        | 📅 **Build Date** | \`${{ steps.version.outputs.timestamp }}\` |
+        | ⚡ **Trigger** | \`${{ github.event_name }}\` |
+
+        ## 📋 What's Changed
+
+        $CHANGELOG_CONTENT
+
+        ### 📁 Included Files
+        | File | Description |
+        |------|-------------|
+        | \`talker_mic.exe\` | Main executable |
+        | \`launch_mic.bat\` | Setup script - use it to launch |
+
+        ## 🔗 Useful Links
+        - 📖 [Documentation](https://github.com/${{ github.repository }}/wiki)
+        - 🐛 [Report Issues](https://github.com/${{ github.repository }}/issues)
+        - 💬 [Discussions](https://github.com/${{ github.repository }}/discussions)
+        - 🌟 [Star this repo](https://github.com/${{ github.repository }}) if you find it useful!
+
+        ---
+        
+        > **Note**: This is an automated build release.
+
+        $CHANGELOG_URL
+        EOF
+
+        # Create the release using the notes file
+        gh release create ${{ steps.version.outputs.release_tag }} \
+          --title "${{ steps.version.outputs.release_title }}" \
+          --notes-file releasenotes.md \
+          --latest \
+          ${{ steps.archive.outputs.ASSET_PATH }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
