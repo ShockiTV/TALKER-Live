@@ -64,6 +64,22 @@
     <string id="ui_mcm_lst_gemini-proxy">
         <text>Gemini Proxy</text>
     </string>
+    <!-- Input options -->
+    <string id="ui_mcm_talker_input_option_title">
+        <text>Input Method</text>
+    </string>
+    <string id="ui_mcm_talker_input_option_description">
+        <text>Choose how to provide input: voice or text.</text>
+    </string>
+    <string id="ui_mcm_talker_input_option">
+        <text>Input Mode</text>
+    </string>
+    <string id="ui_mcm_lst_voice">
+        <text>Voice</text>
+    </string>
+    <string id="ui_mcm_lst_text">
+        <text>Text</text>
+    </string>
     <!-- LANGUAGE SELECTION -->
     <string id="ui_mcm_talker_language">
         <text>Dialogue language</text>

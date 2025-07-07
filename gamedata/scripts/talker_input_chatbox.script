@@ -1,10 +1,10 @@
 --| based on Chernobyl Relay Chat
 package.path = package.path .. ";./bin/lua/?.lua;"
 local interface = require('interface.interface')
+local config = require("interface.config")
 
 -- Options
 local option = {
-	chatKey = DIK_keys.DIK_RETURN,
 	closeChat = true,
 }
 
@@ -31,8 +31,8 @@ local function update()
 	end
 end
 
-local function onKeyPress(dik)
-	if dik == option.chatKey and not chatBox then
+local function onKeyPress(key)
+	if key == config.speak_key() and not chatBox and not config.is_mic_enabled() then
 		showChatBox = true
 	end
 end
