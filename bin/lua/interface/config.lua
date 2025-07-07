@@ -86,7 +86,13 @@ end
 local DEFAULT_LANGUAGE = language.any.long
 
 -- dynamic getters
+function c.is_mic_enabled()
+    return cfg("input_option", 0) == 0
+end
 
+function c.speak_key()
+    return cfg("speak_key", "x") == 0
+end
 
 function c.modelmethod()
     return tonumber(cfg("ai_model_method", 0))
@@ -107,7 +113,6 @@ end
 function c.reasoning_level()
     return tonumber(cfg("reasoning_level", -1))
 end
-
 
 function c.language()
     return cfg("language", DEFAULT_LANGUAGE)

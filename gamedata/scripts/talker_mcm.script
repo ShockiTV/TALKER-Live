@@ -104,6 +104,29 @@ function on_mcm_load()
                 val = 2,
                 def = DIK_keys.DIK_LMENU
             },
+            -- Input option between voice and text
+            {
+                id = "input_option_title",
+                type = "desc",
+                clr = {200, 200, 255, 200},
+                text = "ui_mcm_talker_input_option_title"
+            },
+            {
+                id = "input_option_description",
+                type = "desc",
+                text = "ui_mcm_talker_input_option_description"
+            },
+            {
+                id = "input_option",
+                type = "radio_h",
+                val = "0",
+                def = "0",
+                content = {
+                    {"0", "voice"},
+                    {"1", "text"},
+                },
+                name = "ui_mcm_talker_input_option"
+            },
         }
     }
     return options

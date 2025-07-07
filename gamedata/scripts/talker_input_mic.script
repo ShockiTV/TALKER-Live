@@ -2,17 +2,16 @@
 package.path = package.path .. ";./bin/lua/?.lua;"
 local logger = require('framework.logger')
 local microphone_recorder = require('interface.recorder')
-local config = talker_mcm
-
+local config = require("interface.config")
 -- Import game interface modules
 local queries = talker_game_queries
 
 
 -- Function to handle key press events 
 local function on_key_press(key)
-    if key ~= config.get("speak_key") or not queries.is_player_alive() then 
-        return end
-    -- interface.player_character_speaks("What's up?.")
+    if key ~= config.speak_key() or not config.is_mic_enabled()  or not queries.is_player_alive() then
+        return
+    end
     microphone_recorder.start()
 end
 
