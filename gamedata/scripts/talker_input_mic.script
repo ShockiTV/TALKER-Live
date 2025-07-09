@@ -9,7 +9,7 @@ local queries = talker_game_queries
 
 -- Function to handle key press events 
 local function on_key_press(key)
-    if key ~= config.speak_key() or not config.is_mic_enabled()  or not queries.is_player_alive() then
+    if key ~= config.speak_key() or config.is_mic_enabled() ~= "0"  or not queries.is_player_alive() then
         return
     end
     microphone_recorder.start()
