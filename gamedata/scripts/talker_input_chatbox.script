@@ -34,7 +34,7 @@ local function update()
 end
 
 local function onKeyPress(key)
-	if key == config.speak_key() and not chatBox and config.is_mic_enabled() == "1" and queries.is_player_alive() then
+	if key == config.speak_key() and not chatBox and not config.is_mic_enabled() and queries.is_player_alive() then
 		showChatBox = true
 	end
 end
