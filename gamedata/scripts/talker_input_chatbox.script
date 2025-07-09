@@ -2,6 +2,8 @@
 package.path = package.path .. ";./bin/lua/?.lua;"
 local interface = require('interface.interface')
 local config = require("interface.config")
+-- Import game interface modules
+local queries = talker_game_queries
 
 -- Options
 local option = {
@@ -32,7 +34,7 @@ local function update()
 end
 
 local function onKeyPress(key)
-	if key == config.speak_key() and not chatBox and not config.is_mic_enabled() then
+	if key == config.speak_key() and not chatBox and config.is_mic_enabled() == "1" and queries.is_player_alive() then
 		showChatBox = true
 	end
 end
@@ -48,6 +50,10 @@ function actor_on_net_destroy()
 	if chatBox then
 		ChatBox:Cancel()
 	end
+end
+
+function is_loaded()
+    return true
 end
 
 function on_game_start()
