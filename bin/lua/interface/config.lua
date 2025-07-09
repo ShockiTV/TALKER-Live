@@ -87,11 +87,11 @@ local DEFAULT_LANGUAGE = language.any.long
 
 -- dynamic getters
 function c.is_mic_enabled()
-    return cfg("input_option", 0) == 0
+    return cfg("input_option", "0") == "0"
 end
 
 function c.speak_key()
-    return cfg("speak_key", "x") == 0
+    return cfg("speak_key", "x")
 end
 
 function c.modelmethod()
