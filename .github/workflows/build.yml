@@ -10,6 +10,7 @@ on:
   push:
     paths:
       - 'mic_python/python/**'
+      - 'launch_mic.bat'
       - '.github/workflows/build.yml'
       - 'cliff.toml'
 
@@ -44,13 +45,35 @@ jobs:
         $sha = git rev-parse --short HEAD
         echo "sha=$sha" >> $env:GITHUB_OUTPUT
 
+    - name: Prepare files for artifact
+      shell: pwsh
+      run: |
+        $stagingDir = "staging"
+        mkdir $stagingDir
+        $sourceFiles = @(
+            "mic_python/python/dist/talker_mic.exe",
+            "launch_mic.bat"
+        )
+        foreach ($file in $sourceFiles) {
+            if (Test-Path $file) {
+                echo "Copying '$file' to '$stagingDir'"
+                Copy-Item -Path $file -Destination $stagingDir
+            } else {
+                echo "::error::File not found: $file"
+                exit 1
+            }
+        }
+        echo "--- Staging directory contents ---"
+        Get-ChildItem -Path $stagingDir -Recurse
+        echo "------------------------------------"
+
     - name: Archive build artifact
       uses: actions/upload-artifact@v4
       with:
         name: talker-mic-build-${{ steps.version.outputs.sha }}
         path: |
-          mic_python/python/dist/talker_mic.exe
-          launch_mic.bat
+          staging/talker_mic.exe
+          staging/launch_mic.bat
 
   release:
     needs: build
@@ -70,14 +93,22 @@ jobs:
     - name: Generate Build Version
       id: version
       shell: bash
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
         BRANCH_NAME=${{ github.ref_name }}
-        BASE_VERSION=$(date +'%Y.%m.%d')-${{ needs.build.outputs.sha }}
-        if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-          VERSION="$BASE_VERSION-${{ github.run_attempt }}"
-        else
-          VERSION="$BASE_VERSION"
-        fi
+        DATE_STAMP_NEW=$(date +'%Y%m%d')
+        DATE_STAMP_OLD=$(date +'%Y.%m.%d')
+        
+        # Find the number of releases already created today for this branch, matching either old or new format.
+        # We use grep -E for an OR condition and wrap it to prevent failures when no matches are found.
+        BUILD_COUNT=$(gh release list --repo "${{ github.repository }}" --limit 100 | { grep -E "$BRANCH_NAME/build-($DATE_STAMP_NEW|$DATE_STAMP_OLD)" || true; } | wc -l)
+        
+        # Increment the build number for the new release
+        BUILD_NUMBER=$((BUILD_COUNT + 1))
+        
+        # Create the new, sortable version string using the new format
+        VERSION="$DATE_STAMP_NEW-$BUILD_NUMBER-${{ needs.build.outputs.sha }}"
         
         # Define all naming components
         echo "release_title=Build ($BRANCH_NAME): $VERSION" >> $GITHUB_OUTPUT
@@ -98,15 +129,25 @@ jobs:
       run: |
         ARCHIVE_NAME="TALKER-Mic-${{ steps.version.outputs.archive_version_part }}.zip"
         cd release-assets
-        zip ../$ARCHIVE_NAME *
+        zip -r ../$ARCHIVE_NAME .
         cd ..
         echo "ASSET_PATH=$ARCHIVE_NAME" >> $GITHUB_OUTPUT
 
     - name: Install git-cliff
       shell: bash
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        LATEST_CLIFF_URL=$(curl -s https://api.github.com/repos/orhun/git-cliff/releases/latest | jq -r '.assets[] | select(.name | endswith("x86_64-unknown-linux-gnu.tar.gz")) | .browser_download_url')
-        curl -L $LATEST_CLIFF_URL | tar xz
+        API_RESPONSE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" https://api.github.com/repos/orhun/git-cliff/releases/latest)
+        LATEST_CLIFF_URL=$(echo "$API_RESPONSE" | jq -r '.assets[] | select(.name | endswith("x86_64-unknown-linux-gnu.tar.gz")) | .browser_download_url')
+
+        if [ -z "$LATEST_CLIFF_URL" ]; then
+          echo "::error::Could not find git-cliff asset URL."
+          echo "API Response: $API_RESPONSE"
+          exit 1
+        fi
+
+        curl -L "$LATEST_CLIFF_URL" | tar xz
         sudo mv git-cliff-*/git-cliff /usr/local/bin/
 
     - name: Prepare git-cliff config
@@ -127,7 +168,16 @@ jobs:
           LAST_TAG="${{ github.event.inputs.manual_previous_tag }}"
         else
           echo "No manual tag, searching for latest tag on branch '$BRANCH_NAME'..."
-          LAST_TAG=$(git describe --tags --abbrev=0 --match="$BRANCH_NAME/build-*" 2>/dev/null || echo "")
+          
+          # Prioritize finding the latest tag with the new format (e.g., build-20250707-1-...).
+          echo "Attempting to find latest tag with new format..."
+          LAST_TAG=$(git describe --tags --abbrev=0 --match="$BRANCH_NAME/build-[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]-*" 2>/dev/null || true)
+          
+          # If no new format tag is found, fall back to the old, more generic pattern.
+          if [ -z "$LAST_TAG" ]; then
+            echo "No new format tag found. Falling back to search for any older build tag..."
+            LAST_TAG=$(git describe --tags --abbrev=0 --match="$BRANCH_NAME/build-*" 2>/dev/null || echo "")
+          fi
         fi
         
         echo "✅ Using tag: $LAST_TAG"
