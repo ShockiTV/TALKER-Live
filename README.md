@@ -35,7 +35,7 @@ The [LLM-API-Key-Proxy](https://github.com/Mirrowel/LLM-API-Key-Proxy) is the be
 If you are using a paid service (OpenAI and Openrouter support only) and prefer a simpler setup, you can use your API key directly.
 
 1.  Get your API key from your provider (e.g., [OpenAI](https://www.howtogeek.com/885918/how-to-get-an-openai-api-key/)).
-2.  Create a file named `openAi_API_KEY.key` in the mod's root folder.
+2.  Create a file named `openai_api_key.txt` in the mod's root folder.
 3.  Paste your API key into this file and save it.
 
 ### Step 3: Launch and Play
