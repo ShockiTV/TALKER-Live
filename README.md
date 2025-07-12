@@ -13,11 +13,11 @@ This guide will walk you through installing TALKER. For the best experience (esp
 
 ### Prerequisites
 
-On the [TALKER Releases Page](https://github.com/danclave/TALKER/releases/latest), you will find the necessary files.
+To get started, you'll need to download a few separate components.
 
 **What to Download:**
-1.  **The Mod Itself (Source Code):** Download the `TALKER-Source-*.zip` file from the release assets. This is the main TALKER mod, correctly versioned with the release.
-2.  **Voice Utility (`talker_mic.exe`):** Download this if you want to use voice chat.
+1.  **The Mod Itself (Latest Source Code):** For the latest features and fixes, download the source code directly from the [**`dev` branch**](https://github.com/danclave/TALKER/archive/refs/heads/dev.zip).
+2.  **Voice Utility Archive:** From the [TALKER Releases Page](https://github.com/danclave/TALKER/releases/latest), find the latest release and download the `TALKER-Mic-*.zip` archive if you plan to use voice chat.
 3.  **API Proxy:** Download the `LLM-API-Key-Proxy` release from its [own releases page](https://github.com/Mirrowel/LLM-API-Key-Proxy/releases/latest). This is highly recommended for connecting to AI services.
 
 **Installation Steps:**
@@ -25,7 +25,7 @@ On the [TALKER Releases Page](https://github.com/danclave/TALKER/releases/latest
 ### Step 1: Install TALKER and Mic Utility
 1.  It is recommended to use a mod manager like [Mod Organizer 2](https://lazystalker.blogspot.com/2020/11/mod-organizer-2-stalker-anomaly-setup.html).
 2.  Install the TALKER source code zip you downloaded like any other Anomaly mod.
-3.  If you plan to use voice chat, place `talker_mic.exe` in the mod's root folder (e.g., `E:\GAMMA\mods\TALKER`).
+3.  If you plan to use voice chat, open the `TALKER-Mic-*.zip` archive you downloaded. Extract its contents (`talker_mic.exe` and `launch_mic.bat`) into the mod's root folder (e.g., `E:\GAMMA\mods\TALKER`).
 
 ### Step 2: Set Up Your AI Provider
 You need to connect TALKER to an AI service. This is a one-time setup.
