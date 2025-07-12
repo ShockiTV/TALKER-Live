@@ -4,6 +4,13 @@ This guide provides a detailed walkthrough for setting up and using free AI mode
 
 ---
 
+## Important Updates (July 2025)
+
+*   **Chutes is No Longer Free**: Chutes has moved to a paid model(one-time, like openrouter). While this is a significant change, new free alternatives are being actively investigated and will be added to this guide as they become available.
+*   **Community Impact**: The transition of Chutes to a paid service has unfortunately led to some users, particularly those generating NSFW content, migrating and abusing other free platforms. This has put a strain on those services, and their stability may be affected. Please use all services responsibly. Yes, blame Gooners. They killed Chutes for everyone and now they are killing the rest of the free services too(one already confirmed heavily impacted, with over 10x in usage).
+
+---
+
 ### A Note on Thinking Models
 
 "Thinking" models are designed for complex reasoning, which means they are often **considerably slower** than their non-thinking counterparts. For general use in the mod, **non-thinking models are usually the better choice** for a more responsive experience. However, **Gemini models are a notable exception**; their exceptional speed (Even Gemini Pro, which is faster and smarter than any other model on this list) makes them a powerful and viable option for thinking mode (In Auto MCM setting).
@@ -89,9 +96,12 @@ Follow these steps to get the maximum number of free keys from a single Google a
 
 ## 2. Chutes
 
+> **<font color="red">IMPORTANT: Chutes is no longer a free service.</font>**
+> To use their API, you must now make a **one-time payment of $5 to your account per API key**. This payment grants you **500 requests per day**, and the rate limit remains even if you use up the initial $5 credit.
+
 Chutes offers a wide variety of models, but it's important to note that you can only generate one API key per account. However, you can create multiple accounts to obtain more keys.
 
-**A Note on Rate Limits**: Currently, Chutes does not seem to enforce strict rate limits. However, this is unconfirmed as they do not publicly expose this information. It's best to use the service reasonably to avoid potential issues.
+**A Note on Rate Limits**: With the new paid structure, each key is limited to 500 requests per day.
 
 ### How to Get a Chutes API Key
 
