@@ -127,11 +127,19 @@ jobs:
       id: archive
       shell: bash
       run: |
-        ARCHIVE_NAME="TALKER-Mic-${{ steps.version.outputs.archive_version_part }}.zip"
+        SOURCE_ARCHIVE_NAME="TALKER-Source-${{ steps.version.outputs.archive_version_part }}.zip"
+        MIC_ARCHIVE_NAME="TALKER-Mic-${{ steps.version.outputs.archive_version_part }}.zip"
+        
+        # Create source code archive, excluding .git directory
+        zip -r $SOURCE_ARCHIVE_NAME . -x ".git/*"
+        
+        # Create the mic utility archive
         cd release-assets
-        zip -r ../$ARCHIVE_NAME .
+        zip -r ../$MIC_ARCHIVE_NAME .
         cd ..
-        echo "ASSET_PATH=$ARCHIVE_NAME" >> $GITHUB_OUTPUT
+        
+        # Set output for both assets
+        echo "ASSET_PATHS=$SOURCE_ARCHIVE_NAME $MIC_ARCHIVE_NAME" >> $GITHUB_OUTPUT
 
     - name: Install git-cliff
       shell: bash
@@ -337,6 +345,6 @@ jobs:
           --title "${{ steps.version.outputs.release_title }}" \
           --notes-file releasenotes.md \
           --latest \
-          ${{ steps.archive.outputs.ASSET_PATH }}
+          ${{ steps.archive.outputs.ASSET_PATHS }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
