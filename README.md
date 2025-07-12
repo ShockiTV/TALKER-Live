@@ -11,10 +11,21 @@ This mod is provided free of charge with open code, practice your own due dilige
 ## Installation Guide
 This guide will walk you through installing TALKER. For the best experience (especially with free API providers), using the recommended API key proxy is advised.
 
+### Prerequisites
+
+On the [TALKER Releases Page](https://github.com/danclave/TALKER/releases/latest), you will find the necessary files.
+
+**What to Download:**
+1.  **The Mod Itself (Source Code):** Download the `Source code (zip)` file. This is the main TALKER mod.
+2.  **Voice Utility (`talker_mic.exe`):** Download this if you want to use voice chat.
+3.  **API Proxy:** Download the `LLM-API-Key-Proxy` release from its [own releases page](https://github.com/Mirrowel/LLM-API-Key-Proxy/releases/latest). This is highly recommended for connecting to AI services.
+
+**Installation Steps:**
+
 ### Step 1: Install TALKER and Mic Utility
 1.  It is recommended to use a mod manager like [Mod Organizer 2](https://lazystalker.blogspot.com/2020/11/mod-organizer-2-stalker-anomaly-setup.html).
-2.  Download and install TALKER like any other Anomaly mod.
-3.  If you plan to use voice chat, download `talker_mic.exe` from the [TALKER Releases Page](https://github.com/Mirrowel/TALKER/releases/latest) and place it in the mod's root folder (e.g., `E:\GAMMA\mods\TALKER`).
+2.  Install the TALKER source code zip you downloaded like any other Anomaly mod.
+3.  If you plan to use voice chat, place `talker_mic.exe` in the mod's root folder (e.g., `E:\GAMMA\mods\TALKER`).
 
 ### Step 2: Set Up Your AI Provider
 You need to connect TALKER to an AI service. This is a one-time setup.
@@ -26,7 +37,8 @@ You have two options for connecting to an AI service:
 The [LLM-API-Key-Proxy](https://github.com/Mirrowel/LLM-API-Key-Proxy) is the best way to connect to AI services. It helps avoid rate-limits by rotating keys and natively supports many different providers (like Gemini, Anthropic, etc.), allowing you to switch between them easily. This is highly recommended, especially if you are using free services.
 
 1.  **Download the Proxy**: Get the latest release from the [proxy's GitHub Releases page](https://github.com/Mirrowel/LLM-API-Key-Proxy/releases/latest).
-2.  **Unzip It**: Extract the downloaded file to a convenient location on your computer.
+2.  **Unzip It**: Extract the downloaded file to its own folder.
+    **IMPORTANT (Mod Organizer 2 Users)**: You **must** place the proxy folder outside of your MO2 mods directory (e.g., do not put it in `E:\GAMMA\mods`). MO2's virtual file system will prevent the proxy from finding its configuration files. A safe location would be something like `C:\TALKER_Proxy` or a folder on your Desktop.
 3.  **Add API Keys**: Run `setup_env.bat`. A window will pop up to help you add your API keys.
 4.  **Start the Proxy**: Double-click `proxy_app.exe`. A terminal window will appear, indicating the proxy is running. **Keep this window open while you play.**
 
@@ -87,6 +99,8 @@ This mod is designed to be accessible to everyone, which is why it supports a va
 
 ### Why Use the API Proxy?
 The [LLM-API-Key-Proxy](https://github.com/Mirrowel/LLM-API-Key-Proxy) is the key to using free models effectively. Free services often have strict usage limits. The proxy helps you stay under these limits by rotating between multiple API keys. It also supports many different AI providers, giving you the flexibility to experiment and find the model that works best for you.
+
+**Note**: Remember to run the proxy from its own folder, outside of any mod manager directories (like MO2), to ensure it works correctly.
 
 ### Getting Free API Keys
 To use the recommended **Gemini via API Proxy** option in the launcher, you will need at least one Gemini API key. Here’s how to get one:
