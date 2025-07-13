@@ -106,7 +106,6 @@ The [LLM-API-Key-Proxy](https://github.com/Mirrowel/LLM-API-Key-Proxy) is the ke
 To use the recommended **Gemini via API Proxy** option in the launcher, you will need at least one Gemini API key. Here’s how to get one:
 
 1.  **Google AI Studio**: Visit [Google AI Studio](https://aistudio.google.com/app/apikey) to create a free API key.
-**WARNING**: It is strongly recommended **not** to use your main Google account for creating API keys. There have been reports of accounts being affected, though the exact reasons are unclear. To be safe, create a separate, dedicated Google account for generating API keys.
 2.  **Follow the Instructions**: The site will guide you through the process. It's quick and straightforward.
 3.  **Add to Proxy**: Once you have your key, use the `setup_env.bat` script from the proxy to add it.
 
