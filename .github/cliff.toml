@@ -15,28 +15,35 @@ body = """
 {% if breaking_commits %}
 ### 💥 Breaking Changes
 {% for commit in breaking_commits -%}
-- {{ commit.message | split(pat="\n") | first | trim }} ([`{{ commit.id | truncate(length=7, end="") }}`]({{ remote.url }}/commit/{{ commit.id }})) by {% if commit.author.login %}@{{ commit.author.login }}{% else %}**{{ commit.author.name }}**{% endif %}
+- {{ commit.message | split(pat="\n") | first | trim }} ([`{{ commit.id | truncate(length=7, end="") }}`]) by {% if commit.author.login %}@{{ commit.author.login }}{% else %}**{{ commit.author.name }}**{% endif %}
 {% endfor -%}
 {% endif -%}
 
 {% for group, commits in commits | group_by(attribute="group") %}
 ### {{ group }}
 {% for commit in commits -%}
-- {{ commit.message | split(pat="\n") | first | trim }} ([`{{ commit.id | truncate(length=7, end="") }}`]({{ remote.url }}/commit/{{ commit.id }})) by {% if commit.author.login %}@{{ commit.author.login }}{% else %}**{{ commit.author.name }}**{% endif %}
+- {{ commit.message | split(pat="\n") | first | trim }} ([`{{ commit.id | truncate(length=7, end="") }}`]) by {% if commit.author.login %}@{{ commit.author.login }}{% else %}**{{ commit.author.name }}**{% endif %}
 {% endfor -%}
 {% endfor -%}
 """
 footer = ""
 
 [git]
-remote = "github"
+# This section is now clean. Preprocessing is handled by the [remote] section.
 conventional_commits = true
 filter_unconventional = false
 split_commits = false
-commit_preprocessors = [
-    { pattern = '\((\w+\s)?#([0-9]+)\)', replace = "([#${2}]({{ remote.url }}/issues/${2}))"},
-]
+commit_preprocessors = []
 
+# This section enables automatic discovery of the owner/repo in GitHub Actions.
+[github]
+
+# This section defines the link structure using the variables from the [github] section.
+[remote]
+commit_url = "https://github.com/{owner}/{repo}/commit/{id}"
+issue_url = "https://github.com/{owner}/{repo}/issues/{id}"
+
+# This section is now in its original, correct format.
 commit_parsers = [
     # Scoped commits (most specific)
     { message = "^\\w+\\(ci\\)", group = "🤖 Continuous Integration" },
