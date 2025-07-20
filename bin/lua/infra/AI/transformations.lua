@@ -6,6 +6,16 @@ local config = require("interface.config")
 local transformation = {}
 transformation.__index = transformation
 
+local function is_too_far_to_speak(character)
+    local distance = game.get_distance_to_player(character.game_id) 
+    local result = distance > config.NPC_SPEAK_DISTANCE
+    if result == true then
+        logger.debug("too far to speak %s at distance %s when max distance is %s ", character.game_id, distance, config.NPC_SPEAK_DISTANCE)
+    end
+    return result
+end
+
+
 function transformation.pick_potential_speakers(recent_events)
     local latest_event = recent_events[#recent_events]
     -- filter out any witnesses further than config.NPC_SPEAK_DISTANCE
@@ -22,14 +32,6 @@ function transformation.pick_potential_speakers(recent_events)
     return witnesses
 end
 
-function is_too_far_to_speak(character)
-    local distance = game.get_distance_to_player(character.game_id) 
-    local result = distance > config.NPC_SPEAK_DISTANCE
-    if result == true then
-        logger.debug("too far to speak %s at distance %s when max distance is %s ", character.game_id, distance, config.NPC_SPEAK_DISTANCE)
-    end
-    return result
-end
 
 ------------------------------------------------------------------------------------------------------
 -- Constants for memory management

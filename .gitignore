@@ -31,6 +31,7 @@ luac.out
 *.i*86
 *.x86_64
 *.hex
+talker_mic.exe
 
 **/.DS_Store
 documentation
@@ -40,4 +41,9 @@ logs
 mic_python/python/__pycache__/
 mic_python/python/build/
 mic_python/python/main.spec
+mic_python/python/talker_mic.spec
+mic_python/python/dist/
 openAi_API_KEY.key
+openai_api_key.txt
+talker.log
+*.key

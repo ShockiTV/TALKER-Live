@@ -24,14 +24,14 @@ local queries = talker_game_queries
 local last_callout_time_ms = 0
 local callout_cooldown_ms = 30 * 1000 -- 30 seconds
 function is_valid_callout(npc_obj, target_obj)
-    result =
+    is_valid =
         (queries.get_game_time_ms() - last_callout_time_ms) > callout_cooldown_ms   and
         queries.is_living_character(npc_obj)                                        and
         queries.are_enemies(npc_obj, target_obj)                                    and
         not queries.is_in_combat(npc_obj)
     -- reset cooldown
-    if result then last_callout_time_ms = queries.get_game_time_ms() end
-    return result
+    if is_valid then last_callout_time_ms = queries.get_game_time_ms() end
+    return is_valid
 end
 
 ---------------------------------------------------------------------------------------------

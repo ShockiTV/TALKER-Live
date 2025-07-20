@@ -1,6 +1,8 @@
-numpy==2.1.2
-openai==1.52.2
-sounddevice==0.4.7
-soundfile==0.12.1
-watchdog==4.0.1
-httpx==0.26.0
+numpy
+openai
+sounddevice
+soundfile
+watchdog
+httpx
+faster-whisper
+requests

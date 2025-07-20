@@ -1,19 +1,18 @@
--- gpt.lua
+-- OpenRouterAI.lua
 local http   = require("infra.HTTP.HTTP")
 local json   = require("infra.HTTP.json")
 local log    = require("framework.logger")
 local config = require("interface.config")
 
-local gpt = {}
+local openrouter = {}
 
 -- model registry
 local MODEL = {
-  smart        = config.dialogue_model(),
-  mid          = "gpt-4o",
-  fast         = "gpt-4o-mini",
-  -- fine tuned models, sadly will only work for my account
-  fine_dialog  = "ft:gpt-4o-2024-08-06:personal::A721Jmn6",
-  fine_speaker = "ft:gpt-4o-mini-2024-07-18:personal::A9ndhQlH",
+  smart        = config.custom_dialogue_model(),
+  mid          = config.custom_dialogue_model(),
+  fast         = config.custom_dialogue_model_fast(),
+  fine_dialog  = config.custom_dialogue_model(),
+  fine_speaker = config.custom_dialogue_model(),
 }
 
 -- sampling presets
@@ -23,7 +22,7 @@ local PRESET = {
 }
 
 -- helpers --------------------------------------------------------------
-local API_URL = "https://api.openai.com/v1/chat/completions"
+local API_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 local function build_body(messages, opts)
   opts = opts or PRESET.creative
@@ -38,12 +37,14 @@ local function build_body(messages, opts)
   }
 end
 
-local function send(messages, callback, opts)
-  assert(type(callback)=="function","callback required")
 
-  local api_key = config.get_openai_api_key()
+
+local function send(messages, cb, opts)
+  assert(type(cb)=="function","callback required")
+
+  local api_key = config.get_openrouter_api_key()
   if not api_key then
-    log.error("OpenAI API key not found. Cannot send request.")
+    log.error("OpenRouter API key not found. Cannot send request.")
     return
   end
 
@@ -53,34 +54,33 @@ local function send(messages, callback, opts)
   }
 
   local body_tbl = build_body(messages, opts)
-  log.http("GPT request: %s", json.encode(body_tbl)) -- encode only for log
+  log.http("OPENROUTER request: %s", json.encode(body_tbl)) -- encode only for log
 
   return http.send_async_request(API_URL, "POST", headers, body_tbl, function(resp, err)
     if resp and resp.error then
         err = resp.error
-    end
+    end 
     if err or (resp and resp.error) then
-      local err_str = type(err) == "table" and json.encode(err) or tostring(err)
-      log.error("gpt error: error:" .. err_str .. " body:" .. json.encode(resp))
-      error("gpt error: error:" .. err_str .. " body:" .. json.encode(resp))
+      log.error("OPENROUTER error: error:" .. json.encode(err or "no-err") .. " body:" .. json.encode(resp))
+      error("OPENROUTER error: error:" ..  json.encode(err or "no-err")  .. " body:" .. json.encode(resp))
     end
     local answer = resp.choices and resp.choices[1] and resp.choices[1].message
-    log.debug("GPT response: %s", answer and answer.content)
-    callback(answer and answer.content)
+    log.debug("OPENROUTER response: %s", answer and answer.content)
+    cb(answer and answer.content)
   end)
 end
 
 -- public shortcuts -----------------------------------------------------
-function gpt.generate_dialogue(msgs, callback)
-  return send(msgs, callback, PRESET.creative)
+function openrouter.generate_dialogue(msgs, cb)
+  return send(msgs, cb, PRESET.creative)
 end
 
-function gpt.pick_speaker(msgs, callback)
-  return send(msgs, callback, {model=MODEL.fast, temperature=0.0, max_tokens=30})
+function openrouter.pick_speaker(msgs, cb)
+  return send(msgs, cb, {model=MODEL.fast, temperature=0.0, max_tokens=30})
 end
 
-function gpt.summarize_story(msgs, callback)
-  return send(msgs, callback, {model=MODEL.fast, temperature=0.2, max_tokens=100})
+function openrouter.summarize_story(msgs, cb)
+  return send(msgs, cb, {model=MODEL.fast, temperature=0.2, max_tokens=100})
 end
 
-return gpt
+return openrouter

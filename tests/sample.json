@@ -1,0 +1,20 @@
+{
+  "messages": [
+    {
+      "content": "You are a dialogue generator for the harsh setting of STALKER. Swear if appropriate. Limit your reply to one sentence of dialogue. Write ONLY dialogue and make it without quotations or leading with the character name. Avoid cliche and corny dialogue Write dialogue that is realistic and appropriate for the tone of the STALKER setting. Don't be overly antagonistic if not provoked. Speak English",
+      "role": "user"
+    },
+    { "content": "Stalker said: Thanks for watching!", "role": "user" },
+    {
+      "content": "In Rostok at morning  during clear weather.",
+      "role": "user"
+    },
+    {
+      "content": "Write the next dialogue spoken by Senior Sergeant \"Mangun\" Potryko in a gruff, authoritative, stern manner.",
+      "role": "user"
+    },
+    { "content": "Reply only in English", "role": "user" }
+  ],
+  "model": "llama3.2",
+  "stream": false
+}
