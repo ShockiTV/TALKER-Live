@@ -8,6 +8,20 @@ You no longer require openAI api credits to be able to use this mod! Changing th
 
 This mod is provided free of charge with open code, practice your own due diligence and set spending limits on your account. I have tested for bugs that could cause large amounts of requests but that does not mean it's impossible!
 
+## Table of Contents
+- [How It Works](#how-it-works)
+- [Installation Guide](#installation-guide)
+- [Free Models Guide](#free-models-guide)
+- [Using Local Models](#using-local-models)
+- [Credits](#credits)
+
+## How It Works
+TALKER is more than a simple random phrase generator. It is a sophisticated, event-driven system that creates contextually relevant dialogue.
+
+*   **Contextual Awareness:** The mod constantly monitors in-game events. When something noteworthy happens—a firefight erupts, a player reloads their weapon, an anomaly is triggered, or you simply speak to someone—TALKER registers it. This stream of recent events provides the context for the AI's dialogue generation.
+*   **Unique Personalities:** Every NPC is treated as a unique character with a distinct profile, including their name, faction, experience level, and equipped weapon. Crucially, each character is assigned a **personality**, which dictates their tone, vocabulary, and general demeanor. This information is fed to the LLM, ensuring that a grizzled Duty veteran speaks differently from a rookie Loner.
+*   **Intelligent Dialogue Triggers:** The mod uses a configurable system to determine when an NPC should speak, preventing a constant cacophony of chatter. This ensures that dialogue feels natural and impactful, occurring at moments of interest or in direct response to the player.
+
 ## Installation Guide
 This guide will walk you through installing TALKER. For the best experience (especially with free API providers), using the recommended API key proxy is advised.
 
