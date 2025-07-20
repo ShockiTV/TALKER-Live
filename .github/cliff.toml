@@ -29,6 +29,7 @@ body = """
 footer = ""
 
 [git]
+remote = "github"
 conventional_commits = true
 filter_unconventional = false
 split_commits = false
