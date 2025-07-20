@@ -30,7 +30,7 @@ This guide will walk you through installing TALKER. For the best experience (esp
 To get started, you'll need to download a few separate components.
 
 **What to Download:**
-1.  **The Mod Itself (Latest Source Code):** For the latest features and fixes, download the source code directly from the [**`dev` branch**](https://github.com/danclave/TALKER/archive/refs/heads/dev.zip).
+1.  **The Mod Itself (Latest Source Code):** For the latest features and fixes, download the source code directly from the [**`main` branch**](https://github.com/danclave/TALKER/archive/refs/heads/main.zip).
 2.  **Voice Utility Archive:** From the [TALKER Releases Page](https://github.com/danclave/TALKER/releases/latest), find the latest release and download the `TALKER-Mic-*.zip` archive if you plan to use voice chat.
 3.  **API Proxy:** Download the `LLM-API-Key-Proxy` release from its [own releases page](https://github.com/Mirrowel/LLM-API-Key-Proxy/releases/latest). This is highly recommended for connecting to AI services.
 
