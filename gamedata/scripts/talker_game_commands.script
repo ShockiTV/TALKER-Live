@@ -1,4 +1,5 @@
 local queries = talker_game_queries
+local log = require("framework.logger")
 
 ----------------------------------------------------------------------------------------------------------------------------
 -- Displaying a message to the chat window
@@ -53,4 +54,21 @@ end
 
 function is_loaded()
     return true
+end
+
+----------------------------------------------------------------------------------------------------------------------------
+-- Registering callbacks
+----------------------------------------------------------------------------------------------------------------------------
+
+function safely(func, name)
+    return function(arg)
+        local ok, err = pcall(func, arg)
+        if not ok then
+            log.error("Error in %s: %s", name, err)
+        end
+    end
+end
+
+function RegisterSafeScriptCallback(name, func)
+    RegisterScriptCallback(name, safely(func, name))
 end

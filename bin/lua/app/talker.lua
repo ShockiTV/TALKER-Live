@@ -35,7 +35,7 @@ function should_someone_speak(event, is_important)
     -- mostly a placeholder
     -- always should reply to player dialogue
     -- for all others, 25% chance
-    if #event.witnesses == 1 then
+    if #event.witnesses == 1 and game_adapter.is_player(event.witnesses[1]) then
         logger.warn("Only witness is player, not generating dialogue, should probably not save this event at all")
         -- player is only witness
         return false

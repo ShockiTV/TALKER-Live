@@ -1,4 +1,4 @@
--- infra/HTTP/http_module.lua  – uses pollnet’s built-in JSON encoder
+-- infra/HTTP/http_module.lua
 local pollnet   = require("infra.HTTP.pollnet")
 local json      = require("infra.HTTP.json")
 local logger    = require("framework.logger")
@@ -8,7 +8,7 @@ local M = {}
 
 M.CHECK_INTERVAL_S = 0.1
 
-local handlers = {} 
+local handlers = {}
 
 -- util -----------------------------------------------------------------
 local function id() return tostring(math.random(1000000, 9999999)) end
@@ -17,19 +17,19 @@ local function id() return tostring(math.random(1000000, 9999999)) end
 function M.send_request(url, method, headers, body_tbl)
   local rid = id()
   handlers[rid] = {}
+  local return_body_only = true
 
   local ok, sock
   if method:upper() == "POST" then
     -- body_tbl = utf8_tbl(body_tbl)
     -- encode to JSON
-    body = json.encode(body_tbl)
+    local body = json.encode(body_tbl)
     body = json.convert_to_utf8(body)
 
     logger.http("HTTP body: %s", json.encode(body))
-
-    ok, sock = pcall(pollnet.http_post, url, headers, body, true) -- true = “please JSON-encode this table”
+    ok, sock = pcall(pollnet.http_post, url, headers, body, return_body_only)
   elseif method:upper() == "GET" then
-    ok, sock = pcall(pollnet.http_get,  url, headers, true)
+    ok, sock = pcall(pollnet.http_get,  url, headers, return_body_only)
   else
     handlers[rid].error = "Unsupported HTTP method: "..method
     return rid, handlers[rid].error

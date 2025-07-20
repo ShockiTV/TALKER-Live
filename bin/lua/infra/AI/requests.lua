@@ -10,7 +10,8 @@
 package.path = package.path .. ";./bin/lua/?.lua"
 
 local transformations = require "infra.AI.transformations"
-local model = require("infra.AI.GPT")
+
+
 local prompt_builder = require("infra.AI.prompt_builder")
 local logger = require("framework.logger")
 local memory_store = require("domain.repo.memory_store")
@@ -18,6 +19,21 @@ local config = require("interface.config")
 local dialogue_cleaner = require("infra.AI.dialogue_cleaner")
 
 
+local gpt_model = require("infra.AI.GPT")
+local openrouter = require("infra.AI.OpenRouterAI")
+local local_model = require("infra.AI.local_ollama")
+local proxy_model = require("infra.AI.proxy")
+
+local ModelList = {
+    [0] = gpt_model,
+    [1] = openrouter,
+    [2] = local_model,
+    [3] = proxy_model,
+}
+
+local model = function()
+    return ModelList[config.modelmethod()]
+end
 
 local AI_request = {}
 AI_request.__index = AI_request
@@ -75,7 +91,7 @@ end
 -- Core functions
 ------------------------------------------------------------------------------------------
 
-function check_if_id_in_recent_events(recent_events, picked_speaker_id)
+local function check_if_id_in_recent_events(recent_events, picked_speaker_id)
     local latest_event = recent_events[#recent_events]
     local witnesses = latest_event.witnesses
     for _, witness in ipairs(witnesses) do
@@ -87,7 +103,7 @@ function check_if_id_in_recent_events(recent_events, picked_speaker_id)
     return false
 end
 
-function is_valid_speaker(recent_events, picked_speaker_id)
+local function is_valid_speaker(recent_events, picked_speaker_id)
     -- check if speaker id was in recent events
     if not check_if_id_in_recent_events(recent_events, picked_speaker_id) then
         logger.warn("AI did not pick a valid speaker: " .. picked_speaker_id)
@@ -143,7 +159,7 @@ function AI_request.pick_speaker(recent_events, compress_memories)
 
     local messages = prompt_builder.create_pick_speaker_prompt(recent_events, available_speakers)
     -- call the model to pick the next speaker
-    return model.pick_speaker(messages, function(picked_speaker_id)
+    return model().pick_speaker(messages, function(picked_speaker_id)
         -- check if AI picked a valid speaker
         if not is_valid_speaker(recent_events, picked_speaker_id) then return end
         -- Set the speaker's cooldown
@@ -176,7 +192,7 @@ function AI_request.compress_memories(speaker_id, request_dialogue)
     -- Generate a prompt for memory compression and send a request to the model
     local game_time_of_oldest_memory = old_memories[#old_memories].game_time_ms
     local messages = prompt_builder.create_compress_memories_prompt(old_memories)
-    model.summarize_story(messages, function(compressed_memory)
+    model().summarize_story(messages, function(compressed_memory)
         -- after receiving a response...
         logger.info("Compressed memories: " .. compressed_memory)
         memory_store:store_compressed_memory(speaker_id, compressed_memory, game_time_of_oldest_memory)
@@ -187,6 +203,7 @@ end
 
 
 function AI_request.request_dialogue(speaker_id, callback)
+    
     logger.info("AI_request.request_dialogue")
     local all_memories = memory_store:get_all_memories(speaker_id)
     if #all_memories == 0 then
@@ -196,7 +213,7 @@ function AI_request.request_dialogue(speaker_id, callback)
     local messages = prompt_builder.create_dialogue_request_prompt(speaker_character, all_memories)
 
     -- call the model to generate the dialogue
-    return model.generate_dialogue(messages, function(generated_dialogue)
+    return model().generate_dialogue(messages, function(generated_dialogue)
         -- when it responds...
         if generated_dialogue == nil then
             logger.error("Error generating dialogue")

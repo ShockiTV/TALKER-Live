@@ -1,1 +1,0 @@
-python -m PyInstaller --onefile --icon=talker_mic.ico main.py
