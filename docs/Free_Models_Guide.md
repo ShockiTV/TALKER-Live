@@ -187,6 +187,7 @@ Here are some of the notable models available through Nvidia's API:
 | Model Name (Provider Prefix)                               | Notes                                                                                                                                      |
 | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | `nvidia_nim/nvidia/llama-3.1-nemotron-ultra-253b-v1`       | A massive, powerful model that excels at complex reasoning and dialogue. (Thinking model by default in the mod)                                |
+| `nvidia_nim/meta/llama-4-maverick-17b-128e-instruct`        | Fast           | **Recommended for most non-thinking tasks.** A fast and reliable choice.                                                              |
 | `nvidia_nim/nvidia/llama-3.3-nemotron-super-49b-v1`        | A smaller but still very capable version of Nemotron, offering a good balance of performance and intelligence. (Thinking model by default in the mod) |
 | `nvidia_nim/deepseek-ai/deepseek-r1-0528`                  | The latest and most powerful version of DeepSeek-R1, excellent for reasoning tasks.                                                        |
 | `nvidia_nim/deepseek-ai/deepseek-r1`                       | The base version of DeepSeek-R1, a solid all-arounder.                                                                                     |
