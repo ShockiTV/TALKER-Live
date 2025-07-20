@@ -16,7 +16,7 @@ local language = {
 function language.to_short(long_name)
   local name = long_name:lower()
   for _, v in pairs(language) do
-    if v and v.long:lower() == name then
+    if type(v) == "table" and v.long:lower() == name then
       return v.short
     end
   end
