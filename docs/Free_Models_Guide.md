@@ -24,9 +24,7 @@ This guide provides a detailed walkthrough for setting up and using free AI mode
 
 ## 1. Gemini (Recommended)
 
-Google's Gemini is the top choice for its generous free tier and strong performance. By creating multiple projects, you can generate several API keys (up to 12 per account in our experience), which dramatically increases your free usage limits when used with the API proxy.
-
-**WARNING**: It is strongly recommended **not** to use your main Google account for creating more than one API key. There have been reports of accounts being affected, though the exact reasons are unclear. To be safe, create a separate, dedicated Google account for generating API keys.
+Google's Gemini is the top choice for its generous free tier and strong performance. By creating multiple projects, you can generate several API keys (up to 12 per account in our experience), which dramatically increases your free usage limits when used with the API proxy. Do note that it is recommended to use multiple accounts instead of maxing out projects - I don't have concrete evidence, but multiple users had their projects "banned" for some reason, and they were unable to create new projects or API keys. So multiple accounts with 2-4 keys each is more than enough.
 
 ### Models and Rate Limits
 
