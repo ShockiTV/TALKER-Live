@@ -4,6 +4,12 @@ This guide provides a detailed walkthrough for setting up and using free AI mode
 
 ---
 
+## Important Updates (September 2025)
+
+*   **New Nvidia Models Added**: Several new models from Nvidia have been added to the guide, including `kimi-k2-instruct`, `deepseek-v3.1`, and various versions of `qwen`.
+*   **Model Reorganization**: The Nvidia model list has been reorganized into "Non-Thinking," "Thinking," and "Problematic" categories to help users better select models for their needs.
+*   **Nvidia Performance Note**: A note has been added to the Nvidia section to inform users that model availability and performance can vary based on server load.
+
 ## Important Updates (July 2025)
 
 *   **Chutes is No Longer Free**: Chutes has moved to a paid model(one-time, like openrouter). While this is a significant change, new free alternatives are being actively investigated and will be added to this guide as they become available.
@@ -18,7 +24,7 @@ This guide provides a detailed walkthrough for setting up and using free AI mode
 ## Supported Free Providers
 1.  **Gemini (Recommended)**: Gemini is known for its exceptional speed and solid intelligence, often outperforming other free services by a significant margin. This makes it an excellent choice for the "thinking mode" feature in TALKER, providing quick and coherent responses.
 2.  **Chutes**: Chutes provides access to a diverse range of powerful models, including DeepSeek, Qwen, and Llama4. While this variety is a major advantage, be aware that popular, high-demand models can sometimes be unreliable or temporarily unavailable. Even with key rotation, a model that is down will not be accessible, so it's wise to have backup models or providers in mind.
-3.  **Nvidia**: Nvidia offers a robust selection of high-quality models. Their `nvidia/llama-3.1-nemotron-ultra-253b-v1` is a particularly strong performer for both reasoning and general dialogue. They also host free versions of popular models like DeepSeek and Qwen, though the specific rate limits for these are not always clear.
+3.  **Nvidia**: Nvidia offers a robust selection of high-quality models. Their `kimi-k2-instruct` is a particularly strong performer for both reasoning and general dialogue. They also host free versions of popular models like DeepSeek and Qwen, though the specific rate limits for these are not always clear.
 
 ---
 
@@ -36,7 +42,7 @@ Gemini and Gemma models offer a range of options, each with different trade-offs
 | ------------------------------------------------ | ---------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `gemini/gemini-2.5-pro`                          | Slowest    | Smartest     | The most powerful model, ideal for complex dialogue and reasoning. Even as the "slowest" Gemini model, it's still faster than most non-Gemini models.                  |
 | `gemini/gemini-2.5-flash`                        | Fast       | Smart        | **Recommended for most tasks.** A great balance of speed and intelligence, making it a versatile choice for both general use and thinking mode.                       |
-| `gemini/gemini-2.5-flash-lite-preview-06-17`     | Fastest    | Decent       | The quickest model, perfect for fast-paced interactions where raw speed is the top priority.                                                                        |
+| `gemini/gemini-2.5-flash-lite`     | Fastest    | Decent       | The quickest model, perfect for fast-paced interactions where raw speed is the top priority.                                                                        |
 
 **Gemma Models**
 
@@ -48,7 +54,7 @@ Gemini and Gemma models offer a range of options, each with different trade-offs
 
 | Model                                    | RPM | TPM     | RPD    |
 | ---------------------------------------- | --- | ------- | ------ |
-| Gemini 2.5 Pro                           | 5   | 250,000 | 100    |
+| Gemini 2.5 Pro                           | 5   | 125,000 | 50    |
 | Gemini 2.5 Flash                         | 10  | 250,000 | 250    |
 | Gemini 2.5 Flash-Lite Preview 06-17      | 15  | 250,000 | 1,000  |
 | Gemma 3 & 3n                               | 30  | 15,000  | 14,400 |
@@ -164,6 +170,9 @@ Nvidia offers an even wider selection of high-quality models than Chutes, making
 **A Note on Rate Limits**
 *   Like Chutes, Nvidia's rate limits are not officially published. They appear to be generous and dependent on server load, but it's always best to use the service reasonably.
 
+**A Note on Model Availability and Speed**
+*   The availability and speed of Nvidia's models can vary significantly based on server load. A model that is unresponsive or very slow one day may be very fast the next. It's a good idea to have backup models in mind or test their speeds (in progress).
+
 ### How to Get an Nvidia API Key
 
 **Step 1: Create and Verify Your Account**
@@ -182,12 +191,34 @@ Nvidia offers an even wider selection of high-quality models than Chutes, making
 
 Here are some of the notable models available through Nvidia's API:
 
+**Non-Thinking Models**
+
+| Model Name (Provider Prefix)                               | Notes                                                                                                |
+| ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `nvidia_nim/moonshotai/kimi-k2-instruct`                   | **Recommended.** One of the best models for storytelling and writing. Decently fast and reliable.        |
+| `nvidia_nim/deepseek-ai/deepseek-v3.1`                     | **Recommended.** Slightly worse than kimi for storytelling and writing tasks. |
+| `nvidia_nim/meta/llama-4-maverick-17b-128e-instruct`       | **Recommended.** A very model. Quality can vary and is very censored. But it is always available at high speed.                             |
+| `nvidia_nim/google/gemma-3-27b-it`                         | A powerful, but small, model from Google that is a great alternative to other options.                           |
+
+---
+
+**Thinking Models** - Note that thinking models are often significantly slower than non-thinking models. For general use in the mod, non-thinking models are usually the better choice for a more responsive experience.
+
 | Model Name (Provider Prefix)                               | Notes                                                                                                                                      |
 | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `nvidia_nim/nvidia/llama-3.1-nemotron-ultra-253b-v1`       | A massive, powerful model that excels at complex reasoning and dialogue. (Thinking model by default in the mod)                                |
-| `nvidia_nim/meta/llama-4-maverick-17b-128e-instruct`        | Fast           | **Recommended for most non-thinking tasks.** A fast and reliable choice.                                                              |
-| `nvidia_nim/nvidia/llama-3.3-nemotron-super-49b-v1`        | A smaller but still very capable version of Nemotron, offering a good balance of performance and intelligence. (Thinking model by default in the mod) |
 | `nvidia_nim/deepseek-ai/deepseek-r1-0528`                  | The latest and most powerful version of DeepSeek-R1, excellent for reasoning tasks.                                                        |
 | `nvidia_nim/deepseek-ai/deepseek-r1`                       | The base version of DeepSeek-R1, a solid all-arounder.                                                                                     |
+| `nvidia_nim/qwen/qwen3-next-80b-a3b-thinking`              | A powerful and fast thinking model.                                                                                                       |
+| `nvidia_nim/nvidia/llama-3.1-nemotron-ultra-253b-v1`       | A backup option for a reasoning model. Can be turned into non-thinking(not implemented yet). (Thinking model by default in the mod)                                |
+| `nvidia_nim/bytedance/seed-oss-36b-instruct`               | Interesting small thinking model that is very fast.                                                                                    |
+
+---
+
+***Problematic Models***
+
+*At the time of writing, the following models were very problematic to run and may be unstable:*
+
+| Model Name (Provider Prefix)                               | Notes                                                                                                                                      |
+| ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `nvidia_nim/nvidia/llama-3.3-nemotron-super-49b-v1`        | A smaller but still very capable version of Nemotron, offering a good balance of performance and intelligence. (Thinking model by default in the mod) |
 | `nvidia_nim/qwen/qwen3-235b-a22b`                          | A very large model from the Qwen family, capable of high-quality output but may be slower. (Thinking model by default in the mod)             |
-| `nvidia_nim/google/gemma-3-27b-it`                         | A powerful model from Google that is a great alternative to other options.                                                                 |
