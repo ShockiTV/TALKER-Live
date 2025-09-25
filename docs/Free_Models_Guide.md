@@ -6,7 +6,7 @@ This guide provides a detailed walkthrough for setting up and using free AI mode
 
 ## Important Updates (September 2025)
 
-*   **New Nvidia Models Added**: Several new models from Nvidia have been added to the guide, including `kimi-k2-instruct`, `deepseek-v3.1`, and various versions of `qwen`.
+*   **New Nvidia Models Added**: Several new models from Nvidia have been added to the guide, including `kimi-k2-instruct-0905` (recommended), `qwen3-next-80b-a3b-instruct` (recommended), `mistral-small-24b-instruct`, `deepseek-v3.1`, and various other versions of `qwen`.
 *   **Model Reorganization**: The Nvidia model list has been reorganized into "Non-Thinking," "Thinking," and "Problematic" categories to help users better select models for their needs.
 *   **Nvidia Performance Note**: A note has been added to the Nvidia section to inform users that model availability and performance can vary based on server load.
 
@@ -23,8 +23,7 @@ This guide provides a detailed walkthrough for setting up and using free AI mode
 
 ## Supported Free Providers
 1.  **Gemini (Recommended)**: Gemini is known for its exceptional speed and solid intelligence, often outperforming other free services by a significant margin. This makes it an excellent choice for the "thinking mode" feature in TALKER, providing quick and coherent responses.
-2.  **Chutes**: Chutes provides access to a diverse range of powerful models, including DeepSeek, Qwen, and Llama4. While this variety is a major advantage, be aware that popular, high-demand models can sometimes be unreliable or temporarily unavailable. Even with key rotation, a model that is down will not be accessible, so it's wise to have backup models or providers in mind.
-3.  **Nvidia**: Nvidia offers a robust selection of high-quality models. Their `kimi-k2-instruct` is a particularly strong performer for both reasoning and general dialogue. They also host free versions of popular models like DeepSeek and Qwen, though the specific rate limits for these are not always clear.
+2.  **Nvidia**: Nvidia offers a robust selection of high-quality models. Their `kimi-k2-instruct` is a particularly strong performer for both reasoning and general dialogue. They also host free versions of popular models like DeepSeek and Qwen, though the specific rate limits for these are not always clear.
 
 ---
 
@@ -100,75 +99,17 @@ Follow these steps to get the maximum number of free keys from a single Google a
 
 ---
 
-## 2. Chutes
 
-> **<font color="red">IMPORTANT: Chutes is no longer a free service.</font>**
-> To use their API, you must now make a **one-time payment of $5 to your account per API key**. This payment grants you **500 requests per day**, and the rate limit remains even if you use up the initial $5 credit.
+## 2. Nvidia
 
-Chutes offers a wide variety of models, but it's important to note that you can only generate one API key per account. However, you can create multiple accounts to obtain more keys.
-
-**A Note on Rate Limits**: With the new paid structure, each key is limited to 500 requests per day.
-
-### How to Get a Chutes API Key
-
-**Step 1: Create an Account**
-*   Go to [chutes.ai](https://chutes.ai/) and click **"Create Account"**.
-*   Enter a username and follow the prompts.
-*   **Important**: You will be given a `fingerprint.txt` file. Save this file or its contents somewhere safe, as it is your password. Or just save it's contents somewhere safe(password manager), as it is your password. You will not be able to log in without it.
-
-**Step 2: Generate an API Key**
-*   Log in to your new account and navigate to the [API section](https://chutes.ai/app/api).
-*   Click **"Create API Key"** and copy the key that is generated.
-
-**Step 3: Add the Key to the Proxy**
-*   Run the `setup_env.bat` script from the LLM-API-Key-Proxy.
-*   When prompted, paste in your Chutes API key.
-
-**Step 4: (Optional) Create More Accounts for More Keys**
-*   Chutes limits how frequently you can create new accounts from the same IP address. If you need more keys, you can use a private browsing window, Tor, or simply wait a while before creating another account.
-*   Repeat the steps above for each new account and add each new key to the proxy.
-
-**Step 5: Profit!**
-*   You now have a pool of Chutes API keys. The proxy will automatically rotate through them, giving you a much higher free usage limit.
-
-### Models and Performance
-
-Chutes offers a wide range of models with varying performance. A general rule of thumb is that models with fewer billions (B) of parameters are faster but less intelligent. The speeds listed below are approximate and can change based on server load.
-
-**Thinking Models**
-
-| Model Name (Provider Prefix)                               | Relative Speed | Notes                                                                                                                                 |
-| ---------------------------------------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `chutes/NousResearch/DeepHermes-3-Mistral-24B-Preview`     | Very Fast      | An exceptionally fast model, great for quick reasoning.                                                                               |
-| `chutes/Qwen/Qwen3-30B-A3B`                                | Very Fast           | A solid choice for dialogue and reasoning, though often outperformed by the latest DeepSeek and Llama models.                           |
-| `chutes/microsoft/MAI-DS-R1-FP8`                           | Moderate-Fast       | Generally faster and better than the base DeepSeek-R1, but not as capable as the newer R1-0528 variant.                                  |
-| `chutes/Qwen/Qwen3-32B`                                    | Moderate       | A decent all-arounder. Probably use A3B version instead                                                                                                                |
-| `chutes/deepseek-ai/DeepSeek-R1`                           | Moderate       | A solid baseline reasoning model.                                                                                                     |
-| `chutes/Qwen/Qwen3-235B-A22B`                              | Slow           | A very large model, which can be powerful but is often slower.                                                                        |
-| `chutes/deepseek-ai/DeepSeek-R1-0528`                      | Slow           | The most capable version of DeepSeek-R1, but its performance can be very slow on Chutes.                                                 |
-
-**Non-Thinking Models**
-
-| Model Name (Provider Prefix)                               | Relative Speed | Notes                                                                                                                                 |
-| ---------------------------------------------------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `chutes/chutesai/Llama-4-Maverick-17B-128E-Instruct-FP8`   | Fast           | **Recommended for most non-thinking tasks.** A fast and reliable choice.                                                              |
-| `chutes/google/gemma-3-27b-it`                             | Moderate       | A good fallback option.                                                                                                               |
-| `chutes/deepseek-ai/DeepSeek-V3`                           | Moderate       | **Recommended for most non-thinking tasks.** A very capable and reliable model.                                                       |
-| `chutes/chutesai/Llama-4-Scout-17B-16E-Instruct`           | Moderate           | A less powerful version of Llama 4.                                                                                                   |
-| `chutes/deepseek-ai/DeepSeek-V3-0324`                      | Slow           | **Recommended for most non-thinking tasks.** A slightly different version of V3, newer and smarter, but its performance can be very slow on Chutes.                                   |
-
----
-
-## 3. Nvidia
-
-Nvidia offers an even wider selection of high-quality models than Chutes, making it a powerful option for experimentation. However, there are a few key limitations to keep in mind.
+Nvidia offers a wide selection of high-quality models, making it a powerful option for experimentation. However, there are a few key limitations to keep in mind.
 
 **Account and API Key Limitations**
 *   You can only create one API key per Nvidia account.
 *   Creating a new account requires phone number verification, which makes it difficult to acquire multiple keys.
 
 **A Note on Rate Limits**
-*   Like Chutes, Nvidia's rate limits are not officially published. They appear to be generous and dependent on server load, but it's always best to use the service reasonably.
+*   Nvidia's rate limits are not officially published. They appear to be generous and dependent on server load, but it's always best to use the service reasonably.
 
 **A Note on Model Availability and Speed**
 *   The availability and speed of Nvidia's models can vary significantly based on server load. A model that is unresponsive or very slow one day may be very fast the next. It's a good idea to have backup models in mind or test their speeds (in progress).
@@ -195,30 +136,57 @@ Here are some of the notable models available through Nvidia's API:
 
 | Model Name (Provider Prefix)                               | Notes                                                                                                |
 | ---------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| `nvidia_nim/moonshotai/kimi-k2-instruct`                   | **Recommended.** One of the best models for storytelling and writing. Decently fast and reliable.        |
-| `nvidia_nim/deepseek-ai/deepseek-v3.1`                     | **Recommended.** Slightly worse than kimi for storytelling and writing tasks. |
-| `nvidia_nim/meta/llama-4-maverick-17b-128e-instruct`       | **Recommended.** A very model. Quality can vary and is very censored. But it is always available at high speed.                             |
-| `nvidia_nim/google/gemma-3-27b-it`                         | A powerful, but small, model from Google that is a great alternative to other options.                           |
+| `nvidia_nim/moonshotai/kimi-k2-instruct`                   | **Recommended.** One of the best models for storytelling and writing. Decently fast and reliable.     |
+| `nvidia_nim/moonshotai/kimi-k2-instruct-0905`              | **Recommended.** A versioned variant of kimi-k2-instruct, as excellent for storytelling and writing, but usually slower or even unavailable.    |
+| `nvidia_nim/qwen/qwen3-next-80b-a3b-instruct`              | **Recommended.** Non-thinking instruct version of Qwen, perfect for this use case - fast and almost always available.  |
+| `nvidia_nim/meta/llama-4-maverick-17b-128e-instruct`       | A very fast model. Quality can vary and is very censored. But it is always available at high speed. It is sometimes too literal at what it does. Borders on unusable. |
+| `nvidia_nim/google/gemma-3-27b-it`                         | A powerful, but small, model from Google that is a great alternative to other options. Faster then mistral.   |
+| `nvidia_nim/mistralai/mistral-small-24b-instruct`          | Usually too slow, but can be used for instruct tasks when speed is not critical. A very good storytelling model. |
+
 
 ---
-
 **Thinking Models** - Note that thinking models are often significantly slower than non-thinking models. For general use in the mod, non-thinking models are usually the better choice for a more responsive experience.
 
 | Model Name (Provider Prefix)                               | Notes                                                                                                                                      |
 | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `nvidia_nim/deepseek-ai/deepseek-r1-0528`                  | The latest and most powerful version of DeepSeek-R1, excellent for reasoning tasks.                                                        |
-| `nvidia_nim/deepseek-ai/deepseek-r1`                       | The base version of DeepSeek-R1, a solid all-arounder.                                                                                     |
-| `nvidia_nim/qwen/qwen3-next-80b-a3b-thinking`              | A powerful and fast thinking model.                                                                                                       |
-| `nvidia_nim/nvidia/llama-3.1-nemotron-ultra-253b-v1`       | A backup option for a reasoning model. Can be turned into non-thinking(not implemented yet). (Thinking model by default in the mod)                                |
-| `nvidia_nim/bytedance/seed-oss-36b-instruct`               | Interesting small thinking model that is very fast.                                                                                    |
+| `nvidia_nim/deepseek-ai/deepseek-r1-0528`                  | The latest and most powerful version of DeepSeek-R1, excellent for reasoning tasks. Too slow with reasoning and commonly unavailable.                                     |
+| `nvidia_nim/deepseek-ai/deepseek-r1`                       | The base version of DeepSeek-R1, a solid all-arounder. Faster, compared to 0528. Still not recommended   |
+| `nvidia_nim/qwen/qwen3-next-80b-a3b-thinking`              | **Recommended.** A powerful and fast thinking model. Usually fast enough with reasoning—only recommended thinking model here.   |
+| `nvidia_nim/bytedance/seed-oss-36b-instruct`               | Interesting small thinking model that is, sadly, not very fast.  |
 
 ---
 
 ***Problematic Models***
 
-*At the time of writing, the following models were very problematic to run and may be unstable:*
+*At the time of writing, the following models were very problematic to run (unavailable or very slow) and may be unstable:*
 
 | Model Name (Provider Prefix)                               | Notes                                                                                                                                      |
 | ---------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `nvidia_nim/nvidia/llama-3.3-nemotron-super-49b-v1`        | A smaller but still very capable version of Nemotron, offering a good balance of performance and intelligence. (Thinking model by default in the mod) |
 | `nvidia_nim/qwen/qwen3-235b-a22b`                          | A very large model from the Qwen family, capable of high-quality output but may be slower. (Thinking model by default in the mod)             |
+
+---
+
+
+## 3. Mistral (Preliminary)
+
+Mistral.ai offers a free tier with seemingly very decent usage limits. This provider is currently being investigated for full integration with TALKER. In the meantime, you can add your Mistral API key yourself by following the proxy guide and experiment with it.
+
+### How to Get a Mistral API Key
+
+**Step 1: Create an Account**
+*   Go to [mistral.ai](https://mistral.ai/) and create a new account or log in.
+
+**Step 2: Generate Your API Key**
+*   Navigate to the API section in your dashboard.
+*   Click **"Create API Key"** and copy the generated key.
+
+**Step 3: Add the Key to the Proxy**
+*   Run the `setup_env.bat` script from the LLM-API-Key-Proxy.
+*   When prompted for providers, select Mistral and paste in your API key.
+*   Note: The proxy may need configuration for Mistral if not already supported; check the repository for updates.
+
+### Models and Notes
+*   Models: To be added once fully investigated. Popular options include Mistral Small and Mistral Large, or Mixtral reasoning models, which show promise for both general and reasoning tasks.
+*   Rate Limits: Free tier appears generous, but exact limits are under review.
+
+For now, this allows early adopters to test Mistral's capabilities directly.
