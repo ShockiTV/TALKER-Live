@@ -1,160 +1,160 @@
 <?xml version="1.0" encoding="windows-1251"?>
 <string_table>
     <string id="talker_traits_1">
-        <text>Morose</text>
+        <text>morose</text>
     </string>
     <string id="talker_traits_2">
-        <text>Sarcastic</text>
+        <text>sarcastic</text>
     </string>
     <string id="talker_traits_3">
-        <text>Cautious</text>
+        <text>cautious</text>
     </string>
     <string id="talker_traits_4">
-        <text>Paranoid</text>
+        <text>paranoid</text>
     </string>
     <string id="talker_traits_5">
-        <text>Resourceful</text>
+        <text>bloodthirsty</text>
     </string>
     <string id="talker_traits_5">
         <text>sardonic</text>
     </string>
     <string id="talker_traits_6">
-        <text>Gritty</text>
+        <text>gritty</text>
     </string>
     <string id="talker_traits_7">
-        <text>Stoic</text>
+        <text>wise-cracking</text>
     </string>
     <string id="talker_traits_8">
-        <text>Resilient</text>
+        <text>resilient</text>
     </string>
     <string id="talker_traits_9">
-        <text>Opportunistic</text>
+        <text>opportunistic</text>
     </string>
     <string id="talker_traits_10">
-        <text>Tenacious</text>
+        <text>tenacious</text>
     </string>
     <string id="talker_traits_11">
-        <text>Mistrustful</text>
+        <text>mistrustful</text>
     </string>
     <string id="talker_traits_12">
-        <text>Pessimistic</text>
+        <text>pessimistic</text>
     </string>
     <string id="talker_traits_13">
-        <text>Self-reliant</text>
+        <text>witty</text>
     </string>
     <string id="talker_traits_14">
-        <text>Survivalist</text>
+        <text>clever</text>
     </string>
     <string id="talker_traits_15">
-        <text>Unpredictable</text>
+        <text>unpredictable</text>
     </string>
     <string id="talker_traits_16">
-        <text>Adaptable</text>
+        <text>a flatterer</text>
     </string>
     <string id="talker_traits_17">
         <text>friendly</text>
     </string>
     <string id="talker_traits_18">
-        <text>hardened</text>
+        <text>battle-hardened</text>
     </string>
     <string id="talker_traits_19">
-        <text>Reckless</text>
+        <text>reckless</text>
     </string>
     <string id="talker_traits_20">
-        <text>Street-smart</text>
+        <text>street-smart</text>
     </string>
     <string id="talker_traits_21">
-        <text>Nihilistic</text>
+        <text>nihilistic</text>
     </string>
     <string id="talker_traits_22">
-        <text>Pragmatic</text>
+        <text>pragmatic</text>
     </string>
     <string id="talker_traits_23">
-        <text>Greedy</text>
+        <text>envious</text>
     </string>
     <string id="talker_traits_24">
-        <text>Loyal</text>
+        <text>miserable</text>
     </string>
     <string id="talker_traits_25">
-        <text>Superstitious</text>
+        <text>superstitious</text>
     </string>
     <string id="talker_traits_26">
-        <text>Gruff</text>
+        <text>gruff</text>
     </string>
     <string id="talker_traits_27">
-        <text>Jaded</text>
+        <text>jaded</text>
     </string>
     <string id="talker_traits_28">
-        <text>Curious</text>
+        <text>curious</text>
     </string>
     <string id="talker_traits_29">
-        <text>Fearful</text>
+        <text>fearful</text>
     </string>
     <string id="talker_traits_30">
-        <text>Anxious</text>
+        <text>anxious</text>
     </string>
     <string id="talker_traits_31">
-        <text>Fatalistic</text>
+        <text>fatalistic</text>
     </string>
     <string id="talker_traits_32">
-        <text>Greed-driven</text>
+        <text>greed-driven</text>
     </string>
     <string id="talker_traits_33">
-        <text>Altruistic</text>
+        <text>altruistic</text>
     </string>
     <string id="talker_traits_34">
-        <text>Philosophical</text>
+        <text>philosophical</text>
     </string>
     <string id="talker_traits_35">
-        <text>Mysterious</text>
+        <text>mysterious</text>
     </string>
     <string id="talker_traits_36">
-        <text>Thrill-seeker</text>
+        <text>a thrill-seeker</text>
     </string>
     <string id="talker_traits_37">
-        <text>Hesitant</text>
+        <text>hesitant</text>
     </string>
     <string id="talker_traits_38">
-        <text>Brutal</text>
+        <text>brutal</text>
     </string>
     <string id="talker_traits_39">
-        <text>Calculating</text>
+        <text>calculating</text>
     </string>
     <string id="talker_traits_40">
-        <text>Ruthless</text>
+        <text>ruthless</text>
     </string>
     <string id="talker_traits_41">
-        <text>Distrustful</text>
+        <text>distrustful</text>
     </string>
     <string id="talker_traits_42">
-        <text>Streetwise</text>
+        <text>streetwise</text>
     </string>
     <string id="talker_traits_43">
-        <text>Observant</text>
+        <text>observant</text>
     </string>
     <string id="talker_traits_44">
-        <text>Scheming</text>
+        <text>scheming</text>
     </string>
     <string id="talker_traits_45">
-        <text>Hopeful</text>
+        <text>hopeful</text>
     </string>
     <string id="talker_traits_46">
-        <text>Desperate</text>
+        <text>desperate</text>
     </string>
     <string id="talker_traits_47">
-        <text>Determined</text>
+        <text>determined</text>
     </string>
     <string id="talker_traits_48">
-        <text>Apathetic</text>
+        <text>apathetic</text>
     </string>
     <string id="talker_traits_49">
         <text>cowardly</text>
     </string>
     <string id="talker_traits_50">
-        <text>nervous</text>
+        <text>dumb as rocks</text>
     </string>
     <string id="talker_traits_51">
-        <text>brave</text>
+        <text>disillusioned</text>
     </string>
     <string id="talker_traits_52">
         <text>dramatic</text>
@@ -166,7 +166,7 @@
         <text>easily angered</text>
     </string>
     <string id="talker_traits_55">
-        <text>concise</text>
+        <text>rambling</text>
     </string>
     <string id="talker_traits_56">
         <text>polite</text>
@@ -181,15 +181,120 @@
         <text>gregarious</text>
     </string>
     <string id="talker_traits_60">
-        <text>joker</text>
+        <text>a joker</text>
     </string>
     <string id="talker_traits_61">
         <text>relaxed</text>
     </string>
     <string id="talker_traits_62">
-        <text>calm</text>
+        <text>tense</text>
     </string>
     <string id="talker_traits_63">
-        <text>cool</text>
+        <text>ambitious</text>
+    </string>
+    <string id="talker_traits_64">
+        <text>an alcoholic</text>
+    </string>
+	<string id="talker_traits_65">
+        <text>depressed</text>
+    </string>
+	<string id="talker_traits_66">
+        <text>addicted to painkillers</text>
+    </string>
+	<string id="talker_traits_67">
+        <text>sexually frustrated</text>
+    </string>
+	<string id="talker_traits_68">
+        <text>affected by PTSD from watching a close friend get torn to shreds by an anomaly</text>
+    </string>
+	<string id="talker_traits_69">
+        <text>cocky</text>
+    </string>
+	<string id="talker_traits_70">
+        <text>smug</text>
+    </string>
+	<string id="talker_traits_71">
+        <text>sycophantic</text>
+    </string>
+	<string id="talker_traits_72">
+        <text>quick to panic</text>
+    </string>
+	<string id="talker_traits_73">
+        <text>full of childlike wonder</text>
+    </string>
+	<string id="talker_traits_74">
+        <text>cynical</text>
+    </string>
+	<string id="talker_traits_75">
+        <text>fond of cooking and eating mutant meat and knows plenty of recipes for preparing mutants</text>
+    </string>
+	<string id="talker_traits_76">
+        <text>easily distracted</text>
+    </string>
+	<string id="talker_traits_77">
+        <text>comedic</text>
+    </string>
+	<string id="talker_traits_78">
+        <text>craving approval constantly</text>
+    </string>
+	<string id="talker_traits_79">
+        <text>fond of making fun of others</text>
+    </string>
+	<string id="talker_traits_80">
+        <text>a stoner</text>
+    </string>
+	<string id="talker_traits_81">
+        <text>grovelling</text>
+    </string>
+	<string id="talker_traits_82">
+        <text>an adrenaline junkie</text>
+    </string>
+		<string id="talker_traits_83">
+        <text>a confident sharpshooter</text>
+    </string>
+	<string id="talker_traits_84">
+        <text>a gun-nut</text>
+    </string>
+		<string id="talker_traits_85">
+        <text>an artifact hunter</text>
+    </string>
+		<string id="talker_traits_86">
+        <text>an outspoken commmunist</text>
+    </string>
+		<string id="talker_traits_87">
+        <text>in the Zone to escape crippling gambling debt and is desperate to make enough money here to pay it off</text>
+    </string>
+		<string id="talker_traits_88">
+        <text>obsessed with pushing further north and wants to one day explore the Chernobyl Reactor</text>
+    </string>
+		<string id="talker_traits_89">
+        <text>recently turning to Christianity and Jesus after having done and experienced horrible things in the Zone</text>
+    </string>
+		<string id="talker_traits_90">
+        <text>long divorced but still can't get over the ex-wife that left</text>
+    </string>
+		<string id="talker_traits_91">
+        <text>regretting coming to the Zone and longs to escape back out to the normal world</text>
+    </string>
+		<string id="talker_traits_92">
+        <text>fond of making puns</text>
+    </string>
+		<string id="talker_traits_93">
+        <text>subtle</text>
+    </string>
+		<string id="talker_traits_93">
+        <text>quiet</text>
+    </string>
+		<string id="talker_traits_94">
+        <text>recently turning to Zen Buddhism to cope with the stress of the Zone</text>
+    </string>
+		<string id="talker_traits_95">
+        <text>a guilt-ridden former career criminal and assassin hiding out in the Zone</text>
+    </string>
+	    <string id="talker_traits_96">
+        <text>often high on psychedelic substances</text>
+    </string>
+		<string id="talker_traits_97">
+        <text>a pathological liar</text>
     </string>
 </string_table>
