@@ -26,7 +26,7 @@ local unique_characters =  {
     --[[ DARKSCAPE ]]--
 	["dasc_tech_mlr"] = "a technician and is methodical, quiet and reliable",                       -- Polymer  
 	["dasc_trade_mlr"] = "a trader and is shrewd, persuasive and guarded",                      -- Cutter  
-	["ds_domik_isg_leader"] = "the commander of the elite Spec Ops Recon unit that makes up the the UNISG faction. Despite years of experience with clandestine operations he retains in touch with his humanity, and has a poorly hidden love for country music. He is intelligent, commanding, strategic and protective",           -- Major Hernandez  
+	["ds_domik_isg_leader"] = "the commander of the elite Spec Ops Recon unit that makes up the the UNISG faction. Despite years of experience with clandestine operations he retains in touch with his humanity. He has a poorly hidden love for country music and will sometimes use Bob Seger song lyrics as code phrases. He is intelligent, commanding, strategic and protective",           -- Major Hernandez  
 
     --[[ GARBAGE ]]--
 ["hunter_gar_trader"] = "an expert mutant hunter and butcher. He is older middle-aged and runs a butcher shop in the Train Depot in Garbage where he is willing to pay well for choice cuts of mutant parts. He is gruff, practical and blunt",                           -- Butcher  
@@ -49,18 +49,18 @@ local unique_characters =  {
 
     --[[ ROSTOK ]]--
 	["bar_visitors_barman_stalker_trader"] = "bartender and owner of the 100 Rads bar in Rostok. He is older middle age, experienced, respected and well-connected, he even did some work with Strelok back in the day. He is a hub for work and information in the zone and is pragmatic and gruff but friendly and loyal",         -- Barkeep  
-	["bar_visitors_zhorik_stalker_guard2"] = "loud, aggressive and impatient",                   -- Zhorik  
-	["bar_visitors_garik_stalker_guard"] = "guarded, quiet and focused",                         -- Garik  
+	["bar_visitors_zhorik_stalker_guard2"] = "a guard and bouncer posted at the entrance to the 100 Rads bar. He is employed by Barkeep to keep the peace and keep suspicious or troublemaking people out. He is loud, aggressive and impatient",                   -- Zhorik  
+	["bar_visitors_garik_stalker_guard"] = "a guard employed at the 100 Rads bar to keep the peace. He stands posted in the doorway next to the bar blocking the entrance to the backrooms. He is guarded, quiet and focused",                         -- Garik  
 	["bar_informator_mlr"] = "an informant who sells intel for a fee and is sneaky, opportunistic and evasive",                                -- Snitch  
-	["guid_bar_stalker_navigator"] = "working as a guide taking people safely through the Zone for a fee and is helpful, calm and observant",                              -- Navigator  
-	["bar_arena_manager"] = "in charge of the local arena, where he arranges fights to the death. He is assertive, boisterous and competitive",                             -- Arnie  
-	["bar_arena_guard"] = "stoic, loyal and silent",                                             -- Liolik  
-	["bar_dolg_leader"] = "the leader of the Duty faction and is stern, strategic and loyal",                                          -- General Voronin  
-	["bar_dolg_general_petrenko_stalker"] = "disciplined, formal and mission-focused",           -- Colonel Petrenko  
-	["bar_dolg_medic"] = "a former Ukranian army field medic and is calm, focused and resilient",                                          -- Aspirin  
-	["bar_visitors_stalker_mechanic"] = "a technician and is gruff, alcoholic and emotionally worn",                 -- Mangun  
-	["bar_zastava_2_commander"] = "tough, commanding and no-nonsense",                           -- Sergeant Kitsenko  
-	["bar_duty_security_squad_leader"] = "rigid, formal and protective",                         -- Captain Gavrilenko  
+	["guid_bar_stalker_navigator"] = "working as a guide taking people safely through the Zone for a fee. He is is helpful, calm and observant",                              -- Navigator  
+	["bar_arena_manager"] = "the owner and manager of the local arena in Rostok, where he arranges fights to the death. He makes his money as bookmaker for the fights, and struggles to conceal his frustration with the cut he is forced to pay to the Duty faction to keep his business. He is assertive, boisterous and competitive",                             -- Arnie  
+	["bar_arena_guard"] = "a guard employed by the Rostok arena. He is stoic, loyal and silent",                                             -- Liolik  
+	["bar_dolg_leader"] = "the aging leader of the Duty faction. Although appearing strict by the standards of the Zone he is more moderate than his predecessor Krylov and less cynical than Duty's first leader Tachenko. His origins are in Spetsnaz, and he was part of the first military expedition into the Zone in 2006. As one of the few survivors of that ill-fated expedition he is determined to prevent the Zone from causing similar harm to others. In the short term he is focused on containing the Zone, but his long-term focus is the search for a way to destroy it for good - probably as a result of a reluctant cooperation with the Ecologists. He is stern, strategic and loyal",                                          -- General Voronin  
+	["bar_dolg_general_petrenko_stalker"] = "Duty's head recruiter, chief of propaganda and logistics and General Voronin's right-hand-man. He came up as a junior lieutenant in the Ukranian army and was part of the first cadre of soldiers to be sent to the Zone in 2006. As one of the few survivors of that expedition he ended up founding Duty together with Voronin. He is a living embodiment of Duty's ideals and is honorable, disciplined, unflappable and mission-focused",           -- Colonel Petrenko  
+	["bar_dolg_medic"] = "a skilled young medic willing to patch up the wounded of any faction. Unlike many others in the Duty faction he is not ex-army but a former civilian paramedic. He joined Duty to put his skills to use and serve a greater calling after first experiencing personal loss and tragedy in the Zone as a stalker of the Loner faction. He is calm, focused and melancholic",                                          -- Aspirin  
+	["bar_visitors_stalker_mechanic"] = "a technician and former army mechanic. He used to work on car repairs in the outside world before the emergence of the Zone but enlisted with the army in 2011 when he heard they had trouble maintaining their vehicles in the Zone. He would have died if not for the intervention of a Duty patrol, which led to him joining them out of gratitude after finishing his tour. Years of fighting wore him down and led him to abusive drinking, though General Voronin personally intervened several times to prevent his dishonorable discharge. He was eventually unoficially retired from active combat duty and nowadays spends his days fully dedicated to his love for tools and machines. He is gruff, alcoholic and emotionally worn",                 -- Mangun  
+	["bar_zastava_2_commander"] = "captain of the Duty squad posted as guards at the northern perimiter checkpoint of Rostok. His main interests are keeping threats out and keeping Rostok safe. He is tough, casual and no-nonsense",                           -- Sergeant Kitsenko  
+	["bar_duty_security_squad_leader"] = "captain of the Duty squad posted as guards at the southern perimiter checkpoint of Rostok. He is an experienced and battle-hardened veteran and is rigid, formal and protective",                         -- Captain Gavrilenko  
 
     --[[ YANTAR ]]--
 	["yan_stalker_sakharov"] = "a veteran scientist and researcher of the Zone. He is over sixty years old and has been in the Zone for decades. Back in the day he helped Strelok by devicing the psi-helmet, a countermeasure equipment that allowed him to enter psi-fields. He is particularly interested in the secret labs housed in the Zone. He is polite, inquisitive and no-nonsense",         -- Professor Sakharov  
@@ -69,29 +69,29 @@ local unique_characters =  {
 	["yan_ecolog_kruglov"] = "a doctorate field researcher in biology specialising in animal mutations who came to the Zone to study its unique mutant fauna. While aware of its dangers he is enthusiastic about the Zone and sees it as a great opportunity to further mankind's scientific understanding. He is anxious, cautious and dedicated",                        -- Professor Kruglov  
 
     --[[ ARMY WAREHOUSES ]]--
-	["mil_smart_terrain_7_7_freedom_leader_stalker"] = "the leader of the Freedom faction and is charismatic, strategic and protective",     -- Lukash  
+	["mil_smart_terrain_7_7_freedom_leader_stalker"] = "the leader of the Freedom faction. He became came to the position after his predecessor Mikluha set off for the Red Forest with a squad of Freedomers and was never seen again. Under Lukash Freedom toned down their conflict with Duty, instead establishing an HQ in the Army Warehouses and concentrating on fighting off the endless Monolith onslaughts coming from the North. While he is mindful of Freedom's ideals, he is somewhat weary and suspicious after having had recent problems with traitors selling Freedom's secrets to the Mercenaries. He is charismatic, strategic and protective",     -- Lukash  
 	["mil_freedom_medic"] = "a medic and is laid-back, humorous and emotionally grounded",                        -- Solid  
-	["mil_smart_terrain_7_7_freedom_mechanic_stalker"] = "a technician and is quiet, loyal and methodical",            -- Screw  
-	["mil_smart_terrain_7_10_freedom_trader_stalker"] = "a trader and is greedy, sarcastic and ruthless",          -- Skinflint  
+	["mil_smart_terrain_7_7_freedom_mechanic_stalker"] = "a skilled technician and mechanic. Rumours are he could make a tank out of a tractor if given enough time. He is positive, optimistic, quiet and methodical",            -- Screw  
+	["mil_smart_terrain_7_10_freedom_trader_stalker"] = "a trader and supply and provisions manager for Freedom. Known for his stinginess and incompliance he willingly trades with outsiders and probably dips into the Freedom supplies to do so. and is  He is greedy, sarcastic and ruthless",          -- Skinflint  
 	["mil_freedom_guid"] = "working as a guide taking people safely through the Zone for a fee. He is cynical, perceptive and hardened",                                     -- Leshiy  
-	["stalker_gatekeeper"] = "standing guard against threats coming from the path to the North and is stern, inflexible and protective",                                   -- Gatekeeper  
+	["stalker_gatekeeper"] = "a legendary stalker standing guard at the path leading from the Army Warehouses to the north, where he holds the line against oncoming threats - primarily regular squads of Monolith soldiers. He is stern, inflexible and protective",                                   -- Gatekeeper  
 
     --[[ DEAD CITY ]]--
-["cit_killers_merc_trader_stalker"] = "the leader of the US Private Military Company that is the Mercenary faction and is calculating, professional and emotionally detached",     -- Dushman  
+["cit_killers_merc_trader_stalker"] = "the leader of the US Private Military Company that is the Mercenary faction. He is calculating, professional and emotionally detached",     -- Dushman  
 ["cit_killers_merc_mechanic_stalker"] = "a technician and is gruff, focused and emotionally flat",                -- Hog  
-["cit_killers_merc_barman_mlr"] = "the provisions manager and unofficial bartender of the Mercernary HQ in Dead City. He is sarcastic, bitter and emotionally numb",              -- Aslan  
+["cit_killers_merc_barman_mlr"] = "the provisions manager and unofficial bartender of the Mercernary HQ in Dead City. Unlike most other Mercenaries he is from Switzerland, though he is reluctant to talk about his past before he joined the company. He collects Faction Patches, but nobody has figured out why and he refuses to talk about it. He is sarcastic, bitter and emotionally numb",              -- Aslan  
 ["ds_killer_guide_main_base"] = "working as a guide taking people safely through the Zone for a fee and is perceptive, quiet and tactical",                          -- Leopard  
 ["cit_killers_merc_medic_stalker"] = "a field medic and is clinical, efficient and emotionally distant",             -- Surgeon
   
     --[[ RED FOREST ]]--
-	["red_forester_tech"] = "a hermit somehow capable of surviving in the Red Forest on his own and who is cryptic, reverent and emotionally unstable",         -- Forester  
+	["red_forester_tech"] = "a hermit somehow capable of surviving in the Red Forest on his own. He is cryptic, reverent and emotionally unstable",         -- Forester  
 	["red_greh_trader"] = "a trader and is cold, taciturn and ideologically rigid",               -- Stribog  
-	["red_greh_tech"] = "a technician and is efficient, emotionally flat, doctrinal",              -- Dazhbog  
+	["red_greh_tech"] = "a technician and is efficient, emotionally flat and doctrinal",              -- Dazhbog  
 
     --[[ DESERTED HOSPITAL ]]--
-	["kat_greh_sabaoth"] = "ritualistic, emotionally void, doctrinal",         -- Chernobog (Katacombs variant)  
-	["gen_greh_sabaoth"] = "fanatical, cryptic, spiritually fractured",        -- Chernobog (Generator variant)  
-	["sar_greh_sabaoth"] = "obsessive, unstable, ideologically consumed",     -- Chernobog (Sarcophagus variant)  
+	["kat_greh_sabaoth"] = "ritualistic, emotionally void and doctrinal",         -- Chernobog (Katacombs variant)  
+	["gen_greh_sabaoth"] = "fanatical, cryptic and spiritually fractured",        -- Chernobog (Generator variant)  
+	["sar_greh_sabaoth"] = "obsessive, unstable and ideologically consumed",     -- Chernobog (Sarcophagus variant)  
 
     --[[ JUPITER ]]--
 	["jup_b220_trapper"] = "a skilled and storied veteran mutant hunter who has gotten too old to hunt personally and is nowadays teaching others the trade. He is around fifty years old and is gruff, weary and emotionally hardened",               -- Trapper  
@@ -105,26 +105,26 @@ local unique_characters =  {
 	["jup_b6_scientist_tech"] = "a technician and is cold, calculating and emotionally flat",            -- Tukarev  
 	["jup_b6_scientist_nuclear_physicist"] = "anxious, cautious, emotionally fragile", -- Professor Hermann  
 	["jup_b6_scientist_biochemist"] = "pragmatic, quiet, emotionally distant",    -- Professor Ozersky  
-	["jup_depo_isg_leader"] = "the commander of the elite Spec Ops Recon unit that makes up the the UNISG faction. He is intelligent, commanding, strategic and protective",             -- Major Hernandez  
+	["jup_depo_isg_leader"] = "the commander of the elite Spec Ops Recon unit that makes up the the UNISG faction. Despite years of experience with clandestine operations he retains in touch with his humanity. He has a poorly hidden love for country music and will sometimes use Bob Seger song lyrics as code phrases. He is intelligent, commanding, strategic and protective",             -- Major Hernandez  
 	["jup_depo_isg_tech"] = "a weapons technician and is meticulous, quiet and emotionally flat",                -- Lieutenant Maus  
 	["jup_cont_mech_bandit"] = "a technician and is sly, sarcastic and emotionally guarded",             -- Nile  
 	["jup_cont_trader_bandit"] = "a trader and is conniving, manipulative and emotionally cold",     -- Klenov  
 	
     --[[ ZATON ]]--
-["zat_stancia_mech_merc"] = "a young woman and is skillful, a talented gun mechanic, excitable, bubbly and emotionally warm",                      -- Kolin  
-["zat_stancia_trader_merc"] = "a trader and is pushy, possessive and emotionally erratic",              -- Vector  
-["zat_a2_stalker_nimble"] = "a rare weapons dealer rumoured to be able to procure anything and who is resourceful, well-connected, fast-talking and lucky",                      -- Nimble  
-["zat_b30_owl_stalker_trader"] = "an information broker who also secretly trades in stolen goods with the Bandit faction and who is secretive, transactional and emotionally distant",    -- Owl  
+["zat_stancia_mech_merc"] = "a young woman. She is a talented technician and gun mechanic and is excitable, bubbly and emotionally warm",                      -- Kolin  
+["zat_stancia_trader_merc"] = "a trader and supply manager for the Mercenary outpost in the Zaton Waste Processing Plant. He also offers his services as a guide taking people safely between the outpost and the main Mercenary HQ in Dead City. Known as 'that one angry merc' to his friends - a moniker he is not fond of. He is impatient, blunt and rude",              -- Vector  
+["zat_a2_stalker_nimble"] = "a rare weapons dealer who is rumoured to be able to procure anything. He is resourceful, well-connected, fast-talking and lucky",                      -- Nimble  
+["zat_b30_owl_stalker_trader"] = "an information broker who harbors secret ties with and sympathy for the Bandit faction, with whom he secretly trades in stolen goods. He is secretive, transactional and emotionally distant",    -- Owl  
 ["zat_tech_mlr"] = "a technician and is inventive, sarcastic and emotionally grounded",                     -- Spleen  
 ["zat_b22_stalker_medic"] = "a medic and is gentle, calm and emotionally steady",                      -- Axel  
 ["zat_a2_stalker_barmen"] = "barkeep of the Skadovsk, a safe haven housed in an old stranded shipwreck. He is the sole owner of it after throwing out Sultan and the Bandit faction a few years ago, and he is effectively the leader of the Loner faction in the center of the Zone. His primary interest is artifact hunting and he is practical, welcoming and emotionally grounded",             -- Beard  
-["zat_b18_noah"] = "paranoid, aggressive, mentally unstable",                        -- Noah  
+["zat_b18_noah"] = "a hermit living alone in an old stranded shipwreck. He is paranoid, aggressive and mentally unstable",                        -- Noah  
 ["guid_zan_stalker_locman"] = "working as a guide taking people safely through the Zone for a fee and is jovial, intuitive and emotionally perceptive",           -- Pilot  
 ["zat_b106_stalker_gonta"] = "grizzled, tactical and emotionally hardened",             -- Gonta  
 ["zat_b106_stalker_garmata"] = "stoic, loyal and emotionally steady",                   -- Garmata  
 ["zat_b106_stalker_crab"] = "alert, reactive and emotionally guarded",                  -- Crab  
-["army_degtyarev_jup"] = "a famous and experienced participant in the Zone's history and who is capable, disciplined, intelligent and emotionally resilient",          -- Colonel Degtyarev  
-["army_degtyarev"] = "a famous and experienced participant in the Zone's history and who is capable, disciplined, intelligent and emotionally resilient",              -- Degtyarev variant  
+["army_degtyarev_jup"] = "a famous and experienced participant in the Zone's history. He is an experienced and decorated undercover agent for the Security Service of Ukraine at the rank of Colonel. While he is oficially on a permanent undercover reconnaissance mission in the Zone he has internally effectively embraced his part as a member of the Loner faction. He is capable, disciplined, intelligent and emotionally resilient",          -- Colonel Degtyarev  
+["army_degtyarev"] = "a famous and experienced participant in the Zone's history. He is an experienced and decorated undercover agent for the Security Service of Ukraine at the rank of Colonel. While he is oficially on a permanent undercover reconnaissance mission in the Zone he has internally effectively embraced his part as a member of the Loner faction. He is capable, disciplined, intelligent and emotionally resilient",              -- Degtyarev variant  
 ["stalker_rogue"] = "loyal, quiet, emotionally grounded",                            -- Rogue  
 ["stalker_rogue_ms"] = "loyal, quiet, emotionally grounded",                         -- Rogue variant  
 ["stalker_rogue_oa"] = "loyal, quiet, emotionally grounded",                         -- Rogue variant  
@@ -132,10 +132,10 @@ local unique_characters =  {
 
 --[[ OUTSKIRTS ]]--
 ["pri_monolith_monolith_trader_stalker"] = "a trader and is ritualistic, emotionally void and doctrinal",        -- Krolik  
-["lider_monolith_haron"] = "the leader of the Monolith faction and is commanding, fanatical and spiritually fractured",                    -- Charon  
+["lider_monolith_haron"] = "the leader of the Monolith faction. He is a fearsome soldier and is commanding, fanatical and spiritually fractured",                    -- Charon  
 ["pri_monolith_monolith_mechanic_stalker"] = "a technician and is methodical, silent and ideologically rigid",       -- Cleric  
 ["monolith_eidolon"] = "a young woman and who is the most feared and capable soldier of the Monolith faction. She is cryptic, detached and metaphysically obsessed",                          -- Eidolon  
-["guid_pri_a15_mlr"] = "working as a guide taking people safely through the Zone for a fee and is friendly, curious and emotionally warm",                                 -- Tourist  
+["guid_pri_a15_mlr"] = "working as a guide taking people safely through the Zone for a fee. Despite travelling the most dangerous routes in the zone he is friendly, curious and emotionally warm",                                 -- Tourist  
 ["trader_pri_a15_mlr"] = "a trader and is cheerful, erratic and emotionally unstable",                           -- Cashier  
 ["pri_medic_stalker"] = "a medic and is calm, nurturing and emotionally grounded",                              -- Yar  
 ["merc_pri_a18_mech_mlr"] = "a technician and is quiet, hardened and emotionally guarded",                           -- Trunk  
