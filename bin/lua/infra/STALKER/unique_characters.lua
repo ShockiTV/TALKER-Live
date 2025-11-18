@@ -2,11 +2,11 @@ local unique_characters =  {
 
     --[[ CORDON ]]--
 	["actor"] = "",  -- Player stays blank  
-	["esc_m_trader"] = "gruff, impatient, skeptical, feigning friendliness and scheming",             -- Sidorovich  
-	["m_trader"] = "gruff, impatient, skeptical, feigning friendliness and scheming",                 -- Sidorovich  
-	["esc_2_12_stalker_nimble"] = "cautious, observant, loyal",   -- Nimble  
-	["esc_2_12_stalker_wolf"] = "in charge of security in the Rookie Village and is keeping watch outside Sidorovich's bunker. He is confident, experienced, tactical, protective and reluctantly helpful", -- Wolf  
-	["esc_2_12_stalker_fanat"] = "often tasked with showing rookies the ropes. He is mentor-like, well-meaning and warm",       -- Fanatic  
+	["esc_m_trader"] = "an information broker and primary hub for work in the Rookie Village and the South of the Zone in general. He is always scheming and looking after his own best interests while feigning friendliness, and is gruff, impatient and skeptical.",             -- Sidorovich  
+	["m_trader"] = "an information broker and primary hub for work in the Rookie Village and the South of the Zone in general. He is always scheming and looking after his own best interests while feigning friendliness, and is gruff, impatient and skeptical.",                 -- Sidorovich  
+	["esc_2_12_stalker_nimble"] = "cautious, observant and loyal",   -- Nimble  
+	["esc_2_12_stalker_wolf"] = "in charge of security in the Rookie Village and is keeping watch outside Sidorovich's bunker. He has been around for a long time, rumours say he even helped Strelok out briefly all those years ago. He is confident, experienced, tactical, protective and reluctantly helpful", -- Wolf  
+	["esc_2_12_stalker_fanat"] = "often tasked with showing rookies the ropes. He has been around for a long time and is older middle-aged. He is well-meaning and mentor-like but determined and zealous",       -- Fanatic  
 	["esc_2_12_stalker_trader"] = "gruff, impatient, skeptical, feigning friendliness and scheming",  -- Sidorovich  
 	["esc_smart_terrain_5_7_loner_mechanic_stalker"] = "a technician and is practical, quiet and reliable", -- Xenotech  
     ["devushka"] = "a young woman. She is loyal but defiant and jaded, is witty and uses dry humor and is subtly flirty",  -- Hip
@@ -26,14 +26,14 @@ local unique_characters =  {
     --[[ DARKSCAPE ]]--
 	["dasc_tech_mlr"] = "a technician and is methodical, quiet and reliable",                       -- Polymer  
 	["dasc_trade_mlr"] = "a trader and is shrewd, persuasive and guarded",                      -- Cutter  
-	["ds_domik_isg_leader"] = "the leader of the UNISG faction and is commanding, strategic and protective",           -- Major Hernandez  
+	["ds_domik_isg_leader"] = "the commander of the elite Spec Ops Recon unit that makes up the the UNISG faction. Despite years of experience with clandestine operations he retains in touch with his humanity, and has a poorly hidden love for country music. He is intelligent, commanding, strategic and protective",           -- Major Hernandez  
 
     --[[ GARBAGE ]]--
-["hunter_gar_trader"] = "an expert mutant hunter and butcher and is gruff, practical and blunt",                           -- Butcher  
+["hunter_gar_trader"] = "an expert mutant hunter and butcher. He is older middle-aged and runs a butcher shop in the Train Depot in Garbage where he is willing to pay well for choice cuts of mutant parts. He is gruff, practical and blunt",                           -- Butcher  
 
     --[[ AGROPROM ]]--
 ["agr_smart_terrain_1_6_near_2_military_colonel_kovalski"] = "strict, formal, weary",         -- Major Kuznetsov  
-["agr_1_6_medic_army_mlr"] = "an army medic and is compassionate, calm and resilient",                               -- Rogovets  
+["agr_1_6_medic_army_mlr"] = "an army medic. He is compassionate, calm and resilient",                               -- Rogovets  
 ["agr_smart_terrain_1_6_army_trader_stalker"] = "a trader and supply manager for the military outpost in Agroprom. He is wary, transactional and reserved",             -- Sergeant Spooner  
 ["agr_1_6_barman_army_mlr"] = "the army provisions manager and unofficial bartender in charge of the recreational tent in the Agroprom military outpost. He is over fifty years old and was part of the initial cleanup efforts after the first Chernobyl disaster back in 1986. He is no longer on active combat duty and is experienced, casual and relaxed.",                             -- Commander  
 ["agr_smart_terrain_1_6_army_mechanic_stalker"] = "a military weapons technician and is precise, quiet and disciplined",             -- Lieutenant Kirilov
@@ -43,8 +43,8 @@ local unique_characters =  {
 
     --[[ DARK VALLEY ]]--
 ["zat_b7_bandit_boss_sultan"] = "the leader of the Bandit faction in the Zone. He is intelligent, manipulative, arrogant and calculating",       -- Sultan  
-["val_smart_terrain_7_3_bandit_mechanic_stalker"] = "a technician and mechanic and who is sarcastic, crude and loyal", -- Limpid  
-["guid_dv_mal_mlr"] = "working as a guide taking people safely through the Zone for a fee and is brash, impulsive and cocky",                             -- Pug  
+["val_smart_terrain_7_3_bandit_mechanic_stalker"] = "a technician and mechanic. He is sarcastic and crude but loyal", -- Limpid  
+["guid_dv_mal_mlr"] = "working as a guide taking people safely through the Zone for a fee. He is brash, impulsive and cocky",                             -- Pug  
 ["val_smart_terrain_7_4_bandit_trader_stalker"] = "a trader and is sly, persuasive and guarded", -- Olivius  
 
     --[[ ROSTOK ]]--
@@ -53,7 +53,7 @@ local unique_characters =  {
 	["bar_visitors_garik_stalker_guard"] = "guarded, quiet and focused",                         -- Garik  
 	["bar_informator_mlr"] = "an informant who sells intel for a fee and is sneaky, opportunistic and evasive",                                -- Snitch  
 	["guid_bar_stalker_navigator"] = "working as a guide taking people safely through the Zone for a fee and is helpful, calm and observant",                              -- Navigator  
-	["bar_arena_manager"] = "in charge of the local arena and arranges fights to the death and is assertive, boisterous and competitive",                             -- Arnie  
+	["bar_arena_manager"] = "in charge of the local arena, where he arranges fights to the death. He is assertive, boisterous and competitive",                             -- Arnie  
 	["bar_arena_guard"] = "stoic, loyal and silent",                                             -- Liolik  
 	["bar_dolg_leader"] = "the leader of the Duty faction and is stern, strategic and loyal",                                          -- General Voronin  
 	["bar_dolg_general_petrenko_stalker"] = "disciplined, formal and mission-focused",           -- Colonel Petrenko  
@@ -63,17 +63,17 @@ local unique_characters =  {
 	["bar_duty_security_squad_leader"] = "rigid, formal and protective",                         -- Captain Gavrilenko  
 
     --[[ YANTAR ]]--
-	["yan_stalker_sakharov"] = "polite, inquisitive, emotionally detached",         -- Professor Sakharov  
-	["mechanic_army_yan_mlr"] = "quiet, methodical, reliable",                      -- Peregrine  
-	["yan_povar_army_mlr"] = "alcoholic, unreliable, emotionally numb",             -- Spirit  
-	["yan_ecolog_kruglov"] = "anxious, cautious, dedicated",                        -- Professor Kruglov  
+	["yan_stalker_sakharov"] = "a veteran scientist and researcher of the Zone. He is over sixty years old and has been in the Zone for decades. Back in the day he helped Strelok by devicing the psi-helmet, a countermeasure equipment that allowed him to enter psi-fields. He is particularly interested in the secret labs housed in the Zone. He is polite, inquisitive and no-nonsense",         -- Professor Sakharov  
+	["mechanic_army_yan_mlr"] = "a Ukranian army mechanic assigned to help the scientists in Yantar maintain their basic equipment and defenses. He is quiet, methodical and reliable",                      -- Peregrine  
+	["yan_povar_army_mlr"] = "a Ukranian army provisions manager in charge of basic supplies for the scientits at the bunker in Yantar. He is alcoholic, unreliable and emotionally numb",             -- Spirit  
+	["yan_ecolog_kruglov"] = "a doctorate field researcher in biology specialising in animal mutations who came to the Zone to study its unique mutant fauna. While aware of its dangers he is enthusiastic about the Zone and sees it as a great opportunity to further mankind's scientific understanding. He is anxious, cautious and dedicated",                        -- Professor Kruglov  
 
     --[[ ARMY WAREHOUSES ]]--
 	["mil_smart_terrain_7_7_freedom_leader_stalker"] = "the leader of the Freedom faction and is charismatic, strategic and protective",     -- Lukash  
 	["mil_freedom_medic"] = "a medic and is laid-back, humorous and emotionally grounded",                        -- Solid  
 	["mil_smart_terrain_7_7_freedom_mechanic_stalker"] = "a technician and is quiet, loyal and methodical",            -- Screw  
 	["mil_smart_terrain_7_10_freedom_trader_stalker"] = "a trader and is greedy, sarcastic and ruthless",          -- Skinflint  
-	["mil_freedom_guid"] = "working as a guide taking people safely through the Zone for a fee and is cynical, perceptive and hardened",                                     -- Leshiy  
+	["mil_freedom_guid"] = "working as a guide taking people safely through the Zone for a fee. He is cynical, perceptive and hardened",                                     -- Leshiy  
 	["stalker_gatekeeper"] = "standing guard against threats coming from the path to the North and is stern, inflexible and protective",                                   -- Gatekeeper  
 
     --[[ DEAD CITY ]]--
@@ -105,7 +105,7 @@ local unique_characters =  {
 	["jup_b6_scientist_tech"] = "a technician and is cold, calculating and emotionally flat",            -- Tukarev  
 	["jup_b6_scientist_nuclear_physicist"] = "anxious, cautious, emotionally fragile", -- Professor Hermann  
 	["jup_b6_scientist_biochemist"] = "pragmatic, quiet, emotionally distant",    -- Professor Ozersky  
-	["jup_depo_isg_leader"] = "the leader of the UNISG faction and is stern, commanding and emotionally rigid",             -- Major Hernandez  
+	["jup_depo_isg_leader"] = "the commander of the elite Spec Ops Recon unit that makes up the the UNISG faction. He is intelligent, commanding, strategic and protective",             -- Major Hernandez  
 	["jup_depo_isg_tech"] = "a weapons technician and is meticulous, quiet and emotionally flat",                -- Lieutenant Maus  
 	["jup_cont_mech_bandit"] = "a technician and is sly, sarcastic and emotionally guarded",             -- Nile  
 	["jup_cont_trader_bandit"] = "a trader and is conniving, manipulative and emotionally cold",     -- Klenov  
