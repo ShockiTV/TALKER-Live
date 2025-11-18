@@ -156,19 +156,20 @@ function prompt_builder.create_dialogue_request_prompt(speaker, memories)
 
     local weapon_info = ""
     if speaker.weapon then
-        weapon_info = " who is carrying a " .. speaker.weapon
+        -- add a trailing " and " after the weapon
+        weapon_info = " who is carrying a " .. speaker.weapon .. " and"
     end
 
     logger.info("Creating prompt for speaker: %s", speaker)
 
     table.insert(messages, system_message("Write the next dialogue spoken by "
         .. speaker.name
-        .. (weapon_info or "")
-        .. " in a "
+		.. (weapon_info or "")
+		.. " who is "
+		.. (get_faction_speaking_style(speaker.faction) or "")
+        .. " Reply in the manner of someone who is "
         .. (speaker.personality or "")
-        .. ", "
-        .. (get_faction_speaking_style(speaker.faction) or "")
-        .. " manner."))
+        .. "."))
     table.insert(messages, system_message("Reply only in " .. config.language()))
     return messages
 end
