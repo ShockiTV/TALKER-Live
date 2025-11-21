@@ -1,4 +1,5 @@
 package.path = package.path .. ";./bin/lua/?.lua;"
+local backstories = require("domain.repo.backstories")
 local personalities = require("domain.repo.personalities")
 local log = require('framework.logger')
 
@@ -13,8 +14,13 @@ function Character.new(game_id, name, experience, faction, weapon)
         faction = faction,
         weapon = weapon
     }
+    new_char.backstory = backstories.get_backstory(new_char)
     new_char.personality = personalities.get_personality(new_char)
     return new_char
+end
+
+function Character.set_backstory(character, backstory)
+    character.backstory = backstory
 end
 
 function Character.set_personality(character, personality)
