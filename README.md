@@ -53,8 +53,20 @@ The [LLM-API-Key-Proxy](https://github.com/Mirrowel/LLM-API-Key-Proxy) is the be
 1.  **Download the Proxy**: Get the latest release from the [proxy's GitHub Releases page](https://github.com/Mirrowel/LLM-API-Key-Proxy/releases/latest).
 2.  **Unzip It**: Extract the downloaded file to its own folder.
     **IMPORTANT (Mod Organizer 2 Users)**: You **must** place the proxy folder outside of your MO2 mods directory (e.g., do not put it in `E:\GAMMA\mods`). MO2's virtual file system will prevent the proxy from finding its configuration files. A safe location would be something like `C:\TALKER_Proxy` or a folder on your Desktop.
-3.  **Add API Keys**: Run `setup_env.bat`. A window will pop up to help you add your API keys.
-4.  **Start the Proxy**: Double-click `proxy_app.exe`. A terminal window will appear, indicating the proxy is running. **Keep this window open while you play.**
+3.  **Configure and Run**: Simply run `proxy_app.exe` (without any arguments). This launches the new **interactive TUI (Text User Interface) launcher** with a powerful menu system:
+    *   🚀 **Run Proxy**: Start the proxy server with your configured settings
+    *   ⚙️ **Configure Proxy**: Set host, port, PROXY_API_KEY, and request logging
+    *   🔑 **Manage Credentials**: Add/edit API keys and OAuth credentials
+        - Supports any LiteLLM-compatible provider
+        - OAuth support for Gemini CLI, Qwen Code, and iFlow with automated browser authentication
+        - Automatic discovery of existing credentials from environment variables and system directories
+        - Export credentials for stateless deployment (Railway, Render, etc.)
+    *   📊 **View Status**: See configured providers, credential counts, and advanced settings
+    *   🔧 **Advanced Settings**: Configure custom OpenAI-compatible providers, model definitions, and concurrency limits
+    
+    The TUI automatically saves your settings to `launcher_config.json` and `.env` files.
+    
+    **After configuring credentials**, select **"Run Proxy"** from the main menu. A terminal window will appear, indicating the proxy is running. **Keep this window open while you play.**
 
 **Option B: Direct API Key (Simpler, but less stable and limited)**
 
@@ -121,9 +133,11 @@ To use the recommended **Gemini via API Proxy** option in the launcher, you will
 
 1.  **Google AI Studio**: Visit [Google AI Studio](https://aistudio.google.com/app/apikey) to create a free API key.
 2.  **Follow the Instructions**: The site will guide you through the process. It's quick and straightforward.
-3.  **Add to Proxy**: Once you have your key, use the `setup_env.bat` script from the proxy to add it.
+3.  **Add to Proxy**: Once you have your key, run `proxy_app.exe` to launch the interactive TUI, then select **"Manage Credentials"** to add it.
 
 For a more detailed walkthrough and a list of other free providers, please refer to the full [Free Models Guide](docs/Free_Models_Guide.md).
+
+**Note**: The proxy now features a modern **interactive TUI (Text User Interface)** launcher that makes configuration effortless. Run `proxy_app.exe` without arguments to access the full menu system for managing credentials, configuring settings, and running the proxy. The credential manager supports both standard API keys and OAuth credentials (like Gemini CLI), with automatic discovery from environment variables and system directories.
 
 ## Cheeki Breekivideo
 - [![Cheeki Breeki](https://img.youtube.com/vi/WmM-PPKTA8s/0.jpg)](https://www.youtube.com/watch?v=WmM-PPKTA8s)
