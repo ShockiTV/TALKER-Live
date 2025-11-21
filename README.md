@@ -31,15 +31,20 @@ To get started, you'll need to download a few separate components.
 
 **What to Download:**
 1.  **The Mod Itself (Latest Source Code):** For the latest features and fixes, download the source code directly from the [**`main` branch**](https://github.com/danclave/TALKER/archive/refs/heads/main.zip).
-2.  **Voice Utility Archive:** From the [TALKER Releases Page](https://github.com/danclave/TALKER/releases/latest), find the latest **MAIN** release and download the `TALKER-Mic-*.zip` archive if you plan to use voice chat.
-3.  **API Proxy:** Download the `LLM-API-Key-Proxy` release from its [own releases page](https://github.com/Mirrowel/LLM-API-Key-Proxy/releases/latest). This is highly recommended for connecting to AI services.
+2.  **Voice Utility Archive:** From the [TALKER Releases Page](https://github.com/danclave/TALKER/releases/latest), find the latest **MAIN** release and download the appropriate `TALKER-Mic-*.zip` archive for your operating system if you plan to use voice chat:
+    - **Windows**: `TALKER-Mic-Windows-*.zip`
+    - **Linux**: `TALKER-Mic-Linux-*.zip`
+    - **macOS**: `TALKER-Mic-macOS-*.zip`
+3.  **API Proxy:** Download the appropriate `LLM-API-Key-Proxy-*.zip` release for your operating system from its [own releases page](https://github.com/Mirrowel/LLM-API-Key-Proxy/releases/latest). This is highly recommended for connecting to AI services.
 
 **Installation Steps:**
 
 ### Step 1: Install TALKER and Mic Utility
 1.  It is recommended to use a mod manager like [Mod Organizer 2](https://lazystalker.blogspot.com/2020/11/mod-organizer-2-stalker-anomaly-setup.html).
 2.  Install the TALKER source code zip you downloaded like any other Anomaly mod.
-3.  If you plan to use voice chat, open the `TALKER-Mic-*.zip` archive you downloaded. Extract its contents (`talker_mic.exe` and `launch_mic.bat`) into the mod's root folder (e.g., `E:\GAMMA\mods\TALKER`).
+3.  If you plan to use voice chat, open the `TALKER-Mic-*.zip` archive you downloaded for your platform:
+    - **Windows**: Extract `talker_mic.exe` and `launch_mic.bat` into the mod's root folder (e.g., `E:\GAMMA\mods\TALKER`).
+    - **Linux/macOS**: Extract `talker_mic` and `launch_mic.bat` into the mod's root folder. You may need to make `talker_mic` executable (`chmod +x talker_mic`). But you are on linux, so figure it out.
 
 ### Step 2: Set Up Your AI Provider
 You need to connect TALKER to an AI service. This is a one-time setup.
