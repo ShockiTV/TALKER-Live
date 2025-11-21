@@ -92,7 +92,7 @@ Once in-game, you need to configure TALKER in the Mod Configuration Menu (MCM) b
     *   **Custom AI Model**: Enter the full name of your primary model. 
         *   **Example**: `gemini/gemini-2.5-flash` for Gemini, `chutes/deepseek-ai/DeepSeek-V3` for Chutes, or `nvidia_nim/deepseek-ai/deepseek-r1` for Nvidia.
     *   **Custom AI Model Fast**: Enter the name of a smaller, faster, secondary model for less complex tasks.
-        *   **Example**: `gemini/gemini-2.5-flash-lite-preview-06-17`.
+        *   **Example**: `gemini/gemini-2.5-flash-lite`.
 
     **Important Note on Model Names (Provider Prefixes)**
     When using the proxy, you must include a **provider prefix** in the model name. This tells the proxy which service to send the request to. Think of it like an address for your AI model.
