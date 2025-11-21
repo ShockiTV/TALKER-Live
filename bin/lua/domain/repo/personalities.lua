@@ -12,17 +12,23 @@ function M.set_queries(q)
 end
 
 local function get_random_faction_personality(faction)
-    log.spam("Fetching random personality for faction: "..faction)
-    return queries.load_random_xml("traits_" .. faction)
+    log.spam("Fetching random personality for faction: "..tostring(faction))
+    return queries.load_random_xml("traits_" .. tostring(faction))
 end
 
 local function get_random_personality()
     local personality = queries.load_random_xml("traits")
-    log.spam("Fetching a generic random personality..." .. personality.id)
+    local pid = ""
+    if type(personality) == "table" then
+        pid = tostring(personality.id or personality.text or "<table>")
+    else
+        pid = tostring(personality)
+    end
+    log.spam("Fetching a generic random personality... " .. pid)
     return personality
 end
 
-local function get_random_personalitites(amountOfPersonalities)
+local function get_random_personalities(amountOfPersonalities)
     local loadedPersonalities = {}
     local maxAttempts = math.max(10, amountOfPersonalities * 10)
     local attempts = 0
@@ -82,7 +88,7 @@ local function set_random_personality(character)
         local personality = unique_characters[tech_name]
         if not personality then
             log.warn("No personality found for unique character: ".. tech_name)
-            personality = get_random_personalitites(2)
+            personality = get_random_personalities(2)
             log.warn("Assigning random personality instead: ".. personality)
             character_personalities[character.game_id] = personality
             return
@@ -94,7 +100,7 @@ local function set_random_personality(character)
     local personality = get_random_faction_personality(character.faction)
     if not personality or personality == "" then
         log.spam("Faction personality empty, loading generic personality.")
-        personality = get_random_personalitites(2)
+        personality = get_random_personalities(2)
     end
     log.spam("Assigning random personality to character: "..character.game_id .. " - " .. personality)
     character_personalities[character.game_id] = personality
@@ -129,10 +135,13 @@ function M.load_save_data(saved_character_personalities)
         log.debug("TALKER personality reset is enabled. Clearing all saved personalities.")
         character_personalities = {}
     else
-        log.debug("TALKER personality reset is disabled. Loading saved personalities.")
-        character_personalities = saved_character_personalities
+        if saved_character_personalities ~= nil then
+            log.debug("TALKER personality reset is disabled. Loading saved personalities.")
+            character_personalities = saved_character_personalities
+        else
+            log.warn("No saved personalities provided to load_save_data; keeping current cache.")
+        end
     end
-
 end
 
 return M
