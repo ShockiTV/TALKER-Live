@@ -359,7 +359,7 @@ end
 -- XML Loading
 --------------------------------------------------------------------------------
 
--- Load a translated string from the game's XML files
+-- Load a translated string from the game's XML files. Vibe coding below, copilot thought this was a good idea.
 function load_xml(input)
     if not input then return "" end
     key = "talker_" .. input
@@ -374,14 +374,25 @@ end
 function load_random_xml(input)
     local translations = {}
     local baseKey = "talker_" .. input
+
+    -- try numbered keys first (talker_<input>_1, _2, ...)
     local i = 1
-    while true do -- always a good idea, right?
+    while true do
         local key = baseKey .. "_" .. i
         local translation = game.translate_string(key)
         if translation == key then break end
         table.insert(translations, translation)
         i = i + 1
     end
+
+    -- if none found, try the un-numbered talker_<input> key
+    if #translations == 0 then
+        local t = game.translate_string(baseKey)
+        if t ~= baseKey then
+            table.insert(translations, t)
+        end
+    end
+
     if #translations > 0 then
         return translations[math.random(1, #translations)]
     else
@@ -392,7 +403,7 @@ end
 -- HUD
 
 function display_hud_message(message)
-    actor_menu.set_msg(1, message, 3)
+    actor_menu.set_msg(1, message, 5) -- 5 seconds, up from 3
 end
 
 -- SOUND
