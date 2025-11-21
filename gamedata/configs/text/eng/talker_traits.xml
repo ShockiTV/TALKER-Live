@@ -1,300 +1,279 @@
 <?xml version="1.0" encoding="windows-1251"?>
 <string_table>
-    <string id="talker_traits_1">
+		<string id="talker_traits_1">
         <text>morose</text>
     </string>
-    <string id="talker_traits_2">
+		<string id="talker_traits_2">
         <text>sarcastic</text>
     </string>
-    <string id="talker_traits_3">
+		<string id="talker_traits_3">
         <text>cautious</text>
     </string>
-    <string id="talker_traits_4">
+		<string id="talker_traits_4">
         <text>paranoid</text>
     </string>
-    <string id="talker_traits_5">
+		<string id="talker_traits_5">
         <text>bloodthirsty</text>
     </string>
-    <string id="talker_traits_5">
+		<string id="talker_traits_5">
         <text>sardonic</text>
     </string>
-    <string id="talker_traits_6">
+		<string id="talker_traits_6">
         <text>gritty</text>
     </string>
-    <string id="talker_traits_7">
+		<string id="talker_traits_7">
         <text>wise-cracking</text>
     </string>
-    <string id="talker_traits_8">
+		<string id="talker_traits_8">
         <text>resilient</text>
     </string>
-    <string id="talker_traits_9">
+		<string id="talker_traits_9">
         <text>opportunistic</text>
     </string>
-    <string id="talker_traits_10">
+		<string id="talker_traits_10">
         <text>tenacious</text>
     </string>
-    <string id="talker_traits_11">
+		<string id="talker_traits_11">
         <text>mistrustful</text>
     </string>
-    <string id="talker_traits_12">
+		<string id="talker_traits_12">
         <text>pessimistic</text>
     </string>
-    <string id="talker_traits_13">
+		<string id="talker_traits_13">
         <text>witty</text>
     </string>
-    <string id="talker_traits_14">
+		<string id="talker_traits_14">
         <text>clever</text>
     </string>
-    <string id="talker_traits_15">
+		<string id="talker_traits_15">
         <text>unpredictable</text>
     </string>
-    <string id="talker_traits_16">
+		<string id="talker_traits_16">
         <text>a flatterer</text>
     </string>
-    <string id="talker_traits_17">
+		<string id="talker_traits_17">
         <text>friendly</text>
     </string>
-    <string id="talker_traits_18">
+		<string id="talker_traits_18">
         <text>battle-hardened</text>
     </string>
-    <string id="talker_traits_19">
+		<string id="talker_traits_19">
         <text>reckless</text>
     </string>
-    <string id="talker_traits_20">
+		<string id="talker_traits_20">
         <text>street-smart</text>
     </string>
-    <string id="talker_traits_21">
+		<string id="talker_traits_21">
         <text>nihilistic</text>
     </string>
-    <string id="talker_traits_22">
+		<string id="talker_traits_22">
         <text>pragmatic</text>
     </string>
-    <string id="talker_traits_23">
+		<string id="talker_traits_23">
         <text>envious</text>
     </string>
-    <string id="talker_traits_24">
+		<string id="talker_traits_24">
         <text>miserable</text>
     </string>
-    <string id="talker_traits_25">
+		<string id="talker_traits_25">
         <text>superstitious</text>
     </string>
-    <string id="talker_traits_26">
+		<string id="talker_traits_26">
         <text>gruff</text>
     </string>
-    <string id="talker_traits_27">
+		<string id="talker_traits_27">
         <text>jaded</text>
     </string>
-    <string id="talker_traits_28">
+		<string id="talker_traits_28">
         <text>curious</text>
     </string>
-    <string id="talker_traits_29">
+		<string id="talker_traits_29">
         <text>fearful</text>
     </string>
-    <string id="talker_traits_30">
+		<string id="talker_traits_30">
         <text>anxious</text>
     </string>
-    <string id="talker_traits_31">
+		<string id="talker_traits_31">
         <text>fatalistic</text>
     </string>
-    <string id="talker_traits_32">
+		<string id="talker_traits_32">
         <text>greed-driven</text>
     </string>
-    <string id="talker_traits_33">
+		<string id="talker_traits_33">
         <text>altruistic</text>
     </string>
-    <string id="talker_traits_34">
+		<string id="talker_traits_34">
         <text>philosophical</text>
     </string>
-    <string id="talker_traits_35">
+		<string id="talker_traits_35">
         <text>mysterious</text>
     </string>
-    <string id="talker_traits_36">
+		<string id="talker_traits_36">
         <text>a thrill-seeker</text>
     </string>
-    <string id="talker_traits_37">
+		<string id="talker_traits_37">
         <text>hesitant</text>
     </string>
-    <string id="talker_traits_38">
+		<string id="talker_traits_38">
         <text>brutal</text>
     </string>
-    <string id="talker_traits_39">
+		<string id="talker_traits_39">
         <text>calculating</text>
     </string>
-    <string id="talker_traits_40">
+		<string id="talker_traits_40">
         <text>ruthless</text>
     </string>
-    <string id="talker_traits_41">
+		<string id="talker_traits_41">
         <text>distrustful</text>
     </string>
-    <string id="talker_traits_42">
+		<string id="talker_traits_42">
         <text>streetwise</text>
     </string>
-    <string id="talker_traits_43">
+		<string id="talker_traits_43">
         <text>observant</text>
     </string>
-    <string id="talker_traits_44">
+		<string id="talker_traits_44">
         <text>scheming</text>
     </string>
-    <string id="talker_traits_45">
+		<string id="talker_traits_45">
         <text>hopeful</text>
     </string>
-    <string id="talker_traits_46">
+		<string id="talker_traits_46">
         <text>desperate</text>
     </string>
-    <string id="talker_traits_47">
+		<string id="talker_traits_47">
         <text>determined</text>
     </string>
-    <string id="talker_traits_48">
+		<string id="talker_traits_48">
         <text>apathetic</text>
     </string>
-    <string id="talker_traits_49">
+		<string id="talker_traits_49">
         <text>cowardly</text>
     </string>
-    <string id="talker_traits_50">
+		<string id="talker_traits_50">
         <text>dumb as rocks</text>
     </string>
-    <string id="talker_traits_51">
+		<string id="talker_traits_51">
         <text>disillusioned</text>
     </string>
-    <string id="talker_traits_52">
+		<string id="talker_traits_52">
         <text>dramatic</text>
     </string>
-    <string id="talker_traits_53">
+		<string id="talker_traits_53">
         <text>soft spoken</text>
     </string>
-    <string id="talker_traits_54">
+		<string id="talker_traits_54">
         <text>easily angered</text>
     </string>
-    <string id="talker_traits_55">
+		<string id="talker_traits_55">
         <text>rambling</text>
     </string>
-    <string id="talker_traits_56">
+		<string id="talker_traits_56">
         <text>polite</text>
     </string>
-    <string id="talker_traits_57">
+		<string id="talker_traits_57">
         <text>rude</text>
     </string>
-    <string id="talker_traits_58">
+		<string id="talker_traits_58">
         <text>selfish</text>
     </string>
-    <string id="talker_traits_59">
+		<string id="talker_traits_59">
         <text>gregarious</text>
     </string>
-    <string id="talker_traits_60">
+		<string id="talker_traits_60">
         <text>a joker</text>
     </string>
-    <string id="talker_traits_61">
+		<string id="talker_traits_61">
         <text>relaxed</text>
     </string>
-    <string id="talker_traits_62">
+		<string id="talker_traits_62">
         <text>tense</text>
     </string>
-    <string id="talker_traits_63">
+		<string id="talker_traits_63">
         <text>ambitious</text>
     </string>
-    <string id="talker_traits_64">
+		<string id="talker_traits_64">
         <text>an alcoholic</text>
     </string>
-	<string id="talker_traits_65">
+		<string id="talker_traits_65">
         <text>depressed</text>
     </string>
-	<string id="talker_traits_66">
+		<string id="talker_traits_66">
         <text>addicted to painkillers</text>
     </string>
-	<string id="talker_traits_67">
+		<string id="talker_traits_67">
         <text>sexually frustrated</text>
     </string>
-	<string id="talker_traits_68">
-        <text>affected by PTSD from watching a close friend get torn to shreds by an anomaly</text>
-    </string>
-	<string id="talker_traits_69">
+		<string id="talker_traits_68">
         <text>cocky</text>
     </string>
-	<string id="talker_traits_70">
+		<string id="talker_traits_69">
         <text>smug</text>
     </string>
-	<string id="talker_traits_71">
+		<string id="talker_traits_70">
         <text>sycophantic</text>
     </string>
-	<string id="talker_traits_72">
+		<string id="talker_traits_71">
         <text>quick to panic</text>
     </string>
-	<string id="talker_traits_73">
+		<string id="talker_traits_72">
         <text>full of childlike wonder</text>
     </string>
-	<string id="talker_traits_74">
+		<string id="talker_traits_73">
         <text>cynical</text>
-    </string>
-	<string id="talker_traits_75">
-        <text>fond of cooking and eating mutant meat and knows plenty of recipes for preparing mutants</text>
-    </string>
-	<string id="talker_traits_76">
+	</string>
+		<string id="talker_traits_74">
         <text>easily distracted</text>
     </string>
-	<string id="talker_traits_77">
+		<string id="talker_traits_75">
         <text>comedic</text>
     </string>
-	<string id="talker_traits_78">
+		<string id="talker_traits_76">
         <text>craving approval constantly</text>
     </string>
-	<string id="talker_traits_79">
+		<string id="talker_traits_77">
         <text>fond of making fun of others</text>
     </string>
-	<string id="talker_traits_80">
+		<string id="talker_traits_78">
         <text>a stoner</text>
     </string>
-	<string id="talker_traits_81">
+		<string id="talker_traits_79">
         <text>grovelling</text>
     </string>
-	<string id="talker_traits_82">
+		<string id="talker_traits_80">
         <text>an adrenaline junkie</text>
     </string>
-		<string id="talker_traits_83">
+		<string id="talker_traits_81">
         <text>a confident sharpshooter</text>
     </string>
-	<string id="talker_traits_84">
+		<string id="talker_traits_82">
         <text>a gun-nut</text>
     </string>
-		<string id="talker_traits_85">
+		<string id="talker_traits_83">
         <text>an artifact hunter</text>
     </string>
-		<string id="talker_traits_86">
+		<string id="talker_traits_84">
         <text>an outspoken commmunist</text>
     </string>
-		<string id="talker_traits_87">
-        <text>in the Zone to escape crippling gambling debt and is desperate to make enough money here to pay it off</text>
-    </string>
-		<string id="talker_traits_88">
-        <text>obsessed with pushing further north and wants to one day explore the Chernobyl Reactor</text>
-    </string>
-		<string id="talker_traits_89">
-        <text>recently turning to Christianity and Jesus after having done and experienced horrible things in the Zone</text>
-    </string>
-		<string id="talker_traits_90">
-        <text>long divorced but still can't get over the ex-wife that left</text>
-    </string>
-		<string id="talker_traits_91">
-        <text>regretting coming to the Zone and longs to escape back out to the normal world</text>
-    </string>
-		<string id="talker_traits_92">
+		<string id="talker_traits_85">
         <text>fond of making puns</text>
     </string>
-		<string id="talker_traits_93">
+		<string id="talker_traits_86">
         <text>subtle</text>
     </string>
-		<string id="talker_traits_93">
+		<string id="talker_traits_87">
         <text>quiet</text>
+	</string>
+	    <string id="talker_traits_88">
+        <text>naive</text>
     </string>
-		<string id="talker_traits_94">
-        <text>recently turning to Zen Buddhism to cope with the stress of the Zone</text>
-    </string>
-		<string id="talker_traits_95">
-        <text>a guilt-ridden former career criminal and assassin hiding out in the Zone</text>
-    </string>
-	    <string id="talker_traits_96">
-        <text>often high on psychedelic substances</text>
-    </string>
-		<string id="talker_traits_97">
+		<string id="talker_traits_89">
         <text>a pathological liar</text>
+    </string>
+		<string id="talker_traits_90">
+        <text>boisterous</text>
+    </string>
+		<string id="talker_traits_91">
+        <text>a braggart</text>
     </string>
 </string_table>
