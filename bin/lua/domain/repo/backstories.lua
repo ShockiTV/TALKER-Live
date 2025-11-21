@@ -2,7 +2,7 @@ package.path = package.path .. ";./bin/lua/?.lua;"
 local log = require("framework.logger")
 local unique_backstories = require("infra.STALKER.unique_backstories")
 local queries = talker_game_queries or require("tests.mocks.mock_game_queries")
-local RESET_BACKSTORIES_ON_LOAD = true -- ← Set to false to disable reset
+local RESET_BACKSTORIES_ON_LOAD = false -- ← Set to false to disable reset
 local M = {}
 local character_backstories = {}
 
@@ -94,5 +94,6 @@ function M.load_save_data(saved_character_backstories)
     end
 
 end
+
 
 return M
