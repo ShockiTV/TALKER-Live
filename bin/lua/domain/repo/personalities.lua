@@ -2,7 +2,7 @@ package.path = package.path .. ";./bin/lua/?.lua;"
 local log = require("framework.logger")
 local unique_characters = require("infra.STALKER.unique_characters")
 local queries = talker_game_queries or require("tests.mocks.mock_game_queries")
-local RESET_PERSONALITIES_ON_LOAD = FALSE -- ← Set to false to disable reset
+local RESET_PERSONALITIES_ON_LOAD = false -- ← Set to false to disable reset
 local M = {}
 local character_personalities = {}
 
