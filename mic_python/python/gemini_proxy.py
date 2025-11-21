@@ -39,7 +39,7 @@ def transcribe_audio_file(audio_path: str, prompt: str, lang: str = "en", out_pa
         }
         
         payload = {
-            "model": "gemini/gemini-2.5-flash-lite-preview-06-17", # Using a model capable of audio input
+            "model": "gemini/gemini-2.5-flash-lite", # Using a model capable of audio input
             "messages": [
                 {
                     "role": "user",
