@@ -41,8 +41,8 @@ function on_mcm_load()
             {
                 id = "custom_ai_model_fast",
                 type = "input",
-                val = "gemini/gemini-2.5-flash-lite-preview-06-17",
-                def = "gemini/gemini-2.5-flash-lite-preview-06-17",
+                val = "gemini/gemini-2.5-flash-lite",
+                def = "gemini/gemini-2.5-flash-lite",
             },
             {
                 id = "reasoning_level",
