@@ -24,10 +24,12 @@ end
 local function set_random_backstory(character)
     -- If the character is unique, we need to assign a specific backstory
     if tostring(character.game_id) == "0" then
-        return "" -- player
+        -- cache empty backstory for player so callers don't re-run assignment
+        character_backstories[character.game_id] = ""
+        return
     end
     if queries.is_unique_character_by_id(character.game_id) then
-        log.debug("Handling unique character: "..character.game_id)
+        log.debug("Handling unique character: "..tostring(character.game_id))
         local tech_name = queries.get_technical_name_by_id(character.game_id)
         local backstory = unique_backstories[tech_name]
         if not backstory then
@@ -56,19 +58,19 @@ local function set_random_backstory(character)
         log.spam("Faction backstory empty, loading generic backstory.")
         backstory = get_random_backstory()
     end
-    log.spam("Assigning random backstory to character: "..character.game_id .. " - " .. tostring(backstory))
+    log.spam("Assigning random backstory to character: "..tostring(character.game_id) .. " - " .. tostring(backstory))
     character_backstories[character.game_id] = backstory
 end
 
 function M.get_backstory(character)
-    log.spam("Retrieving backstory for character: "..character.game_id)
+    log.spam("Retrieving backstory for character: "..tostring(character.game_id))
     local backstory = character_backstories[character.game_id]
     if not backstory then
         log.spam("No backstory cached, setting a random one.")
         set_random_backstory(character)
         backstory = character_backstories[character.game_id]
         if not backstory then
-            log.warn("No backstory found after assignment: "..character.game_id)
+            log.warn("No backstory found after assignment: "..tostring(character.game_id))
         end
     end
     return backstory or ""
@@ -89,10 +91,13 @@ function M.load_save_data(saved_character_backstories)
         log.debug("TALKER backstory reset is enabled. Clearing all saved backstories.")
         character_backstories = {}
     else
-        log.debug("TALKER backstory reset is disabled. Loading saved backstories.")
-        character_backstories = saved_character_backstories
+        if saved_character_backstories ~= nil then
+            log.debug("TALKER backstory reset is disabled. Loading saved backstories.")
+            character_backstories = saved_character_backstories
+        else
+            log.warn("No saved backstories provided to load_save_data; keeping current cache.")
+        end
     end
-
 end
 
 
