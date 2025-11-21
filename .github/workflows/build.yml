@@ -45,7 +45,7 @@ jobs:
       shell: bash
       run: |
         cd mic_python/python
-        source .venv/bin/activate || . .venv/Scripts/activate
+        source ../../.venv/bin/activate || . ../../.venv/Scripts/activate
         uv pip install -r requirements.txt
         uv pip install pyinstaller
 
