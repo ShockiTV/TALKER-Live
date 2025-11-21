@@ -162,11 +162,12 @@ function prompt_builder.create_dialogue_request_prompt(speaker, memories)
 
     logger.info("Creating prompt for speaker: %s", speaker)
 
-    table.insert(messages, system_message("Write the next dialogue spoken by "
+    table.insert(messages, system_message("Write the next dialogue speaking as "
         .. speaker.name
 		.. (weapon_info or "")
 		.. " who is "
 		.. (get_faction_speaking_style(speaker.faction) or "")
+        .. (speaker.backstory or "")
         .. " Reply in the manner of someone who is "
         .. (speaker.personality or "")
         .. "."))
