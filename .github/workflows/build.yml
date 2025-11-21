@@ -29,37 +29,37 @@ jobs:
     - name: Check out repository
       uses: actions/checkout@v4
 
-    - name: Set up Python
-      id: setup-python
-      uses: actions/setup-python@v5
+    - name: Set up uv
+      uses: astral-sh/setup-uv@v4
       with:
-        python-version: '3.12'
+        enable-cache: true
+        cache-dependency-glob: "mic_python/python/requirements.txt"
 
-    - name: Get pip cache dir
-      id: pip-cache
+    - name: Set up Python with uv
       shell: bash
       run: |
-        echo "dir=$(pip cache dir)" >> $GITHUB_OUTPUT
-
-    - name: Cache pip dependencies
-      uses: actions/cache@v4
-      with:
-        path: ${{ steps.pip-cache.outputs.dir }}
-        key: ${{ runner.os }}-pip-3.12-${{ hashFiles('mic_python/python/requirements.txt') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-3.12
+        uv python install 3.12
+        uv venv --python 3.12
 
     - name: Install dependencies
       shell: bash
       run: |
-        pip install -r mic_python/python/requirements.txt
-        pip install pyinstaller
+        cd mic_python/python
+        source .venv/bin/activate || . .venv/Scripts/activate
+        uv pip install -r requirements.txt
+        uv pip install pyinstaller
 
     - name: Get PyInstaller cache directory
       id: pyinstaller-cache-dir
-      shell: pwsh
+      shell: bash
       run: |
-        echo "path=$($env:USERPROFILE)\AppData\Local\pyinstaller" >> $env:GITHUB_OUTPUT
+        if [ "${{ runner.os }}" == "Windows" ]; then
+          echo "path=$USERPROFILE/AppData/Local/pyinstaller" >> $GITHUB_OUTPUT
+        elif [ "${{ runner.os }}" == "Linux" ]; then
+          echo "path=$HOME/.cache/pyinstaller" >> $GITHUB_OUTPUT
+        elif [ "${{ runner.os }}" == "macOS" ]; then
+          echo "path=$HOME/Library/Application Support/pyinstaller" >> $GITHUB_OUTPUT
+        fi
 
     - name: Cache PyInstaller build data
       uses: actions/cache@v4
@@ -73,6 +73,7 @@ jobs:
       shell: bash
       run: |
         cd mic_python/python
+        source ../../.venv/bin/activate || . ../../.venv/Scripts/activate
         if [ "${{ runner.os }}" == "Windows" ]; then
           ./build.bat
         else
@@ -80,10 +81,6 @@ jobs:
           # Note: --icon parameter works differently on different platforms but PyInstaller handles it
           python -m PyInstaller --onefile --name talker_mic --icon=talker_mic.ico --hidden-import=gemini_proxy --hidden-import=whisper_local --hidden-import=whisper_api main.py
         fi
-
-    - name: Ensure PyInstaller cache directory exists
-      shell: pwsh
-      run: New-Item -ItemType Directory -Force -Path "${{ steps.pyinstaller-cache-dir.outputs.path }}"
 
     - name: Get short SHA
       id: version
@@ -110,7 +107,7 @@ jobs:
     - name: Archive build artifact
       uses: actions/upload-artifact@v4
       with:
-        name: talker-mic-build-Windows-${{ steps.version.outputs.sha }}
+        name: talker-mic-build-${{ runner.os }}-${{ steps.version.outputs.sha }}
         path: staging/
 
   release:
@@ -166,7 +163,7 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         path: release-assets
-        pattern: talker-mic-build-*-${{ needs.build.outputs.sha }}
+        pattern: talker-mic-build-*-${{ steps.get_sha.outputs.sha }}
 
     - name: Archive release files
       id: archive
