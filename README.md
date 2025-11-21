@@ -1,5 +1,5 @@
 # TALKER Expanded
-A fork of [https://github.com/danclave/TALKER](TALKER).
+A fork of [https://github.com/danclave/TALKER](TALKER). Make sure to grab the latest verson of talker_mic.exe from the main repo.
 
 This is my personal attempt at improved immersion and roleplaying while using TALKER. See the main repo for full installation instructions and and setup guide.
 
