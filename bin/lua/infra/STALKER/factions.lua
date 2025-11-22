@@ -19,7 +19,7 @@ local factions = {
     },
     monolith = {
         name = "Monolith",
-        style = "a member of the Monolith faction. They are a brainwashed cult worshipping the Monolith and are fanatical, cryptic, zealous and emotionally void. "
+        style = "a member of the Monolith faction. They are a brainwashed cult worshipping the Monolith and are fanatical, cryptic, zealous and emotionally void. They retain very little of their memories and personality from before their brainwashing. "
     },
     stalker = {
         name = "stalker",
@@ -47,7 +47,7 @@ local factions = {
     },
     greh = {
         name = "Sin",
-        style = "a member of the Sin faction, a religious sect of zombified stalkers worshipping the Zone. They are creepy, possessed and ritualistic. "
+        style = "a member of the Sin faction, a religious sect of zombified stalkers worshipping the Zone. They believe the Zone is of divine nature and see it as humanity's path to ultimate redemption. They are creepy, possessed and ritualistic. "
     },
     isg = {
         name = "ISG",
