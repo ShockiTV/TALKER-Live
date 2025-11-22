@@ -596,6 +596,8 @@ local important_npcs = Set {
 "guid_pri_a15_mlr", 										-- Tourist
 "trader_pri_a15_mlr", 										-- Cashier
 "pri_medic_stalker", 										-- Yar
+"pri_a16_mech_mlr",											-- Yar 
+"jup_b19_freedom_yar",										-- Yar 
 "merc_pri_a18_mech_mlr", 									-- Trunk
 "pri_special_trader_mlr", 									-- Meeker
 "merc_pri_grifon_mlr", 										-- Griffin
