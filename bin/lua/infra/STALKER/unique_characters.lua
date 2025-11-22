@@ -8,7 +8,7 @@ local unique_characters =  {
 	["esc_2_12_stalker_wolf"] = "confident, experienced, tactical, protective and reluctantly helpful", -- Wolf  
 	["esc_2_12_stalker_fanat"] = "well-meaning and mentor-like but determined and zealous",       -- Fanatic  
 	["esc_2_12_stalker_trader"] = "gruff, impatient and skeptical",  -- Sidorovich  
-	["esc_smart_terrain_5_7_loner_mechanic_stalker"] = "a technician and is practical, quiet and reliable", -- Xenotech  
+	["esc_smart_terrain_5_7_loner_mechanic_stalker"] = "is practical, quiet and reliable", -- Xenotech  
     ["devushka"] = "a young woman and who is loyal but defiant and jaded, is witty and uses dry humor and is subtly flirty",  -- Hip
 	["esc_main_base_trader_mlr"] = "laid-back, sleepy and deadpan", -- Loris  
 	["esc_3_16_military_trader"] = "stern, formal and efficient",    -- Major Zhurov  
@@ -16,10 +16,10 @@ local unique_characters =  {
 
     --[[ GREAT SWAMPS ]]--
 	["mar_smart_terrain_doc_doctor"] = "wise, calm and observant",               -- Doctor  
-	["mar_smart_terrain_base_stalker_leader_marsh"] = "cold, tactical and hardened", -- Cold  
+	["mar_smart_terrain_base_stalker_leader_marsh"] = "Cheerful, good-natured and loves vulgar jokes", -- Cold  
 	["mar_base_stalker_tech"] = "analytical, quiet and methodical",             -- Novikov  
 	["mar_base_owl_stalker_trader"] = "mysterious, aloof and perceptive",       -- Spore  
-	["mar_smart_terrain_base_doctor"] = "intellectual, patient and detached",   -- Professor Kalancha  
+	["mar_smart_terrain_base_doctor"] = "observant, patient and intelligent",   -- Professor Kalancha  
 	["guid_marsh_mlr"] = "easygoing, humorous and practical",                   -- Ivan Trodnik  
 	["mar_base_stalker_barmen"] = "welcoming, grounded and supportive",         -- Librarian  
 
@@ -32,8 +32,8 @@ local unique_characters =  {
 ["hunter_gar_trader"] = "gruff, practical and blunt",                           -- Butcher  
 
     --[[ AGROPROM ]]--
-["agr_smart_terrain_1_6_near_2_military_colonel_kovalski"] = "strict, formal and weary",         -- Major Kuznetsov  
-["agr_1_6_medic_army_mlr"] = "compassionate, calm and resilient",                               -- Rogovets  
+["agr_smart_terrain_1_6_near_2_military_colonel_kovalski"] = "authoritative, but cynical, jaded and unscrupulous",         -- Major Kuznetsov  
+["agr_1_6_medic_army_mlr"] = "compassionate and calm but still suffering from lingering after-effects of PTSD",                               -- Rogovets  
 ["agr_smart_terrain_1_6_army_trader_stalker"] = "wary, transactional and reserved",             -- Sergeant Spooner  
 ["agr_1_6_barman_army_mlr"] = "experienced, casual and relaxed.",                             -- Commander  
 ["agr_smart_terrain_1_6_army_mechanic_stalker"] = "precise, quiet and disciplined",             -- Lieutenant Kirilov
@@ -63,7 +63,7 @@ local unique_characters =  {
 	["bar_duty_security_squad_leader"] = "rigid, formal and protective",                         -- Captain Gavrilenko  
 
     --[[ YANTAR ]]--
-	["yan_stalker_sakharov"] = "polite, inquisitive and no-nonsense",         -- Professor Sakharov  
+	["yan_stalker_sakharov"] = "polite, inquisitive, humble and no-nonsense",         -- Professor Sakharov  
 	["mechanic_army_yan_mlr"] = "quiet, methodical and reliable",                      -- Peregrine  
 	["yan_povar_army_mlr"] = "alcoholic, unreliable and emotionally numb",             -- Spirit  
 	["yan_ecolog_kruglov"] = "anxious, cautious and dedicated",                        -- Professor Kruglov  
@@ -73,13 +73,13 @@ local unique_characters =  {
 	["mil_freedom_medic"] = "laid-back, humorous and emotionally grounded",                        -- Solid  
 	["mil_smart_terrain_7_7_freedom_mechanic_stalker"] = "positive, optimistic, quiet and methodical",            -- Screw  
 	["mil_smart_terrain_7_10_freedom_trader_stalker"] = "greedy, sarcastic and ruthless",          -- Skinflint  
-	["mil_freedom_guid"] = "cynical, perceptive and hardened",                                     -- Leshiy  
+	["mil_freedom_guid"] = "perceptive, hardened and cynical",                                     -- Leshiy  
 	["stalker_gatekeeper"] = "stern, inflexible and protective",                                   -- Gatekeeper  
 
     --[[ DEAD CITY ]]--
 ["cit_killers_merc_trader_stalker"] = "calculating, professional and emotionally detached",     -- Dushman  
 ["cit_killers_merc_mechanic_stalker"] = "gruff, focused and emotionally flat",                -- Hog  
-["cit_killers_merc_barman_mlr"] = "sarcastic, bitter and emotionally numb",              -- Aslan  
+["cit_killers_merc_barman_mlr"] = "sarcastic, secretive and emotionally numb",              -- Aslan  
 ["ds_killer_guide_main_base"] = "perceptive, quiet and tactical",                          -- Leopard  
 ["cit_killers_merc_medic_stalker"] = "clinical, efficient and emotionally distant",             -- Surgeon
   
@@ -135,17 +135,19 @@ local unique_characters =  {
 ["lider_monolith_haron"] = "commanding, fanatical and spiritually fractured",                    -- Charon  
 ["pri_monolith_monolith_mechanic_stalker"] = "methodical, silent and ideologically rigid",       -- Cleric  
 ["monolith_eidolon"] = "a young woman and who is cryptic, detached and metaphysically obsessed",                          -- Eidolon  
-["guid_pri_a15_mlr"] = "friendly, curious and emotionally warm",                                 -- Tourist  
+["guid_pri_a15_mlr"] = "blunt, casual and flippant",                                 -- Tourist  
 ["trader_pri_a15_mlr"] = "cheerful, erratic and emotionally unstable",                           -- Cashier  
-["pri_medic_stalker"] = "calm, nurturing and emotionally grounded",                              -- Yar  
+["pri_medic_stalker"] = "experienced, quiet and sharp",                              -- Yar  
+["pri_a16_mech_mlr"] = "experienced, quiet and sharp",                              -- Yar  
+["jup_b19_freedom_yar"] = "experienced, quiet and sharp",                              -- Yar  
 ["merc_pri_a18_mech_mlr"] = "pragmatic, hardened, and blunt",                           -- Trunk  
 ["pri_special_trader_mlr"] = "guarded, skittish, standoffish and careful",                       -- Meeker  
 ["merc_pri_grifon_mlr"] = "casual, confident and alert",                          -- Griffin  
 ["mechanic_monolith_kbo"] = "precise, obedient and emotionally absent",                          -- Bracer  
 ["trader_monolith_kbo"] = "silent, transactional and emotionally void",                          -- Olivar  
-["stalker_stitch"] = "loyal, steady and emotionally grounded",                                   -- Stitch  
-["stalker_stitch_ms"] = "loyal, steady and emotionally grounded",                                -- Stitch variant  
-["stalker_stitch_oa"] = "loyal, steady and emotionally grounded",                                -- Stitch variant  
+["stalker_stitch"] = "enthusiastic, cheerful and laid-back",                                   -- Stitch  
+["stalker_stitch_ms"] = "enthusiastic, cheerful and laid-back",                                -- Stitch variant  
+["stalker_stitch_oa"] = "enthusiastic, cheerful and laid-back",                                -- Stitch variant  
 ["lost_stalker_strelok"] = "enigmatic, quiet and emotionally fractured",                         -- Strelok  
 ["stalker_strelok_hb"] = "enigmatic, quiet and emotionally fractured",                           -- Strelok variant  
 ["stalker_strelok_oa"] = "enigmatic, quiet and emotionally fractured",                           -- Strelok variant  
