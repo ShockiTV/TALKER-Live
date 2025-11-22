@@ -180,4 +180,7 @@
 		<string id="talker_stories_Mercenary_60">
         <text>You joined the US Army to fund your education, but it turned out you were never made for school. You worked for several Private Military Companies in the US before coming to the Zone. </text>
 	</string>
+		<string id="talker_stories_Mercenary_61">
+        <text>You have a wife waiting for you outside of the Zone, in the normal world. You often worry she is cheating on you while you're in here. </text>
+	</string>
 </string_table>
