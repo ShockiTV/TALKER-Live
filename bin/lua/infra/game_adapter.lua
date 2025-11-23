@@ -126,7 +126,7 @@ function m.display_to_player(message, seconds)
     if not config.SHOW_HUD_MESSAGES then
         return
     end
-    seconds = seconds or 3
+    seconds = seconds or 7
     command.display_hud_message(message, seconds)
 end
 
