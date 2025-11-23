@@ -59,7 +59,7 @@ local factions = {
     },
     monster = {
         name = "Monster",
-        style = "alien, cruel and emotionally surreal. "
+        style = "non-human mutant. "
     }
 }
 function get_faction_name(technical_name)
