@@ -28,7 +28,7 @@ function Character.set_personality(character, personality)
 end
 
 function Character.describe(character)
-    local description = string.format("%s, a %s member of the %s faction who is %s", character.name, character.experience, character.faction, character.personality)
+    local description = string.format("%s - a %s rank member of the %s faction who is %s", character.name, character.experience, character.faction, character.personality)
     if character.weapon then
         description = description .. " wielding a " .. character.weapon
     end
