@@ -167,7 +167,7 @@ function prompt_builder.create_dialogue_request_prompt(speaker, memories)
 		.. (weapon_info or "")
 		.. " who is a "
 		.. speaker.experience
-		.. " "
+		.. " rank "
 		.. (get_faction_speaking_style(speaker.faction) or "")
         .. (speaker.backstory or "")
         .. " Reply in the manner of someone who is "
