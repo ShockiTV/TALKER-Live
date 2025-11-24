@@ -18,7 +18,7 @@ local function cooldown_ready()
 end
 
 local function someone_should_make_idle_conversation()
-    local result = cooldown_ready() and queries.is_player_in_combat()
+    local result = cooldown_ready() and not queries.is_player_in_combat()
     -- reset cooldown
     if result then last_idle_conversation_time_ms = queries.get_game_time_ms() end
     return result
@@ -31,7 +31,9 @@ function on_every_10_seconds()
     if not someone_should_make_idle_conversation() then return end
 
     --- create event
-    local candidates = game.get_characters_near_player
+    local candidates = game.get_characters_near_player()
+    if not candidates or #candidates == 0 then return end
+
     local random_speaker = candidates[math.random(#candidates)]
     if queries.is_in_combat(random_speaker) then return end
 
@@ -61,7 +63,7 @@ local function on_every_ms()
 end
 
 function on_game_start()
-    RegisterScriptCallback("on_actor_update", on_every_ms)
+    RegisterScriptCallback("actor_on_update", on_every_ms)
 end
 
 function is_loaded()
