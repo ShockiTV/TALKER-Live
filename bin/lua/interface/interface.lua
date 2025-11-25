@@ -5,16 +5,28 @@ local game_adapter = require("infra.game_adapter")
 
 local m = {}
 
+--- Instructs a specific character to perform a dialogue action, notifying nearby witnesses.
+-- @param unformatted_description (string) The template for the instruction, e.g., "%s begins an idle conversation."
+-- @param character (game_object) The character being instructed.
+-- @param important (boolean) Whether this instruction is high priority.
+-- @param flags (table, optional) A table of special flags for the event.
+function m.register_character_instructions(unformatted_description, character, important, flags)
+    -- The 'character' passed here is a custom Character object from the game_adapter, not a raw game_object.
+    local witnesses = game_adapter.get_characters_near_player()
+    -- This function acts as a specific entry point that gathers witnesses and then calls the main event registration function, returning its status.
+    return m.register_game_event(unformatted_description, {character.name}, witnesses, important, flags)
+end
+
 -- prototype
 
 function m.register_game_event_near_player(unformatted_description, involved_objects, important)
     local witnesses = game_adapter.get_characters_near_player()
-    m.register_game_event(unformatted_description, involved_objects, witnesses, important)
+    return m.register_game_event(unformatted_description, involved_objects, witnesses, important, nil)
 end
 
-local function register_game_event(unformatted_description, event_objects, witnesses, important)
+local function register_game_event(unformatted_description, event_objects, witnesses, important, flags)
     log.info("Registering game event")
-    local new_event = game_adapter.create_game_event(unformatted_description, event_objects, witnesses)
+    local new_event = game_adapter.create_game_event(unformatted_description, event_objects, witnesses, flags)
     log.debug("New event: %s", new_event)
     talker.register_event(new_event, important)
 end
@@ -30,12 +42,14 @@ local function check_format_sanity(unformatted_description, event_objects)
     return true
 end
 
-function m.register_game_event(unformatted_description, event_objects, witnesses, important)
-    if not check_format_sanity(unformatted_description, event_objects) then return end
-    local success, error = pcall(register_game_event, unformatted_description, event_objects, witnesses, important)
+function m.register_game_event(unformatted_description, event_objects, witnesses, important, flags)
+    if not check_format_sanity(unformatted_description, event_objects) then return false end
+    local success, error = pcall(register_game_event, unformatted_description, event_objects, witnesses, important, flags)
     if not success then
         log.error("Failed to register game event: %s", error)
+        return false
     end
+    return true
 end
 
 ----------------------------------------------------------------------------------------------------
