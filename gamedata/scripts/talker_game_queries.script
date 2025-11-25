@@ -65,7 +65,11 @@ end
 
 function is_player(npc)
     if not npc then return false end
-    return npc:id() == 0 or false
+    -- A pcall via `try` is necessary to safely check the object's state, as calling
+    -- methods on a "dead" (but not nil) object can cause a script error.
+    local is_alive = try(npc.alive, npc)
+    if not is_alive then return false end
+    return npc:id() == 0
 end
 
 function get_player_weapon()
@@ -89,10 +93,8 @@ function is_monster(object)
 end
 
 function get_id(obj)
-    if not obj then
-        error("get_id called with nil obj")
-    end
-    return tostring(obj:id())
+    local function get_id_logic() return tostring(obj:id()) end
+    return try(get_id_logic)
 end
 
 function is_alive(obj)
@@ -108,6 +110,9 @@ end
 -- Function to get human-readable names for mutants based on patterns in their technical names
 function describe_mutant(mutant)
     must_exist(mutant, "describe_mutant")
+    -- If the object is a stalker, it's not a mutant. Return nil so get_name can use character_name.
+    -- This also protects against wrapped character objects that don't have the :section() method.
+    if is_stalker(mutant) then return nil end
     local mutant_technical_name = get_technical_name(mutant)
     -- TODO move to XML or replace entirely with pre-existing function
     local patternToNameMap = {
@@ -197,14 +202,14 @@ function is_npc_in_combat(npc)
 end
 
 function is_in_combat(npc)
-    if not npc or not is_alive(npc) then
-        log.warn('is_in_combat called on dead or nil npc')
-        return false
-    end
+    -- Ensure it's a valid, living NPC before checking combat state.
+    -- A pcall via `try` is necessary to prevent script errors on "dead" objects.
+    if not try(npc.alive, npc) then return false end
+    
     if is_player(npc) then
         return #get_enemies_fighting_player() ~= 0
     end
-    return is_npc_in_combat(npc) or is_enemy_fighting_player(npc) -- doesnt seem reliable?
+    return is_npc_in_combat(npc) or is_enemy_fighting_player(npc)
 end
 
 -- FACTIONS
@@ -403,7 +408,7 @@ end
 -- HUD
 
 function display_hud_message(message)
-    actor_menu.set_msg(1, message, 5) -- 5 seconds, up from 3
+    actor_menu.set_msg(1, message, 7) -- 7 seconds, up from 3
 end
 
 -- SOUND
@@ -743,4 +748,3 @@ end
 function is_loaded()
     return true
 end
-
