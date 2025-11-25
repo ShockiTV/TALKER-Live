@@ -11,33 +11,55 @@ local queries = talker_game_queries
 -- CONDITIONS
 --------------------------------------------------------------------------------------------
 local last_idle_conversation_time_ms = 0
-local idle_conversation_time_cooldown_ms = 10 * 60 * 1000 -- 10 minutes
+local idle_conversation_time_cooldown_ms = 4 * 60 * 1000 -- 4 minutes
 
 local function cooldown_ready()
     return queries.get_game_time_ms() - last_idle_conversation_time_ms > idle_conversation_time_cooldown_ms
 end
 
-local function someone_should_make_idle_conversation()
-    local result = cooldown_ready() and not queries.is_player_in_combat
-    -- reset cooldown
-    if result then last_idle_conversation_time_ms = queries.get_game_time_ms() end
-    return result
+local function are_conditions_met()
+    local is_player_in_combat = #queries.get_enemies_fighting_player() ~= 0
+    return cooldown_ready() and not is_player_in_combat
 end
-
 ---------------------------------------------------------------------------------------------
 -- IDLE CONVERSATION
 --------------------------------------------------------------------------------------------
 function on_every_10_seconds()
-    if not someone_should_make_idle_conversation() then return end
+    if not are_conditions_met() then return end
 
     --- create event
-    local candidates = game.get_characters_near_player()
-    if not candidates or #candidates == 0 then return end
+    local all_candidates = game.get_characters_near_player()
+    if not all_candidates or #all_candidates == 0 then return end
 
-    local random_speaker = candidates[math.random(#candidates)]
-    if queries.is_in_combat(random_speaker) then return end
+    -- Filter out invalid candidates (player, those in combat)
+    local valid_candidates = {}
+    for _, npc in ipairs(all_candidates) do
+        -- The 'npc' is a custom Character table. We need the raw game object for queries.
+        local npc_obj = queries.get_obj_by_id(npc.game_id)
+        -- Check is_in_combat FIRST, as it safely handles dead/nil NPCs.
+        -- is_player also includes a nil check.
+        if npc_obj and not queries.is_player(npc_obj) and not queries.is_in_combat(npc_obj) then
+            table.insert(valid_candidates, npc_obj)
+        end
+    end
 
-    interface.register_character_instructions("%s begins an idle conversation to pass the time", random_speaker)
+    -- If no valid candidates are left, do nothing.
+    if #valid_candidates == 0 then return end
+
+    -- Pick a random speaker from the valid list
+    local random_speaker = valid_candidates[math.random(#valid_candidates)]
+
+    local speaker = queries.get_name(random_speaker)
+
+    local instruction = string.format("%s begins an idle conversation to pass the time. The next line of dialogue must be spoken by %s.", speaker, speaker)
+    -- Pass a flag to ensure this prompt is only for idle conversation.
+    local success = interface.register_character_instructions(instruction, speaker, false, { idle_only = true })
+
+    if success then
+        log.debug("TALKER: Idle chatter triggered for " .. speaker)
+        -- Reset cooldown only after a conversation has been successfully triggered
+        last_idle_conversation_time_ms = queries.get_game_time_ms()
+    end
 end
 
 --------------------------------------------------------------------------------------------
@@ -63,7 +85,19 @@ local function on_every_ms()
 end
 
 function on_game_start()
+    RegisterScriptCallback("save_state", save_state)
+    RegisterScriptCallback("load_state", load_state)
     RegisterScriptCallback("actor_on_update", on_every_ms)
+end
+
+function save_state(data)
+    data.talker_idle_last_check_time_ms = last_check_time_ms
+    data.talker_idle_last_conversation_time_ms = last_idle_conversation_time_ms
+end
+
+function load_state(data)
+    last_check_time_ms = data.talker_idle_last_check_time_ms or 0
+    last_idle_conversation_time_ms = data.talker_idle_last_conversation_time_ms or 0
 end
 
 function is_loaded()
