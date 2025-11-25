@@ -133,6 +133,14 @@ function prompt_builder.create_dialogue_request_prompt(speaker, memories)
         return a.game_time_ms < b.game_time_ms
     end)
 
+    -- Check for an 'idle_only' flag on the most recent memory.
+    -- If found, use only that memory to force an idle conversation prompt.
+    local latest_memory = memories[#memories]
+    if latest_memory and latest_memory.flags and latest_memory.flags.idle_only then
+        logger.info("'idle_only' flag detected. Building prompt with a single event.")
+        memories = { latest_memory }
+    end
+
     -- keep only the 10 most recent
     local start_index = math.max(#memories - 9, 1)
     local last_ten_memories = {}
