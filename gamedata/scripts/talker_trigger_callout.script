@@ -44,7 +44,11 @@ function on_enemy_eval(npc_obj, target_obj)
     --- create callout event
     local unformatted_description = "%s spotted a %s"
     local spotter = game.create_character(npc_obj)
+    -- If the character object couldn't be created (e.g., NPC was despawned), abort.
+    if not spotter then return end
     local enemy = game.create_character(target_obj)
+    -- If the character object couldn't be created (e.g., NPC was despawned), abort.
+    if not enemy then return end
     local witnesses = {spotter} -- information is conveyed through their dialogue event itself
 
     -- register event
