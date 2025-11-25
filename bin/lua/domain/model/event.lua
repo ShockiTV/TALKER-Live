@@ -11,13 +11,14 @@ Event.TYPE = {
 }
 
 -- Event constructor
-function Event.create_event(unformatted_description_or_type, involved_objects, game_time_ms, world_context, witnesses, source_event)
+function Event.create_event(unformatted_description_or_type, involved_objects, game_time_ms, world_context, witnesses, flags, source_event)
     local event = {}
     event.description = unformatted_description_or_type
     event.involved_objects = involved_objects or {}
     event.game_time_ms = game_time_ms
     event.world_context = world_context
     event.witnesses = witnesses or {}
+    event.flags = flags or {} -- Add flags to the event object
     event.source_event = source_event
     return event
 end
