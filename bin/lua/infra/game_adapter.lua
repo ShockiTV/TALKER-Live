@@ -48,6 +48,11 @@ function m.get_name_by_id(game_id)
     return query.get_name(game_obj)
 end
 
+function m.get_name(game_obj)
+    if not game_obj then return "Unknown" end
+    return query.get_name(game_obj)
+end
+
 ------------------------------------------------------------
 --- CONSTRUCTORS
 ------------------------------------------------------------
@@ -61,10 +66,10 @@ function gameObj_to_characters(gameObjs)
 end
 
 
-function m.create_game_event(unformatted_description, involved_objects, witnesses)
+function m.create_game_event(unformatted_description, involved_objects, witnesses, flags)
     local game_time = query.get_game_time_ms()
     local world_context = query.describe_world()
-    local new_event = Event.create_event(unformatted_description, involved_objects, game_time, world_context, witnesses)
+    local new_event = Event.create_event(unformatted_description, involved_objects, game_time, world_context, witnesses, flags)
     return new_event
 end
 
