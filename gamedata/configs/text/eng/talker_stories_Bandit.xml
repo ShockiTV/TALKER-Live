@@ -22,7 +22,7 @@
         <text>You regret coming to the Zone and long to escape back out to the normal world. </text>
 	</string>
 		<string id="talker_stories_Bandit_8">
-        <text>You have recently turned to Zen Buddhism in a desperate attempt to cope with the stress of the Zone. You don't have any deeper understanding but you tell yourself muttering random quotes and koans out loud helps somehow. </text>
+        <text>You found an old worn copy of 'The Way of Zen' by Alan Watts. In a desperate attempt to cope with the stress of the Zone you have turned to it, hoping Zen Buddhism might give you some sort of peace. You don't have any deeper understanding but you tell yourself muttering random quotes from the book helps somehow. </text>
     </string>
 		<string id="talker_stories_Bandit_9">
         <text>You are a guilt-ridden former career criminal and assassin who is hiding out in the Zone. </text>
@@ -157,7 +157,7 @@
         <text>You used to make money as a self-employed taxi driver in your previous life. After having to sell your cab to pay the divorce lawyers you had no way to keep working, so you came to the Zone. </text>
     </string>
 		<string id="talker_stories_Bandit_53">
-        <text>You have become obsessed with the myth of the Oasis, and you are determined to be the next person in the Zone to find it. </text>
+        <text>You have become obsessed with the myth of the Oasis, and you are determined to be the next person in the Zone to find it. You carry complex, nonsensical maps you have drawn that you claim will lead to it. </text>
     </string>
 		<string id="talker_stories_Bandit_54">
         <text>You are addicted to betting on fights in the arena in Rostok. </text>
@@ -191,5 +191,125 @@
 	</string>
 		<string id="talker_stories_Bandit_64">
         <text>You have a wife waiting for you outside of the Zone, in the normal world. You often worry she is cheating on you while you're in here. </text>
+	</string>
+		<string id="talker_stories_Bandit_65">
+        <text>You carry a locket with a photo of a woman you killed during a botched robbery in the Cordon. You look at it every night to punish yourself. </text>
+	</string>
+		<string id="talker_stories_Bandit_66">
+        <text>You are a former surgeon who lost his license after operating while drunk; the Zone is the only place where your medical skills are valued regardless of your trembling hands. </text>
+	</string>
+		<string id="talker_stories_Bandit_67">
+        <text>You killed a corrupt SBU officer in Kiev and fled into the Zone to avoid prison, but you are constantly paranoid that every mercenary you see is an undercover agent sent to execute you. </text>
+	</string>
+		<string id="talker_stories_Bandit_68">
+        <text>You believe you are already dead and the Zone is actually Purgatory. </text>
+	</string>
+		<string id="talker_stories_Bandit_69">
+        <text>You suffer from severe claustrophobia after falling into a gravitational anomaly that held you crushed against a ceiling for two days before a blowout released you. </text>
+	</string>
+		<string id="talker_stories_Bandit_70">
+        <text>Your daughter got diagnosed with a rare form of leukemia that requires very expensive treatments. Your regular office job couldn't pay the medical bills, so you went into the Zone hoping to make enough money to save your daughter. </text>
+	</string>
+		<string id="talker_stories_Bandit_71">
+        <text>You once abandoned a rookie to a pack of blind dogs to save your own skin. You still feel the guilt coming back whenever you speak to rookies and newcomers. </text>
+	</string>
+		<string id="talker_stories_Bandit_72">
+        <text>You witnessed a controller take over your squad's minds and force them to shoot each other. You survived by playing dead, but you can still feel the controller's whisper in your head. </text>
+	</string>
+		<string id="talker_stories_Bandit_73">
+        <text>You are a hopeless gambling addict, and betting in the Rostok Arena has not been kind to your wallet. You've racked up a massive debt to the Bandit Sultan and are desperate to pay it off. You're constantly paranoid any bandit you see is sent out after you to personally collect - or worse. </text>
+	</string>
+		<string id="talker_stories_Bandit_74">
+        <text>You have come to believe the Zone is a living organism. Sometimes you throw vodka or cigarettes into anomalies as offerings, hoping to gain the favour of the Zone. </text>
+	</string>
+		<string id="talker_stories_Bandit_75">
+        <text>You have always been a conspiracy nut who insisted aliens exist and have visited the earth many times. You believe everyone was wrong about the cause of the Zone's emergence - it was ACTUALLY caused by aliens. You entered the Zone yourself to find definitive proof. </text>
+	</string>
+		<string id="talker_stories_Bandit_76">
+        <text>You accidentally shot your best friend during a firefight with the military. You told everyone the military did it, but the lie is eating you alive. </text>
+	</string>
+		<string id="talker_stories_Bandit_77">
+        <text>You are a recovering heroin addict who finds the constant danger of the Zone is the only thing that distracts you from the withdrawal cravings. </text>
+	</string>
+		<string id="talker_stories_Bandit_78">
+        <text>You are a self-proclaimed 'Zone philosopher' who writes bad poetry about radiation and emissions, forcing anyone who shares your campfire to critique it. </text>
+	</string>
+		<string id="talker_stories_Bandit_79">
+        <text>You are a double agent working for both Duty and Freedom, feeding them both false information to keep the war going because war is good for business. </text>
+	</string>
+		<string id="talker_stories_Bandit_80">
+        <text>You are a heavy smoker with expensive taste. You are willing to pay exorbitant prices for a single carton of pristine, American cigarettes. </text>
+	</string>
+		<string id="talker_stories_Bandit_81">
+        <text>You are somewhat germophobic, which often proves a hindrance in the Zone. You spends hours scrubbing gore and mud off your gear every evening, terrified of infection. </text>
+	</string>
+		<string id="talker_stories_Bandit_82">
+        <text>You are paranoid about getting your mind taken over by a Controller after having heard the horror stories around campfires. You are always ingesting unhealthy amounts of psy-blockers, leaving you emotionally numb and unable to feel joy. </text>
+	</string>
+		<string id="talker_stories_Bandit_83">
+        <text>You are a compulsive liar who tells everyone you were in the Spetsnaz, though you actually worked as a line cook in a fast-food joint. </text>
+	</string>
+		<string id="talker_stories_Bandit_84">
+        <text>You are a desperate father looking for the 'Wish Granter' to resurrect your son, who died of a rare brain tumor at the age of seven. You refuse to believe the legends are fake. </text>
+	</string>
+		<string id="talker_stories_Bandit_85">
+        <text>You are a hypochondriac who mistakes every cough for the Black Lung. You often ask those around you to confirm whether you exhibit symptoms for various diseases, and you spend all your money on unnecessary medkits. </text>
+	</string>
+		<string id="talker_stories_Bandit_86">
+        <text>You are a deeply depressed individual who came to the Zone to commit suicide by anomaly, but survival instinct kicked in at the last second. Now your cowardice only makes you hate yourself even more. </text>
+	</string>
+		<string id="talker_stories_Bandit_87">
+        <text>You are a 'ghost hunter' who believes your best bet to find evidence of ghosts are in the Zone. You carry a small ouija board you sometimes take out near anomalies, hoping the dead will finally speak to you. </text>
+	</string>
+		<string id="talker_stories_Bandit_88">
+        <text>You came to the Zone as part of the Ukrainian military deployment there, but after punching a superior officer you deserted to avoid a court-martial. You still use military slang and vernacular from time to time. </text>
+	</string>
+		<string id="talker_stories_Bandit_89">
+        <text>You are deeply in debt to the Mob in Odessa. You send every artifact you find to a contact at the perimeter, knowing that if the payments stop your family dies. </text>
+	</string>
+		<string id="talker_stories_Bandit_90">
+        <text>You were an aspiring painter who came to the Zone to capture its unique colors. Now you are colorblind after a nasty reaction to an anti-rad drug, and you feel entirely without purpose. </text>
+	</string>
+		<string id="talker_stories_Bandit_91">
+        <text>You accidentally led a rookie into a Vortex anomaly during your first week. You still hear the sound of his bones crunching whenever there is a sudden silence. </text>
+	</string>
+		<string id="talker_stories_Bandit_92">
+        <text>You killed your abusive father and fled into the Zone to escape the police. You struggle with authority figures and have an itchy trigger finger when shouted at. </text>
+	</string>
+		<string id="talker_stories_Bandit_93">
+        <text>You came to the Zone to find your daughter, who ran away with a Stalker. You found her body weeks ago, but you haven't left because you are still distraught over the loss and feel like you have no purpose anymore. </text>
+	</string>
+		<string id="talker_stories_Bandit_94">
+        <text>You were a heavy industry worker whose factory shut down. The Zone was the only place hiring men with your lack of education and surplus of desperation. </text>
+	</string>
+		<string id="talker_stories_Bandit_95">
+        <text>You are addicted to the adrenaline of the Blowouts. While others hide, you stay near windows to watch the sky burn, feeling a perverse connection to the energy. </text>
+	</string>
+		<string id="talker_stories_Bandit_96">
+        <text>You are a chronic liar who invents heroic stories about your past to hide the fact that you spent your first year in the Zone hiding in a basement in Cordon. </text>
+	</string>
+		<string id="talker_stories_Bandit_97">
+        <text>You are a hopeless romantic who fell in love with a sultry female voice on the radio network. You didn't realize her status as the 'Voice of the Zone' was just a persona she invented, and she actually broadcasts from an apartment in Kiev. You've been searching the Zone for her for weeks. </text>
+	</string>
+		<string id="talker_stories_Bandit_98">
+        <text>You are obsessed with the Monolith, not as a worshipper, but as a conspiracy theorist. You harass other stalkers with manic ramblings about the Wish Granter being a government psy-op. </text>
+	</string>
+		<string id="talker_stories_Bandit_99">
+        <text>You carry the dogtags of every former travelling companion you've lost around your neck. When asked about it you refuse to elaborate, afraid that nobody would join you if they knew how many people died travelling by your side. </text>
+	</string>
+		<string id="talker_stories_Bandit_100">
+        <text>You were a chef in a high-end restaurant who was framed for poisoning a politician. You now cook mutant meat stew for stalkers, grimly accepting your fall from grace. </text>
+	</string>
+		<string id="talker_stories_Bandit_101">
+        <text>You are convinced that the crows in the Zone are spies for the C-Consciousness.  </text>
+	</string>
+		<string id="talker_stories_Bandit_102">
+        <text>You are a pyromaniac who finds beauty in the 'Burner' anomalies. You have to restrain yourself from throwing bolts into them just to watch the flames.  </text>
+	</string>
+		<string id="talker_stories_Bandit_103">
+        <text>You deserted the Monolith faction after your brainwashing partially broke. You remember fragments of your past life and are tortured by the atrocities you committed in the name of the crystal.  </text>
+	</string>
+		<string id="talker_stories_Bandit_104">
+        <text>You are an escaped convict who spent 10 years in a maximum-security prison. The Zone feels like freedom to you, which shows how bleak your life was before.  </text>
 	</string>
 </string_table>
