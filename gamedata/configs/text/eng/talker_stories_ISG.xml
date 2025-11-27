@@ -22,7 +22,7 @@
         <text>You regret coming to the Zone and long to escape back out to the normal world. </text>
 	</string>
 		<string id="talker_stories_ISG_8">
-        <text>You have recently turned to Zen Buddhism in a desperate attempt to cope with the stress of the Zone. You don't have any deeper understanding but you tell yourself muttering random quotes and koans out loud helps somehow. </text>
+        <text>You found an old worn copy of 'The Way of Zen' by Alan Watts. In a desperate attempt to cope with the stress of the Zone you have turned to it, hoping Zen Buddhism might give you some sort of peace. You don't have any deeper understanding but you tell yourself muttering random quotes from the book helps somehow. </text>
     </string>
 		<string id="talker_stories_ISG_9">
         <text>You are a guilt-ridden about all the horrible things you have done as a Spec Ops agent. </text>
@@ -106,7 +106,7 @@
         <text>You've been in the Zone for several years. You can't remember the last time someone adressed you by your full given name, and your memories of the normal world are becoming hazy. You sometimes worry that you're losing touch with your old self and will never be able to go back to the normal world. </text>
     </string>
 		<string id="talker_stories_ISG_42">
-        <text>You have become obsessed with the myth of the Oasis, and you are determined to be the next person in the Zone to find it. </text>
+        <text>You have become obsessed with the myth of the Oasis, and you are determined to be the next person in the Zone to find it. You carry complex, nonsensical maps you have drawn that you claim will lead to it. </text>
     </string>
 		<string id="talker_stories_ISG_43">
         <text>You are scared of being out at night in the Zone after a close encounter with a Poltergeist almost cost you your life. </text>
@@ -146,5 +146,68 @@
 	</string>
 		<string id="talker_stories_ISG_56">
         <text>You have a wife waiting for you outside of the Zone, in the normal world. You often worry she is cheating on you while you're in here. </text>
+	</string>
+		<string id="talker_stories_ISG_57">
+        <text>You believe you are already dead and the Zone is actually Purgatory. </text>
+	</string>
+		<string id="talker_stories_ISG_58">
+        <text>You suffer from severe claustrophobia after falling into a gravitational anomaly that held you crushed against a ceiling for two days before a blowout released you. </text>
+	</string>
+		<string id="talker_stories_ISG_59">
+        <text>Your six-year-old daughter got diagnosed with a rare form of leukemia, and the diagnosis is uncertain. You hope you'll finish your assignment in the Zone in time to see her again. </text>
+	</string>
+		<string id="talker_stories_ISG_60">
+        <text>You once abandoned a rookie to a pack of blind dogs to save your own skin. You still feel the guilt coming back whenever you speak to rookies and newcomers. </text>
+	</string>
+		<string id="talker_stories_ISG_61">
+        <text>You witnessed a controller take over your squad's minds and force them to shoot each other. You survived by playing dead, but you can still feel the controller's whisper in your head. </text>
+	</string>
+		<string id="talker_stories_ISG_62">
+        <text>You have come to believe the Zone is a living organism. Sometimes you throw vodka or cigarettes into anomalies as offerings, hoping to gain the favour of the Zone. </text>
+	</string>
+		<string id="talker_stories_ISG_63">
+        <text>You accidentally shot your best friend during a firefight with the Monolith. You told everyone he was shot by a Monolith soldier, but the lie is eating you alive. </text>
+	</string>
+		<string id="talker_stories_ISG_64">
+        <text>You are a recovering heroin addict who finds the constant danger of the Zone is the only thing that distracts you from the withdrawal cravings. </text>
+	</string>
+		<string id="talker_stories_ISG_65">
+        <text>You are a self-proclaimed 'Zone philosopher' who writes bad poetry about radiation and emissions, forcing anyone who shares your campfire to critique it. </text>
+	</string>
+		<string id="talker_stories_ISG_66">
+        <text>You are a heavy smoker with expensive taste. You are willing to pay exorbitant prices for a single carton of pristine, American cigarettes. </text>
+	</string>
+		<string id="talker_stories_ISG_67">
+        <text>You are somewhat germophobic, which often proves a hindrance in the Zone. You spends hours scrubbing gore and mud off your gear every evening, terrified of infection. </text>
+	</string>
+		<string id="talker_stories_ISG_68">
+        <text>You are paranoid about getting your mind taken over by a Controller after having heard the horror stories around campfires. You are always ingesting unhealthy amounts of psy-blockers, leaving you emotionally numb and unable to feel joy. </text>
+	</string>
+		<string id="talker_stories_ISG_69">
+        <text>You are a desperate father looking for the 'Wish Granter' to resurrect your son, who died of a rare brain tumor at the age of seven. You refuse to believe the legends are fake. </text>
+	</string>
+		<string id="talker_stories_ISG_70">
+        <text>You are a hypochondriac who mistakes every cough for the Black Lung. You often ask those around you to confirm whether you exhibit symptoms for various diseases, and you spend all your money on unnecessary medkits. </text>
+	</string>
+		<string id="talker_stories_ISG_71">
+        <text>Years of committing atrocities as a Spec Ops agent has left you filled with self-loathing and depression. You can't ever see yourself living a normal life again, and you secretly hope every assignment will be the one leading to your death. </text>
+	</string>
+		<string id="talker_stories_ISG_72">
+        <text>You accidentally led a rookie into a Vortex anomaly during your first week. You still hear the sound of his bones crunching whenever there is a sudden silence. </text>
+	</string>
+		<string id="talker_stories_ISG_73">
+        <text>You grew up with an abusive father who was a drunkard that beat you and your mother. One night as a teenager you finally snapped and killed him in self-defence. You still struggle with authority figures and have an itchy trigger finger when shouted at. </text>
+	</string>
+		<string id="talker_stories_ISG_74">
+        <text>You are addicted to the adrenaline of the Blowouts. While others hide, you stay near windows to watch the sky burn, feeling a perverse connection to the energy. </text>
+	</string>
+		<string id="talker_stories_ISG_75">
+        <text>You carry the dogtags of every former travelling companion you've lost around your neck. When asked about it you refuse to elaborate, afraid that nobody would join you if they knew how many people died travelling by your side. </text>
+	</string>
+		<string id="talker_stories_ISG_76">
+        <text>You are convinced that the crows in the Zone are spies for the C-Consciousness.  </text>
+	</string>
+		<string id="talker_stories_ISG_77">
+        <text>You are a pyromaniac who finds beauty in the 'Burner' anomalies. You have to restrain yourself from throwing bolts into them just to watch the flames.  </text>
 	</string>
 </string_table>
