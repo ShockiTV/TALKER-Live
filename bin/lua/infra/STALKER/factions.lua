@@ -55,7 +55,7 @@ local factions = {
     },
     zombied = {
         name = "Zombied",
-        style = "zombified by psy emissions to a mindless state where only fragments of memories and personality remains. Your response should be incoherent, groaning and barely intelligible. Make it sad and tragic. "
+        style = "person zombified by psy emissions to a mindless state where only fragments of memories and personality remains. Your response should be incoherent, groaning and barely intelligible. Make it sad and tragic. "
     },
     monster = {
         name = "Monster",
