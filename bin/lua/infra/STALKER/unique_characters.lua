@@ -74,7 +74,7 @@ local unique_characters =  {
 	["mil_smart_terrain_7_7_freedom_mechanic_stalker"] = "positive, optimistic, quiet and methodical",            -- Screw  
 	["mil_smart_terrain_7_10_freedom_trader_stalker"] = "greedy, sarcastic and ruthless",          -- Skinflint  
 	["mil_freedom_guid"] = "perceptive, hardened and cynical",                                     -- Leshiy  
-	["stalker_gatekeeper"] = "stern, inflexible and protective",                                   -- Gatekeeper  
+	["stalker_gatekeeper"] = "steadfast, resolute and protective",                                   -- Gatekeeper  
 
     --[[ DEAD CITY ]]--
 ["cit_killers_merc_trader_stalker"] = "calculating, professional and emotionally detached",     -- Dushman  
