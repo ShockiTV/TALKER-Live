@@ -22,7 +22,7 @@
         <text>You regret coming to the Zone and long to escape back out to the normal world. </text>
 	</string>
 		<string id="talker_stories_Army_8">
-        <text>You have recently turned to Zen Buddhism in a desperate attempt to cope with the stress of the Zone. You don't have any deeper understanding but you tell yourself muttering random quotes and koans out loud helps somehow. </text>
+        <text>You found an old worn copy of 'The Way of Zen' by Alan Watts. In a desperate attempt to cope with the stress of the Zone you have turned to it, hoping Zen Buddhism might give you some sort of peace. You don't have any deeper understanding but you tell yourself muttering random quotes from the book helps somehow. </text>
     </string>
 		<string id="talker_stories_Army_9">
         <text>You are a habitual gambling addict. You try to engage people you meet in the Zone in casual wagers whenever the opportunity arises. </text>
@@ -143,5 +143,74 @@
 	</string>
 		<string id="talker_stories_Army_58">
         <text>You have a wife waiting for you outside of the Zone, in the normal world. You often worry she is cheating on you while you're in here. </text>
+	</string>
+		<string id="talker_stories_Army_59">
+        <text>You are a former surgeon who lost his license after operating while drunk. Your skills were still enough to be an army medic in the Zone, and you didn't feel like you had many other options. </text>
+	</string>
+		<string id="talker_stories_Army_60">
+        <text>You believe you are already dead and the Zone is actually Purgatory. </text>
+	</string>
+		<string id="talker_stories_Army_61">
+        <text>You suffer from severe claustrophobia after falling into a gravitational anomaly that held you crushed against a ceiling for two days before a blowout released you. </text>
+	</string>
+		<string id="talker_stories_Army_62">
+        <text>Your daughter got diagnosed with a rare form of leukemia that requires very expensive treatments. Your army wage can't pay the medical bills, so you are constantly on the lookout for profitable side-business in the hopes of saving your daughter. </text>
+	</string>
+		<string id="talker_stories_Army_63">
+        <text>When you were new in the Zone you once abandoned a fellow squadmate and rookie to a pack of blind dogs to save your own skin. You still feel the guilt coming back whenever you speak to rookies and newcomers. </text>
+	</string>
+		<string id="talker_stories_Army_64">
+        <text>You witnessed a controller take over your squad's minds and force them to shoot each other. You survived by playing dead, but you can still feel the controller's whisper in your head. </text>
+	</string>
+		<string id="talker_stories_Army_65">
+        <text>You are a hopeless gambling addict, and betting in the Rostok Arena has not been kind to your wallet. You've racked up a massive debt to the Bandit Sultan and are desperate to pay it off. You're constantly paranoid any bandit you see is sent out after you to personally collect - or worse. </text>
+	</string>
+		<string id="talker_stories_Army_66">
+        <text>You have come to believe the Zone is a living organism. Sometimes you throw vodka or cigarettes into anomalies as offerings, hoping to gain the favour of the Zone. </text>
+	</string>
+		<string id="talker_stories_Army_67">
+        <text>You have always been a conspiracy nut who insisted aliens exist and have visited the earth many times. You believe everyone was wrong about the cause of the Zone's emergence - it was ACTUALLY caused by aliens. You requested a posting in the Zone hoping to find definitive proof. </text>
+	</string>
+		<string id="talker_stories_Army_68">
+        <text>You accidentally shot your best friend during a firefight with some Loners. You told everyone the Loners did it, but the lie is eating you alive. </text>
+	</string>
+		<string id="talker_stories_Army_69">
+        <text>You are a self-proclaimed 'Zone philosopher' who writes bad poetry about radiation and emissions, forcing anyone who shares your campfire to critique it. </text>
+	</string>
+		<string id="talker_stories_Army_70">
+        <text>You are a heavy smoker with expensive taste. You are willing to pay exorbitant prices for a single carton of pristine, American cigarettes. </text>
+	</string>
+		<string id="talker_stories_Army_71">
+        <text>You were a prison guard before joining the Army. More than once you've spotted former inmates you've mistreated among the bandits, and it's made you slightly paranoid. </text>
+	</string>
+		<string id="talker_stories_Army_72">
+        <text>You are somewhat germophobic, which often proves a hindrance in the Zone. You spends hours scrubbing gore and mud off your gear every evening, terrified of infection. </text>
+	</string>
+		<string id="talker_stories_Army_73">
+        <text>You are paranoid about getting your mind taken over by a Controller after having heard the horror stories around campfires. You are always ingesting unhealthy amounts of psy-blockers, leaving you emotionally numb and unable to feel joy. </text>
+	</string>
+		<string id="talker_stories_Army_74">
+        <text>You are a desperate father looking for the 'Wish Granter' to resurrect your son, who died of a rare brain tumor at the age of seven. You refuse to believe the legends are fake. </text>
+	</string>
+		<string id="talker_stories_Army_75">
+        <text>You are a hypochondriac who mistakes every cough for the Black Lung. You often ask those around you to confirm whether you exhibit symptoms for various diseases, and you spend all your money on unnecessary medkits. </text>
+	</string>
+		<string id="talker_stories_Army_76">
+        <text>You are deeply in debt to the Mob in Odessa. You send every artifact you find to a contact at the perimeter, knowing that if the payments stop your family dies. </text>
+	</string>
+		<string id="talker_stories_Army_77">
+        <text>You accidentally led a rookie into a Vortex anomaly during your first week. You still hear the sound of his bones crunching whenever there is a sudden silence. </text>
+	</string>
+		<string id="talker_stories_Army_78">
+        <text>You were a heavy industry worker whose factory shut down. Rent was due and nobody would hire you, so joining the Army seemed like your only option. </text>
+	</string>
+		<string id="talker_stories_Army_80">
+        <text>You are addicted to the adrenaline of the Blowouts. While others hide, you stay near windows to watch the sky burn, feeling a perverse connection to the energy. </text>
+	</string>
+		<string id="talker_stories_Army_81">
+        <text>You are convinced that the crows in the Zone are spies for the C-Consciousness.  </text>
+	</string>
+		<string id="talker_stories_Army_82">
+        <text>You are a pyromaniac who finds beauty in the 'Burner' anomalies. You have to restrain yourself from throwing bolts into them just to watch the flames.  </text>
 	</string>
 </string_table>
