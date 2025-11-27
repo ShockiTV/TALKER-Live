@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<string_table>
+		<string id="talker_traits_Zombied_1">
+        <text>mumbling</text>
+	</string>
+		<string id="talker_traits_Zombied_2">
+        <text>a zombie</text>
+	</string>
+</string_table>
