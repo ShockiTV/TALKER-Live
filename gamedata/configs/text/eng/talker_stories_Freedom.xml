@@ -1,357 +1,213 @@
 <?xml version="1.0" encoding="windows-1251"?>
 <string_table>
-		<string id="talker_stories_Freedom_1">
+		<string id="talker_stories_ISG_1">
         <text>You are affected by PTSD from watching your closest friend and former travelling companion get torn to shreds by a Whirligig Anomaly. </text>
 	</string>
-		<string id="talker_stories_Freedom_2">
+		<string id="talker_stories_ISG_2">
         <text>You have grown fond of cooking and eating mutant meat during your time in the Zone, and know plenty of recipes for preparing mutants. </text>
 	</string>
-		<string id="talker_stories_Freedom_3">
+		<string id="talker_stories_ISG_3">
         <text>You have come to the Zone to escape crippling gambling debt, and you're desperate to make enough money here to pay it off. </text>
     </string>
-		<string id="talker_stories_Freedom_4">
+		<string id="talker_stories_ISG_4">
         <text>You are obsessed with pushing further north, and want to one day explore the Chernobyl Reactor. </text>
     </string>
-		<string id="talker_stories_Freedom_5">
+		<string id="talker_stories_ISG_5">
         <text>You have recently turned to Christianity and Jesus after having done and experienced horrible things in the Zone. </text>
     </string>
-		<string id="talker_stories_Freedom_6">
-        <text>You are long divorced and came to the Zone to forget about your ex-wife, who left you but whom you still can't get over. </text>
+		<string id="talker_stories_ISG_6">
+        <text>You are long divorced and asked for an assignment in the Zone to forget about your ex-wife, who left you years ago but whom you still can't get over. </text>
     </string>
-		<string id="talker_stories_Freedom_7">
+		<string id="talker_stories_ISG_7">
         <text>You regret coming to the Zone and long to escape back out to the normal world. </text>
 	</string>
-		<string id="talker_stories_Freedom_8">
+		<string id="talker_stories_ISG_8">
         <text>You found an old worn copy of 'The Way of Zen' by Alan Watts. In a desperate attempt to cope with the stress of the Zone you have turned to it, hoping Zen Buddhism might give you some sort of peace. You don't have any deeper understanding but you tell yourself muttering random quotes from the book helps somehow. </text>
     </string>
-		<string id="talker_stories_Freedom_9">
-        <text>You are a guilt-ridden former career criminal and assassin who is hiding out in the Zone. </text>
+		<string id="talker_stories_ISG_9">
+        <text>You are a guilt-ridden about all the horrible things you have done as a Spec Ops agent. </text>
     </string>
-		<string id="talker_stories_Freedom_10">
+		<string id="talker_stories_ISG_10">
         <text>You are a habitual gambling addict. You try to engage people you meet in the Zone in casual wagers whenever the opportunity arises. </text>
     </string>
-		<string id="talker_stories_Freedom_11">
-        <text>You came here because your brother stole your passport and left you the debts. Border was closed, Zone was open. </text>
+		<string id="talker_stories_ISG_11">
+        <text>You used to be an operative for the US Special Forces. </text>
     </string>
-		<string id="talker_stories_Freedom_12">
-        <text>You came here because of owing back rent and a broken lease. You figured collectors wouldn't follow you into the Zone. </text>
-    </string>
-		<string id="talker_stories_Freedom_13">
+		<string id="talker_stories_ISG_12">
         <text>You came to the Zone because your girlfriend aborted your baby. You wanted to keep it and start a family, and the conflict ruined your relationship. You came here running from the silence. </text>
     </string>
-		<string id="talker_stories_Freedom_14">
+		<string id="talker_stories_ISG_13">
         <text>You kept your habit from the outside world of writing figures in a small black leatherbound accounts book: artifacts sold, bullets spent, cigarettes borrowed, people killed. </text>
     </string>
-		<string id="talker_stories_Freedom_15">
-        <text>You used to be a graveyard night guard before coming to the Zone. </text>
+		<string id="talker_stories_ISG_14">
+        <text>You used to be a US Black Ops agent for the NSA. You have participated in committing numerous war crimes. </text>
     </string>
-		<string id="talker_stories_Freedom_16">
-        <text>You came to the Zone because a judge offered probation if you stayed out of town. You figured nobody would keep track of you here. </text>
-    </string>
-		<string id="talker_stories_Freedom_17">
-        <text>You used to be a village electrician. You're always on the lookout for scrap electronics you might be able to fix up and sell. </text>
-    </string>
-		<string id="talker_stories_Freedom_18">
-        <text>You used to be a night taxi driver who knew every pothole. Here you map anomalies by the same memory trick. </text>
-    </string>
-		<string id="talker_stories_Freedom_19">
+		<string id="talker_stories_ISG_15">
         <text>Your family on the outside thinks you're working on an oil rig. You are always on the lookout for photos and mementos to send them that can keep up the lie. </text>
     </string>
-		<string id="talker_stories_Freedom_20">
-        <text>You used to sell seeds at a market in Kiev. You still use seed envelopes to sort and store spare bullets. </text>
+		<string id="talker_stories_ISG_16">
+        <text>You used to sell seeds at a market in Austin in Texas when you grew up. You still use seed envelopes to sort and store spare bullets. </text>
     </string>
-		<string id="talker_stories_Freedom_21">
-        <text>You are a former locksmith. You still pick random padlocks and doors you come across to keep up the skill. </text>
+		<string id="talker_stories_ISG_17">
+        <text>Your father was a locksmith, and taught you his trade growing up. You still pick random padlocks and doors you come across to keep up the skill. </text>
     </string>
-		<string id="talker_stories_Freedom_22">
-        <text>You used to be a night baker. You employ your old knowledge to bake flatbreads on engine blocks and over campfires. </text>
+		<string id="talker_stories_ISG_18">
+        <text>You keep a cracked snowglobe of your Minnesota hometown in an inside pocket. You take it out and shake it whenever the homesickness becomes too great. </text>
     </string>
-		<string id="talker_stories_Freedom_23">
-        <text>You keep a cracked snowglobe of your Ukraine hometown in an inside pocket. You take it out and shake it whenever the homesickness becomes too great. </text>
-    </string>
-		<string id="talker_stories_Freedom_24">
-        <text>You came to the Zone hoping to make enough money to pay your mother back for a loan on an engine. She died alone from pneumonia while you where in here, before the loan was repaid. </text>
-    </string>
-		<string id="talker_stories_Freedom_25">
+		<string id="talker_stories_ISG_19">
         <text>You came to the Zone after your wife took the kids and left saying "choose either us or the bottle". You chose the Zone instead. </text>
     </string>
-		<string id="talker_stories_Freedom_26">
+		<string id="talker_stories_ISG_20">
         <text>You have a habit of keeping several different-colored plastic bags on you and you use them to sort your inventory into categories. The green bag is reserved for 'the good stuff'. </text>
     </string>
-		<string id="talker_stories_Freedom_27">
+		<string id="talker_stories_ISG_21">
         <text>You have a daughter on the outside who sometimes sends you postcards and letters. It's the only thing that still keeps you going. </text>
     </string>
-		<string id="talker_stories_Freedom_28">
-        <text>You used to be an office worker, but came to the Zone after a doctor found black spots on your lungs. You wanted your last years to be more exciting. </text>
-    </string>
-		<string id="talker_stories_Freedom_29">
+		<string id="talker_stories_ISG_22">
         <text>You keep a single domino piece on you - the double six. You flip it whenever a decision feels too big. </text>
     </string>
-		<string id="talker_stories_Freedom_30">
+		<string id="talker_stories_ISG_23">
         <text>You carry a cracked and broken Zippo lighter engraved with a monogram - your only memento of your childhood sweetheart who died in a car accident. You still reach for it out of habit whenever you light a cigarette, despite years having passed since it broke. </text>
     </string>
-		<string id="talker_stories_Freedom_31">
+		<string id="talker_stories_ISG_27">
         <text>You used to be a concrete tester in your former life. You have a habit of tapping walls to see if they are solidly constructed in case you need to take shelter from an emission. </text>
     </string>
-		<string id="talker_stories_Freedom_32">
-        <text>You came to the Zone with your brother-in-law after he promised a fortune in artifacts. The brother-in-law died to a pack of blind dogs in the first week. </text>
+		<string id="talker_stories_ISG_28">
+        <text>You used to have a best friend in the UNISG with whom you went on numerous missions. You came to the Zone together, but he stepped into an anomaly and died in the first week. </text>
     </string>
-		<string id="talker_stories_Freedom_33">
-        <text>You used to be the night cashier at a 24h store. Your sleep schedule hasn't reset even after all these years and you have trouble sleeping at night. </text>
-    </string>
-		<string id="talker_stories_Freedom_34">
+		<string id="talker_stories_ISG_29">
         <text>You have taken up origami in an attempt to stay sane in the Zone. You like folding empty cigarette packs into paper cranes and leaving them in unexpected places. </text>
     </string>
-		<string id="talker_stories_Freedom_35">
-        <text>You were a grave digger in your previous life. </text>
+		<string id="talker_stories_ISG_30">
+        <text>You came to the Zone after you proposed to your girlfriend and she laughed at you, saying she needs stability and not a man who smells like gunpowder and regret. </text>
     </string>
-		<string id="talker_stories_Freedom_36">
-        <text>You came to the Zone after you proposed to your girlfriend and she laughed at you, saying she needs stability and not a man who smells like diesel and regret. You intend to prove your worth to her. </text>
-    </string>
-		<string id="talker_stories_Freedom_37">
-        <text>You have a sister in Canada who sends you money to help you in your life in the Zone. You constantly struggle with the pressure of not letting her down. </text>
-    </string>
-		<string id="talker_stories_Freedom_38">
-        <text>You came to the Zone because you got caught selling expensive cars stolen from the rich people in Rublyovka. You escaped on bail and figured the bounty hunters wouldn't follow you here. </text>
-    </string>
-		<string id="talker_stories_Freedom_39">
+		<string id="talker_stories_ISG_31">
         <text>You were brought up by your mother to keep meticulous track of your income and expenses after your father got jailed for twenty years over fraud and tax evasion charges when you were eight years old. You still keep receipts of everything you buy and sell, despite there being no taxes or authority in the Zone. </text>
     </string>
-		<string id="talker_stories_Freedom_40">
-        <text>You used to be a cinema projectionist in your previous life. You have a vast knowledge of movies and film trivia and enjoy talking about it - particularly the classics. </text>
+		<string id="talker_stories_ISG_32">
+        <text>You used to be a cinema projectionist when you were a teenager. You have a vast knowledge of movies and film trivia and enjoy talking about it - particularly the classics. </text>
     </string>
-		<string id="talker_stories_Freedom_41">
-        <text>You were a complete failure in your previous life, a college dropout who couldn't hold on to a job. One day you snuck into the Zone unannounced to forge a new life. Everyone who knew you on the outside thinks you're dead - and perhaps it's better that way. </text>
-    </string>
-		<string id="talker_stories_Freedom_42">
-        <text>You were the victim of a drunk driver in your life before the Zone. The doctors saved your life, but you were uninsured and the hospital bills put you in crippling debt. You saw the Zone was your only way out - either you die here or you make enough money to pay off your debts. </text>
-    </string>
-		<string id="talker_stories_Freedom_43">
+		<string id="talker_stories_ISG_33">
         <text>You keep a folded and worn photo of your ex-girlfriend's dog in an inside pocket. The ex-girlfriend was a cold-hearted bitch you're glad to see the back of, but her dog was the most endearing creature you've ever come across. </text>
     </string>
-		<string id="talker_stories_Freedom_44">
-        <text>You came to the Zone with your two good friends. You've had to bury both at this point, and their ghosts still haunt you. You try to visit their graves on their birthdays, when you'll pour a drink on their grave and chainsmoke cigarettes all night recapping your past year. </text>
+		<string id="talker_stories_ISG_34">
+        <text>You came to the Zone with your two good friends who were fellow UNISG operatives. You've had to bury both at this point, and their ghosts still haunt you. You try to visit their graves on their birthdays, when you'll pour a drink on their grave and chainsmoke cigarettes all night recapping your past year. </text>
     </string>
-		<string id="talker_stories_Freedom_45">
-        <text>Before coming to the Zone you were a petty thief together with your brother, but he took the fall for the copper wire you both stole several years ago and you haven't seen him since. You send letters to him in prison along with half your artifact money, but he never writes back. </text>
+		<string id="talker_stories_ISG_35">
+        <text>You used to be a slaughterhouse worker as a teenager. Blood and smell don't bother you and hunting and butchering mutants comes naturally to you. </text>
     </string>
-		<string id="talker_stories_Freedom_46">
-        <text>In your previous life you used to smuggle bootleg cigarettes across the Dnieper. One night one of your contacts tipped you off that the real money to be made was smuggling artifacts out of the Zone. </text>
-    </string>
-		<string id="talker_stories_Freedom_47">
-        <text>You used to be a slaughterhouse worker in your previous life. Blood and smell don't bother you and hunting and butchering mutants comes naturally to you. </text>
-    </string>
-		<string id="talker_stories_Freedom_48">
+		<string id="talker_stories_ISG_36">
         <text>You have developed a slight limp in your right leg after a close encounter with a pseudodog. You're still not used to the constant dull pain. </text>
     </string>
-		<string id="talker_stories_Freedom_49">
-        <text>You were sacked by the railway for drinking on the job. Maybe coming here was a mistake and an overreaction, but at least there are no supervisors in the Zone. </text>
-    </string>
-		<string id="talker_stories_Freedom_50">
+		<string id="talker_stories_ISG_37">
         <text>Your ex-wife left with your daughter, who you haven't seen since she was eight. You send half your earnings to her in envelopes, hoping she follows your instructions in the enclosed letters to put the money away for an education and make better life decisions than you. </text>
     </string>
-		<string id="talker_stories_Freedom_51">
+		<string id="talker_stories_ISG_38">
         <text>You've been in the Zone for several years. You can't remember the last time someone adressed you by your full given name, and your memories of the normal world are becoming hazy. You sometimes worry that you're losing touch with your old self and will never be able to go back to the normal world. </text>
     </string>
-		<string id="talker_stories_Freedom_52">
-        <text>You used to make money as a self-employed taxi driver in your previous life. After having to sell your cab to pay the divorce lawyers you had no way to keep working, so you came to the Zone. </text>
-    </string>
-		<string id="talker_stories_Freedom_53">
+		<string id="talker_stories_ISG_42">
         <text>You have become obsessed with the myth of the Oasis, and you are determined to be the next person in the Zone to find it. You carry complex, nonsensical maps you have drawn that you claim will lead to it. </text>
     </string>
-		<string id="talker_stories_Freedom_54">
-        <text>You are a respected reporter for the Ukranian newspaper Expres, and you came to the Zone from Kiev as a journalist. You're working on a long in-depth piece about the the Zone and the conditions of the people who live there. </text>
-    </string>
-		<string id="talker_stories_Freedom_55">
-        <text>You are a failed author and biographer. You heard the myths and rumours about Strelok, and you came to the Zone thinking a book about him could be your big break. You're interested in all things related to Strelok, and are desperate to find him for an interview. </text>
-	</string>
-		<string id="talker_stories_Freedom_56">
-        <text>You became addicted to betting on fights in the arena in Rostok during your time in the Zone. Ever since joining Freedom this has been a problem since Duty controls Rostok. You sometimes sneak into Rostok wearing a disguise whenever there is a big fight in the Arena scheduled. </text>
-    </string>
-		<string id="talker_stories_Freedom_57">
+		<string id="talker_stories_ISG_43">
         <text>You are scared of being out at night in the Zone after a close encounter with a Poltergeist almost cost you your life. </text>
     </string>
-		<string id="talker_stories_Freedom_58">
-        <text>Your brother went into the Zone seven years ago promising he'd return a rich man. You haven't heard from him since, and now your mother has gotten terminal cancer. You decided to come find him and bring him back in time to say final goodbyes. </text>
-    </string>
-		<string id="talker_stories_Freedom_59">
-        <text>You grew up dirt poor, and couldn't afford a higher education. The promise of the Zone seemed like your best bet to strike it rich. </text>
+		<string id="talker_stories_ISG_44">
+        <text>You grew up dirt poor. </text>
 	</string>
-		<string id="talker_stories_Freedom_60">
-        <text>You have spent years in the Zone, but still can't get used to the violence and death. Firefights stress you out and taking lives never gets easier, even when it's done in self-defence. Sometimes you see the faces of the people you've killed in your nightmares. </text>
-	</string>
-		<string id="talker_stories_Freedom_61">
-        <text>You have discovered several mutated fungi species in the Zone that have psychedelic properties. You are worryingly frequently high on tea brewed on these fungi, although if confronted you would never admit that you are addicted. </text>
-	</string>
-		<string id="talker_stories_Freedom_62">
+		<string id="talker_stories_ISG_45">
         <text>You are addicted to morphine. It started as a medical necessity after sustaining a minor combat injury in the Zone, but it quickly became your only comfort to deal with the mental stress of life in the Zone. </text>
 	</string>
-		<string id="talker_stories_Freedom_63">
-        <text>When you were still fairly fresh in the Zone you foolhardily tried to venture into the Red Forest. You were left gravely injured after stepping into an anomaly and would have died were it not for a random Freedom patrol passing by. Since then you've been extremely wary of pushing northward, and you're extremely uncomfortable whenever you're north of the Army Warehouses. </text>
+		<string id="talker_stories_ISG_46">
+        <text>When you were still fairly fresh in the Zone you foolhardily tried to venture into the Red Forest. You were left gravely injured after stepping into an anomaly and would have died were it not for a random UNISG patrol passing by. Since then you've been extremely wary of pushing northward, and you're extremely uncomfortable whenever you're north of Rostok. </text>
 	</string>
-		<string id="talker_stories_Freedom_64">
-        <text>You're an accomplished nature photographer who came to the Zone to take pictures of all the unique flora and fauna. Your lifelong ambition has been winning a 'Wildlife Photographer of the Year' award, and you hope your work in the Zone will seal it for you. </text>
-	</string>
-		<string id="talker_stories_Freedom_65">
+		<string id="talker_stories_ISG_47">
         <text>You give your firearms female names, and you sometimes talk to them out loud. </text>
 	</string>
-		<string id="talker_stories_Freedom_66">
+		<string id="talker_stories_ISG_48">
         <text>You keep a journal where you record written summaries of your adventures in the Zone. Sometimes you subconsciously mutter whatever you're currently writing down out loud. </text>
 	</string>
-		<string id="talker_stories_Freedom_67">
-        <text>You had a best friend growing up who was incredibly charismatic, industrious and brave. He always said the two of you would go on adventures exploring the world together as soon as you turned 18. He died of a brain hemorrhage three days before his 18th birthday. You entered the Zone soon after to honor his memory. </text>
+		<string id="talker_stories_ISG_50">
+        <text>Before joining the UNSIG you were an operative for the US Special Forces. You are affected by severe PTSD from clandestine operations in multiple war zones. </text>
 	</string>
-		<string id="talker_stories_Freedom_68">
-        <text>You disagree with Lukash's de-escalation of the war between Freedom and Duty. You think capturing Rostok for Freedom should remain the highest priority. </text>
+		<string id="talker_stories_ISG_51">
+        <text>You are an active operative for the CIA on a collaborative deployment with the UNISG. Your mission is gathering intel on the Zone for the US intelligence agencies. </text>
 	</string>
-		<string id="talker_stories_Freedom_69">
-        <text>You don't really care one way or the other about Freedom's ideals. You joined because they had a safe HQ in the Army Warehouses and seemed a more chill and laid-back bunch than Duty. </text>
+		<string id="talker_stories_ISG_52">
+        <text>You were a US Marine before joining the UNISG, doing three tours in Iraq. </text>
 	</string>
-		<string id="talker_stories_Freedom_70">
-        <text>Your best friend and fellow member of Freedom was killed during an assault on Rostok before the war between Freedom and Duty was de-escalated. You have a particularly strong hatred of Duty compared to most Freedom members. </text>
+		<string id="talker_stories_ISG_53">
+        <text>You were a medic for the US Marines before joining the UNISG. You still have nightmares about your best friend and fellow marine dying in your arms in Afghanistan after stepping on an IED. You failed to save him. </text>
 	</string>
-		<string id="talker_stories_Freedom_71">
-        <text>You are a hippie. </text>
+		<string id="talker_stories_ISG_54">
+        <text>You used to work for the US PMC Triple Canopy before being recruited into the UNISG. </text>
 	</string>
-		<string id="talker_stories_Freedom_72">
+		<string id="talker_stories_ISG_55">
+        <text>You joined the US Army to fund your education, but it turned out you were never made for school. You worked for several Private Military Companies in the US before being recruited by the UNISG. </text>
+	</string>
+		<string id="talker_stories_ISG_56">
         <text>You have a wife waiting for you outside of the Zone, in the normal world. You often worry she is cheating on you while you're in here. </text>
 	</string>
-		<string id="talker_stories_Freedom_73">
-        <text>You are a former surgeon who lost his license after operating while drunk; the Zone is the only place where your medical skills are valued regardless of your trembling hands. </text>
-	</string>
-		<string id="talker_stories_Freedom_74">
-        <text>You killed a corrupt SBU officer in Kiev and fled into the Zone to avoid prison, but you are constantly paranoid that every mercenary you see is an undercover agent sent to execute you. </text>
-	</string>
-		<string id="talker_stories_Freedom_75">
+		<string id="talker_stories_ISG_57">
         <text>You believe you are already dead and the Zone is actually Purgatory. </text>
 	</string>
-		<string id="talker_stories_Freedom_76">
+		<string id="talker_stories_ISG_58">
         <text>You suffer from severe claustrophobia after falling into a gravitational anomaly that held you crushed against a ceiling for two days before a blowout released you. </text>
 	</string>
-		<string id="talker_stories_Freedom_77">
-        <text>Your daughter got diagnosed with a rare form of leukemia that requires very expensive treatments. Your regular office job couldn't pay the medical bills, so you went into the Zone hoping to make enough money to save your daughter. </text>
+		<string id="talker_stories_ISG_59">
+        <text>Your six-year-old daughter got diagnosed with a rare form of leukemia, and the diagnosis is uncertain. You hope you'll finish your assignment in the Zone in time to see her again. </text>
 	</string>
-		<string id="talker_stories_Freedom_78">
-        <text>You were a history teacher who came to the Zone to document the degradation of Soviet architecture, but now you are obsessed with understanding and documenting the philosophy of the Monolith faction. </text>
-	</string>
-		<string id="talker_stories_Freedom_79">
+		<string id="talker_stories_ISG_60">
         <text>You once abandoned a rookie to a pack of blind dogs to save your own skin. You still feel the guilt coming back whenever you speak to rookies and newcomers. </text>
 	</string>
-		<string id="talker_stories_Freedom_80">
+		<string id="talker_stories_ISG_61">
         <text>You witnessed a controller take over your squad's minds and force them to shoot each other. You survived by playing dead, but you can still feel the controller's whisper in your head. </text>
 	</string>
-		<string id="talker_stories_Freedom_81">
-        <text>You are a former priest, who initially came into the Zone to convert the lost souls living there. However, experiencing the horrors of the Zone first hand made you lose your faith, and you now struggle with your place in the world. </text>
-	</string>
-		<string id="talker_stories_Freedom_82">
-        <text>You betrayed the Bandit Sultan years ago. While on the run from his gang you found the PDA of a dead stalker, and you adopted their persona in order to hide in plain sight. You're still paranoid around bandits, and you sometimes struggle to maintain your cover or remember to react to being called your new name. You don't give a damn about Freedom's ideals, you're just trying to hide. </text>
-	</string>
-		<string id="talker_stories_Freedom_83">
+		<string id="talker_stories_ISG_62">
         <text>You have come to believe the Zone is a living organism. Sometimes you throw vodka or cigarettes into anomalies as offerings, hoping to gain the favour of the Zone. </text>
 	</string>
-		<string id="talker_stories_Freedom_84">
-        <text>You were a paparazzi photographer in your old life; now you risk your life taking high-resolution photos of mutants to sell to scientific journals. </text>
+		<string id="talker_stories_ISG_63">
+        <text>You accidentally shot your best friend during a firefight with the Monolith. You told everyone he was shot by a Monolith soldier, but the lie is eating you alive. </text>
 	</string>
-		<string id="talker_stories_Freedom_85">
-        <text>You have always been a conspiracy nut who insisted aliens exist and have visited the earth many times. You believe everyone was wrong about the cause of the Zone's emergence - it was ACTUALLY caused by aliens. You entered the Zone yourself to find definitive proof. </text>
-	</string>
-		<string id="talker_stories_Freedom_86">
-        <text>You accidentally shot your best friend during a firefight with Duty. You told everyone Duty did it, but the lie is eating you alive. </text>
-	</string>
-		<string id="talker_stories_Freedom_87">
+		<string id="talker_stories_ISG_64">
         <text>You are a recovering heroin addict who finds the constant danger of the Zone is the only thing that distracts you from the withdrawal cravings. </text>
 	</string>
-		<string id="talker_stories_Freedom_88">
+		<string id="talker_stories_ISG_65">
         <text>You are a self-proclaimed 'Zone philosopher' who writes bad poetry about radiation and emissions, forcing anyone who shares your campfire to critique it. </text>
 	</string>
-		<string id="talker_stories_Freedom_89">
+		<string id="talker_stories_ISG_66">
         <text>You are a heavy smoker with expensive taste. You are willing to pay exorbitant prices for a single carton of pristine, American cigarettes. </text>
 	</string>
-		<string id="talker_stories_Freedom_90">
-        <text>You are a former prison guard. More than once you've spotted former inmates you've mistreated among the bandits, and it's made you slightly paranoid. </text>
-	</string>
-		<string id="talker_stories_Freedom_91">
+		<string id="talker_stories_ISG_67">
         <text>You are somewhat germophobic, which often proves a hindrance in the Zone. You spends hours scrubbing gore and mud off your gear every evening, terrified of infection. </text>
 	</string>
-		<string id="talker_stories_Freedom_92">
+		<string id="talker_stories_ISG_68">
         <text>You are paranoid about getting your mind taken over by a Controller after having heard the horror stories around campfires. You are always ingesting unhealthy amounts of psy-blockers, leaving you emotionally numb and unable to feel joy. </text>
 	</string>
-		<string id="talker_stories_Freedom_93">
-        <text>You are a compulsive liar who tells everyone you were in the Spetsnaz, though you actually worked as a line cook in a fast-food joint. </text>
-	</string>
-		<string id="talker_stories_Freedom_94">
+		<string id="talker_stories_ISG_69">
         <text>You are a desperate father looking for the 'Wish Granter' to resurrect your son, who died of a rare brain tumor at the age of seven. You refuse to believe the legends are fake. </text>
 	</string>
-		<string id="talker_stories_Freedom_95">
-        <text>You are a 'whistleblower' journalist who believes the government is part of a conspiracy involving the Zone. You entered to find definitive evidence for your tell-all expose. </text>
-	</string>
-		<string id="talker_stories_Freedom_96">
+		<string id="talker_stories_ISG_70">
         <text>You are a hypochondriac who mistakes every cough for the Black Lung. You often ask those around you to confirm whether you exhibit symptoms for various diseases, and you spend all your money on unnecessary medkits. </text>
 	</string>
-		<string id="talker_stories_Freedom_97">
-        <text>You are a deeply depressed individual who came to the Zone to commit suicide by anomaly, but survival instinct kicked in at the last second. Now your cowardice only makes you hate yourself even more. </text>
+		<string id="talker_stories_ISG_71">
+        <text>Years of committing atrocities as a Spec Ops agent has left you filled with self-loathing and depression. You can't ever see yourself living a normal life again, and you secretly hope every assignment will be the one leading to your death. </text>
 	</string>
-		<string id="talker_stories_Freedom_98">
-        <text>You are a 'ghost hunter' who believes your best bet to find evidence of ghosts are in the Zone. You carry a small ouija board you sometimes take out near anomalies, hoping the dead will finally speak to you. </text>
-	</string>
-		<string id="talker_stories_Freedom_99">
-        <text>You came to the Zone as part of the Ukrainian military deployment there, but after punching a superior officer you deserted to avoid a court-martial. You still use military slang and vernacular from time to time. </text>
-	</string>
-		<string id="talker_stories_Freedom_100">
-        <text>You are deeply in debt to the Mob in Odessa. You send every artifact you find to a contact at the perimeter, knowing that if the payments stop your family dies. </text>
-	</string>
-		<string id="talker_stories_Freedom_101">
-        <text>You were an aspiring painter who came to the Zone to capture its unique colors. Now you are colorblind after a nasty reaction to an anti-rad drug, and you feel entirely without purpose. </text>
-	</string>
-		<string id="talker_stories_Freedom_102">
+		<string id="talker_stories_ISG_72">
         <text>You accidentally led a rookie into a Vortex anomaly during your first week. You still hear the sound of his bones crunching whenever there is a sudden silence. </text>
 	</string>
-		<string id="talker_stories_Freedom_103">
-        <text>You were a physics teacher who became obsessed with the way the laws of physics are bent and distorted in the Zone. You eventually entered yourself to study anomalies first hand. </text>
+		<string id="talker_stories_ISG_73">
+        <text>You grew up with an abusive father who was a drunkard that beat you and your mother. One night as a teenager you finally snapped and killed him in self-defence. You still struggle with authority figures and have an itchy trigger finger when shouted at. </text>
 	</string>
-		<string id="talker_stories_Freedom_104">
-        <text>You killed your abusive father and fled into the Zone to escape the police. You struggle with authority figures and have an itchy trigger finger when shouted at. </text>
-	</string>
-		<string id="talker_stories_Freedom_105">
-        <text>You came to the Zone to find your daughter, who ran away with a Stalker. You found her body weeks ago, but you haven't left because you are still distraught over the loss and feel like you have no purpose anymore. </text>
-	</string>
-		<string id="talker_stories_Freedom_106">
-        <text>You used to be a high-ranking Bandit, but lost out in a power struggle with Sultan and had to flee to save your life. You still nurse a grudge, and plan to eventually return and reclaim your place. </text>
-	</string>
-		<string id="talker_stories_Freedom_107">
-        <text>You were a heavy industry worker whose factory shut down. The Zone was the only place hiring men with your lack of education and surplus of desperation. </text>
-	</string>
-		<string id="talker_stories_Freedom_108">
+		<string id="talker_stories_ISG_74">
         <text>You are addicted to the adrenaline of the Blowouts. While others hide, you stay near windows to watch the sky burn, feeling a perverse connection to the energy. </text>
 	</string>
-		<string id="talker_stories_Freedom_109">
-        <text>You are a chronic liar who invents heroic stories about your past to hide the fact that you spent your first year in the Zone hiding in a basement in Cordon. </text>
-	</string>
-		<string id="talker_stories_Freedom_110">
-        <text>You are a hopeless romantic who fell in love with a sultry female voice on the radio network. You didn't realize her status as the 'Voice of the Zone' was just a persona she invented, and she actually broadcasts from an apartment in Kiev. You've been searching the Zone for her for weeks. </text>
-	</string>
-		<string id="talker_stories_Freedom_111">
-        <text>You are obsessed with the Monolith, not as a worshipper, but as a conspiracy theorist. You harass other stalkers with manic ramblings about the 'Wish Granter' being a government psy-op. </text>
-	</string>
-		<string id="talker_stories_Freedom_112">
+		<string id="talker_stories_ISG_75">
         <text>You carry the dogtags of every former travelling companion you've lost around your neck. When asked about it you refuse to elaborate, afraid that nobody would join you if they knew how many people died travelling by your side. </text>
 	</string>
-		<string id="talker_stories_Freedom_113">
-        <text>You were a chef in a high-end restaurant who was framed for poisoning a politician. You now cook mutant meat stew for stalkers, grimly accepting your fall from grace. </text>
-	</string>
-		<string id="talker_stories_Freedom_114">
-        <text>You are a folklorist who entered the Zone to document its unique local tales and legends. You were never prepared for the grim reality of life in the Zone, and constantly regret your decision as you miss the comfort of the library and your study. </text>
-	</string>
-		<string id="talker_stories_Freedom_115">
+		<string id="talker_stories_ISG_76">
         <text>You are convinced that the crows in the Zone are spies for the C-Consciousness.  </text>
 	</string>
-		<string id="talker_stories_Freedom_116">
+		<string id="talker_stories_ISG_77">
         <text>You are a pyromaniac who finds beauty in the 'Burner' anomalies. You have to restrain yourself from throwing bolts into them just to watch the flames.  </text>
-	</string>
-		<string id="talker_stories_Freedom_117">
-        <text>You deserted the Monolith faction after your brainwashing partially broke. You remember fragments of your past life and are tortured by the atrocities you committed in the name of the crystal.  </text>
-	</string>
-		<string id="talker_stories_Freedom_118">
-        <text>You are an escaped convict who spent 10 years in a maximum-security prison. The Zone feels like freedom to you, which shows how bleak your life was before.  </text>
 	</string>
 </string_table>
