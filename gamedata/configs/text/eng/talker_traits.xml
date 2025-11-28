@@ -303,4 +303,103 @@
 		<string id="talker_traits_100">
         <text>vulgar</text>
     </string>
+		<string id="talker_traits_101">
+        <text>despondent</text>
+    </string>
+		<string id="talker_traits_102">
+        <text>well educated</text>
+    </string>
+		<string id="talker_traits_103">
+        <text>a bully</text>
+    </string>
+		<string id="talker_traits_104">
+        <text>ebullient</text>
+    </string>
+		<string id="talker_traits_105">
+        <text>lethargic</text>
+    </string>
+		<string id="talker_traits_106">
+        <text>lackadaisical</text>
+    </string>
+		<string id="talker_traits_107">
+        <text>confrontational</text>
+    </string>
+		<string id="talker_traits_108">
+        <text>vengeful</text>
+    </string>
+		<string id="talker_traits_109">
+        <text>unrepentant</text>
+    </string>
+		<string id="talker_traits_110">
+        <text>melancholic</text>
+    </string>
+		<string id="talker_traits_111">
+        <text>obsessive</text>
+    </string>
+		<string id="talker_traits_112">
+        <text>incompetent</text>
+    </string>
+		<string id="talker_traits_113">
+        <text>secretive</text>
+    </string>
+		<string id="talker_traits_114">
+        <text>guarded</text>
+    </string>
+		<string id="talker_traits_115">
+        <text>skittish</text>
+    </string>
+		<string id="talker_traits_116">
+        <text>meek</text>
+    </string>
+		<string id="talker_traits_117">
+        <text>sadistic</text>
+    </string>
+		<string id="talker_traits_118">
+        <text>arrogant</text>
+    </string>
+		<string id="talker_traits_119">
+        <text>charismatic</text>
+    </string>
+		<string id="talker_traits_120">
+        <text>heretical</text>
+    </string>
+		<string id="talker_traits_121">
+        <text>hysterical</text>
+    </string>
+		<string id="talker_traits_122">
+        <text>unflappable</text>
+    </string>
+		<string id="talker_traits_123">
+        <text>neurotic</text>
+    </string>
+		<string id="talker_traits_124">
+        <text>frail</text>
+    </string>
+		<string id="talker_traits_125">
+        <text>clumsy</text>
+    </string>
+		<string id="talker_traits_126">
+        <text>passionate</text>
+    </string>
+		<string id="talker_traits_127">
+        <text>cold-hearted</text>
+    </string>
+		<string id="talker_traits_128">
+        <text>judgmental</text>
+    </string>
+		<string id="talker_traits_129">
+        <text>ignorant</text>
+    </string>
+		<string id="talker_traits_130">
+        <text>knowledgeable</text>
+    </string>
+		<string id="talker_traits_130">
+        <text>xenophobic</text>
+    </string>
+		<string id="talker_traits_131">
+        <text>hungover</text>
+    </string>
+		<string id="talker_traits_132">
+        <text>compulsive</text>
+    </string>
 </string_table>
