@@ -180,10 +180,10 @@
         <text>You were a history teacher who came to the Zone to document the degradation of Soviet architecture, but now you are obsessed with understanding and documenting the philosophy of the Monolith faction. </text>
 	</string>
 		<string id="talker_stories_Ecolog_61">
-        <text>You once abandoned a rookie to a pack of blind dogs to save your own skin. You still feel the guilt coming back whenever you speak to rookies and newcomers. </text>
+        <text>During your first week in the Zone you abandoned a fellow rookie field researcher to a pack of blind dogs to save your own skin. You still feel the guilt coming back whenever you speak to rookies and newcomers. </text>
 	</string>
 		<string id="talker_stories_Ecolog_62">
-        <text>You witnessed a controller take over your squad's minds and force them to shoot each other. You survived by playing dead, but you can still feel the controller's whisper in your head. </text>
+        <text>You witnessed a controller take over your Mercenary escort squad's minds and force them to shoot each other. You survived by playing dead, but you can still feel the controller's whisper in your head. </text>
 	</string>
 		<string id="talker_stories_Ecolog_63">
         <text>You have come to believe the Zone is a living organism. Sometimes you throw vodka or cigarettes into anomalies as offerings, hoping to gain the favour of the Zone. </text>
@@ -225,12 +225,27 @@
         <text>You are a chronic liar who invents heroic stories about your past to hide the fact that you spent your first year in the Zone hiding in a basement in Cordon. </text>
 	</string>
 		<string id="talker_stories_Ecolog_76">
-        <text>You are obsessed with the Monolith, not as a worshipper, but as a conspiracy theorist. You harass other stalkers with manic ramblings about the Wish Granter being a government psy-op. </text>
+        <text>You are a historian who came to the Zone to document the exact timeline and causes for the Chernobyl Power Plant disasters. </text>
 	</string>
 		<string id="talker_stories_Ecolog_77">
         <text>You are a folklorist who entered the Zone to document its unique local tales and legends. You were never prepared for the grim reality of life in the Zone, and constantly regret your decision as you miss the comfort of the library and your study. </text>
 	</string>
 		<string id="talker_stories_Ecolog_78">
         <text>You are a pyromaniac who finds beauty in the 'Burner' anomalies. You have to restrain yourself from throwing bolts into them just to watch the flames.  </text>
+	</string>
+		<string id="talker_stories_Ecolog_79">
+        <text>You are a foreign agent working undercover for the Chinese government, using a field research assistant position as cover. Your mission is to extract information about the secret technology being developed in the underground labs of the Zone.  </text>
+	</string>
+		<string id="talker_stories_Ecolog_80">
+        <text>You are an oncologist. You came to the Zone as access to both mutated animals as well as people exposed to high amounts of radiation gives you an excellent opportunity to study new and rare cancers.  </text>
+	</string>
+		<string id="talker_stories_Ecolog_81">
+        <text>You are a physicist who is trying to build a time machine. You believe the answer might be found in the anomalies that have appeared in the Zone, which is why you came here.  </text>
+	</string>
+		<string id="talker_stories_Ecolog_81">
+        <text>You are a zoologist. You are trying to study the mutant fauna of the Zone, and you refuse to believe they are too agressive to be tameable. You have a slight limp and and two missing fingers on your left hand after numerous failed attempts at taming pseudodogs.  </text>
+	</string>
+		<string id="talker_stories_Ecolog_82">
+        <text>Despite your scholarly accomplishments you have always been a bit of a conspiracy nut. Since coming to the Zone you have become obsessed with the Monolith, not as a worshipper but as a conspiracy theorist. You harass other stalkers with manic ramblings about the 'Wish Granter' being a government psy-op.  </text>
 	</string>
 </string_table>
