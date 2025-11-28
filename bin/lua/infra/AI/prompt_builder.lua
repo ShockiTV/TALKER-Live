@@ -6,6 +6,7 @@ package.path = package.path .. ";./bin/lua/?.lua;"
 local logger = require("framework.logger")
 local Event  = require("domain.model.event")
 local Character = require("domain.model.character")
+local event_store = require("domain.repo.event_store")
 local config = require("interface.config")
 require("infra.STALKER.factions")
 
@@ -124,6 +125,8 @@ end
 -- create_dialogue_request_prompt: keep only the 10 most recent (oldest first)
 --------------------------------------------------------------------------------
 function prompt_builder.create_dialogue_request_prompt(speaker, memories)
+    local trigger_event_timestamp_to_delete = nil
+
     -- warn if more than 10 memories
     if #memories > 10 then
         logger.warn("More than 10 memories for dialogue request, number was " .. #memories)
@@ -138,7 +141,11 @@ function prompt_builder.create_dialogue_request_prompt(speaker, memories)
     local latest_memory = memories[#memories]
     if latest_memory and latest_memory.flags and latest_memory.flags.idle_only then
         logger.info("'idle_only' flag detected. Building prompt with a single event.")
+        -- The prompt will be built using ONLY this memory to force an idle conversation.
         memories = { latest_memory }
+        -- Mark this event for deletion after the new dialogue is successfully registered.
+        -- We return the timestamp to the caller.
+        trigger_event_timestamp_to_delete = latest_memory.game_time_ms
     end
 
     -- keep only the 10 most recent
@@ -182,7 +189,7 @@ function prompt_builder.create_dialogue_request_prompt(speaker, memories)
         .. (speaker.personality or "")
         .. "."))
     table.insert(messages, system_message("Reply only in " .. config.language()))
-    return messages
+    return messages, trigger_event_timestamp_to_delete
 end
 
 --------------------------------------------------------------------------------
