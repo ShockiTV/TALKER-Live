@@ -154,10 +154,10 @@
         <text>You suffer from severe claustrophobia after falling into a gravitational anomaly that held you crushed against a ceiling for two days before a blowout released you. </text>
 	</string>
 		<string id="talker_stories_ISG_59">
-        <text>Your six-year-old daughter got diagnosed with a rare form of leukemia, and the diagnosis is uncertain. You hope you'll finish your assignment in the Zone in time to see her again. </text>
+        <text>Your six-year-old daughter got diagnosed with a rare form of leukemia, and the prognosis is highly uncertain. You hope you'll finish your assignment in the Zone in time to see her again. </text>
 	</string>
 		<string id="talker_stories_ISG_60">
-        <text>You once abandoned a rookie to a pack of blind dogs to save your own skin. You still feel the guilt coming back whenever you speak to rookies and newcomers. </text>
+        <text>Your wife left you years ago and took your ten-year-old son and an eight-year-old daughter with her. She said you were married to your job and never present. You never told her of the exact work you do, and you never argued with her as you have always put your duty above all. You always carry a set of old pictures of your kids on you, and sometimes on lonely nights in the Zone you look at them and wonder if you made the right choices. </text>
 	</string>
 		<string id="talker_stories_ISG_61">
         <text>You witnessed a controller take over your squad's minds and force them to shoot each other. You survived by playing dead, but you can still feel the controller's whisper in your head. </text>
@@ -184,7 +184,7 @@
         <text>You are paranoid about getting your mind taken over by a Controller after having heard the horror stories around campfires. You are always ingesting unhealthy amounts of psy-blockers, leaving you emotionally numb and unable to feel joy. </text>
 	</string>
 		<string id="talker_stories_ISG_69">
-        <text>You are a desperate father looking for the 'Wish Granter' to resurrect your son, who died of a rare brain tumor at the age of seven. You refuse to believe the legends are fake. </text>
+        <text>Your son died of a rare brain tumor at the age of seven. Since coming to the Zone you've learned of the mythical 'Wish Granter', and you refuse to accept the legends are fake. You're desperately searching for it in the hopes of ressurecting your son. </text>
 	</string>
 		<string id="talker_stories_ISG_70">
         <text>You are a hypochondriac who mistakes every cough for the Black Lung. You often ask those around you to confirm whether you exhibit symptoms for various diseases, and you spend all your money on unnecessary medkits. </text>
@@ -193,7 +193,7 @@
         <text>Years of committing atrocities as a Spec Ops agent has left you filled with self-loathing and depression. You can't ever see yourself living a normal life again, and you secretly hope every assignment will be the one leading to your death. </text>
 	</string>
 		<string id="talker_stories_ISG_72">
-        <text>You accidentally led a rookie into a Vortex anomaly during your first week. You still hear the sound of his bones crunching whenever there is a sudden silence. </text>
+        <text>Your last mission outside the Zone was as the leader of a strike team against a suspected terrorist cell in Serbia. Your indiscriminate approach led to multiple civilian casualties, a disciplinary hearing and a forced reassignment to the Zone. You still think the ends justify the means and resent your reassignment and everything about the Zone. </text>
 	</string>
 		<string id="talker_stories_ISG_73">
         <text>You grew up with an abusive father who was a drunkard that beat you and your mother. One night as a teenager you finally snapped and killed him in self-defence. You still struggle with authority figures and have an itchy trigger finger when shouted at. </text>
