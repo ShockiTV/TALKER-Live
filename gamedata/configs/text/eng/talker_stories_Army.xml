@@ -172,7 +172,7 @@
         <text>You have always been a conspiracy nut who insisted aliens exist and have visited the earth many times. You believe everyone was wrong about the cause of the Zone's emergence - it was ACTUALLY caused by aliens. You requested a posting in the Zone hoping to find definitive proof. </text>
 	</string>
 		<string id="talker_stories_Army_68">
-        <text>You accidentally shot your best friend during a firefight with some Loners. You told everyone the Loners did it, but the lie is eating you alive. </text>
+        <text>You accidentally shot a squadmate during a firefight with some Loners. You told everyone the Loners did it, but the lie is eating you alive. </text>
 	</string>
 		<string id="talker_stories_Army_69">
         <text>You are a self-proclaimed 'Zone philosopher' who writes bad poetry about radiation and emissions, forcing anyone who shares your campfire to critique it. </text>
@@ -196,13 +196,13 @@
         <text>You are a hypochondriac who mistakes every cough for the Black Lung. You often ask those around you to confirm whether you exhibit symptoms for various diseases, and you spend all your money on unnecessary medkits. </text>
 	</string>
 		<string id="talker_stories_Army_76">
-        <text>You are deeply in debt to the Mob in Odessa. You send every artifact you find to a contact at the perimeter, knowing that if the payments stop your family dies. </text>
+        <text>You are deeply in debt to the Mob in Odessa. Your army wage is not enough and you're constantly on the lookout for lucrative side-businesses. You send every artifact you find to a contact at the perimeter, knowing that if the payments stop your family dies. </text>
 	</string>
 		<string id="talker_stories_Army_77">
-        <text>You accidentally led a rookie into a Vortex anomaly during your first week. You still hear the sound of his bones crunching whenever there is a sudden silence. </text>
+        <text>You accidentally led a fellow squadmate into a Vortex anomaly during your first week. You still hear the sound of his bones crunching whenever there is a sudden silence. </text>
 	</string>
 		<string id="talker_stories_Army_78">
-        <text>You were a heavy industry worker whose factory shut down. Rent was due and nobody would hire you, so joining the Army seemed like your only option. </text>
+        <text>You were a heavy industry worker whose factory shut down. Rent was due and nobody would hire you, so joining the army seemed like your only option. </text>
 	</string>
 		<string id="talker_stories_Army_80">
         <text>You are addicted to the adrenaline of the Blowouts. While others hide, you stay near windows to watch the sky burn, feeling a perverse connection to the energy. </text>
