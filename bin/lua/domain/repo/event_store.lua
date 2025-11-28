@@ -43,6 +43,12 @@ function EventStore:get_event(game_time_ms)
     return self.events[game_time_ms]
 end
 
+-- Method to remove an event by game_time_ms
+function EventStore:remove_event(game_time_ms)
+    logger.debug("Removing event with timestamp: %s", game_time_ms)
+    self.events[game_time_ms] = nil
+end
+
 -- Internal function to find the first event index that is not too old
 local function find_start_index(events, since_game_time_ms)
     local keys = {}
