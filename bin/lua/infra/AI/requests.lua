@@ -210,7 +210,7 @@ function AI_request.request_dialogue(speaker_id, callback)
         error("No memories found for speaker: " .. (speaker_id or ""))
     end
     local speaker_character = AI_request.get_character_by_id(speaker_id)
-    local messages = prompt_builder.create_dialogue_request_prompt(speaker_character, all_memories)
+    local messages, timestamp_to_delete = prompt_builder.create_dialogue_request_prompt(speaker_character, all_memories)
 
     -- call the model to generate the dialogue
     return model().generate_dialogue(messages, function(generated_dialogue)
@@ -221,7 +221,7 @@ function AI_request.request_dialogue(speaker_id, callback)
         end
         logger.info("Received dialogue: " .. generated_dialogue)
         generated_dialogue = dialogue_cleaner.improve_response_text(generated_dialogue) -- remove censorship and other unwanted content
-        callback(generated_dialogue)
+        callback(generated_dialogue, timestamp_to_delete)
     end)
 end
 
@@ -255,10 +255,31 @@ function AI_request.generate_dialogue(recent_events, function_send_dialogue_to_g
         -- then we compress the memories of the speaker
         AI_request.compress_memories(speaker_id, function()
             -- finally we request the dialogue of the speaker
-            AI_request.request_dialogue(speaker_id, function(dialogue)
+            AI_request.request_dialogue(speaker_id, function(dialogue, timestamp_to_delete)
                 -- then we call the initial callback with that dialogue
-                function_send_dialogue_to_game(speaker_id, dialogue)
+                function_send_dialogue_to_game(speaker_id, dialogue, timestamp_to_delete)
             end)
+        end)
+    end)
+end
+
+-- New function for direct dialogue generation, bypassing speaker picking.
+function AI_request.generate_dialogue_from_instruction(speaker_name, event, function_send_dialogue_to_game)
+    logger.info("AI_request.generate_dialogue_from_instruction for " .. speaker_name)
+    -- The witnesses are in the event, so we can set them directly.
+    AI_request.set_witnesses({event})
+
+    -- The speaker's ID is in the character object within the event.
+    local speaker_id = event.involved_objects[1].game_id
+    if not speaker_id then
+        logger.error("Could not find speaker_id in event.involved_objects[1]. Aborting instruction.")
+        return
+    end
+
+    -- Directly compress memories and request dialogue for the specified speaker.
+    AI_request.compress_memories(speaker_id, function()
+        AI_request.request_dialogue(speaker_id, function(dialogue, timestamp_to_delete)
+            function_send_dialogue_to_game(speaker_id, dialogue, timestamp_to_delete)
         end)
     end)
 end
@@ -291,6 +312,11 @@ function AI_request.get_remaining_cooldown(speaker_id, current_game_time)
     local remaining = COOLDOWN_DURATION_MS - time_since_last_spoke
     
     return math.max(0, remaining)
+end
+
+-- Get the raw timestamp of when a speaker last spoke
+function AI_request.get_last_spoke_time(speaker_id)
+    return speaker_last_spoke[tostring(speaker_id)]
 end
 
 -- for mocks
