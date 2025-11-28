@@ -2,6 +2,10 @@
 local log = require("framework.logger")
 local talker = require("app.talker")
 local game_adapter = require("infra.game_adapter")
+local AI_request = require("infra.AI.requests")
+
+-- game interfaces
+local query = talker_game_queries
 
 local m = {}
 
@@ -14,7 +18,9 @@ function m.register_character_instructions(unformatted_description, character, i
     -- The 'character' passed here is a custom Character object from the game_adapter, not a raw game_object.
     local witnesses = game_adapter.get_characters_near_player()
     -- This function acts as a specific entry point that gathers witnesses and then calls the main event registration function, returning its status.
-    return m.register_game_event(unformatted_description, {character.name}, witnesses, important, flags)
+    -- We must pass the full character object, not just the name, so the game_id is preserved.
+    -- The description string will be formatted by the game_adapter using the object's name.
+    return m.register_game_event(unformatted_description, {character}, witnesses, important, flags)
 end
 
 -- prototype
@@ -52,6 +58,32 @@ function m.register_game_event(unformatted_description, event_objects, witnesses
     return true
 end
 
+--- Checks if any NPC near the player has spoken within a given threshold.
+-- This is used to determine if there is a "moment of silence" suitable for an idle conversation.
+-- @return (boolean) True if someone has spoken recently, false otherwise.
+function m.has_anyone_spoken_recently()
+    local RECENT_SPEECH_THRESHOLD_MS = 90 * 1000 -- 90 seconds
+
+    local nearby_characters = game_adapter.get_characters_near_player()
+    if not nearby_characters or #nearby_characters == 0 then
+        return false -- No characters nearby, so nobody could have spoken.
+    end
+
+    local current_game_time = query.get_game_time_ms()
+
+    for _, character in ipairs(nearby_characters) do
+        local last_spoke_time = AI_request.get_last_spoke_time(character.game_id)
+        if last_spoke_time then
+            if current_game_time - last_spoke_time < RECENT_SPEECH_THRESHOLD_MS then
+                -- Found someone who spoke within the last 90 seconds.
+                return true
+            end
+        end
+    end
+
+    -- If we get here, it means no one nearby has spoken recently.
+    return false
+end
 ----------------------------------------------------------------------------------------------------
 -- SEND PLAYER DIALOGUE TO GAME 
 ----------------------------------------------------------------------------------------------------
