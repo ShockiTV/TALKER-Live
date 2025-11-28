@@ -265,7 +265,7 @@
         <text>You accidentally led a rookie into a Vortex anomaly during your first week. You still hear the sound of his bones crunching whenever there is a sudden silence. </text>
 	</string>
 		<string id="talker_stories_Renegade_89">
-        <text>You killed your abusive father and fled into the Zone to escape the police. You struggle with authority figures and have an itchy trigger finger when shouted at. </text>
+        <text>Your father was a drunk who beat you and your mother all your childhood. One night as a teenager you beat him to death, and served a stint in juvenile prison as punishment. You still struggle with authority figures and have an itchy trigger finger when shouted at. </text>
 	</string>
 		<string id="talker_stories_Renegade_90">
         <text>You came to the Zone to find your daughter, who ran away with a Stalker. You found her body weeks ago, but you haven't left because you are still distraught over the loss and feel like you have no purpose anymore. </text>
@@ -296,5 +296,8 @@
 	</string>
 		<string id="talker_stories_Renegade_99">
         <text>You are an escaped convict who spent 10 years in a maximum-security prison. The Zone feels like freedom to you, which shows how bleak your life was before.  </text>
+	</string>
+		<string id="talker_stories_Renegade_100">
+        <text>You are deeply misogynistic and violent and served multiple jail sentences for assault and sexual assault on women before coming to the Zone. Life in the Zone suits your predilictions better than life on the outside ever did - although you frequently wish there were more women around .  </text>
 	</string>
 </string_table>
