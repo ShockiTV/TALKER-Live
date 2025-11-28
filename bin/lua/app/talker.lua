@@ -10,7 +10,19 @@ local talker = {}
 function talker.register_event(event, is_important)
     logger.info("talker.register_event")
     event_store:store_event(event)
-    if should_someone_speak(event, is_important) then
+
+    -- If the event has the 'idle_only' flag, it's a direct instruction.
+    -- Bypass the 'should_someone_speak' and generic 'generate_dialogue' logic.
+    if event.flags and event.flags.idle_only then
+        logger.info("Idle conversation event detected. Using direct generation path.")
+        -- The first object in an idle event is the character object of the intended speaker.
+        local speaker_character = event.involved_objects[1]
+        if not speaker_character or not speaker_character.game_id then
+            logger.error("Idle conversation event has no valid speaker character. Aborting.")
+            return
+        end
+        talker.generate_dialogue_from_instruction(speaker_character.name, event)
+    elseif should_someone_speak(event, is_important) then
         talker.generate_dialogue(event)
     end
 end
@@ -21,13 +33,33 @@ function talker.generate_dialogue(event)
     logger.debug("Getting all events since " .. event.game_time_ms - TEN_SECONDS_ms)
     local recent_events = event_store:get_events_since(event.game_time_ms - TEN_SECONDS_ms)
     -- begin a dialogue generation request, input is recent_events, output is speaker_id and dialogue
-    AI_request.generate_dialogue(recent_events, function(speaker_id, dialogue)
+    AI_request.generate_dialogue(recent_events, function(speaker_id, dialogue, timestamp_to_delete)
         -- on response:
         logger.info("talker.generate_dialogue: dialogue generated for speaker_id: " .. speaker_id .. ", dialogue: " .. dialogue)
 
         game_adapter.display_dialogue(speaker_id, dialogue)
         local dialogue_event = game_adapter.create_dialogue_event(speaker_id, dialogue)
         talker.register_event(dialogue_event)
+
+        if timestamp_to_delete then
+            event_store:remove_event(timestamp_to_delete)
+        end
+    end)
+end
+
+function talker.generate_dialogue_from_instruction(speaker_name, event)
+    logger.debug("Generating dialogue from instruction for " .. speaker_name)
+    AI_request.generate_dialogue_from_instruction(speaker_name, event, function(speaker_id, dialogue, timestamp_to_delete)
+        -- on response:
+        logger.info("talker.generate_dialogue_from_instruction: dialogue generated for speaker_id: " .. speaker_id .. ", dialogue: " .. dialogue)
+
+        game_adapter.display_dialogue(speaker_id, dialogue)
+        local dialogue_event = game_adapter.create_dialogue_event(speaker_id, dialogue)
+        talker.register_event(dialogue_event)
+
+        if timestamp_to_delete then
+            event_store:remove_event(timestamp_to_delete)
+        end
     end)
 end
 
