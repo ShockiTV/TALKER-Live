@@ -2,6 +2,7 @@
 package.path = package.path .. ";./bin/lua/?.lua;"
 
 local interface = require("interface.interface")
+local AI_request = require("infra.AI.requests")
 local game = require("infra.game_adapter")
 local log = require('framework.logger')
 
@@ -17,15 +18,32 @@ local function cooldown_ready()
     return queries.get_game_time_ms() - last_idle_conversation_time_ms > idle_conversation_time_cooldown_ms
 end
 
-local function are_conditions_met()
-    local is_player_in_combat = #queries.get_enemies_fighting_player() ~= 0
-    return cooldown_ready() and not is_player_in_combat
+-- Fisher-Yates shuffle to randomize the order of candidates
+local function shuffle(tbl)
+    for i = #tbl, 2, -1 do
+        local j = math.random(i)
+        tbl[i], tbl[j] = tbl[j], tbl[i]
+    end
 end
 ---------------------------------------------------------------------------------------------
 -- IDLE CONVERSATION
 --------------------------------------------------------------------------------------------
 function on_every_10_seconds()
-    if not are_conditions_met() then return end
+    -- If the player is in combat, reset the idle conversation cooldown and abort.
+    -- This prevents an idle conversation from starting immediately after combat ends.
+    local is_player_in_combat = #queries.get_enemies_fighting_player() ~= 0
+    if is_player_in_combat then
+        last_idle_conversation_time_ms = queries.get_game_time_ms()
+        return
+    end
+ 
+     -- New check: If anyone nearby has spoken recently, it's not a moment of silence.
+    if interface.has_anyone_spoken_recently() then
+        log.debug("Aborting idle chatter check, someone has spoken recently.")
+        return
+    end
+ 
+   if not cooldown_ready() then return end
 
     --- create event
     local all_candidates = game.get_characters_near_player()
@@ -46,20 +64,37 @@ function on_every_10_seconds()
     -- If no valid candidates are left, do nothing.
     if #valid_candidates == 0 then return end
 
-    -- Pick a random speaker from the valid list
-    local random_speaker = valid_candidates[math.random(#valid_candidates)]
+    -- Shuffle candidates to try them in a random order.
+    shuffle(valid_candidates)
 
-    local speaker = queries.get_name(random_speaker)
+    local conversation_triggered = false
+    for _, npc_obj in ipairs(valid_candidates) do
+        -- Check the AI's internal cooldown for this specific NPC before trying to make them speak.
+        local remaining_cooldown = AI_request.get_remaining_cooldown(npc_obj:id(), queries.get_game_time_ms())
+        if remaining_cooldown > 0 then
+            log.debug("Skipping %s for idle chatter, still on individual cooldown for %s ms", queries.get_name(npc_obj), remaining_cooldown)
+            goto continue -- Skip to the next NPC in the loop
+        end
 
-    local instruction = string.format("%s begins an idle conversation to pass the time. The next line of dialogue must be spoken by %s.", speaker, speaker)
-    -- Pass a flag to ensure this prompt is only for idle conversation.
-    local success = interface.register_character_instructions(instruction, speaker, false, { idle_only = true })
+        local speaker_name = queries.get_name(npc_obj)
+        local instruction = string.format("%s begins an idle conversation to pass the time. The next line of dialogue must be spoken by %s.", speaker_name, speaker_name)
+        
+        -- Create a Character object, as expected by the interface function.
+        local speaker_character = game.create_character(npc_obj)
+        local success = interface.register_character_instructions(instruction, speaker_character, false, { idle_only = true })
 
-    if success then
-        log.debug("TALKER: Idle chatter triggered for " .. speaker)
-        -- Reset cooldown only after a conversation has been successfully triggered
-        last_idle_conversation_time_ms = queries.get_game_time_ms()
+        if success then
+            log.debug("TALKER: Idle chatter triggered for " .. speaker_name)
+            conversation_triggered = true
+            break -- Exit the loop on the first success
+        end
+
+        ::continue:: -- Label for the goto statement
     end
+
+    -- An attempt to start a conversation was made. Reset the main cooldown to prevent spamming.
+    -- This happens whether we succeeded or failed after trying all candidates.
+    last_idle_conversation_time_ms = queries.get_game_time_ms()
 end
 
 --------------------------------------------------------------------------------------------
@@ -92,12 +127,13 @@ end
 
 function save_state(data)
     data.talker_idle_last_check_time_ms = last_check_time_ms
-    data.talker_idle_last_conversation_time_ms = last_idle_conversation_time_ms
 end
 
 function load_state(data)
     last_check_time_ms = data.talker_idle_last_check_time_ms or 0
-    last_idle_conversation_time_ms = data.talker_idle_last_conversation_time_ms or 0
+    -- Reset the idle conversation cooldown to the current game time upon loading.
+    -- This prevents an idle conversation from firing immediately after loading a save.
+    last_idle_conversation_time_ms = queries.get_game_time_ms()
 end
 
 function is_loaded()
