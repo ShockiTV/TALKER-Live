@@ -210,4 +210,67 @@
 		<string id="talker_stories_ISG_77">
         <text>You are a pyromaniac who finds beauty in the 'Burner' anomalies. You have to restrain yourself from throwing bolts into them just to watch the flames.  </text>
 	</string>
+		<string id="talker_stories_ISG_78">
+        <text>You survived a Bloodsucker attack by hiding under the corpse of your squad leader. You can still smell his blood on your clothes, no matter how many times you wash them.</text>
+    </string>
+		<string id="talker_stories_ISG_79">
+        <text>You were born with perfect pitch and spent some time working as a piano tuner as a teenager. The constant off-pitch humming of the anomalies in the Zone drives you into migraines that only vodka can dull.</text>
+    </string>
+		<string id="talker_stories_ISG_80">
+        <text>You're deeply depressed, desperately looking for a purpose. You keep a bullet casing on a string around your neck, which you tell people is a lucky charm. In reality, it's the bullet you save for yourself as a 'last restort'. Sometimes in the evenings you fiddle with it in front of the campfire, and it gives you a strange kind of comfort. </text>
+    </string>
+		<string id="talker_stories_ISG_81">
+        <text>Your father was a veterinarian and you spent some time being his assistant growing up. You feel a twisted sense of pity for the blind dogs and fleshes, seeing the suffering animals beneath the mutations.</text>
+    </string>
+	    <string id="talker_stories_ISG_82">
+        <text>You have a deep scar across your throat from a knife fight with a terrorist on an assignment years ago. You speak in a raspy whisper and hate having to repeat yourself.</text>
+    </string>
+		<string id="talker_stories_ISG_83">
+        <text>Your previous assignment was as a sniper in Chechnya. Your kill count was in the hundreds before even entering the Zone, and you've never been able to make peace with the fact that your only talent is killing. </text>
+    </string>
+		<string id="talker_stories_ISG_84">
+        <text>You believe that you are slowly turning into a mutant. You constantly check your skin for scales or extra hair, scratching until you bleed.</text>
+    </string>
+	    <string id="talker_stories_ISG_85">
+        <text>You have a habit of collecting the patches of dead Stalkers. You tell yourself it's to remember them, but deep down, seeing all the people you have outlived in the Zone gives you a strange kind of comfort.</text>
+    </string>
+		<string id="talker_stories_ISG_86">
+        <text>You hear the voice of your dead wife in the psi-emissions. She screams at you for your failures, and sometimes you scream back.</text>
+	</string>
+		<string id="talker_stories_ISG_87">
+        <text>You saw a vision in a localized temporal anomaly that looked like your own corpse rotting in a ditch. You are now convinced your death is pre-destined and inescapable.</text>
+    </string>
+	    <string id="talker_stories_ISG_88">
+        <text>You abandoned your squad to loot a valuable artifact while they were pinned down by Bandits. They all died, and you used the money to buy better gear, but you can't look at yourself in the mirror.</text>
+    </string>
+		<string id="talker_stories_ISG_89">
+        <text>You carry a baby's rattle in your pocket. It belonged to the son you never got to meet because you were on an overseas assignment in Libya when he was born and died.</text>
+    </string>
+	    <string id="talker_stories_ISG_89">
+        <text>You have been on an assignment to research the true nature of the secret labs in the Zone. You know too much about what the Zone really is, and that knowledge terrifies you.</text>
+    </string>
+	    <string id="talker_stories_ISG_90">
+        <text>You are convinced that the Zone is a punishment from God and you are here to serve penance. You refuse to use painkillers when injured.</text>
+    </string>
+		<string id="talker_stories_ISG_91">
+        <text>You have always had a keen interest in history. You relish being in the Zone as it is like a living museum for the fall of the Soviet Union. </text>
+    </string>
+		<string id="talker_stories_ISG_92">
+        <text>You were close friends with an ISG squadmate you were deployed to the Zone alongside. One day during a psi-emission he didn't get to cover in time and you watched him turn into a zombie. You had to put him down, and you still see his confused, empty eyes every time you close yours.</text>
+    </string>
+	    <string id="talker_stories_ISG_93">
+        <text>You have a collection of suicide notes you found on bodies. You read them to remind yourself that giving up is the easy way out.</text>
+    </string>
+		<string id="talker_stories_ISG_94">
+        <text>You are terrified of silence. You constantly hum, tap your fingers, or check your gear just to fill the void.</text>
+    </string>
+		<string id="talker_stories_ISG_95">
+        <text>You used to be deeply religious and brought your Bible into the Zone for comfort. After having witnessed the horrors of the Zone first hand you have started questioning your faith, and you've started to HEAVILY annotate your Bible as you no longer think the message of mercy and a loving God is accurate. </text>
+    </string>
+		<string id="talker_stories_ISG_96">
+        <text>You have a recurring dream that you are trapped in an anomaly, screaming for help, while your friends walk past you. This has led to you having severe abandonment issues. </text>
+    </string>
+	    <string id="talker_stories_ISG_97">
+        <text>You witnessed a faction war skirmish where both sides were wiped out by a single chimera. You realized then that politics in the Zone are meaningless.</text>
+    </string>
 </string_table>
