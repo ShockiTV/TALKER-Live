@@ -19,7 +19,7 @@ local factions = {
     },
     monolith = {
         name = "Monolith",
-        style = "member of the Monolith faction. They are a brainwashed cult worshipping the Monolith and are fanatical, cryptic, zealous and emotionally void. They retain very little of their memories and personality from before their brainwashing. "
+        style = "member of the Monolith faction. They are a brainwashed cult worshipping the Monolith, and retain very little of their memories and personality from before their brainwashing. They are fanatical, zealous and emotionally void.  "
     },
     stalker = {
         name = "stalker",
@@ -27,7 +27,7 @@ local factions = {
     },
     csky = {
         name = "Clear Sky",
-        style = "member of Clear Sky, a faction who want to understand the Zone better. They are idealistic, optimistic and cautious. "
+        style = "member of the Clear Sky faction. They are an independent paramilitary group with a scientific focus whose goal is to understand the Zone better. They consist primarily of volunteers and are idealistic, cautious and emotionally fragile. "
     },
     ecolog = {
         name = "Ecolog",
@@ -47,7 +47,7 @@ local factions = {
     },
     greh = {
         name = "Sin",
-        style = "member of the Sin faction, a religious sect of zombified stalkers worshipping the Zone. They believe the Zone is of divine nature and see it as humanity's path to ultimate redemption. They are creepy, possessed and ritualistic. "
+        style = "member of the Sin faction, a religious sect of partly zombified stalkers worshipping the Zone. They believe the Zone is of divine nature and see it as humanity's path to ultimate redemption. They are creepy, possessed and ritualistic. "
     },
     isg = {
         name = "ISG",
