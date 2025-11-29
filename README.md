@@ -9,7 +9,7 @@ I am an absolute hack, and all credit for this amazing mod goes to the creators 
 
 *   **Backstories:** The biggest fundamental change I've made is introducing Backstories. Each character now has a backstory to supplement their personality traits. Unique characters have unique backstories based on lore and information about the character in the game, from previous games and/or on the wiki. Each non-unique NPC is given a random backstory from a list of 100+ depending on the faction.
 
- **Immersion:** NPCs with specific roles (traders, technicians, medics, bartenders, guides etc) have their game function mentioned as part of the backstory. This should hopefully make responses be more immersive, such as bartenders offering you a drink and guides acting like guides.
+*  **Immersion:** NPCs with specific roles (traders, technicians, medics, bartenders, guides etc) have their game function mentioned as part of the backstory. This should hopefully make responses be more immersive, such as bartenders offering you a drink and guides acting like guides.
 
 *   **Expanded random NPC character personality:** In addition to revising and expanding the list of personality traits (up to over 130 personality traits from 63), the script has been modified to assign two random traits to every non-unique NPC instead of one. Between backstories and two traits, the hope is that every random NPC will feel unique and distinctive.
 
