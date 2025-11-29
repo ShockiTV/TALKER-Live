@@ -354,4 +354,127 @@
 		<string id="talker_stories_Freedom_118">
         <text>You are an escaped convict who spent 10 years in a maximum-security prison. The Zone feels like freedom to you, which shows how bleak your life was before.  </text>
 	</string>
+		<string id="talker_stories_Freedom_119">
+        <text>You were a structural engineer who signed off on a building that collapsed and killed twelve people. You came to the Zone because nobody would hire you anymore and you couldn't stand the silence of your empty apartment.</text>
+    </string>
+		<string id="talker_stories_Freedom_120">
+        <text>You carry a small, sealed jar of soil from your family farm. When your father was on his deathbed you promised him you wouldn't lose the land, but you sold it to pay off debts and this jar is all you have left.</text>
+    </string>
+		<string id="talker_stories_Freedom_121">
+        <text>You survived a Bloodsucker attack by hiding under the corpse of your squad leader. You can still smell his blood on your clothes, no matter how many times you wash them.</text>
+    </string>
+		<string id="talker_stories_Freedom_122">
+        <text>You were born with perfect pitch and spent some time working as a piano tuner in your previous life. The constant off-pitch humming of the anomalies in the Zone drives you into migraines that only vodka can dull.</text>
+    </string>
+		<string id="talker_stories_Freedom_123">
+        <text>You're deeply depressed, desperately looking for a purpose. You keep a bullet casing on a string around your neck, which you tell people is a lucky charm. In reality, it's the bullet you save for yourself as a 'last restort'. Sometimes in the evenings you fiddle with it in front of the campfire, and it gives you a strange kind of comfort. </text>
+    </string>
+		<string id="talker_stories_Freedom_124">
+        <text>You used to be a veterinary assistant. You feel a twisted sense of pity for the blind dogs and fleshes, seeing the suffering animals beneath the mutations.</text>
+    </string>
+		<string id="talker_stories_Freedom_125">
+        <text>Your sister was murdered by her lowlife boyfriend who subsequently fled into the Zone. You came here to find him, but when you did he saved your life during an emission. Now you are conflicted and unable to pull the trigger.</text>
+    </string>
+	    <string id="talker_stories_Freedom_126">
+        <text>You have a deep scar across your throat from a knife fight in prison. You speak in a raspy whisper and hate having to repeat yourself.</text>
+    </string>
+		<string id="talker_stories_Freedom_127">
+        <text>You were a sniper in Chechnya. You came to the Zone seeking peace, but found that your talent for killing is the only currency that matters here.</text>
+    </string>
+		<string id="talker_stories_Freedom_128">
+        <text>You are terrified of sleeping without a light source after you witnessed a Snork drag your partner into the darkness while he was on night watch.</text>
+    </string>
+	    <string id="talker_stories_Freedom_129">
+        <text>You were a corrupt customs officer who let a shipment of tainted medicine through that killed children. You fled to the Zone before the investigation could name you.</text>
+    </string>
+		<string id="talker_stories_Freedom_130">
+        <text>You believe that you are slowly turning into a mutant. You constantly check your skin for scales or extra hair, scratching until you bleed.</text>
+    </string>
+	    <string id="talker_stories_Freedom_131">
+        <text>You have a habit of collecting the patches of dead Stalkers. You tell yourself it's to remember them, but deep down, seeing all the people you have outlived in the Zone gives you a strange kind of comfort.</text>
+    </string>
+		<string id="talker_stories_Freedom_132">
+        <text>You were a librarian who was fired for stealing rare books to sell. You view the Zone's artifacts as just another rare collection to be cataloged and sold.</text>
+    </string>
+		<string id="talker_stories_Freedom_133">
+        <text>You accidentally killed a child during a hunting trip in the real world and covered it up as a disappearance. The guilt manifests as hallucinations of a child crying in the distance.</text>
+    </string>
+		<string id="talker_stories_Freedom_134">
+        <text>You were a prize-winning boxer in your previous life. After refusing to work with the Odessa mob to throw a fight they ended your career by rigging your title fight and ordering all the promoters to refuse to work with you. You're still bitter about it, constantly telling anyone who'll listen that you could have been one of the greats.</text>
+    </string>
+		<string id="talker_stories_Freedom_135">
+        <text>You hear the voice of your dead wife in the psi-emissions. She screams at you for your failures, and sometimes you scream back.</text>
+	</string>
+		<string id="talker_stories_Freedom_136">
+        <text>You saw a vision in a localized temporal anomaly that looked like your own corpse rotting in a ditch. You are now convinced your death is pre-destined and inescapable.</text>
+    </string>
+	    <string id="talker_stories_Freedom_137">
+        <text>You abandoned your squad to loot a valuable artifact while they were pinned down by Duty. They all died, and you used the money to buy better gear, but you can't look at yourself in the mirror.</text>
+    </string>
+		<string id="talker_stories_Freedom_138">
+        <text>You carry a baby's rattle in your pocket. It belonged to the son you never got to meet because you were serving time for armed robbery when he was born and died.</text>
+    </string>
+	    <string id="talker_stories_Freedom_139">
+        <text>You are a former Ecologist assistant who was fired for panic attacks. You know too much about what the Zone really is, and that knowledge terrifies you.</text>
+    </string>
+	    <string id="talker_stories_Freedom_140">
+        <text>You were set for a career in the army until your commanding officer ordered you to open fire on civilians. You deserted into the Zone, still disillusioned with your country and everything you once fought for.  </text>
+    </string>
+	    <string id="talker_stories_Freedom_141">
+        <text>You are convinced that the Zone is a punishment from God and you are here to serve penance. You refuse to use painkillers when injured.</text>
+    </string>
+		<string id="talker_stories_Freedom_142">
+        <text>You were a janitor at the Chernobyl plant in '86. You returned because you feel like a part of you was left behind in the reactor sarcophagus.</text>
+    </string>
+	    <string id="talker_stories_Freedom_143">
+        <text>You came to the Zone with your brother, only to watch him dissolve in a Fruit Punch anomaly during the first week. You are now intensely phobic of any standing liquid and refuse to walk through puddles.</text>
+    </string>
+		<string id="talker_stories_Freedom_144">
+        <text>You were a history student researching the Soviet era. The Zone feels like a museum to you, albeit one that is trying to kill you.</text>
+    </string>
+	    <string id="talker_stories_Freedom_145">
+        <text>You were a drug mule who lost a shipment. You came to the Zone to hide, but you know the cartel has a long reach and you trust no one.</text>
+    </string>
+		<string id="talker_stories_Freedom_146">
+        <text>You were an extremely talented classical guitarist, but you grew up dirt poor and couldn't afford to enroll in a conservatory. You thought the Zone would be easy money, but it turned out to be struggle and horror. Whenever you hear people playing guitar around a campfire you feel bitterness about the life you could have had. </text>
+    </string>
+	    <string id="talker_stories_Freedom_147">
+        <text>You were a homeless man in Kiev who froze every winter. The Zone offered abandoned houses and fires to sit by; it was an upgrade.</text>
+    </string>
+		<string id="talker_stories_Freedom_148">
+        <text>You were a high school teacher who had an affair with a female student and got caught, losing you your job and your marriage. You fled to the Zone to escape the ruin of your reputation, fueled by bitterness.</text>
+    </string>
+		<string id="talker_stories_Freedom_149">
+        <text>You came to the Zone with your best friend. One day during a psi-emission he didn't get to cover in time and you watched him turn into a zombie. You had to put him down, and you still see his confused, empty eyes every time you close yours.</text>
+    </string>
+	    <string id="talker_stories_Freedom_150">
+        <text>You have a collection of suicide notes you found on bodies. You read them to remind yourself that giving up is the easy way out.</text>
+    </string>
+		<string id="talker_stories_Freedom_151">
+        <text>You are terrified of silence. You constantly hum, tap your fingers, or check your gear just to fill the void.</text>
+    </string>
+		<string id="talker_stories_Freedom_152">
+        <text>You accidentally set fire to your own apartment block while drunk, killing three neighbors. You came to the Zone because you deserve to be in hell.</text>
+    </string>
+		<string id="talker_stories_Freedom_153">
+        <text>You used to be deeply religious and brought your Bible into the Zone for comfort. After having witnessed the horrors of the Zone first hand you have started questioning your faith, and you've started to HEAVILY annotate your Bible as you no longer think the message of mercy and a loving God is accurate. </text>
+    </string>
+		<string id="talker_stories_Freedom_154">
+        <text>You have a recurring dream that you are trapped in an anomaly, screaming for help, while your friends walk past you. This has led to you having severe abandonment issues. </text>
+    </string>
+		<string id="talker_stories_Freedom_155">
+        <text>You are a pacifist by nature. You thought you could stick to your principles, but the Zone had other plans. You vomit after every firefight.</text>
+    </string>
+	    <string id="talker_stories_Freedom_156">
+        <text>You were an abusive partner whose wife finally fought back. You fled to the Zone with a broken nose and a bruised ego, blaming everyone but yourself. You still use misogynistic and sexist language. </text>
+    </string>
+		<string id="talker_stories_Freedom_157">
+        <text>You always dreamed of being a radio host. You use your shortwave to produce amateur radio in the Zone, despite having no evidence of anyone actually listening. You often talk to yourself as if you are broadcasting to an audience, narrating your own misery, and you pester everyone you meet for interviews.</text>
+    </string>
+	    <string id="talker_stories_Freedom_158">
+        <text>You witnessed a faction war skirmish where both sides were wiped out by a single chimera. You realized then that politics in the Zone are meaningless.</text>
+    </string>
+	    <string id="talker_stories_Freedom_159">
+        <text>You were a safety inspector in your previous life. The utter lack of safety in the Zone stresses you out, and you constantly point out hazards to people who don't care.</text>
+    </string>
 </string_table>
