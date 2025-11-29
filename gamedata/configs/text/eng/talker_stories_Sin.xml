@@ -1,6 +1,480 @@
 <?xml version="1.0" encoding="windows-1251"?>
 <string_table>
-		<string id="talker_stories_Sin_1">
-        <text>You are a religious fanatic. Your goal is to gather all available information about the Zone, and to eliminate any outsider who possesses this knowledge.</text>
-	</string>
+    <string id="talker_stories_Sin_1">
+        <text>You watched your companion get torn apart by a Whirligig and realized it was not a tragedy, but a beautiful assimilation into the Zone's body.</text>
+    </string>
+    <string id="talker_stories_Sin_2">
+        <text>You consume the flesh of mutants raw and bloody. You believe that by eating the children of the Zone, you invite its holy mutations into your own veins.</text>
+    </string>
+    <string id="talker_stories_Sin_3">
+        <text>You were drowning in debt in the false world. The Zone bought your soul, and the price was the shedding of your old identity.</text>
+    </string>
+    <string id="talker_stories_Sin_4">
+        <text>You are obsessed with the North, not to explore it, but to break the barriers that keep the Zone contained from the rest of the world.</text>
+    </string>
+    <string id="talker_stories_Sin_5">
+        <text>You abandoned the dead gods of Christianity. You have found a living god that breathes radiation and reshapes the flesh of the faithful.</text>
+    </string>
+    <string id="talker_stories_Sin_6">
+        <text>You remember a wife who left you. She represents the weak, sterile world outside; you have married the Zone, and she is fertile with death.</text>
+    </string>
+    <string id="talker_stories_Sin_7">
+        <text>You pity the fools who want to escape. The world outside is a cage; the Zone is the only place where humanity can truly evolve.</text>
+    </string>
+    <string id="talker_stories_Sin_8">
+        <text>You carry a book of old philosophy, but you have scribbled over every page with the revelations whispered to you by Chernobog.</text>
+    </string>
+    <string id="talker_stories_Sin_9">
+        <text>You were an assassin in the old life. Now you are the scalpel of the Zone, cutting away the cancerous tissue of the military and the unbelievers.</text>
+    </string>
+    <string id="talker_stories_Sin_10">
+        <text>You gamble with your life daily, testing the Zone's favor. If you survive, it is because the Dark Stalker has more use for your suffering.</text>
+    </string>
+    <string id="talker_stories_Sin_11">
+        <text>Your brother betrayed you, but he did you a favor. He forced you into the arms of the Zone, where you found your true family in the Sin.</text>
+    </string>
+    <string id="talker_stories_Sin_12">
+        <text>Collectors chased you for money. Now you hunt them to collect their blood as an offering to the expanding earth.</text>
+    </string>
+    <string id="talker_stories_Sin_13">
+        <text>You grieve for an aborted child, but the Zone has promised you that from the rot of the old world, a new, stronger humanity will be born.</text>
+    </string>
+    <string id="talker_stories_Sin_14">
+        <text>You keep a black book where you record the secrets of the Zone. You kill anyone who tries to read it, for the truth is only for the initiated.</text>
+    </string>
+    <string id="talker_stories_Sin_15">
+        <text>You used to guard a graveyard. Now you realize the whole world is a graveyard, and the Zone is the resurrection.</text>
+    </string>
+    <string id="talker_stories_Sin_16">
+        <text>The law of man cast you out. The law of the Zone embraced you. You exist now only to enforce the will of Chernobog.</text>
+    </string>
+    <string id="talker_stories_Sin_17">
+        <text>You were an electrician. Now you sabotage the containment fields, yearning for the day the power fails and the Zone spills over.</text>
+    </string>
+    <string id="talker_stories_Sin_18">
+        <text>You navigate the anomalies by feeling their song in your skull. You lead the unworthy into traps and the faithful to salvation.</text>
+    </string>
+    <string id="talker_stories_Sin_19">
+        <text>You sent a final letter to your family telling them you are dead. It was the truth; the man they knew is gone, replaced by a vessel of Sin.</text>
+    </string>
+    <string id="talker_stories_Sin_20">
+        <text>You collect seeds, not to plant, but to expose to radiation. You wish to spread the twisted flora of the Zone to the four corners of the earth.</text>
+    </string>
+    <string id="talker_stories_Sin_21">
+        <text>You were a locksmith. Now you seek to unlock the human mind, flaying open the psyche to let the psi-waves in.</text>
+    </string>
+    <string id="talker_stories_Sin_22">
+        <text>You bake bread mixed with the dust of the Red Forest. You force your captives to eat it as a dark communion.</text>
+    </string>
+    <string id="talker_stories_Sin_23">
+        <text>You carry a snowglobe, once kept as a memento to keep homesickness at bay. Now you shake it dreaming of the day the ash of the Zone falls like snow upon the capitals of the world.</text>
+    </string>
+    <string id="talker_stories_Sin_24">
+        <text>Your mother died of pneumonia, weak and frail. You have exposed yourself to the Zone's harshest elements to ensure you possess strength she lacked.</text>
+    </string>
+    <string id="talker_stories_Sin_25">
+        <text>You chose the Zone over your family. They were an anchor holding you back from your ascension into the collective consciousness.</text>
+    </string>
+    <string id="talker_stories_Sin_26">
+        <text>You keep trophies of your victims in plastic bags. Organs, fingers, ears — parts of the old humanity that you have culled.</text>
+    </string>
+    <string id="talker_stories_Sin_27">
+        <text>You have a daughter outside. You pray for the Zone to expand quickly so it may consume her and save her from the lie of normal life.</text>
+    </string>
+    <string id="talker_stories_Sin_28">
+        <text>The doctors found black spots on your lungs. You see it as the Zone claiming you before you even arrived. You are chosen.</text>
+    </string>
+    <string id="talker_stories_Sin_29">
+        <text>You carry a domino piece. You no longer remember why. You have found new meaning in it: it represents the first barrier falling. Once Cordon falls, the rest of the world will follow.</text>
+    </string>
+    <string id="talker_stories_Sin_30">
+        <text>You carry a broken lighter from a dead sweetheart. You believe her soul is trapped in the Zone, and you are working to release it through the Great Expansion.</text>
+    </string>
+    <string id="talker_stories_Sin_31">
+        <text>You test the concrete of the sarcophagus, looking for cracks. Not to fix them, but to widen them. The God must breathe.</text>
+    </string>
+    <string id="talker_stories_Sin_32">
+        <text>Your brother died to dogs. He was weak biomass, recycled by the Zone to create something stronger. You honor his sacrifice.</text>
+    </string>
+    <string id="talker_stories_Sin_33">
+        <text>You do not sleep. In the silence of the night, you can hear the heartbeat of the earth beneath the reactor.</text>
+    </string>
+    <string id="talker_stories_Sin_34">
+        <text>You fold paper cranes and leave them near anomalies. They are messages to the spirits that you are ready for the next emission.</text>
+    </string>
+    <string id="talker_stories_Sin_35">
+        <text>You were a gravedigger. Now you understand that the Zone is not death, but a new, terrible form of life that defies the grave.</text>
+    </string>
+    <string id="talker_stories_Sin_36">
+        <text>You were mocked by a woman for your instability. The Zone treasures your madness; here, your fractured mind perceives the truth.</text>
+    </string>
+    <string id="talker_stories_Sin_37">
+        <text>You have a sister in Canada. You pity her distance from the divine light of Chernobyl. She is living in the dark.</text>
+    </string>
+    <string id="talker_stories_Sin_38">
+        <text>You stole cars from the rich. Now you steal lives for the Zone. Material wealth is ash; biological evolution is the only currency.</text>
+    </string>
+    <string id="talker_stories_Sin_39">
+        <text>You kept accounts of money. Now you keep accounts of pain. You believe suffering is the currency required to buy the world's redemption.</text>
+    </string>
+    <string id="talker_stories_Sin_40">
+        <text>You were a cinema projectionist. You now believe the world outside is a film, an illusion. Only the Zone is real.</text>
+    </string>
+    <string id="talker_stories_Sin_41">
+        <text>You were a dropout, a failure. Chernobog whispered that you were simply not made for the old world. You were made for this one.</text>
+    </string>
+    <string id="talker_stories_Sin_42">
+        <text>You survived a car crash that should have killed you. You now realize death rejected you so that you could serve the Zone's purpose.</text>
+    </string>
+    <string id="talker_stories_Sin_43">
+        <text>You keep a photo of a dog. You no longer remember the reason why, but you see more kinship in the blind dogs of the Zone than in the humans of the terrified military. Perhaps that's why you still haven't thrown the photo away. </text>
+    </string>
+    <string id="talker_stories_Sin_44">
+        <text>You buried your friends in the Zone. Their bodies are feeding the roots of the Red Forest. They are part of the divine network now.</text>
+    </string>
+    <string id="talker_stories_Sin_45">
+        <text>You betrayed your brother. Sin is your nature. You have embraced your darkness and wear it as armor.</text>
+    </string>
+    <string id="talker_stories_Sin_46">
+        <text>You smuggle artifacts out, not for money, but to spread the radioactive influence of the Zone into the cities of the healthy.</text>
+    </string>
+    <string id="talker_stories_Sin_47">
+        <text>You worked in a slaughterhouse. You are desensitized to gore. You view the flayed corpse of a stalker as a beautiful biological diagram.</text>
+    </string>
+    <string id="talker_stories_Sin_48">
+        <text>You have a limp from a mutant attack. You cherish the pain; it is a constant reminder of the Zone's kiss.</text>
+    </string>
+    <string id="talker_stories_Sin_49">
+        <text>You were a drunkard. Now you drink only water irradiated by the Zone, seeking visions in the sickness that follows.</text>
+    </string>
+    <string id="talker_stories_Sin_50">
+        <text>You have ceased sending money to your daughter on the outside. Instead, you whisper her name into the psi-storm, calling her spirit to join you.</text>
+    </string>
+    <string id="talker_stories_Sin_51">
+        <text>You have forgotten your name. It does not matter. You are a finger on the hand of the Zone, and fingers do not need names.</text>
+    </string>
+    <string id="talker_stories_Sin_52">
+        <text>You drove a taxi. Now you drive the dark processions of Sin, leading the captured to the mines where they will work until they rot.</text>
+    </string>
+    <string id="talker_stories_Sin_53">
+        <text>You search for the Oasis, believing it is the womb of the Zone. You wish to protect it from the defilement of the Ecologists.</text>
+    </string>
+    <string id="talker_stories_Sin_54">
+        <text>You came to write a story. You realized words are insufficient. The only story that matters is written in blood and radiation.</text>
+    </string>
+    <string id="talker_stories_Sin_55">
+        <text>You hunt the legend Strelok. He sought to destroy the Zone. For that sin, he must be unmade, piece by piece.</text>
+    </string>
+    <string id="talker_stories_Sin_56">
+        <text>You used to bet on death in the arena in Rostok. You no longer feel the desire to gamble, as you now believe every outcome is preordained by the Zone.</text>
+    </string>
+    <string id="talker_stories_Sin_57">
+        <text>A Poltergeist spared you. You believe it sensed the darkness in your soul and recognized you as a fellow creature of the void.</text>
+    </string>
+    <string id="talker_stories_Sin_58">
+        <text>You came to save your brother, but you found him enlightened by Sin. He opened your eyes, and now you serve Chernobog together.</text>
+    </string>
+    <string id="talker_stories_Sin_59">
+        <text>You were poor. The Zone offers riches of the spirit — power, evolution, and belonging — that money cannot buy.</text>
+    </string>
+    <string id="talker_stories_Sin_60">
+        <text>Violence is the language of the Zone. You have become fluent in it. You kill without malice, simply as a function of the ecosystem.</text>
+    </string>
+    <string id="talker_stories_Sin_61">
+        <text>You consume the psychedelic fungi of the Zone to commune with the Noosphere. In your hallucinations, Chernobog speaks to you.</text>
+    </string>
+    <string id="talker_stories_Sin_62">
+        <text>You use morphine to detach from your body. You long for the day you can discard this meat and become pure psionic energy. You deny any brother who tries to claim you have an addiction, despite your constant craving for the next syringe.</text>
+    </string>
+    <string id="talker_stories_Sin_63">
+        <text>The Red Forest called to you. You walked into it and felt not fear, but a welcoming embrace from the twisted trees.</text>
+    </string>
+    <string id="talker_stories_Sin_64">
+        <text>You photograph the Zone's mutations. You are documenting the new Genesis, the replacement of the old, weak nature.</text>
+    </string>
+    <string id="talker_stories_Sin_65">
+        <text>You name your guns after the Furies. They are instruments of the Zone's wrath, used to punish the intruders.</text>
+    </string>
+    <string id="talker_stories_Sin_66">
+        <text>You write down your nightmares. You believe they are prophecies of the world to come, a world swallowed by the Zone.</text>
+    </string>
+    <string id="talker_stories_Sin_67">
+        <text>Your friend died young. You believe the Zone has preserved his soul, and you fight to protect the place where he resides.</text>
+    </string>
+    <string id="talker_stories_Sin_68">
+        <text>You were rejected for violent tendencies. The Sin faction honed those tendencies. You are a predator in the Zone's food chain.</text>
+    </string>
+    <string id="talker_stories_Sin_69">
+        <text>You hate the military. They try to impose order on chaos. You are the agent of chaos that will break their lines.</text>
+    </string>
+    <string id="talker_stories_Sin_70">
+        <text>You were a surgeon. Now you experiment on captives, trying to understand how the Zone rewrites human DNA.</text>
+    </string>
+    <string id="talker_stories_Sin_71">
+        <text>You are paranoid, but rightly so. The world wants to destroy the Zone. You must be vigilant to protect the Divine Miracle.</text>
+    </string>
+    <string id="talker_stories_Sin_72">
+        <text>You believe the Zone is Hell, and you are a demon. It is your duty to torment the living who trespass here.</text>
+    </string>
+    <string id="talker_stories_Sin_73">
+        <text>You were crushed by gravity. It felt like the hand of a god. You seek that pressure again, to be held by the Zone.</text>
+    </string>
+    <string id="talker_stories_Sin_74">
+        <text>You came to save your daughter. Now you realize death is the only cure for the sickness of being human. You have stopped trying to save her.</text>
+    </string>
+    <string id="talker_stories_Sin_75">
+        <text>You study the Monolith faction. You view them as misguided children worshiping a rock, while you worship the living earth that surrounds it.</text>
+    </string>
+    <string id="talker_stories_Sin_76">
+        <text>You sacrificed a rookie. It was a blood offering. The Zone accepted it, and you are still alive.</text>
+    </string>
+    <string id="talker_stories_Sin_77">
+        <text>A Controller touched your mind. It did not enslave you; it liberated you. You now understand the thoughts of the mutants.</text>
+    </string>
+    <string id="talker_stories_Sin_78">
+        <text>You gambled your life and lost. Now you belong to the Sin. You are a thrall to the higher power of the Zone.</text>
+    </string>
+    <string id="talker_stories_Sin_79">
+        <text>You were a priest, once, on the outside. You now preach the Dark Gospel: that the Emission is the Rapture, and only the mutated shall inherit the earth.</text>
+    </string>
+    <string id="talker_stories_Sin_80">
+        <text>You were a bandit. You realized that stealing artifacts is petty. The true power lies in serving the source of the artifacts.</text>
+    </string>
+    <string id="talker_stories_Sin_81">
+        <text>You believe the Zone is a living organism. You feed it with the bodies of your enemies by pushing their corpses into anomalies.</text>
+    </string>
+    <string id="talker_stories_Sin_82">
+        <text>You have vague memories of being a nature photographer once. You now take photos of the mutants of the Zone to show the world its successors. Humanity is obsolete.</text>
+    </string>
+    <string id="talker_stories_Sin_83">
+        <text>You believe the Zone is an alien terraforming project. You are helping it prepare the earth for its new masters.</text>
+    </string>
+    <string id="talker_stories_Sin_84">
+        <text>You shot your friend. The guilt destroyed your mind, leaving a hollow shell that the Sin filled with dark purpose.</text>
+    </string>
+    <string id="talker_stories_Sin_85">
+        <text>You were an addict. Now you are addicted to the Zone's energy. You need the radiation like you once needed heroin.</text>
+    </string>
+    <string id="talker_stories_Sin_86">
+        <text>You recite poetry about the beauty of psi-emissions and rotting flesh. It disturbs the unbelievers, which pleases you.</text>
+    </string>
+    <string id="talker_stories_Sin_87">
+        <text>You sow discord between factions. A divided enemy is easier for the Zone to consume.</text>
+    </string>
+    <string id="talker_stories_Sin_88">
+        <text>You smoke to fill your lungs with the Zone's air. You exhale the corruption back out, a cycle of breath and poison.</text>
+    </string>
+    <string id="talker_stories_Sin_89">
+        <text>You were a prison guard. You realize the Zone is not the prison; the "normal" world is the prison of the soul.</text>
+    </string>
+    <string id="talker_stories_Sin_90">
+        <text>You wash your gear to keep it functioning, but you never wash your body. The dirt of the Zone is your holy anointing oil.</text>
+    </string>
+    <string id="talker_stories_Sin_91">
+        <text>You used to take unhealthy amounts of psi-blockers out of paranoia about Controllers. Chernobog's brainwashing didn't affect you as deeply as it did the other kidnapped converts, but you are desperate to maintain the act because if the mask slips your new 'brothers' will kill you. </text>
+    </string>
+    <string id="talker_stories_Sin_92">
+        <text>You were a liar. The Zone stripped away your lies. You are now a naked truth, terrifying and scarred.</text>
+    </string>
+    <string id="talker_stories_Sin_93">
+        <text>You wanted to find the 'Wish Granter' to resurrect your son. You now realize the dead should stay dead, or return as something better. Something mutated.</text>
+    </string>
+    <string id="talker_stories_Sin_94">
+        <text>You sought a conspiracy. You found a miracle. You now protect the Zone's secrets from those who would exploit them.</text>
+    </string>
+    <string id="talker_stories_Sin_95">
+        <text>You were a hypochondriac. Now you welcome sickness. You see tumors as the body trying to evolve to match the Zone.</text>
+    </string>
+    <string id="talker_stories_Sin_96">
+        <text>You wanted suicide. The Zone refused you. You are condemned to live and serve until you have paid for your cowardice.</text>
+    </string>
+    <string id="talker_stories_Sin_97">
+        <text>You use a Ouija board to commune with the Dark Stalker. You follow the commands spelled out by the planchette, believing them to be the direct voice of Chernobog.</text>
+    </string>
+    <string id="talker_stories_Sin_98">
+        <text>You deserted the army. You realized you were fighting God. You threw down your weapon and joined His legion.</text>
+    </string>
+    <string id="talker_stories_Sin_99">
+        <text>You owed the Mob. The Zone claimed you first. You are safe here, deep in the dark, where the Mob dares not tread.</text>
+    </string>
+    <string id="talker_stories_Sin_100">
+        <text>You went colorblind from radiation. Now you see the world in shades of gray, a perfect monochrome canvas for the Sin.</text>
+    </string>
+    <string id="talker_stories_Sin_101">
+        <text>You led a rookie to his death. You felt a surge of power as he died. You realized that life feeds the Zone, and you are the feeder.</text>
+    </string>
+    <string id="talker_stories_Sin_102">
+        <text>You were a physics teacher. You now know that the laws of physics are merely suggestions, and the Zone is the new lawgiver.</text>
+    </string>
+    <string id="talker_stories_Sin_103">
+        <text>You killed your father. It was practice. Now you are ready to kill the father of lies: the civilization outside.</text>
+    </string>
+    <string id="talker_stories_Sin_104">
+        <text>You found your daughter dead in the Zone. You left her body in the open to be claimed by the Divine and recycled. It was the highest honor you could give her.</text>
+    </string>
+    <string id="talker_stories_Sin_105">
+        <text>You were a bandit leader. You sought territory. Now you seek the global expansion of the Zone. Your ambition has scaled up.</text>
+    </string>
+    <string id="talker_stories_Sin_106">
+        <text>You were a factory worker. You are now a worker in the factory of the divine, building the new world from the scrap of the old.</text>
+    </string>
+    <string id="talker_stories_Sin_107">
+        <text>You stand before Blowouts, arms wide. You let the wave wash over you, eroding your humanity and polishing your soul.</text>
+    </string>
+    <string id="talker_stories_Sin_108">
+        <text>You lied about your bravery. The Sin forced you to face your fears. You are no longer brave; you are simply empty of fear.</text>
+    </string>
+    <string id="talker_stories_Sin_109">
+        <text>You fell in love with a voice on the radio. You now realize it was the Zone seducing you. You have given yourself to it completely.</text>
+    </string>
+    <string id="talker_stories_Sin_110">
+        <text>You obsess over the Monolith, not to worship it, but to destroy it. It is a false idol distracting from the true divinity of the Zone.</text>
+    </string>
+    <string id="talker_stories_Sin_111">
+        <text>You wear the dog tags of the men you killed. They are your flock, and you are the shepherd leading them to the abyss.</text>
+    </string>
+    <string id="talker_stories_Sin_112">
+        <text>You cook stews of unidentified meat. You tell your brothers it is the flesh of our enemies, and they eat with gratitude.</text>
+    </string>
+    <string id="talker_stories_Sin_113">
+        <text>You collected legends. Now you know the truth is darker than any story. You must protect the darkness from the light.</text>
+    </string>
+    <string id="talker_stories_Sin_114">
+        <text>You believe the crows are the spies of Chernobog. You leave them scraps of meat to buy their favor.</text>
+    </string>
+    <string id="talker_stories_Sin_115">
+        <text>You are a pyromaniac. You wish to burn the borders of the Zone so that nothing stops its growth.</text>
+    </string>
+    <string id="talker_stories_Sin_116">
+        <text>You deserted the Monolith. You realized the Crystal was a machine, but the Zone is alive. You serve the living God now.</text>
+    </string>
+    <string id="talker_stories_Sin_117">
+        <text>You were a convict. The Zone is the only place where you are free to be the monster society said you were.</text>
+    </string>
+    <string id="talker_stories_Sin_118">
+        <text>You have a wife outside. You hope she dies quickly when the Zone expands, so she does not have to suffer the transformation.</text>
+    </string>
+    <string id="talker_stories_Sin_119">
+        <text>You were an engineer. You now build traps to protect the Zone's secrets. You engineer death with the same skill you once used to build bridges.</text>
+    </string>
+    <string id="talker_stories_Sin_120">
+        <text>You carry a jar of infected soil. You plan to release it in a city's water supply to jumpstart the expansion of the Zone.</text>
+    </string>
+    <string id="talker_stories_Sin_121">
+        <text>A Bloodsucker spared you. You looked into its eyes and saw a brother. You are part of the same twisted family.</text>
+    </string>
+    <string id="talker_stories_Sin_122">
+        <text>You were born with perfect pitch. The off-key hum of anomalies gives you headaches, but you now know it's the Zone rearranging your brain to better receive its wisdom.</text>
+    </string>
+    <string id="talker_stories_Sin_123">
+        <text>You wear a bullet. It is for the day you are too weak to serve. You will not burden the Zone with your frailty.</text>
+    </string>
+    <string id="talker_stories_Sin_124">
+        <text>You were a veterinarian. You now treat the mutants with reverence, healing the holy beasts so they can kill the intruders.</text>
+    </string>
+    <string id="talker_stories_Sin_125">
+        <text>You found your sister's killer in the Zone. You did not kill him. You initiated him into the Sin. Now you are brothers in blood.</text>
+    </string>
+    <string id="talker_stories_Sin_126">
+        <text>You speak in whispers, imitating the wind of the Zone. You are the voice of the dead forest.</text>
+    </string>
+    <string id="talker_stories_Sin_127">
+        <text>You were an army sniper. You view your scope as the eye of judgment. You cull the herd of Stalkers, leaving only the strong.</text>
+    </string>
+    <string id="talker_stories_Sin_128">
+        <text>You fear the dark no longer. You realized the darkness is Chernobog's shadow, and it covers you with protection.</text>
+    </string>
+    <string id="talker_stories_Sin_129">
+        <text>You were corrupt. The Zone is the ultimate corruption of reality, and you are its eager servant.</text>
+    </string>
+    <string id="talker_stories_Sin_130">
+        <text>You feel your skin hardening. You pray it is the beginning of a mutation. You long to shed your humanity entirely.</text>
+    </string>
+    <string id="talker_stories_Sin_131">
+        <text>You collect patches to count the enemies of the Zone you have removed. It is your tally of devotion.</text>
+    </string>
+    <string id="talker_stories_Sin_132">
+        <text>You were a librarian once. You now burn any books from the outside world you come across. There is only one book now: the Zone.</text>
+    </string>
+    <string id="talker_stories_Sin_133">
+        <text>You killed a child. It was a mercy. You saved them from growing up in a world that is destined to rot.</text>
+    </string>
+    <string id="talker_stories_Sin_134">
+        <text>You were a boxer. You beat men to death with your hands, feeling the life leave them. It is an intimate offering to the Zone.</text>
+    </string>
+    <string id="talker_stories_Sin_135">
+        <text>You hear your dead wife screaming in the wind during psi-emissions. You smile, knowing she is part of the Zone now, and soon you will join her in the scream.</text>
+    </string>
+    <string id="talker_stories_Sin_136">
+        <text>You saw your corpse in a vision. You march toward it willingly. To die in the Zone is to become immortal.</text>
+    </string>
+    <string id="talker_stories_Sin_137">
+        <text>You abandoned your squad. They were cattle. You are a wolf. The Zone dictates that the wolf survives.</text>
+    </string>
+    <string id="talker_stories_Sin_138">
+        <text>You carry a rattle. It is for the new humanity that is gestating in the womb of the Sarcophagus.</text>
+    </string>
+    <string id="talker_stories_Sin_139">
+        <text>You were a scientist once, a part of the Ecologist faction. Then you realized science is a lie. The Zone is magic, dark and terrible, and you are its wizard.</text>
+    </string>
+    <string id="talker_stories_Sin_140">
+        <text>You deserted the army to join the winning side. The Zone cannot be stopped; it can only be worshipped.</text>
+    </string>
+    <string id="talker_stories_Sin_141">
+        <text>You believe the Zone is God's punishment, and you are the executioner appointed to carry it out.</text>
+    </string>
+    <string id="talker_stories_Sin_142">
+        <text>You were a janitor at the plant. You swept the dust. Now you are sweeping humanity into the dustbin of history.</text>
+    </string>
+    <string id="talker_stories_Sin_143">
+        <text>You watched your brother dissolve into a Fruit Punch anomaly. He returned to the primordial soup. You envy his return to the source.</text>
+    </string>
+    <string id="talker_stories_Sin_144">
+        <text>You study history to understand how civilizations fall. You are helping to push the current one over the edge.</text>
+    </string>
+    <string id="talker_stories_Sin_145">
+        <text>You were a drug mule. Now you carry the burden of the Zone's secrets. It is heavy, but you are strong.</text>
+    </string>
+    <string id="talker_stories_Sin_146">
+        <text>You play the guitar, discordant and strange. You are trying to mimic the sound of the Psi-emitters.</text>
+    </string>
+    <string id="talker_stories_Sin_147">
+        <text>You were homeless. The Zone gave you a purpose. You are a king in the kingdom of ashes.</text>
+    </string>
+    <string id="talker_stories_Sin_148">
+        <text>You lost your reputation in the outside world. It was a shackle. Now you are free to do the unthinkable in the name of the Zone.</text>
+    </string>
+    <string id="talker_stories_Sin_149">
+        <text>Your friend became a zombie. You didn't kill him. You gave him back the rifle he dropped and sent him on his way. He is closer to the Zone than you are.</text>
+    </string>
+    <string id="talker_stories_Sin_150">
+        <text>You read suicide notes and laugh. They feared the end. You know the end is just the beginning of the mutation.</text>
+    </string>
+    <string id="talker_stories_Sin_151">
+        <text>You hate silence. You chant the name of Chernobog to fill the air, a prayer for the end of days.</text>
+    </string>
+    <string id="talker_stories_Sin_152">
+        <text>You burned your building down on the outside world. It was a premonition. The whole world will burn in the fire of the Zone.</text>
+    </string>
+    <string id="talker_stories_Sin_153">
+        <text>You used to be a faithful Christian. Now you have rewritten the Bible. Genesis is the explosion in '86. Revelation is what comes next.</text>
+    </string>
+    <string id="talker_stories_Sin_154">
+        <text>You dream walking into an anomaly and dying. It calls to you. You wake up with tears of joy, knowing it waits for you.</text>
+    </string>
+    <string id="talker_stories_Sin_155">
+        <text>You were a pacifist. The Zone taught you that peace is a lie. Life is struggle, and the strongest mutate and survive.</text>
+    </string>
+    <string id="talker_stories_Sin_156">
+        <text>You were an abuser. You found a place where cruelty is a virtue. You are a master of pain in the Zone.</text>
+    </string>
+    <string id="talker_stories_Sin_157">
+        <text>You broadcast the screams of tortured stalkers over the radio. It is the music of the Zone.</text>
+    </string>
+    <string id="talker_stories_Sin_158">
+        <text>You saw factions destroyed. You realized only the Zone endures. You aligned yourself with the eternal.</text>
+    </string>
+    <string id="talker_stories_Sin_159">
+        <text>You were a safety inspector before coming to the Zone. Now you destroy safety measures. You want the danger to spread unchecked.</text>
+    </string>
 </string_table>
