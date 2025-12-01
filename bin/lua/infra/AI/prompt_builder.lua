@@ -177,7 +177,7 @@ function prompt_builder.create_dialogue_request_prompt(speaker, memories)
 
     logger.info("Creating prompt for speaker: %s", speaker)
 
-    table.insert(messages, system_message("Write the next line of dialogue speaking as "
+    table.insert(messages, system_message("TASK: Write the next line of dialogue speaking as "
         .. speaker.name
 		.. (weapon_info or "")
 		.. " who is a "
