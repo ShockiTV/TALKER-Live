@@ -155,6 +155,14 @@ local CP1251 = { -- CYRILLIC
     [0x044D] = 0xFD,  -- CYRILLIC SMALL LETTER E
     [0x044E] = 0xFE,  -- CYRILLIC SMALL LETTER YU
     [0x044F] = 0xFF,  -- CYRILLIC SMALL LETTER YA
+    [0x2013] = 0x2D,  -- EN DASH -> HYPHEN
+    [0x2018] = 0x27,  -- LEFT SINGLE QUOTATION MARK -> APOSTROPHE
+    [0x2019] = 0x27,  -- RIGHT SINGLE QUOTATION MARK -> APOSTROPHE
+    [0x201C] = 0x22,  -- LEFT DOUBLE QUOTATION MARK -> QUOTATION MARK
+    [0x201D] = 0x22,  -- RIGHT DOUBLE QUOTATION MARK -> QUOTATION MARK
+    [0x2026] = 0x2E,  -- HORIZONTAL ELLIPSIS -> DOT 
+    [0x00A0] = 0x20,  -- NO-BREAK SPACE -> SPACE
+  
   }
 
 local function utf8_to_unicode(utf8str, pos)
@@ -551,8 +559,8 @@ local function replaceSpecialCharacters(str)
   str = str:gsub("\226\128\152", "'") -- left single quotation mark
   str = str:gsub("\226\128\153", "'") -- right single quotation mark
   -- Replace left double quotation mark and right double quotation mark with standard quotes
-  str = str:gsub("\226\128\156", '"') -- left double quotation mark
-  str = str:gsub("\226\128\157", '"') -- right double quotation mark
+  str = str:gsub("\226\128\156", "'") -- left double quotation mark
+  str = str:gsub("\226\128\157", "'") -- right double quotation mark
   return str
 end
 
