@@ -12,7 +12,7 @@ local queries = talker_game_queries
 -- CONDITIONS
 --------------------------------------------------------------------------------------------
 local last_idle_conversation_time_ms = 0
-local idle_conversation_time_cooldown_ms = 4 * 60 * 1000 -- 4 minutes
+local idle_conversation_time_cooldown_ms = 6 * 60 * 1000 -- 6 minutes
 
 local function cooldown_ready()
     return queries.get_game_time_ms() - last_idle_conversation_time_ms > idle_conversation_time_cooldown_ms
