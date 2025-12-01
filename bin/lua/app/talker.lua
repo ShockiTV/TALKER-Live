@@ -37,6 +37,8 @@ function talker.generate_dialogue(event)
         -- on response:
         logger.info("talker.generate_dialogue: dialogue generated for speaker_id: " .. speaker_id .. ", dialogue: " .. dialogue)
 
+        event.dialogue_generated = true
+
         game_adapter.display_dialogue(speaker_id, dialogue)
         local dialogue_event = game_adapter.create_dialogue_event(speaker_id, dialogue)
         talker.register_event(dialogue_event)
