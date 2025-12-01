@@ -402,4 +402,40 @@
 		<string id="talker_traits_132">
         <text>compulsive</text>
     </string>
+		<string id="talker_traits_133">
+        <text>chauvinistic</text>
+    </string>
+		<string id="talker_traits_134">
+        <text>despicable</text>
+    </string>
+		<string id="talker_traits_135">
+        <text>unpleasant</text>
+    </string>
+		<string id="talker_traits_136">
+        <text>misogynistic</text>
+    </string>
+		<string id="talker_traits_137">
+        <text>vile</text>
+    </string>
+		<string id="talker_traits_138">
+        <text>unfriendly</text>
+    </string>
+		<string id="talker_traits_139">
+        <text>temperamental</text>
+    </string>
+		<string id="talker_traits_140">
+        <text>obtuse</text>
+    </string>
+		<string id="talker_traits_141">
+        <text>shaken</text>
+    </string>
+		<string id="talker_traits_142">
+        <text>sceptical</text>
+    </string>
+		<string id="talker_traits_143">
+        <text>impatient</text>
+    </string>
+		<string id="talker_traits_144">
+        <text>antsy</text>
+    </string>
 </string_table>
