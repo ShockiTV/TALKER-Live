@@ -15,7 +15,7 @@ I am an absolute hack, and all credit for this amazing mod goes to the creators 
 
 *   **Better prompting:** The basic prompt has been greatly expanded, giving the LLM more information and more rules on how to behave. The goal is for every NPC to feel like a living person. The prompt generator has been revised as well to give more dynamic character information. NPCs should properly take their faction identity and rank into consideration, as well as that of whoever they're talking to.
 
-*  
+
 ## EXISTING SAVES/RELOADING PERSONALITIES AND BACKGROUNDS
 If you have an ongoing save, or you want to reset randomly generated personalities or backstories you can go to TALKER\bin\lua\domain\repo and in personalites.lua/backstories.lua you can change RESET_PERSONALITIES_ON_LOAD/RESET_BACKSTORIES_ON_LOAD from "false" to "true". After loading your save, save again. Then exit and change it back to "false". If you have non-unique companions you can reload multiple times until you get something you're happy with. You can see their personalities and backstory printed in the console after a reply, or just run the TALKER proxy with detailed logging.
 
