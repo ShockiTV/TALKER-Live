@@ -13,7 +13,7 @@ local queries = talker_game_queries
 ----------------------------------------------------------------------------------------------------
 -- Constants
 ----------------------------------------------------------------------------------------------------
-local ANOMALY_COMMENT_CD = 120 * 1000 -- 120 seconds
+local ANOMALY_COMMENT_CD = 20 * 1000 -- 20 seconds
 local INTERACTION_DISTANCE = 1
 
 ----------------------------------------------------------------------------------------------------
@@ -47,7 +47,12 @@ end
 
 -- Anomaly interaction
 function actor_on_feeling_anomaly(anomaly)
-    local anomaly_name = queries.load_xml(anomaly:section())
+    local section = anomaly:section()
+    if string.find(section, "radioactive") or string.find(section, "radiation") then
+        return
+    end
+
+    local anomaly_name = queries.load_xml(section)
     log.debug("handle_actor_on_feeling_anomaly called with: ", anomaly_name)
     -- Skip if the anomaly is not close enough
     if is_valid_event(anomaly) then
