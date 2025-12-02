@@ -62,7 +62,7 @@ end
 -- This is used to determine if there is a "moment of silence" suitable for an idle conversation.
 -- @return (boolean) True if someone has spoken recently, false otherwise.
 function m.has_anyone_spoken_recently()
-    local RECENT_SPEECH_THRESHOLD_MS = 90 * 1000 -- 90 seconds
+    local RECENT_SPEECH_THRESHOLD_MS = 3 * 60 * 1000 -- 3 minutes
 
     local nearby_characters = game_adapter.get_characters_near_player()
     if not nearby_characters or #nearby_characters == 0 then
