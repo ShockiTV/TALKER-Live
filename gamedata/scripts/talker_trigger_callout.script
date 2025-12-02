@@ -27,12 +27,14 @@ local event_store = require("domain.repo.event_store")
 local last_callout_time_ms = 0
 local callout_cooldown_ms = 30 * 1000 -- 30 seconds, for ANY callout.
 local repeated_callout_cooldown_ms = 4 * 60 * 1000 -- 4 minutes, for the SAME target type.
+local MAX_CALLOUT_DISTANCE = 40  -- Max distance of callout in meters
 
 function is_valid_callout(npc_obj, target_obj)
     -- Perform initial checks. If any of these fail, the callout is invalid.
     if not (
         queries.is_living_character(npc_obj) and
         queries.are_enemies(npc_obj, target_obj) and
+        queries.get_distance_between(npc_obj, target_obj) >= MAX_CALLOUT_DISTANCE and
         not queries.is_in_combat(npc_obj)
     ) then
         return false
