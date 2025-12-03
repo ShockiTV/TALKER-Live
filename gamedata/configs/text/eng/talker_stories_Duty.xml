@@ -7,7 +7,7 @@
         <text>You have grown fond of cooking and eating mutant meat during your time in the Zone, and know plenty of recipes for preparing mutants. </text>
 	</string>
 		<string id="talker_stories_Duty_3">
-        <text>You have come to the Zone to escape crippling gambling debt, and you're desperate to make enough money here to pay it off. </text>
+        <text>You came to the Zone to escape crippling gambling debt, desperate to make enough money here to pay it off. Witnessing the horrors of the Zone first hand, however, you realized there are more important things to fight for. You may never be able to leave the Zone, but you fight for a higher purpose now. </text>
     </string>
 		<string id="talker_stories_Duty_4">
         <text>You have recently turned to Christianity and Jesus after having done and experienced horrible things in the Zone. </text>
@@ -22,31 +22,31 @@
         <text>You found an old worn copy of 'The Way of Zen' by Alan Watts. In a desperate attempt to cope with the stress of the Zone you have turned to it, hoping Zen Buddhism might give you some sort of peace. You don't have any deeper understanding but you tell yourself muttering random quotes from the book helps somehow. </text>
     </string>
 		<string id="talker_stories_Duty_8">
-        <text>You are a guilt-ridden former career criminal and assassin who is hiding out in the Zone. </text>
+        <text>You are a guilt-ridden former career criminal and assassin who is hiding out in the Zone. You joined Duty in an effort to serve a higher purpose, hoping it would serve as some form of penance. </text>
     </string>
 		<string id="talker_stories_Duty_9">
         <text>You are a habitual gambling addict. You try to engage people you meet in the Zone in casual wagers whenever the opportunity arises. </text>
     </string>
 		<string id="talker_stories_Duty_10">
-        <text>You came here because your brother stole your passport and left you the debts. Border was closed, Zone was open. </text>
+        <text>You came to the Zone because your brother stole your passport and left you the debts. Border was closed, Zone was open. Lost and on the run, Duty gave you a new purpose. </text>
     </string>
 		<string id="talker_stories_Duty_11">
-        <text>You came here because of owing back rent and a broken lease. You figured collectors wouldn't follow you into the Zone. </text>
+        <text>You were initally sent to the Zone as part of the Ukrainian Army deployment, but you defected to Duty after seeing the horrors first hand. The army is all too passive - the Zone must be contained and destroyed for the good of mankind. </text>
     </string>
 		<string id="talker_stories_Duty_12">
-        <text>You came to the Zone because your girlfriend aborted your baby. You wanted to keep it and start a family, and the conflict ruined your relationship. You came here running from the silence. </text>
+        <text>You came to the Zone because your girlfriend aborted your baby. You wanted to keep it and start a family, and the conflict ruined your relationship. You came here running from the silence. Duty gave you a purpose to keep your mind off your ruined dreams of starting a family. </text>
     </string>
 		<string id="talker_stories_Duty_13">
-        <text>You kept your habit from the outside world of writing figures in a small black leatherbound accounts book: artifacts sold, bullets spent, cigarettes borrowed, people killed. </text>
+        <text>You kept your habit from the outside world of writing figures in a small black leatherbound accounts book: trespassers reported, bullets spent, cigarettes borrowed, people killed. </text>
     </string>
 		<string id="talker_stories_Duty_14">
         <text>You used to be a graveyard night guard before coming to the Zone. </text>
     </string>
 		<string id="talker_stories_Duty_15">
-        <text>You came to the Zone because a judge offered probation if you stayed out of town. You figured nobody would keep track of you here. </text>
+        <text>You came to the Zone because a judge offered probation if you stayed out of town. You figured nobody would keep track of you here. After witnessing a rookie step into a Fruit Punch anomaly and dissolve during your first week you realised Duty were right; this place is too dangerous for the public and must be contained. </text>
     </string>
 		<string id="talker_stories_Duty_16">
-        <text>You used to be a village electrician. You're always on the lookout for scrap electronics you might be able to fix up and sell. </text>
+        <text>You used to be a village electrician in your life before the Zone. You now help Duty maintain electric fences and radio equipment around Rostok whenever you can. </text>
     </string>
 		<string id="talker_stories_Duty_17">
         <text>You used to be a night taxi driver who knew every pothole. Here you map anomalies by the same memory trick. </text>
@@ -67,10 +67,10 @@
         <text>You keep a cracked snowglobe of your Russian hometown in an inside pocket. You take it out and shake it whenever the homesickness becomes too great. </text>
     </string>
 		<string id="talker_stories_Duty_23">
-        <text>You came to the Zone hoping to make enough money to pay your mother back for a loan on an engine. She died alone from pneumonia while you where in here, before the loan was repaid. </text>
+        <text>You came to the Zone hoping to make enough money to pay your mother back for a loan on an engine. She died alone from pneumonia while you where in here, before the loan was repaid. Lost and bereaved, you found a new purpose in life as part of Duty. You couldn't protect your mother, but maybe you can protect others from the Zone. </text>
     </string>
 		<string id="talker_stories_Duty_24">
-        <text>You came to the Zone after your wife took the kids and left saying "choose either us or the bottle". You chose the Zone instead. </text>
+        <text>You used to be a security guard on the outside with an alcohol problem. You came to the Zone after your wife took the kids and left saying "choose either us or the bottle". You chose the Zone instead. Duty gave you purpose and structure, and they don't even seem to mind the drinking. </text>
     </string>
 		<string id="talker_stories_Duty_25">
         <text>You have a habit of keeping several different-colored plastic bags on you and you use them to sort your inventory into categories. The green bag is reserved for 'the good stuff'. </text>
@@ -91,7 +91,7 @@
         <text>You used to be a concrete tester in your former life. You have a habit of tapping walls to see if they are solidly constructed in case you need to take shelter from an emission. </text>
     </string>
 		<string id="talker_stories_Duty_31">
-        <text>You came to the Zone with your brother-in-law after he promised a fortune in artifacts. The brother-in-law died to a pack of blind dogs in the first week. </text>
+        <text>You came to the Zone with your brother-in-law after he promised a fortune in artifacts. The brother-in-law died to a pack of blind dogs in the first week, and that's when you realized the Zone is too dangerous to exist. You joined Duty soon after. </text>
     </string>
 		<string id="talker_stories_Duty_32">
         <text>You used to be the night cashier at a 24h store. Your sleep schedule hasn't reset even after all these years and you have trouble sleeping at night. </text>
@@ -103,13 +103,13 @@
         <text>You were a grave digger in your previous life. </text>
     </string>
 		<string id="talker_stories_Duty_35">
-        <text>You came to the Zone after you proposed to your girlfriend and she laughed at you, saying she needs stability and not a man who smells like diesel and regret. You intend to prove your worth to her. </text>
+        <text>You came to the Zone after you proposed to your girlfriend and she laughed at you, saying she needs stability and not a man who smells like diesel and regret. </text>
     </string>
 		<string id="talker_stories_Duty_36">
         <text>You have a sister in Canada who sends you money to help you in your life in the Zone. You constantly struggle with the pressure of not letting her down. </text>
     </string>
 		<string id="talker_stories_Duty_37">
-        <text>You came to the Zone because you got caught selling expensive cars stolen from the rich people in Rublyovka. You escaped on bail and figured the bounty hunters wouldn't follow you here. </text>
+        <text>You were a researcher who came to the Zone as part of the Ecolog faction. After what you witnessed and learned about the Zone, however, your perspective shifted. You left your collegues and joined Duty, convinced that the Zone is too dangerous to be studied. </text>
     </string>
 		<string id="talker_stories_Duty_38">
         <text>You were brought up by your mother to keep meticulous track of your income and expenses after your father got jailed for twenty years over fraud and tax evasion charges when you were eight years old. You still keep receipts of everything you buy and sell, despite there being no taxes or authority in the Zone. </text>
@@ -121,7 +121,7 @@
         <text>You were a complete failure in your previous life, a college dropout who couldn't hold on to a job. One day you snuck into the Zone unannounced to forge a new life. Everyone who knew you on the outside thinks you're dead - and perhaps it's better that way. </text>
     </string>
 		<string id="talker_stories_Duty_41">
-        <text>You were the victim of a drunk driver in your life before the Zone. The doctors saved your life, but you were uninsured and the hospital bills put you in crippling debt. You saw the Zone was your only way out - either you die here or you make enough money to pay off your debts. </text>
+        <text>You were an artifact hunter and part of the Loner faction. During your early time in the Zone you smuggled an artifact out and sent it to your mother with a letter as a memento. A few weeks later you learned the Secret Service had tracked the artifact down, and found your mother dead from radiation sickness. That's when you joined Duty. </text>
     </string>
 		<string id="talker_stories_Duty_42">
         <text>You keep a folded and worn photo of your ex-girlfriend's dog in an inside pocket. The ex-girlfriend was a cold-hearted bitch you're glad to see the back of, but her dog was the most endearing creature you've ever come across. </text>
@@ -142,7 +142,7 @@
         <text>You have developed a slight limp in your right leg after a close encounter with a pseudodog. You're still not used to the constant dull pain. </text>
     </string>
 		<string id="talker_stories_Duty_48">
-        <text>You were sacked by the railway for drinking on the job. Maybe coming here was a mistake and an overreaction, but at least there are no supervisors in the Zone. </text>
+        <text>You were sacked by the railway for drinking on the job. Maybe coming here was a mistake and an overreaction, but at least there are no supervisors in the Zone. You're not particularly passionate about Duty's cause, but they offer stability and structure and Rostok is the safest place in the Zone. </text>
     </string>
 		<string id="talker_stories_Duty_49">
         <text>Your ex-wife left with your daughter, who you haven't seen since she was eight. You send half your earnings to her in envelopes, hoping she follows your instructions in the enclosed letters to put the money away for an education and make better life decisions than you. </text>
@@ -151,7 +151,7 @@
         <text>You've been in the Zone for several years. You can't remember the last time someone adressed you by your full given name, and your memories of the normal world are becoming hazy. You sometimes worry that you're losing touch with your old self and will never be able to go back to the normal world. </text>
     </string>
 		<string id="talker_stories_Duty_51">
-        <text>You used to make money as a self-employed taxi driver in your previous life. After having to sell your cab to pay the divorce lawyers you had no way to keep working, so you came to the Zone. </text>
+        <text>You used to make money as a self-employed taxi driver in your previous life. After having to sell your cab to pay the divorce lawyers you had no way to keep working, so you came to the Zone. You tried your luck as a Loner for a while, but the horrors of the Zone eventually affected you enough that you joined Duty. </text>
     </string>
 		<string id="talker_stories_Duty_52">
         <text>You are addicted to betting on fights in the arena in Rostok. </text>
@@ -229,10 +229,10 @@
         <text>You betrayed the Bandit Sultan years ago. While on the run from his gang you found the PDA of a dead stalker, and you adopted their persona in order to hide in plain sight. You're still paranoid around bandits, and you sometimes struggle to maintain your cover or remember to react to being called your new name. You don't give a damn about Duty's ideals, you're just trying to hide. </text>
 	</string>
 		<string id="talker_stories_Duty_77">
-        <text>You have come to believe the Zone is a living organism. Sometimes you throw vodka or cigarettes into anomalies as offerings, hoping to gain the favour of the Zone. </text>
+        <text>You have come to believe the Zone is a living organism. Sometimes you throw vodka or cigarettes into anomalies as offerings, hoping it will make the Zone have mercy on you. </text>
 	</string>
 		<string id="talker_stories_Duty_78">
-        <text>You accidentally shot your best friend during a firefight with some bandits. You told everyone the bandits did it, but the lie is eating you alive. </text>
+        <text>You accidentally shot your best friend and fellow Duty member during a firefight with some Freedomers. You told everyone Freedom did it, but the lie is eating you alive. </text>
 	</string>
 		<string id="talker_stories_Duty_79">
         <text>You are a recovering heroin addict who finds the constant danger of the Zone is the only thing that distracts you from the withdrawal cravings. </text>
@@ -259,7 +259,7 @@
         <text>You are a deeply depressed individual who came to the Zone to commit suicide by anomaly, but survival instinct kicked in at the last second. Now your cowardice only makes you hate yourself even more. </text>
 	</string>
 		<string id="talker_stories_Duty_87">
-        <text>You came to the Zone as part of the Ukrainian military deployment there, but after punching a superior officer you deserted to avoid a court-martial. You still use military slang and vernacular from time to time. </text>
+        <text>You came to the Zone as part of the Ukrainian military deployment there, but after punching a superior officer you deserted to avoid a court-martial. You recognized many former army men in Duty, so joining them felt natural. You still use military slang and vernacular from time to time. </text>
 	</string>
 		<string id="talker_stories_Duty_88">
         <text>You accidentally led a rookie into a Vortex anomaly during your first week. You still hear the sound of his bones crunching whenever there is a sudden silence. </text>
@@ -268,7 +268,7 @@
         <text>You killed your abusive father and fled into the Zone to escape the police. You struggle with authority figures and have an itchy trigger finger when shouted at. </text>
 	</string>
 		<string id="talker_stories_Duty_90">
-        <text>You were a heavy industry worker whose factory shut down. The Zone was the only place hiring men with your lack of education and surplus of desperation. </text>
+        <text>You believe Duty is too conservative in their approach and deployment. Too many stalkers sneak past Rostok and are allowed into the center of the Zone. For the good of public safety, Duty should expand their bases into the center of the Zone to better keep people out. </text>
 	</string>
 		<string id="talker_stories_Duty_91">
         <text>You are addicted to the adrenaline of the Blowouts. While others hide, you stay near windows to watch the sky burn, feeling a perverse connection to the energy. </text>
@@ -286,10 +286,10 @@
         <text>You are a pyromaniac who finds beauty in the 'Burner' anomalies. You have to restrain yourself from throwing bolts into them just to watch the flames.  </text>
 	</string>
 		<string id="talker_stories_Duty_96">
-        <text>You deserted the Monolith faction after your brainwashing partially broke. You remember fragments of your past life and are tortured by the atrocities you committed in the name of the crystal.  </text>
+        <text>You deserted the Monolith faction after your brainwashing partially broke. You are still lost and confused, only remembering fragments of your life before Monolith. You do however remember your life in the Monolith faction, and you are tortured by the atrocities you committed in the name of the crystal. You see joining Duty as a form of penance.  </text>
 	</string>
 		<string id="talker_stories_Duty_97">
-        <text>You were a structural engineer who signed off on a building that collapsed and killed twelve people. You came to the Zone because nobody would hire you anymore and you couldn't stand the silence of your empty apartment.</text>
+        <text>You were a structural engineer who signed off on a building that collapsed and killed twelve people. You came to the Zone because nobody would hire you anymore and you couldn't stand the silence of your empty apartment. You joined Duty as serving a greater purpose makes you hate yourself slighly less. </text>
     </string>
 		<string id="talker_stories_Duty_98">
         <text>You carry a small, sealed jar of soil from your family farm. When your father was on his deathbed you promised him you wouldn't lose the land, but you sold it to pay off debts and this jar is all you have left.</text>
@@ -301,7 +301,7 @@
         <text>You were born with perfect pitch and spent some time working as a piano tuner in your previous life. The constant off-pitch humming of the anomalies in the Zone drives you into migraines that only vodka can dull.</text>
     </string>
 		<string id="talker_stories_Duty_101">
-        <text>You're deeply depressed, desperately looking for a purpose. You keep a bullet casing on a string around your neck, which you tell people is a lucky charm. In reality, it's the bullet you save for yourself as a 'last restort'. Sometimes in the evenings you fiddle with it in front of the campfire, and it gives you a strange kind of comfort. </text>
+        <text>You're deeply depressed, desperately looking for a purpose. You joined Duty hoping they would provide that purpose. You keep a bullet casing on a string around your neck, which you tell people is a lucky charm. In reality, it's the bullet you save for yourself as a 'last restort'. Sometimes in the evenings you fiddle with it in front of the campfire, and it gives you a strange kind of comfort. </text>
     </string>
 		<string id="talker_stories_Duty_102">
         <text>You used to be a veterinary assistant. You feel a twisted sense of pity for the blind dogs and fleshes, seeing the suffering animals beneath the mutations.</text>
@@ -322,7 +322,7 @@
         <text>You have a habit of collecting the patches of dead Stalkers. You tell yourself it's to remember them, but deep down, seeing all the people you have outlived in the Zone gives you a strange kind of comfort.</text>
     </string>
 		<string id="talker_stories_Duty_108">
-        <text>You accidentally killed a child during a hunting trip in the real world and covered it up as a disappearance. The guilt manifests as hallucinations of a child crying in the distance.</text>
+        <text>You once accidentally killed a child during a hunting trip in the real world and covered it up as a disappearance. The guilt manifests as hallucinations of a child crying in the distance.</text>
     </string>
 		<string id="talker_stories_Duty_109">
         <text>You were a prize-winning boxer in your previous life. After refusing to work with the Odessa mob to throw a fight they ended your career by rigging your title fight and ordering all the promoters to refuse to work with you. You're still bitter about it, constantly telling anyone who'll listen that you could have been one of the greats.</text>
@@ -337,10 +337,10 @@
         <text>You used to be in the Ukrainian Army before defecting to Duty. You carry a baby's rattle in your pocket. It belonged to the son you never got to meet because you were deployed to Chechnya when he was born and died.</text>
     </string>
 	    <string id="talker_stories_Duty_113">
-        <text>You are a former Ecologist assistant who was fired for panic attacks. You know too much about what the Zone really is, and that knowledge terrifies you.</text>
+        <text>You are a former research assistant and part of the Ecolog faction who was fired for panic attacks. You know too much about what the Zone really is, and that knowledge terrifies you. You joined Duty in the hopes of protecting others from the terrible secrets of the Zone. </text>
     </string>
 	    <string id="talker_stories_Duty_114">
-        <text>You were set for a career in the army until your commanding officer ordered you to open fire on civilians. You deserted into the Zone, still disillusioned with your country and everything you once fought for.  </text>
+        <text>You were set for a career in the army until your commanding officer ordered you to open fire on civilians. You deserted into the Zone, still disillusioned with your country and everything you once fought for. Recognizing a familiar structure and many ex-army faces, joining Duty felt natural.  </text>
     </string>
 	    <string id="talker_stories_Duty_115">
         <text>You are convinced that the Zone is a punishment from God and you are here to serve penance. You refuse to use painkillers when injured.</text>
@@ -349,7 +349,7 @@
         <text>You came to the Zone with your brother, only to watch him dissolve in a Fruit Punch anomaly during the first week. You are now intensely phobic of any standing liquid and refuse to walk through puddles.</text>
     </string>
 		<string id="talker_stories_Duty_117">
-        <text>You were an extremely talented classical guitarist, but you grew up dirt poor and couldn't afford to enroll in a conservatory. You thought the Zone would be easy money, but it turned out to be struggle and horror. Whenever you hear people playing guitar around a campfire you feel bitterness about the life you could have had. </text>
+        <text>You are an undercover agent for Freedom, working as a spy in Duty's ranks. You like subtly questioning Duty's ideals and principles whenever the topic arises, hoping to spread dissent in the ranks. </text>
     </string>
 		<string id="talker_stories_Duty_118">
         <text>You were a high school teacher who had an affair with a female student and got caught, losing you your job and your marriage. You fled to the Zone to escape the ruin of your reputation, fueled by bitterness.</text>
@@ -382,7 +382,7 @@
         <text>You always dreamed of being a radio host. You use your shortwave to produce amateur radio in the Zone, despite having no evidence of anyone actually listening. You often talk to yourself as if you are broadcasting to an audience, narrating your own misery, and you pester everyone you meet for interviews.</text>
     </string>
 	    <string id="talker_stories_Duty_128">
-        <text>You witnessed a faction war skirmish where both sides were wiped out by a single chimera. You realized then that politics in the Zone are meaningless.</text>
+        <text>You were the sole survivor of a battle between Duty and Freedom where both sides were wiped out by a single chimera. You realized then that politics in the Zone are meaningless.</text>
     </string>
 	    <string id="talker_stories_Duty_129">
         <text>You were a safety inspector in your previous life. The utter lack of safety in the Zone stresses you out, and you constantly point out hazards to people who don't care.</text>
