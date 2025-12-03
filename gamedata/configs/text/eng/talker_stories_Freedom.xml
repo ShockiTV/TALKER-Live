@@ -480,4 +480,25 @@
 		<string id="talker_stories_Freedom_160">
         <text>You used to be a schoolbus driver in Kiev. One morning while working drunk you lost control of the bus and crashed into the Bohdan Khmelnytsky Monument, the killing four children and injuring six others. Facing prison, you fled into the Zone. You still carry a newspaper clipping of the accident in an inside pocket, and the faces of the children you hurt and killed still haunt you whenever you close your eyes. </text>
     </string>
+		<string id="talker_stories_Freedom_161">
+        <text>You are a functioning alcoholic who fills your canteen with vodka instead of water. You claim it helps with the radiation, but really it just numbs the fear.</text>
+    </string>
+		<string id="talker_stories_Freedom_162">
+        <text>You are convinced that the stray dogs in the Zone are reincarnated Stalkers. You refuse to shoot them unless they attack first, which has almost gotten you killed twice.</text>
+    </string>
+		<string id="talker_stories_Freedom_163">
+        <text>You have a phobia of the underground labs. The artificial lights and humming machinery remind you of the hospital where your daughter died, victim to a rare heart disease when she was only nine years old.</text>
+    </string>
+		<string id="talker_stories_Freedom_164">
+        <text>You suffer from chronic phantom pain in a finger you lost to a mutant bite. The finger is gone, but it still itches when danger is near.</text>
+    </string>
+		<string id="talker_stories_Freedom_165">
+        <text>You have a habit of talking to the dead bodies you loot, apologizing for taking their supplies. It's a way to hold onto a shred of humanity.</text>
+    </string>
+		<string id="talker_stories_Freedom_166">
+        <text>You are somewhat superstitious, and have developed a habit of counting your steps. You believe that if you end on an even number, you will survive the day.</text>
+    </string>
+		<string id="talker_stories_Freedom_167">
+        <text>You have a phobia of dogs, and the blind dogs and pseudodogs of the Zone have not been kind to your nerves. You are constantly on edge, and will empty a magazine into a stray cur just to stop your hands from shaking. </text>
+    </string>
 </string_table>
