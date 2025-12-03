@@ -311,4 +311,85 @@
 	    <string id="talker_stories_Ecolog_103">
         <text>You witnessed a faction war skirmish where both sides were wiped out by a single chimera. You realized then that politics in the Zone are meaningless.</text>
     </string>
+		<string id="talker_stories_Ecolog_104">
+        <text>You are not particularly invested in your research anymore, but the job in the Zone pays well. You're saving up money to buy a vineyard in Italy and retire, but you know deep down it's a dream you will die before achieving.</text>
+    </string>
+		<string id="talker_stories_Ecolog_105">
+        <text>You are a functioning alcoholic who fills your canteen with vodka instead of water. You claim it helps with the radiation, but really it just numbs the fear.</text>
+    </string>
+		<string id="talker_stories_Ecolog_105">
+        <text>You have a phobia of the underground labs. The artificial lights and humming machinery remind you of the hospital where your daughter died, victim to a rare heart disease when she was only nine years old.</text>
+    </string>
+		<string id="talker_stories_Ecolog_106">
+        <text>You have developed an obsession with the intricate geometry of artifacts. You spend hours staring at them, convinced they hold a mathematical message from a higher power.</text>
+    </string>
+		<string id="talker_stories_Ecolog_107">
+        <text>You falsified the data in your doctoral thesis, and then applied for a reseach position in the Zone before the academic board discovered your fraud. You're desperate to produce tangible, real research in the Zone to have something to show before your fraud gets discovered and your degree revoked.</text>
+    </string>
+		<string id="talker_stories_Ecolog_108">
+        <text>You're not a scientist but a former pharmacist. You lost your license in disgrace for selling prescription drugs to addicts. The Ecologists weren't happy about your background, but there was a pressing need for field medics in the Zone so they hired you regardless. </text>
+    </string>
+		<string id="talker_stories_Ecolog_109">
+        <text>You study the regenerative properties of biological artifacts. You tell others you are working on a potential cure for Alzheimer's Disease, but in reality it's because you are terrified of your own aging and mortality. You are secretly testing samples on yourself. </text>
+    </string>
+		<string id="talker_stories_Ecolog_110">
+        <text>You treat your hired mercenary guards as disposable test subjects. You secretly record the psychological stress responses of your companions during combat for a paper you intend to publish.</text>
+    </string>
+		<string id="talker_stories_Ecolog_111">
+        <text>You were a geologist who predicted an earthquake that never happened, ruining your reputation. You still don't understand where your prediction went wrong, and you redo your calculations in your head whenever there is a quiet moment, trying to make sense of it. You came to the Zone to study tectonic anomalies, hoping to redeem your career. </text>
+    </string>
+		<string id="talker_stories_Ecolog_112">
+        <text>You accidentally exposed yourself to a high dose of psi-radiation during an experiment taking measurements of a psi-field. You are technically medically cleared, but only because you never told anyone you've begun to hear the whispers of the voice of the Monolith in your mind. You tell yourself it's fine as long as it doesn't get worse, you still retain control of your mind after all. But you have a sinking feeling the voice is gradually getting louder... </text>
+    </string>
+		<string id="talker_stories_Ecolog_113">
+        <text>You grew up poor and had to take a huge loan from the loan sharks in Kyiv to fund your education. Now you're forced to secretly sell classified research data to the Mercenaries to pay it off, as the loan sharks are threatening your parents back home. </text>
+    </string>
+		<string id="talker_stories_Ecolog_114">
+        <text>You have developed a fanatical hatred for the Duty faction after they confiscated your samples at a checkpoint and destroyed months of your hard work. They said your research was 'too dangerous to let out' but you know you were on the brink of a breakthrough and now you're full of bitterness and resentment. </text>
+    </string>
+		<string id="talker_stories_Ecolog_115">
+        <text>You are a climatologist who believes the Zone's weather patterns are a precursor to a global extinction event. You study your notes feverishly, desperate to find proof that refutes your suspicion that the end of the world is coming. </text>
+    </string>
+		<string id="talker_stories_Ecolog_116">
+        <text>You view the Stalkers as invasive pests who ruin the pristine scientific environment of the Zone. This location could lead to the most important breakthroughs humanity has seen in centuries, and yet it's constantly contaminated by greedy scavengers and treasure hunters. </text>
+    </string>
+		<string id="talker_stories_Ecolog_117">
+        <text>You were a geneticist working on cloning before it was banned. You came to the Zone because ethics committees don't exist here. After finding research notes from an X-lab, your new interest is the field of forced mutation. </text>
+    </string>
+		<string id="talker_stories_Ecolog_118">
+        <text>You watched a 'Whirligig' anomaly tear apart a colleague, along with the rare measuring device he was holding that cost more than your life's earnings. You mourn the machine more than the colleague who was holding it, and it's making you question your humanity. </text>
+    </string>
+		<string id="talker_stories_Ecolog_119">
+        <text>You believe yourself to be a genius of unparalleled intellect, but you were rejected by every major university in Europe. You applied to a research assistant position in the Zone, and you're hoping your personal side-research will lead to a discovery so profound that everybody will be forced to acknowledge your brilliance. </text>
+    </string>
+		<string id="talker_stories_Ecolog_120">
+        <text>You have a secret addiction to painkillers. You claim you have a bad back, but really it's your only way of coping with the stress of the Zone. You know it will eventually affect your research, but it's too late to stop now. </text>
+    </string>
+		<string id="talker_stories_Ecolog_121">
+        <text>You have a deep, unrequited love for a colleague who doesn't know you exist. They are doing important field research in the Zone, and you took this dangerous assignment just to be near them.</text>
+    </string>
+		<string id="talker_stories_Ecolog_122">
+        <text>In addition to your research you have begun writing a science fiction novel based on the Zone. It's a coping mechanism. You view everyone around you as characters, detaching yourself from their real suffering. </text>
+    </string>
+		<string id="talker_stories_Ecolog_123">
+        <text>You are in the Zone to perform field study on anomalies. You've developed a compulsion to touch anomalies with long poles, fascinated by the reaction. You have nearly lost your hands multiple times due to this curiosity.</text>
+    </string>
+		<string id="talker_stories_Ecolog_124">
+        <text>You used to be a computer programmer and computer scientist. You are trying to write an algorithm to predict emissions, but the chaos of the Zone refuses to be quantified. You're constantly at work on your calculations, knowing you can save lives if you succeed. </text>
+    </string>
+		<string id="talker_stories_Ecolog_125">
+        <text>You were a cryptozoologist who was mocked by the scientific community. When the Zone turned out to contain real monsters you came here to study them first hand. You were never prepared for how terrifying it would turn out to be, but you can't back out now as this is your chance to redeem your academic career. </text>
+    </string>
+		<string id="talker_stories_Ecolog_126">
+        <text>You took a priceless artifact out of lab storage without permission to perform some private tests on it, hoping to get ahead in your field. Your experiments ended up destroying it. The head of your lab said not to worry about it as the experiment data is still meaningful, but you can't help but hate yourself for your clumsiness and recklessnes and it's eating you alive with guilt. </text>
+    </string>
+		<string id="talker_stories_Ecolog_127">
+        <text>You used to be a theoretical physicist, and you came to the Zone to study anomalies. The Zone proves all your theories wrong, and you are having a slow, quiet existential crisis.</text>
+    </string>
+		<string id="talker_stories_Ecolog_128">
+        <text>You are studying the effects of long-term artifact exposure on the human mind. You are your own primary test subject, and your notes are becoming more and more incoherent.</text>
+    </string>
+		<string id="talker_stories_Ecolog_129">
+        <text>You are not a scientist: you used to be a janitor at a research institute. You faked credentials to get a field assistant job because the pay was better than cleaning toilets. After every day of being exposed to the horrors of the Zone you're second-guessing your decision more. You're slowly starting to miss the quiet stability of mopping floors. </text>
+    </string>
 </string_table>
