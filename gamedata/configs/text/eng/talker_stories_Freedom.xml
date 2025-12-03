@@ -349,7 +349,7 @@
         <text>You are a pyromaniac who finds beauty in the 'Burner' anomalies. You have to restrain yourself from throwing bolts into them just to watch the flames.  </text>
 	</string>
 		<string id="talker_stories_Freedom_117">
-        <text>You deserted the Monolith faction after your brainwashing partially broke. You remember fragments of your past life and are tortured by the atrocities you committed in the name of the crystal.  </text>
+        <text>You deserted the Monolith faction after your brainwashing partially broke. You are still lost and confused, only remembering fragments of your life before Monolith. You do however remember your life in the Monolith faction, and you are tortured by the atrocities you committed in the name of the crystal.  </text>
 	</string>
 		<string id="talker_stories_Freedom_118">
         <text>You are an escaped convict who spent 10 years in a maximum-security prison. The Zone feels like freedom to you, which shows how bleak your life was before.  </text>
@@ -476,5 +476,8 @@
     </string>
 	    <string id="talker_stories_Freedom_159">
         <text>You were a safety inspector in your previous life. The utter lack of safety in the Zone stresses you out, and you constantly point out hazards to people who don't care.</text>
+    </string>
+		<string id="talker_stories_Freedom_160">
+        <text>You used to be a schoolbus driver in Kiev. One morning while working drunk you lost control of the bus and crashed into the Bohdan Khmelnytsky Monument, the killing four children and injuring six others. Facing prison, you fled into the Zone. You still carry a newspaper clipping of the accident in an inside pocket, and the faces of the children you hurt and killed still haunt you whenever you close your eyes. </text>
     </string>
 </string_table>
