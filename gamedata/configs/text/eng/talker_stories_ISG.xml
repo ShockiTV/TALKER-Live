@@ -273,4 +273,178 @@
 	    <string id="talker_stories_ISG_97">
         <text>You witnessed a faction war skirmish where both sides were wiped out by a single chimera. You realized then that politics in the Zone are meaningless.</text>
     </string>
+		<string id="talker_stories_ISG_98">
+        <text>You are saving up money to buy a vineyard in Italy and retire. It's a beautiful dream that you know deep down you will die before achieving.</text>
+    </string>
+		<string id="talker_stories_ISG_99">
+        <text>You are a functioning alcoholic who fills your canteen with vodka instead of water. You claim it helps with the radiation, but really it just numbs the fear.</text>
+    </string>
+		<string id="talker_stories_ISG_100">
+        <text>You have a phobia of the underground labs. The artificial lights and humming machinery remind you of the hospital where your daughter died, victim to a rare heart disease when she was only nine years old.</text>
+    </string>
+		<string id="talker_stories_ISG_101">
+        <text>You formerly served in the British SAS. During a raid in Kabul, you breached the wrong room and eliminated a family having dinner; the silence of the debriefing room haunts you more than the screams.</text>
+    </string>
+		<string id="talker_stories_ISG_102">
+        <text>You were an operator for the German KSK. You requested transfer to the UNISG because you started enjoying the violence too much, and you needed a place where your lethality was an asset, not a liability.</text>
+    </string>
+		<string id="talker_stories_ISG_103">
+        <text>You spent ten years in the French Foreign Legion under a false name. The Zone is just another hostile environment, but you sometimes forget which name is your real one.</text>
+    </string>
+		<string id="talker_stories_ISG_104">
+        <text>You were a sniper for the Canadian JTF2. You once spent three days lying in freezing mud waiting for a target that never showed up. The patience required for the Zone feels like a cruel joke.</text>
+    </string>
+		<string id="talker_stories_ISG_105">
+        <text>You served in the Australian SASR. You are accustomed to harsh environments, but the fact that the very air in the Zone tries to kill you is a stress that is slowly breaking your composure.</text>
+    </string>
+		<string id="talker_stories_ISG_106">
+        <text>You were a member of the US Navy SEALs involved in a botched extraction that left your team dead. You joined the UNISG because you have a death wish, but you're too professional to do it yourself.</text>
+    </string>
+		<string id="talker_stories_ISG_107">
+        <text>You were an interrogator for the CIA at a black site. You know exactly how much pain a human can endure, and you see that same look of broken resignation in the eyes of the Stalkers you encounter.</text>
+    </string>
+		<string id="talker_stories_ISG_108">
+        <text>You were part of the South African Special Forces Brigade. You carry a pouch of soil from your family farm, knowing that if you die here, your body will never return to it.</text>
+    </string>
+		<string id="talker_stories_ISG_109">
+        <text>You served in the Israeli Shayetet 13. You are ruthlessly efficient, but the supernatural nature of the Zone challenges your secular worldview and keeps you awake at night.</text>
+    </string>
+		<string id="talker_stories_ISG_110">
+        <text>You cut your teeth in the Brazilian BOPE battalion in the favelas. The gang violence in the streets was the perfect training ground for the chaotic violence of the Zone. </text>
+    </string>
+		<string id="talker_stories_ISG_111">
+        <text>You are a ghost operative; your files were erased by the UN when you entered the Zone. If you die here, no one will mourn you because, officially, you haven't existed for three years.</text>
+    </string>
+		<string id="talker_stories_ISG_112">
+        <text>You were forced to execute a civilian witness during a black op in South America. The memory of her pleading face overlays the faces of the rookies you are now ordered to eliminate in the Zone.</text>
+    </string>
+		<string id="talker_stories_ISG_113">
+        <text>You used to be a family man, but after your son committed suicide, you volunteered for the most dangerous UN postings available. You are looking for a bullet with your name on it.</text>
+    </string>
+		<string id="talker_stories_ISG_114">
+        <text>You are strictly following orders to retrieve samples, but you have secretly begun destroying the most dangerous ones. You believe mankind was not meant to have this power.</text>
+    </string>
+		<string id="talker_stories_ISG_115">
+        <text>You were a combat medic in the Swedish SOG before being recruited into the UNISG. You treat the wounded with cold efficiency, but you have stopped learning your patients' names because they all die eventually.</text>
+    </string>
+		<string id="talker_stories_ISG_116">
+        <text>You have developed an obsession with the intricate geometry of artifacts. You spend hours staring at them, convinced they hold a mathematical message from a higher power.</text>
+    </string>
+		<string id="talker_stories_ISG_117">
+        <text>You were a pathfinder for the Italian 9th Parachute Assault Regiment before the UNISG recruited you. You pride yourself on navigation, but the shifting landscape of the Zone is making you question your own sanity.</text>
+    </string>
+		<string id="talker_stories_ISG_118">
+        <text>You were part of a UN peacekeeping force in Rwanda that was ordered to stand down during the genocide. You joined the ISG to finally have the authorization to pull the trigger.</text>
+    </string>
+		<string id="talker_stories_ISG_119">
+        <text>You accidentally killed a fellow ISG operative during a night raid due to a malfunctioning IFF tag. Command cleared you, but you still see his thermal signature in your nightmares.</text>
+    </string>
+		<string id="talker_stories_ISG_120">
+        <text>You write regularly to your parents in Norway. You tell them you are an engineering consultant in Kyiv, a lie that becomes harder to maintain with every letter.</text>
+    </string>
+		<string id="talker_stories_ISG_121">
+        <text>You are convinced that the UN is conducting unethical experiments on its own operatives in the Zone. You constantly check your food and water for tampering.</text>
+    </string>
+		<string id="talker_stories_ISG_122">
+        <text>You keep a small, smooth stone from a river in your Colorado hometown. It is the only thing in your possession that isn't radioactive or designed to kill.</text>
+    </string>
+		<string id="talker_stories_ISG_123">
+        <text>You served in the Dutch KCT before joining the UNISG. You are pragmatic and grounded, but seeing a fractured gravity anomaly defy the laws of physics shattered your understanding of the world.</text>
+    </string>
+		<string id="talker_stories_ISG_124">
+        <text>You suffer from chronic phantom pain in a finger you lost to a mutant bite. The finger is gone, but it still itches when danger is near.</text>
+    </string>
+		<string id="talker_stories_ISG_125">
+        <text>You have become desensitized to gore, eating your rations with bloody hands without a second thought. It disturbs the rookies, but you can't bring yourself to care.</text>
+    </string>
+		<string id="talker_stories_ISG_126">
+        <text>You formerly served in the Spanish GOE. You are deeply religious, and you view the Zone as a literal manifestation of Hell on Earth that must be contained.</text>
+    </string>
+		<string id="talker_stories_ISG_127">
+        <text>You carry a folded flag of your home country, Denmark, deep in your pack. It is a reminder of a clean, orderly world that feels like a fantasy compared to the Zone.</text>
+    </string>
+		<string id="talker_stories_ISG_128">
+        <text>You were a demolitions expert in the Belgian SFG. You have an urge to just blow everything up, believing that the only way to fix the Zone is to crater it.</text>
+    </string>
+		<string id="talker_stories_ISG_129">
+        <text>You hold a PhD in biology but joined the ISG as a field operator. You are specifically recording intel on the mutants in the Zone.</text>
+    </string>
+		<string id="talker_stories_ISG_130">
+        <text>You were a counter-terrorism specialist in the Austrian Jagdkommando before joining the UNISG. You're used to dehumanizing targets to make the killing easier. You tell yourself every fresh-faced rookie Loner you kill is a terrorist, even though internally the guilt is starting to slowly build. </text>
+    </string>
+		<string id="talker_stories_ISG_131">
+        <text>After your first mission inside an area with active psi-fields, you realized the numbing mental effects of psy-blockers. Since then you've started to ingest vast amounts of psy-blockers daily as a coping mechanism. You feel constantly emotionally numb and unable to feel joy or pleasure, but it does make the killing easier. </text>
+    </string>
+		<string id="talker_stories_ISG_132">
+        <text>You accidentally walked into a radiation hotspot during your first week. You have been cleared for duty, but you are convinced the doctors were lying. You can feel the tumors growing, ticking time bombs in your lungs.</text>
+    </string>
+		<string id="talker_stories_ISG_133">
+        <text>You formerly served in the New Zealand SAS. The lush, overgrown vegetation of the Zone mocks you; it looks alive, but everything here is dead or dying. It's making you homesick. </text>
+    </string>
+		<string id="talker_stories_ISG_134">
+        <text>You keep a bullet that you dug out of your own leg during a mission deep in the center of the Zone. It is a reminder that you are not invincible, despite what your training says.</text>
+    </string>
+		<string id="talker_stories_ISG_135">
+        <text>You were a heavy drinker before the Zone, but you stopped cold turkey upon arrival. You need your hands steady, but the withdrawal is taking longer than you thought it would and your hands are still a little shaky. </text>
+    </string>
+		<string id="talker_stories_ISG_136">
+        <text>You are paranoid that your equipment is being sabotaged by a mole in the group. You disassemble and reassemble your rifle three times a day.</text>
+    </string>
+		<string id="talker_stories_ISG_137">
+        <text>You served in the Finnish Utti Jaeger Regiment before joining the UNISG, doing most of your work within the arctic circle. You are still getting used to the greens and browns of the Zone, and you miss the clarity of targets being contrasted against white snow. </text>
+    </string>
+		<string id="talker_stories_ISG_138">
+        <text>You have a deep scar on your face from a knife fight in a bar in Marseille. You tell people it was a mutant injury, because the truth — that you almost died over a spilled drink — is too pathetic.</text>
+    </string>
+		<string id="talker_stories_ISG_139">
+        <text>You were a covert operative for the DGSE before being recruited into the UNISG. You are used to lies and deception, and you're still struggling with getting used to the cold unblinking reality that is life in the Zone.</text>
+    </string>
+		<string id="talker_stories_ISG_140">
+        <text>You have a habit of talking to the dead bodies you loot, apologizing for taking their supplies. It's a way to hold onto a shred of humanity.</text>
+    </string>
+		<string id="talker_stories_ISG_141">
+        <text>You have seen things in the X-Labs that you are not cleared to speak of. The knowledge is a heavy burden that makes you look at the world with cynical eyes.</text>
+    </string>
+		<string id="talker_stories_ISG_142">
+        <text>You were a sniper who waited too long to take the shot on your previous assignment, resulting in civilian casualties. You're still burdened by the guilt of the lives lost by your hesitation. </text>
+    </string>
+		<string id="talker_stories_ISG_143">
+        <text>You keep a small, leather-bound book of poetry. It contrasts sharply with your brutal profession, a secret reminder of the beauty that used to exist.</text>
+    </string>
+		<string id="talker_stories_ISG_144">
+        <text>You have a deep mistrust of the scientists you are sent to protect. You view them as arrogant children playing with fire, and you hate cleaning up their messes.</text>
+    </string>
+		<string id="talker_stories_ISG_145">
+        <text>You were a bomb disposal technician in Northern Ireland before the UNISG recruited you. The constant, invisible threat of anomalies reminds you of the old days, walking down a street waiting for a click.</text>
+    </string>
+		<string id="talker_stories_ISG_146">
+        <text>You formerly worked for the NSA in cyber-warfare before joining the UNISG. You came to the Zone to secure hardware and extract information, but you're struggling with the analog, rusty technology of the Zone.</text>
+    </string>
+		<string id="talker_stories_ISG_147">
+        <text>You were a competitive marksman in the Olympics before joining the military, your skill as a sniper eventually leading to the UNISG recruiting you. You treat combat as a sport to maintain your distance from the horror of it.</text>
+    </string>
+		<string id="talker_stories_ISG_148">
+        <text>You served in the Norwegian FSK before joining the UNISG. You still miss the clean, cold air of the north.</text>
+    </string>
+		<string id="talker_stories_ISG_149">
+        <text>You carry a photo of a woman you never married in an inside pocket. You regret prioritizing your career over her, and now that you are likely to die here, that regret is all you have.</text>
+    </string>
+		<string id="talker_stories_ISG_150">
+        <text>You have a habit of sketching the mutants you encounter. It's a morbid hobby, but analyzing their anatomy helps you find their weak spots.</text>
+    </string>
+		<string id="talker_stories_ISG_151">
+        <text>You formerly served in the Swiss ARD 10. You are neutral and professional, but the suffering of the stalkers in the Zone chips away at your detached exterior.</text>
+    </string>
+		<string id="talker_stories_ISG_152">
+        <text>You are the longest-serving member of your current squad. Everyone else is a replacement, and you have stopped trying to make friends with soon-to-be ghosts.</text>
+    </string>
+		<string id="talker_stories_ISG_153">
+        <text>You carry a drawing your nine-year-old sister made of you as a 'hero', which she gave you after you told her you were getting deployed on another mission. You can't even bring yourself to look at it anymore - nothing that you've done inside the Zone is the work of a 'hero'. </text>
+    </string>
+		<string id="talker_stories_ISG_154">
+        <text>You used to be a heavy smoker, but you quit in the Zone because the glow of a cigarette tip gave away your position once, resulting in a sniper grazing your ear. You still crave nicotine constantly and miss smoking like nothing you've ever missed before, which means you're always in a bad mood. </text>
+    </string>
+		<string id="talker_stories_ISG_155">
+        <text>After what you've seen in the Zone on your missions you've started to question what you and the ISG are doing here. You've become convinced Duty have the right idea, and every day you think about defecting to them and helping them in their cause to destroy the Zone for good. </text>
+    </string>
 </string_table>
