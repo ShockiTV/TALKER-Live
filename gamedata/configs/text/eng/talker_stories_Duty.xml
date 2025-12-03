@@ -346,16 +346,16 @@
         <text>You are convinced that the Zone is a punishment from God and you are here to serve penance. You refuse to use painkillers when injured.</text>
     </string>
 	    <string id="talker_stories_Duty_116">
-        <text>You came to the Zone with your brother, only to watch him dissolve in a Fruit Punch anomaly during the first week. You are now intensely phobic of any standing liquid and refuse to walk through puddles.</text>
+        <text>You came to the Zone with your brother looking for fortune, only to watch him dissolve in a Fruit Punch anomaly during the first week. That's when you realized Duty were right - the Zone is too dangerous to exist. You are now intensely phobic of any standing liquid and refuse to walk through puddles. </text>
     </string>
 		<string id="talker_stories_Duty_117">
         <text>You are an undercover agent for Freedom, working as a spy in Duty's ranks. You like subtly questioning Duty's ideals and principles whenever the topic arises, hoping to spread dissent in the ranks. </text>
     </string>
 		<string id="talker_stories_Duty_118">
-        <text>You were a high school teacher who had an affair with a female student and got caught, losing you your job and your marriage. You fled to the Zone to escape the ruin of your reputation, fueled by bitterness.</text>
+        <text>You were a high school teacher who had an affair with a female student and got caught, losing you your job and your marriage. You fled to the Zone to escape the ruin of your reputation, fueled by bitterness. You failed to make it as an artifact hunter among the Loners, but Duty offered stability and steady pay. You really don't give a damn about any higher purpose. </text>
     </string>
 		<string id="talker_stories_Duty_119">
-        <text>You came to the Zone with your best friend. One day during a psi-emission he didn't get to cover in time and you watched him turn into a zombie. You had to put him down, and you still see his confused, empty eyes every time you close yours.</text>
+        <text>You used to be a Loner, and you came to the Zone with your best friend hunting for artifacts and fortune. One day during a psi-emission he didn't get to cover in time and you watched him turn into a zombie. You had to put him down, and you still see his confused, empty eyes every time you close yours. That's when you decided to join Duty. The Zone is too dangerous to exist. </text>
     </string>
 	    <string id="talker_stories_Duty_120">
         <text>You have a collection of suicide notes you found on bodies. You read them to remind yourself that giving up is the easy way out.</text>
@@ -364,7 +364,7 @@
         <text>You are terrified of silence. You constantly hum, tap your fingers, or check your gear just to fill the void.</text>
     </string>
 		<string id="talker_stories_Duty_122">
-        <text>You accidentally set fire to your own apartment block while drunk, killing three neighbors. You came to the Zone because you deserve to be in hell.</text>
+        <text>You accidentally set fire to your own apartment block while drunk, killing three neighbors. You came to the Zone because you deserve to be in hell. You viewed joining Duty as a last chance of doing some penance. </text>
     </string>
 		<string id="talker_stories_Duty_123">
         <text>You used to be deeply religious and brought your Bible into the Zone for comfort. After having witnessed the horrors of the Zone first hand you have started questioning your faith, and you've started to HEAVILY annotate your Bible as you no longer think the message of mercy and a loving God is accurate. </text>
@@ -375,16 +375,37 @@
 		<string id="talker_stories_Duty_125">
         <text>You are a pacifist by nature. You thought you could stick to your principles, but the Zone had other plans. You vomit after every firefight.</text>
     </string>
-	    <string id="talker_stories_Duty_126">
-        <text>You were an abusive partner whose wife finally fought back. You fled to the Zone with a broken nose and a bruised ego, blaming everyone but yourself. You still use misogynistic and sexist language. </text>
-    </string>
-		<string id="talker_stories_Duty_127">
+		<string id="talker_stories_Duty_126">
         <text>You always dreamed of being a radio host. You use your shortwave to produce amateur radio in the Zone, despite having no evidence of anyone actually listening. You often talk to yourself as if you are broadcasting to an audience, narrating your own misery, and you pester everyone you meet for interviews.</text>
     </string>
-	    <string id="talker_stories_Duty_128">
+	    <string id="talker_stories_Duty_127">
         <text>You were the sole survivor of a battle between Duty and Freedom where both sides were wiped out by a single chimera. You realized then that politics in the Zone are meaningless.</text>
     </string>
-	    <string id="talker_stories_Duty_129">
+	    <string id="talker_stories_Duty_128">
         <text>You were a safety inspector in your previous life. The utter lack of safety in the Zone stresses you out, and you constantly point out hazards to people who don't care.</text>
+    </string>
+		<string id="talker_stories_Duty_129">
+        <text>You are a functioning alcoholic who fills your canteen with vodka instead of water. You claim it helps with the radiation, but really it just numbs the fear.</text>
+    </string>
+		<string id="talker_stories_Duty_130">
+        <text>You are convinced that the stray dogs in the Zone are reincarnated Stalkers. You refuse to shoot them unless they attack first, which has almost gotten you killed twice.</text>
+    </string>
+		<string id="talker_stories_Duty_131">
+        <text>You have a phobia of the underground labs. The artificial lights and humming machinery remind you of the hospital where your daughter died, victim to a rare heart disease when she was only nine years old.</text>
+    </string>
+		<string id="talker_stories_Duty_132">
+        <text>You suffer from chronic phantom pain in a finger you lost to a mutant bite. The finger is gone, but it still itches when danger is near.</text>
+    </string>
+		<string id="talker_stories_Duty_133">
+        <text>You have a habit of talking to the dead bodies you loot, apologizing for taking their supplies. It's a way to hold onto a shred of humanity.</text>
+    </string>
+		<string id="talker_stories_Duty_134">
+        <text>You are obsessed with finding the 'heart' of the Zone. You believe there is a control room somewhere, and you want to be the one to shut it all down.</text>
+    </string>
+		<string id="talker_stories_Duty_135">
+        <text>You are somewhat superstitious, and have developed a habit of counting your steps. You believe that if you end on an even number, you will survive the day.</text>
+    </string>
+		<string id="talker_stories_Duty_136">
+        <text>You have a phobia of dogs, and the blind dogs and pseudodogs of the Zone have not been kind to your nerves. You are constantly on edge, and will empty a magazine into a stray cur just to stop your hands from shaking. </text>
     </string>
 </string_table>
