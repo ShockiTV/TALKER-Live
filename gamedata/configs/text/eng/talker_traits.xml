@@ -597,4 +597,37 @@
 		<string id="talker_traits_195">
         <text>vapid</text>
     </string>
+		<string id="talker_traits_196">
+        <text>gruff</text>
+    </string>
+		<string id="talker_traits_197">
+        <text>good-natured</text>
+    </string>
+		<string id="talker_traits_198">
+        <text>jovial</text>
+    </string>
+		<string id="talker_traits_199">
+        <text>companionable</text>
+    </string>
+		<string id="talker_traits_200">
+        <text>affable</text>
+    </string>
+		<string id="talker_traits_201">
+        <text>easygoing</text>
+    </string>
+		<string id="talker_traits_202">
+        <text>nonchalant</text>
+    </string>
+		<string id="talker_traits_203">
+        <text>mellow</text>
+    </string>
+		<string id="talker_traits_204">
+        <text>carefree</text>
+    </string>
+		<string id="talker_traits_205">
+        <text>playful</text>
+    </string>
+		<string id="talker_traits_206">
+        <text>empty-headed</text>
+    </string>
 </string_table>
