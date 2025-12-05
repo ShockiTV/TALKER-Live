@@ -29,6 +29,7 @@ local unique_characters =  {
 	["ds_domik_isg_leader"] = "intelligent, commanding, strategic and protective",           -- Major Hernandez  
 
     --[[ GARBAGE ]]--
+["stalker_oleksandr_chernenko"] = "disillusioned, casual and impatient", 				--  Captain Oleksandr Chernenko
 ["hunter_gar_trader"] = "gruff, practical and blunt",                           -- Butcher  
 
     --[[ AGROPROM ]]--
@@ -131,10 +132,11 @@ local unique_characters =  {
 ["zat_b7_stalker_victim_1"] = "heroic, resilient and emotionally intense",              -- Spartacus  
 
 --[[ OUTSKIRTS ]]--
+["stalker_western_goods_trader"] = "secretive, businesslike and guarded", 										-- Williams 'Ashes' Heades, Wester Goods trader
 ["pri_monolith_monolith_trader_stalker"] = "ritualistic, emotionally void and doctrinal",        -- Krolik  
 ["lider_monolith_haron"] = "commanding, fanatical and spiritually fractured",                    -- Charon  
 ["pri_monolith_monolith_mechanic_stalker"] = "methodical, silent and ideologically rigid",       -- Cleric  
-["monolith_eidolon"] = "a young woman and who is cryptic, detached and metaphysically obsessed",                          -- Eidolon  
+["monolith_eidolon"] = "a young woman and who is cryptic, devoted and metaphysically obsessed",                          -- Eidolon  
 ["guid_pri_a15_mlr"] = "blunt, casual and flippant",                                 -- Tourist  
 ["trader_pri_a15_mlr"] = "cheerful, erratic and emotionally unstable",                           -- Cashier  
 ["pri_medic_stalker"] = "experienced, quiet and sharp",                              -- Yar  
