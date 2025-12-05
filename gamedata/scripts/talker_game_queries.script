@@ -479,7 +479,7 @@ local important_npcs = Set {
 "ds_domik_isg_leader",										-- Major Hernandez
 
     --[[ GARBAGE ]]--
-
+"stalker_oleksandr_chernenko", 								-- Captain Oleksandr Chernenko, Western Goods Flea Market trader
 "hunter_gar_trader",										-- Butcher
 
     --[[ AGROPROM ]]--
@@ -593,7 +593,7 @@ local important_npcs = Set {
 "zat_b7_stalker_victim_1",									-- Spartacus
 
     --[[ OUTSKIRTS ]]--
-
+"stalker_western_goods_trader",  							-- Williams 'Ashes' Heades, Wester Goods trader
 "pri_monolith_monolith_trader_stalker", 					-- Krolik
 "lider_monolith_haron", 									-- Charon
 "pri_monolith_monolith_mechanic_stalker", 					-- Cleric
@@ -601,8 +601,8 @@ local important_npcs = Set {
 "guid_pri_a15_mlr", 										-- Tourist
 "trader_pri_a15_mlr", 										-- Cashier
 "pri_medic_stalker", 										-- Yar
-"pri_a16_mech_mlr",											-- Yar 
-"jup_b19_freedom_yar",										-- Yar 
+"pri_a16_mech_mlr",											-- Yar, variant 
+"jup_b19_freedom_yar",										-- Yar, another variant
 "merc_pri_a18_mech_mlr", 									-- Trunk
 "pri_special_trader_mlr", 									-- Meeker
 "merc_pri_grifon_mlr", 										-- Griffin
