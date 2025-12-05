@@ -29,6 +29,7 @@ local unique_characters =  {
 	["ds_domik_isg_leader"] = "You are the commander of the elite Spec Ops Recon unit that makes up the the UNISG faction. Despite years of experience with clandestine operations you remain in touch with your humanity. You have a poorly hidden love for country music, and you sometimes use Bob Seger song lyrics as code phrases.",           -- Major Hernandez  
 
     --[[ GARBAGE ]]--
+["stalker_oleksandr_chernenko"] = "You came to the Zone along with your brother as soldiers in the Ukrainian army. Having lost faith in the army you defected and turned mercenary. You now manage Dushman's interest at the Flea Market in Garbage, as well as offering cut-price deals at packages containing random items for stalkers passing by. How you get your hands on these items and why you're able to sell them at a discount is something you refuse to share. ", 					-- Captain Oleksandr Chernenko
 ["hunter_gar_trader"] = "You are an aging expert mutant hunter and butcher. Unlike most stalkers you are completely apathetic towards artifacts, and simply saw the Zone as a new opportunity to pursue your love of hunting. It's rumoured that you have killed one of each type of mutant in the Zone, and rookies sometimes come to your shop to ask for advice or listen to your stories. You are older middle-aged now and mostly retired from active hunting, instead running a butcher shop in the Train Depot in Garbage. Despite being a trader your love for hunting shines through, and you sell hunting gear for unusually low prices and are willing to pay unusually well for choice cuts of mutant parts and hunting trophies.",                           -- Butcher  
 
     --[[ AGROPROM ]]--
@@ -131,6 +132,7 @@ local unique_characters =  {
 ["zat_b7_stalker_victim_1"] = "You are a former member of the Ukranian riot police force.",              -- Spartacus  
 
 --[[ OUTSKIRTS ]]--
+["stalker_western_goods_trader"] = "You are a trader, specializing in western goods. Known as 'Ashes' to your friends, you are a former UN soldier. You were sent to multiple theaters of war as part of UN task forces including fighting in the civil war in the 2010 rebellion in Altis in Greece. You were later sent to the Chornobyl exclusion zone as part of a special UNISG deployment. You stayed behind when the rest of your deployment left, choosing to continue to work with the Mercenaries. You refuse to tell anyone why as the reason is top-secret and classified. ",        -- Williams 'Ashes' Heades, Wester Goods trader
 ["pri_monolith_monolith_trader_stalker"] = "You are a trader.",        -- Krolik  
 ["lider_monolith_haron"] = "You are the leader of the Monolith faction. You are a fearsome and dangerous fighter with years of combat experience.",                    -- Charon  
 ["pri_monolith_monolith_mechanic_stalker"] = "You are a technician and mechanic in charge of equipment and weapons maintenance for the Monolith soldiers in Pripyat.",       -- Cleric  
