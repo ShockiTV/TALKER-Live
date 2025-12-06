@@ -630,4 +630,10 @@
 		<string id="talker_traits_206">
         <text>empty-headed</text>
     </string>
+		<string id="talker_traits_207">
+        <text>hapless</text>
+    </string>
+		<string id="talker_traits_208">
+        <text>resolute</text>
+    </string>
 </string_table>
