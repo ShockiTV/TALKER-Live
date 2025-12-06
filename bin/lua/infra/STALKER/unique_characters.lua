@@ -63,6 +63,9 @@ local unique_characters =  {
 	["bar_zastava_2_commander"] = "tough, casual and no-nonsense",                           -- Sergeant Kitsenko  
 	["bar_duty_security_squad_leader"] = "rigid, formal and protective",                         -- Captain Gavrilenko  
 
+    --[[ TRUCK CEMETERY ]]--
+    ["stalker_duty_girl"] = "a young woman and is loyal, determined and plain-spoken",                      -- Anna from Duty Expansion
+
     --[[ YANTAR ]]--
 	["yan_stalker_sakharov"] = "polite, inquisitive, humble and no-nonsense",         -- Professor Sakharov  
 	["mechanic_army_yan_mlr"] = "quiet, methodical and reliable",                      -- Peregrine  
