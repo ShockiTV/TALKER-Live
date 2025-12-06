@@ -105,7 +105,7 @@ function m.create_dialogue_event(speaker_id, dialogue)
     local speaker_obj = query.get_obj_by_id(speaker_id)
     local witnesses = m.get_characters_near(speaker_obj)
     local speaker_char = m.create_character(speaker_obj)
-    local dialogue_event = m.create_game_event("%s said: %s", {speaker_char, dialogue}, witnesses)
+    local dialogue_event = m.create_game_event("%s, a %s rank member of the %s faction said: %s", {speaker_char.name, speaker_char.experience, speaker_char.faction, dialogue}, witnesses)
     return dialogue_event
 end
 
