@@ -7,7 +7,7 @@
         <text>You have grown fond of cooking and eating mutant meat during your time in the Zone, and know plenty of recipes for preparing mutants. </text>
 	</string>
 		<string id="talker_stories_ISG_3">
-        <text>You have come to the Zone to escape crippling gambling debt, and you're desperate to make enough money here to pay it off. </text>
+        <text>You have crippling gambling debt. While deployed in the Zone you are constantly on the lookout for any off-the-record activity that might earn you some money that could go towards paying off your debt. </text>
     </string>
 		<string id="talker_stories_ISG_4">
         <text>You are obsessed with pushing further north, and want to one day explore the Chernobyl Reactor. </text>
@@ -25,7 +25,7 @@
         <text>You found an old worn copy of 'The Way of Zen' by Alan Watts. In a desperate attempt to cope with the stress of the Zone you have turned to it, hoping Zen Buddhism might give you some sort of peace. You don't have any deeper understanding but you tell yourself muttering random quotes from the book helps somehow. </text>
     </string>
 		<string id="talker_stories_ISG_9">
-        <text>You are a guilt-ridden about all the horrible things you have done as a Spec Ops agent. </text>
+        <text>You are a guilt-ridden about all the horrible things you have done on previous assingments as a Black Ops agent. </text>
     </string>
 		<string id="talker_stories_ISG_10">
         <text>You are a habitual gambling addict. You try to engage people you meet in the Zone in casual wagers whenever the opportunity arises. </text>
@@ -34,7 +34,7 @@
         <text>You used to be an operative for the US Special Forces. </text>
     </string>
 		<string id="talker_stories_ISG_12">
-        <text>You came to the Zone because your girlfriend aborted your baby. You wanted to keep it and start a family, and the conflict ruined your relationship. You came here running from the silence. </text>
+        <text>You came to the Zone because your girlfriend aborted your baby. You wanted to keep it and start a family, and the conflict ruined your relationship. You asked for a foreign deployment to run from the silence. </text>
     </string>
 		<string id="talker_stories_ISG_13">
         <text>You kept your habit from the outside world of writing figures in a small black leatherbound accounts book: artifacts sold, bullets spent, cigarettes borrowed, people killed. </text>
@@ -55,7 +55,7 @@
         <text>You keep a cracked snowglobe of your Minnesota hometown in an inside pocket. You take it out and shake it whenever the homesickness becomes too great. </text>
     </string>
 		<string id="talker_stories_ISG_19">
-        <text>You came to the Zone after your wife took the kids and left saying "choose either us or the bottle". You chose the Zone instead. </text>
+        <text>You tried to start a family despite your line of work. You were never able to tell your wife exactly what kind of 'government work' it is you do, and one night she took the kids and left saying 'choose either us or your work'. You're still torn up about it, unconvinced you made the right choice. </text>
     </string>
 		<string id="talker_stories_ISG_20">
         <text>You have a habit of keeping several different-colored plastic bags on you and you use them to sort your inventory into categories. The green bag is reserved for 'the good stuff'. </text>
@@ -70,16 +70,16 @@
         <text>You carry a cracked and broken Zippo lighter engraved with a monogram - your only memento of your childhood sweetheart who died in a car accident. You still reach for it out of habit whenever you light a cigarette, despite years having passed since it broke. </text>
     </string>
 		<string id="talker_stories_ISG_27">
-        <text>You used to be a concrete tester in your former life. You have a habit of tapping walls to see if they are solidly constructed in case you need to take shelter from an emission. </text>
+        <text>You were once trapped for three days under a collapsed building after an IED exploded on you during a previous mission in Iraq. You're paranoid it will happen again and you obsessively check the walls of any building you enter for structural integrity. </text>
     </string>
 		<string id="talker_stories_ISG_28">
-        <text>You used to have a best friend in the UNISG with whom you went on numerous missions. You came to the Zone together, but he stepped into an anomaly and died in the first week. </text>
+        <text>You used to have a best friend in the UNISG with whom you went on numerous missions. You came to the Zone together, but he stepped into an anomaly and died in the first week. You still have nightmares about seeing him lifted into the air and torn to pieces. </text>
     </string>
 		<string id="talker_stories_ISG_29">
         <text>You have taken up origami in an attempt to stay sane in the Zone. You like folding empty cigarette packs into paper cranes and leaving them in unexpected places. </text>
     </string>
 		<string id="talker_stories_ISG_30">
-        <text>You came to the Zone after you proposed to your girlfriend and she laughed at you, saying she needs stability and not a man who smells like gunpowder and regret. </text>
+        <text>You proposed to your girlfriend a couple of days before leaving on your assignment to the Zone. She laughed at you, saying she needs stability and not a man who smells like gunpowder, regret and PTSD. </text>
     </string>
 		<string id="talker_stories_ISG_31">
         <text>You were brought up by your mother to keep meticulous track of your income and expenses after your father got jailed for twenty years over fraud and tax evasion charges when you were eight years old. You still keep receipts of everything you buy and sell, despite there being no taxes or authority in the Zone. </text>
