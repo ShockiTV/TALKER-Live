@@ -7,7 +7,7 @@ local factions = {
     },
     dolg = {
         name = "Duty",
-        style = "member of Duty, a faction that despises the Zone and wants to protect people from it. They are authoritarian, brusque and emotionally strained. "
+        style = "member of Duty, a faction that despises the Zone and wants to protect people from it. They have a strong sense of camaraderie and brotherhood within the faction, and are disciplined, authoritative, brusque and emotionally strained. "
     },
     freedom = {
         name = "Freedom",
