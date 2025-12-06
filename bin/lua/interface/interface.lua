@@ -75,7 +75,7 @@ function m.has_anyone_spoken_recently()
         local last_spoke_time = AI_request.get_last_spoke_time(character.game_id)
         if last_spoke_time then
             if current_game_time - last_spoke_time < RECENT_SPEECH_THRESHOLD_MS then
-                -- Found someone who spoke within the last 90 seconds.
+                -- Found someone who spoke within the last 3 minutes.
                 return true
             end
         end
@@ -93,7 +93,7 @@ function m.player_character_speaks(dialogue)
     log.info("Registering player speak event. Player said: " .. dialogue)
     local player = game_adapter.get_player_character()
     -- register new event
-    m.register_game_event_near_player("%s said: %s", {player.name, dialogue}, true )
+    m.register_game_event_near_player("%s, a %s rank member of the %s faction said: %s", {player.name, player.experience, player.faction, dialogue}, true )
     -- show dialogue in game UI
     game_adapter.display_dialogue(player.game_id, dialogue)
 end
