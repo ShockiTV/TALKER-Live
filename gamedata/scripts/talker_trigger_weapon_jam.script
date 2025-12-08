@@ -9,9 +9,11 @@ local log = require('framework.logger')
 --------------------------------------------------------------------------------------------
 
 function actor_on_weapon_jammed()
-    local unformatted_description = "%s's weapon jammed!"
+    local unformatted_description = "%s, a %s rank member of the %s factions's %s jammed!"
     local player = game.get_player_character()
-    interface.register_game_event_near_player(unformatted_description, {player})
+    local witnesses = game.get_characters_near_player()
+    local weapon_name = player.weapon or "weapon"
+    interface.register_game_event(unformatted_description, {player.name, player.experience, player.faction, weapon_name}, witnesses, true)
 end
 
 --------------------------------------------------------------------------------------------
