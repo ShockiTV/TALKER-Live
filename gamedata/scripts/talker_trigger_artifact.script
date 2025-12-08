@@ -13,25 +13,46 @@ local c = talker_game_commands
 -- Handlers
 ----------------------------------------------------------------------------------------------------
 
-local function actor_on_item_use(obj)
-   if not q.is_artifact(obj) then return end
+local function is_excluded_artifact(name)
+    if not name then return false end
+    local lower_name = string.lower(name)
+    if string.find(lower_name, "oxygen") or string.find(lower_name, "filter") then
+        return true
+    end
+    return false
+end
 
-    local description = string.format("%s used an artifact called %s", game.get_player_character(), q.get_item_name(obj))
-    interface.register_game_event_near_player(description)
+local function actor_on_item_use(obj)
+    if not q.is_artifact(obj) then return end
+    local artifact = q.get_item_name(obj)
+    if is_excluded_artifact(artifact) then return end
+
+    local player = game.get_player_character()
+    local witnesses = game.get_characters_near_player()
+    local unformatted_description = "%s, a %s rank member of the %s faction used an artifact called %s"
+    interface.register_game_event(unformatted_description, {player.name, player.experience, player.faction, artifact}, witnesses, true)
 end
 
 local function actor_on_item_before_pickup(obj)
-   if not q.is_artifact(obj) then return end
+    if not q.is_artifact(obj) then return end
+    local artifact = q.get_item_name(obj)
+    if is_excluded_artifact(artifact) then return end
 
-    local description = string.format("%s picked up an artifact called %s", game.get_player_character(), q.get_item_name(obj))
-    interface.register_game_event_near_player(description)
+    local player = game.get_player_character()
+    local witnesses = game.get_characters_near_player()
+    local unformatted_description = "%s, a %s rank member of the %s faction picked up an artifact called %s"
+    interface.register_game_event(unformatted_description, {player.name, player.experience, player.faction, artifact}, witnesses, true)
 end
 
 local function actor_on_item_drop(obj)
-   if not q.is_artifact(obj) then return end
+    if not q.is_artifact(obj) then return end
+    local artifact = q.get_item_name(obj)
+    if is_excluded_artifact(artifact) then return end
 
-    local description = string.format("%s dropped an artifact called %s", game.get_player_character(), q.get_item_name(obj))
-    interface.register_game_event_near_player(description)
+    local player = game.get_player_character()
+    local witnesses = game.get_characters_near_player()
+    local unformatted_description = "%s, a %s rank member of the %s faction dropped an artifact called %s"
+    interface.register_game_event(unformatted_description, {player.name, player.experience, player.faction, artifact}, witnesses, true)
 end
 
 ----------------------------------------------------------------------------------------------------
