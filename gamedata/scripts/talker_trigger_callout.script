@@ -26,7 +26,7 @@ local event_store = require("domain.repo.event_store")
 
 local last_callout_time_ms = 0
 local callout_cooldown_ms = 30 * 1000 -- 30 seconds, for ANY callout.
-local repeated_callout_cooldown_ms = 4 * 60 * 1000 -- 4 minutes, for the SAME target type.
+local repeated_callout_cooldown_ms = 4 * 60 * 1000 -- 4 minutes, for callouts of enemies with the same name.
 local MAX_CALLOUT_DISTANCE = 40  -- Max distance of callout in meters
 
 function is_valid_callout(npc_obj, target_obj)
@@ -40,12 +40,12 @@ function is_valid_callout(npc_obj, target_obj)
         return false
     end
 
-    -- Global cooldown check: Has any callout happened in the last 30 seconds?
+    -- Global cooldown check
     if (queries.get_game_time_ms() - last_callout_time_ms) < callout_cooldown_ms then
         return false
     end
 
-    -- Anti-spam check: Prevent repeated callouts for the same target TYPE (by name).
+    -- Anti-spam check
     -- We check the event store for recent events where a creature with the same name was spotted.
     local target_name = queries.get_name(target_obj)
     local since_time = queries.get_game_time_ms() - repeated_callout_cooldown_ms
@@ -58,12 +58,13 @@ function is_valid_callout(npc_obj, target_obj)
     log.info("Checking callout validity for target: '%s'. Found %d recent events.", target_name, #recent_events)
     
     for _, event in ipairs(recent_events) do
-        if event.description == "%s spotted a %s" then
-            -- Check if the target (2nd involved object) has the same name
-            local event_target = event.involved_objects and event.involved_objects[2]
-            if event_target then
-                log.info("Checking event target name: '%s' against current target: '%s'", event_target.name, target_name)
-                if event_target.name == target_name then
+        if event.description == "%s, a %s rank member of the %s faction spotted %s, a %s rank member of the %s faction" then
+            -- Check if the target (4th involved object, after spotter name, rank, faction) has the same name
+            -- involved_objects: {spotter_name, spotter_rank, spotter_faction, target_name, target_rank, target_faction}
+            local event_target_name = event.involved_objects and event.involved_objects[4]
+            if event_target_name then
+                log.info("Checking event target name: '%s' against current target: '%s'", event_target_name, target_name)
+                if event_target_name == target_name then
                     local time_ago = queries.get_game_time_ms() - event.game_time_ms
                     
                     -- Check if the event actually resulted in a callout (dialogue generated)
@@ -100,7 +101,7 @@ function on_enemy_eval(npc_obj, target_obj)
     if not is_valid_callout(npc_obj, target_obj) then return end
 
     --- create callout event
-    local unformatted_description = "%s spotted a %s"
+    local unformatted_description = "%s, a %s rank member of the %s faction spotted %s, a %s rank member of the %s faction"
     local spotter = game.create_character(npc_obj)
     -- If the character object couldn't be created (e.g., NPC was despawned), abort.
     if not spotter then return end
@@ -111,7 +112,7 @@ function on_enemy_eval(npc_obj, target_obj)
 
     -- register event
     log.info(spotter.name .. " spotted " .. enemy.name)
-    interface.register_game_event(unformatted_description, {spotter, enemy}, witnesses, true)
+    interface.register_game_event(unformatted_description, {spotter.name, spotter.experience, spotter.faction, enemy.name, enemy.experience, enemy.faction}, witnesses, true)
 
     -- Update global timer
     last_callout_time_ms = queries.get_game_time_ms()
