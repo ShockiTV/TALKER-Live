@@ -23,7 +23,7 @@ end
 --------------------------------------------------------------------------------------------
 
 function on_creature_death(victim_obj, killer_obj)
-    local unformatted_description = "%s was killed by %s!"
+    local unformatted_description = "%s, a %s rank member of the %s faction was killed by %s, a %s rank member of the %s faction!"
     -- get and combine witnesses
     local witnesses_near_victim = game.get_characters_near(victim_obj)
     local witnesses_near_killer = game.get_characters_near(killer_obj)
@@ -34,7 +34,7 @@ function on_creature_death(victim_obj, killer_obj)
     -- decide if the kill is important
     local important = false -- TODO mechanism to decide if kill is important
     -- send event to mod
-    interface.register_game_event(unformatted_description, {victim, killer}, witnesses, important)
+    interface.register_game_event(unformatted_description, {victim.name, victim.experience, victim.faction, killer.name, killer.experience, killer.faction}, witnesses, important)
 end
 
 --------------------------------------------------------------------------------------------
