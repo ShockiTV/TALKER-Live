@@ -51,32 +51,7 @@ function m.register_game_event(unformatted_description, event_objects, witnesses
     return true
 end
 
---- Checks if any NPC near the player has spoken within a given threshold.
--- This is used to determine if there is a "moment of silence" suitable for an idle conversation.
-function m.has_anyone_spoken_recently()
-    local RECENT_SPEECH_THRESHOLD_MS = 3 * 60 * 1000 -- 3 minutes
 
-    local nearby_characters = game_adapter.get_characters_near_player()
-    if not nearby_characters or #nearby_characters == 0 then
-        return false -- No characters nearby, so nobody could have spoken.
-    end
-
-    local current_game_time = query.get_game_time_ms()
-
-    for _, character in ipairs(nearby_characters) do
-        local last_spoke_time = AI_request.get_last_spoke_time(character.game_id)
-        if last_spoke_time then
-            if current_game_time - last_spoke_time < RECENT_SPEECH_THRESHOLD_MS then
-                -- Found someone who spoke within the last 3 minutes.
-                return true
-            end
-        end
-    end
-
-    -- If we get here, it means no one nearby has spoken recently.
-    return false
-end
-----------------------------------------------------------------------------------------------------
 -- SEND PLAYER DIALOGUE TO GAME 
 ----------------------------------------------------------------------------------------------------
 
