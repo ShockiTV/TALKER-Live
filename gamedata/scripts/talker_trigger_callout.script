@@ -1,7 +1,7 @@
 ---@diagnostic disable: undefined-global
 package.path = package.path .. ";./bin/lua/?.lua;"
-local interface = require("interface.interface")
 local game = require("infra.game_adapter")
+local trigger = require("interface.trigger")
 local log = require('framework.logger')
 
 -- Import game interface modules
@@ -112,7 +112,7 @@ function on_enemy_eval(npc_obj, target_obj)
 
     -- register event
     log.info(spotter.name .. " spotted " .. enemy.name)
-    interface.register_game_event(unformatted_description, {spotter.name, spotter.experience, spotter.faction, enemy.name, enemy.experience, enemy.faction}, witnesses, true)
+    trigger.talker_game_event(unformatted_description, {spotter.name, spotter.experience, spotter.faction, enemy.name, enemy.experience, enemy.faction}, witnesses, true)
 
     -- Update global timer
     last_callout_time_ms = queries.get_game_time_ms()
