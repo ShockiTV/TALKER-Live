@@ -1,6 +1,6 @@
 package.path = package.path .. ";./bin/lua/?.lua;"
-local interface = require("interface.interface")
 local game = require("infra.game_adapter")
+local trigger = require("interface.trigger")
 local log = require('framework.logger')
 
 
@@ -13,7 +13,7 @@ function actor_on_weapon_jammed()
     local player = game.get_player_character()
     local witnesses = game.get_characters_near_player()
     local weapon_name = player.weapon or "weapon"
-    interface.register_game_event(unformatted_description, {player.name, player.experience, player.faction, weapon_name}, witnesses, true)
+    trigger.talker_game_event(unformatted_description, {player.name, player.experience, player.faction, weapon_name}, witnesses, true)
 end
 
 --------------------------------------------------------------------------------------------
