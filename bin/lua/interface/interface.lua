@@ -9,17 +9,9 @@ local query = talker_game_queries
 
 local m = {}
 
---- Instructs a specific character to perform a dialogue action, notifying nearby witnesses.
--- @param unformatted_description (string) The template for the instruction, e.g., "%s begins an idle conversation."
--- @param character (game_object) The character being instructed.
--- @param important (boolean) Whether this instruction is high priority.
--- @param flags (table, optional) A table of special flags for the event.
+--- Instructs a specific character to perform a dialogue action, used for idle conversation prompts
 function m.register_character_instructions(unformatted_description, character, important, flags)
-    -- The 'character' passed here is a custom Character object from the game_adapter, not a raw game_object.
     local witnesses = game_adapter.get_characters_near_player()
-    -- This function acts as a specific entry point that gathers witnesses and then calls the main event registration function, returning its status.
-    -- We must pass the full character object, not just the name, so the game_id is preserved.
-    -- The description string will be formatted by the game_adapter using the object's name.
     return m.register_game_event(unformatted_description, {character}, witnesses, important, flags)
 end
 
@@ -38,11 +30,12 @@ local function register_game_event(unformatted_description, event_objects, witne
 end
 
 -- prevents issues later down the line with formatting
-local function check_format_sanity(unformatted_description, event_objects)
-    -- returns true if the amounts of format strings like %s match the amount of event_objects
+local function check_format_sanity(unformatted_description, ...)
+    local additional_args = {...}
     local format_count = select(2, unformatted_description:gsub("%%s", ""))
-    if format_count ~= #event_objects then
-        log.error("Not enough event objects for description: %s", unformatted_description)
+    -- returns true if the amounts of variables like %s match the amount of arguments
+    if (format_count > 0) and (format_count > #unpack(additional_args)) then
+        log.error("Not enough arguments for description: %s", unformatted_description)
         return false
     end
     return true
@@ -60,7 +53,6 @@ end
 
 --- Checks if any NPC near the player has spoken within a given threshold.
 -- This is used to determine if there is a "moment of silence" suitable for an idle conversation.
--- @return (boolean) True if someone has spoken recently, false otherwise.
 function m.has_anyone_spoken_recently()
     local RECENT_SPEECH_THRESHOLD_MS = 3 * 60 * 1000 -- 3 minutes
 
