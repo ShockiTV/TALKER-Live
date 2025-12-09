@@ -1,7 +1,8 @@
 ---@diagnostic disable: undefined-global
 package.path = package.path .. ";./bin/lua/?.lua;"
 
-local interface = require("interface.interface")
+
+local trigger = require("interface.trigger")
 local AI_request = require("infra.AI.requests")
 local game = require("infra.game_adapter")
 local log = require('framework.logger')
@@ -12,7 +13,7 @@ local queries = talker_game_queries
 -- CONDITIONS
 --------------------------------------------------------------------------------------------
 local last_idle_conversation_time_ms = 0
-local idle_conversation_time_cooldown_ms = 8 * 60 * 1000 -- 6 minutes
+local idle_conversation_time_cooldown_ms = 12 * 60 * 1000 -- 12 minutes
 
 local function cooldown_ready()
     return queries.get_game_time_ms() - last_idle_conversation_time_ms > idle_conversation_time_cooldown_ms
@@ -25,6 +26,33 @@ local function shuffle(tbl)
         tbl[i], tbl[j] = tbl[j], tbl[i]
     end
 end
+
+-- Checks if any NPC near the player has spoken within a given threshold.
+-- This is used to determine if there is a "moment of silence" suitable for an idle conversation.
+local function has_anyone_spoken_recently()
+    local RECENT_SPEECH_THRESHOLD_MS = 3 * 60 * 1000 -- 3 minutes
+
+    local nearby_characters = game.get_characters_near_player()
+    if not nearby_characters or #nearby_characters == 0 then
+        return false -- No characters nearby, so nobody could have spoken.
+    end
+
+    local current_game_time = queries.get_game_time_ms()
+
+    for _, character in ipairs(nearby_characters) do
+        local last_spoke_time = AI_request.get_last_spoke_time(character.game_id)
+        if last_spoke_time then
+            if current_game_time - last_spoke_time < RECENT_SPEECH_THRESHOLD_MS then
+                -- Found someone who spoke within the last 3 minutes.
+                return true
+            end
+        end
+    end
+
+    -- If we get here, it means no one nearby has spoken recently.
+    return false
+end
+
 ---------------------------------------------------------------------------------------------
 -- IDLE CONVERSATION
 --------------------------------------------------------------------------------------------
@@ -37,8 +65,8 @@ function on_every_10_seconds()
         return
     end
  
-     -- New check: If anyone nearby has spoken recently, it's not a moment of silence.
-    if interface.has_anyone_spoken_recently() then
+    -- Check for a moment of silence suitable for idle conversation
+    if has_anyone_spoken_recently() then
         log.debug("Aborting idle chatter check, someone has spoken recently.")
         return
     end
@@ -52,10 +80,7 @@ function on_every_10_seconds()
     -- Filter out invalid candidates (player, those in combat)
     local valid_candidates = {}
     for _, npc in ipairs(all_candidates) do
-        -- The 'npc' is a custom Character table. We need the raw game object for queries.
         local npc_obj = queries.get_obj_by_id(npc.game_id)
-        -- Check is_in_combat FIRST, as it safely handles dead/nil NPCs.
-        -- is_player also includes a nil check.
         if npc_obj and not queries.is_player(npc_obj) and not queries.is_in_combat(npc_obj) then
             table.insert(valid_candidates, npc_obj)
         end
@@ -69,19 +94,12 @@ function on_every_10_seconds()
 
     local conversation_triggered = false
     for _, npc_obj in ipairs(valid_candidates) do
-        -- Check the AI's internal cooldown for this specific NPC before trying to make them speak.
-        local remaining_cooldown = AI_request.get_remaining_cooldown(npc_obj:id(), queries.get_game_time_ms())
-        if remaining_cooldown > 0 then
-            log.debug("Skipping %s for idle chatter, still on individual cooldown for %s ms", queries.get_name(npc_obj), remaining_cooldown)
-            goto continue -- Skip to the next NPC in the loop
-        end
 
         local speaker_name = queries.get_name(npc_obj)
         local instruction = string.format("%s begins an idle conversation to pass the time. The next line of dialogue must be spoken by %s.", speaker_name, speaker_name)
-        
-        -- Create a Character object, as expected by the interface function.
         local speaker_character = game.create_character(npc_obj)
-        local success = interface.register_character_instructions(instruction, speaker_character, false, { idle_only = true })
+        -- Create game event using trigger.talker_character_instructions, which generates a prompt using only "%s begins an idle conversation to pass the time" as context
+        local success = trigger.talker_character_instructions(instruction, speaker_character, false, { idle_only = true })
 
         if success then
             log.debug("TALKER: Idle chatter triggered for " .. speaker_name)
@@ -89,7 +107,6 @@ function on_every_10_seconds()
             break -- Exit the loop on the first success
         end
 
-        ::continue:: -- Label for the goto statement
     end
 
     -- An attempt to start a conversation was made. Reset the main cooldown to prevent spamming.
