@@ -4,7 +4,7 @@
 
 package.path = package.path .. ";./bin/lua/?.lua;"
 local game = require("infra.game_adapter")
-local interface = require("interface.interface")
+local trigger = require("interface.trigger")
 
 local q = talker_game_queries
 local c = talker_game_commands
@@ -30,7 +30,7 @@ local function actor_on_item_use(obj)
     local player = game.get_player_character()
     local witnesses = game.get_characters_near_player()
     local unformatted_description = "%s, a %s rank member of the %s faction used an artifact called %s"
-    interface.register_game_event(unformatted_description, {player.name, player.experience, player.faction, artifact}, witnesses, true)
+    trigger.talker_game_event(unformatted_description, {player.name, player.experience, player.faction, artifact}, witnesses, true)
 end
 
 local function actor_on_item_before_pickup(obj)
@@ -41,7 +41,7 @@ local function actor_on_item_before_pickup(obj)
     local player = game.get_player_character()
     local witnesses = game.get_characters_near_player()
     local unformatted_description = "%s, a %s rank member of the %s faction picked up an artifact called %s"
-    interface.register_game_event(unformatted_description, {player.name, player.experience, player.faction, artifact}, witnesses, true)
+    trigger.talker_game_event(unformatted_description, {player.name, player.experience, player.faction, artifact}, witnesses, true)
 end
 
 local function actor_on_item_drop(obj)
@@ -52,7 +52,7 @@ local function actor_on_item_drop(obj)
     local player = game.get_player_character()
     local witnesses = game.get_characters_near_player()
     local unformatted_description = "%s, a %s rank member of the %s faction dropped an artifact called %s"
-    interface.register_game_event(unformatted_description, {player.name, player.experience, player.faction, artifact}, witnesses, true)
+    trigger.talker_game_event(unformatted_description, {player.name, player.experience, player.faction, artifact}, witnesses, true)
 end
 
 ----------------------------------------------------------------------------------------------------
