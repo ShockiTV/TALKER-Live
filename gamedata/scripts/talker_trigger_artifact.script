@@ -10,8 +10,14 @@ local q = talker_game_queries
 local c = talker_game_commands
 
 ----------------------------------------------------------------------------------------------------
--- Handlers
+-- Constants
 ----------------------------------------------------------------------------------------------------
+local ARTIFACT_COMMENT_CD = 20 * 1000 -- 20 seconds
+----------------------------------------------------------------------------------------------------
+-- Conditions
+----------------------------------------------------------------------------------------------------
+local is_game_unloading = false
+
 
 local function is_excluded_artifact(name)
     if not name then return false end
@@ -22,10 +28,30 @@ local function is_excluded_artifact(name)
     return false
 end
 
+local LAST_ARTIFACT_COMMENT = 0
+
+function is_valid_event(artifact_name)
+    if is_game_unloading then return false end
+    if is_excluded_artifact(artifact_name) then return false end
+    
+    if not game.is_cooldown_over(LAST_ARTIFACT_COMMENT, ARTIFACT_COMMENT_CD) then 
+        return false 
+    end
+
+    LAST_ARTIFACT_COMMENT = q.get_game_time_ms()
+    return true
+end
+
+----------------------------------------------------------------------------------------------------
+-- Handlers
+----------------------------------------------------------------------------------------------------
+
+
 local function actor_on_item_use(obj)
     if not q.is_artifact(obj) then return end
+    
     local artifact = q.get_item_name(obj)
-    if is_excluded_artifact(artifact) then return end
+    if not is_valid_event(artifact) then return end
 
     local player = game.get_player_character()
     local witnesses = game.get_characters_near_player()
@@ -35,8 +61,9 @@ end
 
 local function actor_on_item_before_pickup(obj)
     if not q.is_artifact(obj) then return end
+
     local artifact = q.get_item_name(obj)
-    if is_excluded_artifact(artifact) then return end
+    if not is_valid_event(artifact) then return end
 
     local player = game.get_player_character()
     local witnesses = game.get_characters_near_player()
@@ -46,13 +73,33 @@ end
 
 local function actor_on_item_drop(obj)
     if not q.is_artifact(obj) then return end
+    
     local artifact = q.get_item_name(obj)
-    if is_excluded_artifact(artifact) then return end
+    if not is_valid_event(artifact) then return end
 
-    local player = game.get_player_character()
-    local witnesses = game.get_characters_near_player()
-    local unformatted_description = "%s, a %s rank member of the %s faction dropped an artifact called %s"
-    trigger.talker_game_event(unformatted_description, {player.name, player.experience, player.faction, artifact}, witnesses, true)
+    local artifact_id = obj:id()
+    
+    -- Delay the event to see if the game is unloading (e.g. from mass item removal script)
+    local function delayed_drop_event()
+        if is_game_unloading then return true end
+        
+        -- Re-check conditions just in case
+        local current_obj = q.get_obj_by_id(artifact_id) 
+        if not current_obj then return true end -- Object gone, maybe collected or destroyed
+        
+        local player = game.get_player_character()
+        local witnesses = game.get_characters_near_player()
+        local unformatted_description = "%s, a %s rank member of the %s faction dropped an artifact called %s"
+        trigger.talker_game_event(unformatted_description, {player.name, player.experience, player.faction, artifact}, witnesses, true)
+        return true
+    end
+
+    -- 0.5 seconds delay should be enough to catch the unload flag
+    q.delay("talker_artifact_drop_" .. artifact_id, "check_unload", 0.5, delayed_drop_event)
+end
+
+local function actor_on_net_destroy()
+    is_game_unloading = true
 end
 
 ----------------------------------------------------------------------------------------------------
@@ -60,6 +107,7 @@ end
 ----------------------------------------------------------------------------------------------------
 
 function on_game_start()
+    c.RegisterSafeScriptCallback("actor_on_net_destroy", actor_on_net_destroy)
     c.RegisterSafeScriptCallback("actor_on_item_before_pickup", actor_on_item_before_pickup)
     c.RegisterSafeScriptCallback("actor_on_item_drop", actor_on_item_drop)
     c.RegisterSafeScriptCallback("actor_on_item_use", actor_on_item_use)
