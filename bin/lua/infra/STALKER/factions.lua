@@ -23,7 +23,7 @@ local factions = {
     },
     stalker = {
         name = "stalker",
-        style = "member of the Loner faction. The Loner faction consists of fortune-seekers, scavengers, artifact hunters and explorers who are in the zone illegally. They are plain-spoken, adaptive, optimistic, quietly authentic and emotionally scarred. "
+        style = "member of the stalker faction, also known as the 'Loners'. The Loners are a loose faction of mostly independent individuals consisting of fortune-seekers, scavengers, artifact hunters and explorers who are in the zone illegally. They are plain-spoken, adaptive, optimistic, quietly authentic and emotionally scarred. "
     },
     csky = {
         name = "Clear Sky",
