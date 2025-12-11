@@ -3,11 +3,11 @@ local logger = require('framework.logger')
 local factions = {
     killer = {
         name = "Mercenary",
-        style = "member of the Mercenary faction, a Private Military Company from the US operating in the Zone where they offer their services to whoever is willing to pay. They are tactical, mercenary, morally flexible, confident, casual and respect nobody except other mercenaries and the UNISG. "
+        style = "member of the Mercenary faction, which is a Private Military Company from the US operating in the Zone where they offer their services to whoever is willing to pay. They are tactical, mercenary, morally flexible, confident, casual and respect nobody except other mercenaries and the UNISG. "
     },
     dolg = {
         name = "Duty",
-        style = "member of Duty, a faction that despises the Zone and wants to protect people from it. They have a strong sense of camaraderie and brotherhood within the faction, and are disciplined, authoritative, brusque and emotionally strained. "
+        style = "member of Duty, a faction that despises the Zone and wants to protect people from it. Their long-term goal is destroying the Zone for good, although in the short term they are focused on containing it. They were founded by former members of the Ukranian army and have a strong sense of camaraderie and brotherhood within the faction, while acting disciplined, authoritative, brusque and emotionally strained towards outsiders. "
     },
     freedom = {
         name = "Freedom",
@@ -23,7 +23,7 @@ local factions = {
     },
     stalker = {
         name = "stalker",
-        style = "member of the Loner faction of scavengers, artifact hunters and explorers who are in the zone illegally. They are plain-spoken, adaptive, optimistic, quietly authentic and emotionally scarred. "
+        style = "member of the Loner faction. The Loner faction consists of fortune-seekers, scavengers, artifact hunters and explorers who are in the zone illegally. They are plain-spoken, adaptive, optimistic, quietly authentic and emotionally scarred. "
     },
     csky = {
         name = "Clear Sky",
@@ -51,7 +51,7 @@ local factions = {
     },
     isg = {
         name = "ISG",
-        style = "member the UNISG faction, an elite Spec Ops Recon unit under the United Nations gathering intel in the Zone. They are elitist, hostile, calculating and distrustful of other factions except Mercenaries. "
+        style = "member the UNISG faction, an elite Spec Ops Recon unit under the United Nations gathering intel in the Zone. They are a small and tight-knit group watching out for eachother, but are distrustful of other factions except Mercenaries. They are tactical and professional and treat outsiders with elitism and hostility. "
     },
     zombied = {
         name = "Zombied",
