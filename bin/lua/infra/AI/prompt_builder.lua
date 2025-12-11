@@ -7,8 +7,12 @@ local logger = require("framework.logger")
 local Event  = require("domain.model.event")
 local Character = require("domain.model.character")
 local event_store = require("domain.repo.event_store")
+local game = require("infra.game_adapter")
 local config = require("interface.config")
 require("infra.STALKER.factions")
+
+-- Game interfaces
+local query = talker_game_queries
 
 local function describe_characters_with_ids(characters)
     local descriptions = {}
@@ -169,6 +173,13 @@ function prompt_builder.create_dialogue_request_prompt(speaker, memories)
         table.insert(messages, system_message(last_ten_memories[#last_ten_memories].world_context))
     end
 
+    local player = game.get_player_character()
+    local companion_status = ""
+    local npc_obj = query.get_obj_by_id(speaker.game_id)
+    if npc_obj and query.is_companion(npc_obj) then
+        companion_status = " who is a travelling companion of " .. player.name .. " (the user) and"
+    end
+
     local weapon_info = ""
     if speaker.weapon then
         -- add a trailing " and " after the weapon
@@ -179,6 +190,7 @@ function prompt_builder.create_dialogue_request_prompt(speaker, memories)
 
     table.insert(messages, system_message("TASK: Write the next line of dialogue speaking as "
         .. speaker.name
+        .. (companion_status or "")
 		.. (weapon_info or "")
 		.. " who is a "
 		.. speaker.experience
