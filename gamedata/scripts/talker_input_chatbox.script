@@ -16,7 +16,7 @@ local showChatBox = false
 local ChatBoxEnabled = true
 
 local function process_player_input(input)
-	trigger.player_character_speaks(input)
+	trigger.talker_player_speaks(input)
 end
 
 local function update()
