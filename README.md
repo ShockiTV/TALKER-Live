@@ -23,4 +23,10 @@ If you have an ongoing save, or you want to reset randomly generated personaliti
 ## NOTES
 I have not tested my changes over a full playthrough. It's possible some backstories are too prescriptive and specific for NPCs that are your companions, leading to monotonous responses. Feedback and testing is needed.
 
-Different LLMs will provide different output. This was tested on Google's Gemini-2.5-Flash and Nvidia's Kimi-K2-Instruct. Both provide good results. 
+Different LLMs will provide different output. Not all models are equally good for dialogue and roleplay. I've had the following models give good output in testing:
+
+Google's Gemini 2.5 - Fast, great at following prompt instructions, gives generally good responses. Unfortunately Google reduces the rate limits recently so you might have trouble hitting your quotas fast unless you already had a bunch of pre-existing verified accounts (or accounts made from before verification was needed).
+
+Nvidia's mistral-large-3-675b-instruct-2512 - Slightly more expressive than Gemini, but more or less of similar quality. Works great, also recommended.
+
+Nvidia's Kimi-K2-Instruct-0905 - Produces great dialogue, but sometimes plays a little fast-and-loose with the rules in the prompt. It likes describing what the character is doing physically despite being explicitly told not to and can produce a little too long and wordy replies despite being told to keep it brief. I still enjoy the writing it produces but it's not perfect.
