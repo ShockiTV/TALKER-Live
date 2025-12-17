@@ -9,7 +9,7 @@ local script_name = "TALKER Trigger Injury"
 local LAST_INJURY_TIME = 0
 local INJURY_COOLDOWN_CD = 90 * 1000 -- 90 seconds cooldown to prevent spam
 
-function is_valid_event(injury)
+function is_valid_event()
     local is_cd_over = (queries.get_game_time_ms() - LAST_INJURY_TIME) > INJURY_COOLDOWN_CD
     local witnesses = game.get_characters_near_player()
     local is_valid = is_cd_over and (#witnesses > 0)
@@ -19,7 +19,7 @@ function is_valid_event(injury)
 end
 
 function actor_on_hit_callback(obj, amount, local_direction, who, bone_index)
-    if not is_valid_event(injury) then return end
+    if not is_valid_event() then return end
     if db.actor.health >= 0.4 then return end
 
     local player = game.get_player_character()
