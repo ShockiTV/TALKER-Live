@@ -5,15 +5,27 @@ local log = require('framework.logger')
 local modules = {
     talker_game_async = "Talker Game Async",
     talker_game_commands = "Talker Game Commands",
-    talker_game_queries = "Talker Game Queries",
-    talker_input_mic = "Talker Input Mic",
-    talker_input_chatbox = "Talker Input Chatbox",
-    talker_trigger_reload = "Talker Trigger Reload",
     talker_game_files = "Talker Game Files",
-    talker_trigger_artifact = "Talker Trigger Artifacts",
+    talker_game_queries = "Talker Game Queries",
+    talker_input_chatbox = "Talker Input Chatbox",
+    talker_input_mic = "Talker Input Mic",
     talker_listener_game_event = "Talker Listener Game Event",
     talker_listener_game_event_near_player = "Talker Listener Game Event Near Player",
+    talker_listener_player_speaks = "Talker Listener Player Speaks",
+    talker_trigger_reload = "Talker Trigger Reload",
+    talker_trigger_anomalies = "Talker Trigger Anomalies",
+    talker_trigger_artifact = "Talker Trigger Artifact",
+    talker_trigger_callout = "Talker Trigger Callout",
+    talker_trigger_death = "Talker Trigger Death",
+    talker_trigger_emission = "Talker Trigger Emission",
+    talker_trigger_idle_conversation = "Talker Trigger Idle Conversation",
+    talker_trigger_injury = "Talker Trigger Injury",
+    talker_trigger_map_transition = "Talker Trigger Map Transition",
+    talker_trigger_reload = "Talker Trigger Reload",
+    talker_trigger_sleep = "Talker Trigger Sleep",
+    talker_trigger_taunt = "Talker Trigger Taunt",
     talker_listener_player_speaks = "Talker Listener Player Speaks"
+    
 }
 
 -- intentionally duplicated
