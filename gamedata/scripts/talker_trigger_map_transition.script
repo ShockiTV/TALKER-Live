@@ -83,3 +83,8 @@ function on_game_start()
 	RegisterScriptCallback("save_state",save_state)
 	RegisterScriptCallback("load_state",load_state)
 end
+
+-- Module loaded check
+function is_loaded()
+    return true
+end
