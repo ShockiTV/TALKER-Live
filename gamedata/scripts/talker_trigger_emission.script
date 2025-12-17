@@ -16,6 +16,10 @@ END = "ending"
 ----------------------------------------------------------------------------------------------------
 
 function create_emission_event(typ, status)
+    if db.actor:has_info("actor_is_sleeping") then
+        return
+    end
+    
     local unformatted_description = "An %s is %s!"
     log.info(unformatted_description, typ, status)
     local witnesses = game.get_characters_near_player(200)
