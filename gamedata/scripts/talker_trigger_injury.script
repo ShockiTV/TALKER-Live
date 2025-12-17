@@ -1,0 +1,41 @@
+package.path = package.path .. ";./bin/lua/?.lua;"
+local logger = require("framework.logger")
+local trigger = require("interface.trigger")
+local game = require("infra.game_adapter")
+-- Game interface
+local queries = talker_game_queries
+
+local script_name = "TALKER Trigger Injury"
+local LAST_INJURY_TIME = 0
+local INJURY_COOLDOWN_CD = 90 * 1000 -- 90 seconds cooldown to prevent spam
+
+function is_valid_event(injury)
+    local is_cd_over = (queries.get_game_time_ms() - LAST_INJURY_TIME) > INJURY_COOLDOWN_CD
+    local witnesses = game.get_characters_near_player()
+    local is_valid = is_cd_over and (#witnesses > 0)
+    -- reset cooldown if valid
+    if is_valid then LAST_INJURY_TIME = queries.get_game_time_ms() end
+    return is_valid
+end
+
+function actor_on_hit_callback(obj, amount, local_direction, who, bone_index)
+    if not is_valid_event(injury) then return end
+    if db.actor.health >= 0.4 then return end
+
+    local player = game.get_player_character()
+    local attacker = game.create_character(who)
+    local unformatted_description = "%s, a %s rank member of the %s faction is critically injured while fighting %s, a %s rank member of the %s faction!"
+    logger.info("%s: %s", script_name, unformatted_description)
+    trigger.talker_game_event_near_player(unformatted_description, {player.name, player.experience, player.faction, attacker.name, attacker.experience, attacker.faction})
+    
+    LAST_INJURY_TIME = queries.get_game_time_ms()
+end
+
+function on_game_start()
+    RegisterScriptCallback("actor_on_hit_callback", actor_on_hit_callback)
+end
+
+-- Module loaded check
+function is_loaded()
+    return true
+end

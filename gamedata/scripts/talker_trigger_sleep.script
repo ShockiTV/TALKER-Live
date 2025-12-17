@@ -1,0 +1,70 @@
+package.path = package.path .. ";./bin/lua/?.lua;"
+local logger = require("framework.logger")
+local game = require("infra.game_adapter")
+local trigger = require("interface.trigger")
+
+local script_name = "TALKER Trigger Sleep"
+
+-- Callback when player initiates sleep
+function actor_on_sleep(hours)
+    logger.warn("%s: actor_on_sleep called with hours: %s", script_name, tostring(hours))
+    if not hours or hours <= 0 then return end
+    
+    -- Delay the event by 3 seconds (real time) to allow for the black screen / time skip to complete.
+    CreateTimeEvent("talker_sleep_delay", "wake_up", 3, fire_wake_up_event, hours)
+end
+
+function fire_wake_up_event(hours)
+    local player = game.get_player_character()
+    local characters_near = game.get_characters_near_player()
+    if not player or #characters_near == 0 then return true end
+    
+    local sleeping_hours = hours
+    local companions = game.get_companions() or {}
+    local description = ""
+    local witnesses = {}
+    
+    if #companions > 0 then 
+        local names_list = {}
+        for _, companion in ipairs(companions) do
+            table.insert(names_list, companion.name)
+            table.insert(witnesses, companion)
+        end
+        
+        local companion_names = ""
+        if #names_list == 1 then
+            companion_names = names_list[1]
+        else
+            local last_name = table.remove(names_list)
+            companion_names = table.concat(names_list, ", ") .. " and " .. last_name
+        end
+        
+        description = string.format("%s, a %s rank member of the %s faction and their travelling companions %s woke up after sleeping for approximately %d hours.", player.name, player.experience, player.faction, companion_names, sleeping_hours)
+    else
+        description = string.format("%s, a %s rank member of the %s faction woke up after sleeping for approximately %d hours.", player.name, player.experience, player.faction, sleeping_hours)
+    end
+    
+    table.insert(witnesses, player)
+    local witness_ids = {}
+    for _, w in ipairs(witnesses) do witness_ids[w.game_id] = true end
+    
+    for _, char in ipairs(characters_near) do
+        if not witness_ids[char.game_id] then
+            table.insert(witnesses, char)
+        end
+    end
+    
+    logger.warn("%s: Firing event: %s", script_name, description)
+    trigger.talker_game_event(description, {}, witnesses, true, { is_sleep = true })
+    
+    return true -- IMPORTANT: Return true to unregister the Time Event
+end
+
+function on_game_start()
+    RegisterScriptCallback("actor_on_sleep", actor_on_sleep)
+end
+
+-- Module loaded check
+function is_loaded()
+    return true
+end
