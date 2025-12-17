@@ -11,7 +11,7 @@ end
 -- Mapping of technical names to human-readable names
 local LOCATION_NAMES = {
     jupiter = "Jupiter",jupiter_underground = "Jupiter Underground",k00_marsh = "Great Swamps",k01_darkscape = "Darkscape",k02_trucks_cemetery = "Trucks Cemetery",l01_escape = "Cordon",l02_garbage = "Garbage",l03_agroprom = "Agroprom",l04_darkvalley = "Dark Valley",l05_bar = "Rostok",l06_rostok = "Wild Territory",l07_military = "Military Warehouses",l08_yantar = "Yantar",l09_deadcity = "Dead City",l10_limansk = "Limansk",l10_radar = "Radar",l10_red_forest = "Red Forest",l11_pripyat = "Pripyat",labx8 = "Lab X8",pripyat = "Pripyat Outskirts",zaton = "Zaton",y04_pole = "The Meadow",-- Special areas
-    l10u_bunker = "Lab X-19",l12u_control_monolith = "Monolith Control Center",l12u_sarcofag = "Sarcophagus",l13u_warlab = "Monolith War Lab",l03u_agr_underground = "Agroprom Underground",l04u_labx18 = "Lab X-18",l08u_brainlab = "Lab X-16",l12_stancia = "Chernobyl NPP",l12_stancia_2 = "Chernobyl NPP",l13_generators = "Generators"
+    l10u_bunker = "Lab X-19",l12u_control_monolith = "Monolith Control Center",l12u_sarcofag = "Sarcophagus",l13u_warlab = "Monolith War Lab",l03u_agr_underground = "Agroprom Underground",l04u_labx18 = "Lab X-18",l08u_brainlab = "Lab X-16",l12_stancia = "Chernobyl NPP",l12_stancia_2 = "Chernobyl NPP",l13_generators = "Generators",poselok_ug = "'Yuzhniy' Town",promzona = "Promzone",grimwood = "Grimwood" 
 }
 
 -- Detailed location descriptions with faction tags
@@ -38,6 +38,9 @@ local LOCATION_DESCRIPTIONS = {
     pripyat = "Pripyat Outskirts, a remote part of the city with minimal human presence, mostly %monolith% and Zombified Stalkers.",
     zaton = "Zaton, a swamp-like area with the remains of numerous boats and barges, and a hub for various stalker settlements.",
     y04_pole = "The Meadow, a relatively calm area with occasional %bandit% presence, away from the main conflicts of the Zone. Most stalkers find it calm but eerie.",
+    poselok_ug = "'Yuzhniy' Town, a ghost town with seemingly no history or evidence that it ever existed. After a massive emission, the empty field between Garbage and Truck Cemetery suddenly revealed the town now named 'Yuzhniy'.",
+    promzona = "Promzone, an abandoned train station originally used after the 1986 disaster to transport radioactive garbage from the Northern Regions to the Truck Cemetery, and eventually to Garbage.",
+    grimwood = "Grimwood, a region of the forest between the Army Warehouses and the Dead City. Full of mutants and deadly anomalies and with little human life present, making it a good hiding place for those wanting to disappear.",
     -- Special areas
     l10u_bunker = "Lab X-19, containing the 'Brain Scorcher' mechanism, heavily guarded by the %monolith%.",
     l12u_control_monolith = "%monolith% Control Center, a vital part of the Sarcophagus filled with computing machines, maintained by the %monolith%.",
