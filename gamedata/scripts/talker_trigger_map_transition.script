@@ -7,7 +7,6 @@ package.path = package.path .. ";./bin/lua/?.lua;"
 local trigger = require("interface.trigger")
 local locations = require('infra.STALKER.locations')
 local game = require("infra.game_adapter")
-
 -- Saved variable to track the number of visits to each map
 local level_visit_count = {}
 local commented_already = false
@@ -24,16 +23,36 @@ function on_map_change_event(previous_map, current_map)
     -- Determine the number of visits for messaging
     local visit_count = level_visit_count[current_map]
 
-    local visit_amount
-    visit_amount = visit_count > 3 and "again" or (visit_count > 1 and "for the " .. visit_count .. "th time" or "for the first time")
-    -- Get a random companion for the comment
-
+    local player = game.get_player_character()
+    local companions = game.get_companions() or {}
+    local description = ""
+    local witnesses = {}
+    local visit_amount = visit_count > 3 and "again" or (visit_count > 1 and "for the " .. visit_count .. "th time" or "for the first time")
     local previous_map_name = locations.get_location_name(previous_map)
+    local current_map_name = locations.get_location_name(current_map)
     local current_map_description = locations.describe_location_detailed(current_map)
+    
+    if #companions > 0 then 
+        local names_list = {}
+        for _, companion in ipairs(companions) do
+            table.insert(names_list, companion.name)
+            table.insert(witnesses, companion)
+        end
+        
+        local companion_names = ""
+        if #names_list == 1 then
+            companion_names = names_list[1]
+        else
+            local last_name = table.remove(names_list)
+            companion_names = table.concat(names_list, ", ") .. " and " .. last_name
+        end
+        description = string.format("%s, a %s rank member of the %s faction and their travelling companions %s traveled from %s to %s %s. %s", player.name, player.experience, player.faction, companion_names, previous_map_name, current_map_name, visit_amount, current_map_description)
+    else
+        description = string.format("%s, a %s rank member of the %s faction traveled from %s to %s %s. %s", player.name, player.experience, player.faction, previous_map_name, current_map_name, visit_amount, current_map_description)
+    end
 
-    local witnesses = game.get_companions()
-    table.insert(witnesses, game.get_player_character())
-    trigger.talker_game_event("you traveled from %s to %s %s.", {previous_map_name, current_map_description, visit_amount}, witnesses, true)
+    table.insert(witnesses, player)
+    trigger.talker_game_event(description, {}, witnesses, true)
 end
 
 local previous_map
