@@ -28,7 +28,7 @@ function Character.set_personality(character, personality)
 end
 
 function Character.describe(character)
-    local description = string.format("%s - a %s rank member of the %s faction who is %s", character.name, character.experience, character.faction, character.personality)
+    local description = string.format("%s, a %s rank member of the %s faction who is %s", character.name, character.experience, character.faction, character.personality)
     if character.weapon then
         description = description .. " wielding a " .. character.weapon
     end
@@ -43,6 +43,9 @@ return Character
 
 
 --------------------------
--- Notes:
+-- Notes (Dan):
 -- I decided to use simple data structures for easier serialization and deserialization. 
 -- I also decided to use a separate module for the personality logic to keep the Character module clean and focused on character-related functionality. 
+
+-- Notes (Coelacanth):
+-- Character backstory is omitted from the character.describe function to reduce clutter and improve parseability of the speaker picking function.
