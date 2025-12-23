@@ -39,19 +39,23 @@ local function build_body(messages, opts)
     presence_penalty  = opts.presence_penalty,
   }
 
-  if reasoning_level == -1 then
-    body.thinking = {
-      type = "enabled",
-      budget_tokens = -1
-    }
-  else
-    local reasoning_map = {
-      [0] = "disable",
-      [1] = "low",
-      [2] = "medium",
-      [3] = "high",
-    }
-    body.reasoning_effort = reasoning_map[reasoning_level]
+  -- Only enable reasoning if max_tokens is sufficient (e.g. > 100)
+  -- Short tasks like pick_speaker (max_tokens=30) crash with thinking enabled.
+  if (not opts.max_tokens or opts.max_tokens >= 100) then
+      if reasoning_level == -1 then
+        body.thinking = {
+          type = "enabled",
+          budget_tokens = -1
+        }
+      else
+        local reasoning_map = {
+          [0] = "disable",
+          [1] = "low",
+          [2] = "medium",
+          [3] = "high",
+        }
+        body.reasoning_effort = reasoning_map[reasoning_level]
+      end
   end
 
   return body
@@ -90,11 +94,11 @@ function proxy.generate_dialogue(msgs, cb)
 end
 
 function proxy.pick_speaker(msgs, cb)
-  return send(msgs, cb, {model=MODEL.fast, temperature=0.0})
+  return send(msgs, cb, {model=MODEL.fast, temperature=0.0, max_tokens=30})
 end
 
 function proxy.summarize_story(msgs, cb)
-  return send(msgs, cb, {model=MODEL.fast, temperature=0.2})
+  return send(msgs, cb, {model=MODEL.fast, temperature=0.2, max_tokens=1500})
 end
 
 return proxy
