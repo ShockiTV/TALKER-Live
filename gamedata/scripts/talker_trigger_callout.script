@@ -12,11 +12,6 @@ local queries = talker_game_queries
 -- the callout trigger script is responsible for generating callouts from NPCs to other NPCs
 -- on_enemy_eval occurs at high frequency, so we limit the amount of calls
 
--- RULES
--- on enemy eval
---      if the spotter is not in combat
---          call out the target
-
 ---------------------------------------------------------------------------------------------
 -- CONDITIONS
 --------------------------------------------------------------------------------------------
@@ -40,6 +35,10 @@ function is_valid_callout(npc_obj, target_obj)
         return false
     end
 
+    if queries.is_companion(npc_obj) and not queries.are_enemies(db.actor, target_obj) then
+        return false
+    end
+
     -- Global cooldown check
     if (queries.get_game_time_ms() - last_callout_time_ms) < callout_cooldown_ms then
         return false
@@ -49,21 +48,13 @@ function is_valid_callout(npc_obj, target_obj)
     -- We check the event store for recent events where a creature with the same name was spotted.
     local target_name = queries.get_name(target_obj)
     local since_time = queries.get_game_time_ms() - repeated_callout_cooldown_ms
-    
-    log.info("DIAGNOSTIC: event_store address: %s", tostring(event_store))
-    log.info("DIAGNOSTIC: event_store event count: %d", event_store.events and #event_store.events or -1)
-    
-    local recent_events = event_store:get_events_since(since_time)
-    
-    log.info("Checking callout validity for target: '%s'. Found %d recent events.", target_name, #recent_events)
-    
+    local recent_events = event_store:get_events_since(since_time)    
     for _, event in ipairs(recent_events) do
         if event.description == "%s, a %s rank member of the %s faction spotted %s, a %s rank member of the %s faction" then
             -- Check if the target (4th involved object, after spotter name, rank, faction) has the same name
             -- involved_objects: {spotter_name, spotter_rank, spotter_faction, target_name, target_rank, target_faction}
             local event_target_name = event.involved_objects and event.involved_objects[4]
             if event_target_name then
-                log.info("Checking event target name: '%s' against current target: '%s'", event_target_name, target_name)
                 if event_target_name == target_name then
                     local time_ago = queries.get_game_time_ms() - event.game_time_ms
                     
@@ -77,12 +68,8 @@ function is_valid_callout(npc_obj, target_obj)
                     elseif time_ago < PENDING_WINDOW_MS then
                         log.info("Blocking repeated callout for %s. Similar target spotted %s ms ago (pending).", target_name, time_ago)
                         return false
-                    else
-                        log.info("Ignoring old failed event for %s (%s ms ago). No dialogue was generated.", target_name, time_ago)
                     end
                 end
-            else
-                log.info("Event has no target object at index 2")
             end
         end
     end
