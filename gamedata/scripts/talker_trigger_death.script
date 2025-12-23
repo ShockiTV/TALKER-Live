@@ -32,9 +32,25 @@ function on_creature_death(victim_obj, killer_obj)
     local killer = game.create_character(killer_obj)
     local victim = game.create_character(victim_obj)
     -- decide if the kill is important
-    local important = false -- TODO mechanism to decide if kill is important
+    local important = false -- speech importance, kept false to rely on standard logic
+    
+    -- Check for memory importance (Unique characters or High Rank)
+    local queries = talker_game_queries
+    local function is_important_person(char_obj, char_data)
+        if not char_obj or not char_data then return false end
+        -- Check Rank
+        local rank = string.lower(char_data.experience or "")
+        if rank == "master" or rank == "legend" then return true end
+        -- Check Unique ID
+        if queries and queries.is_unique_character_by_id(char_obj:id()) then return true end
+        return false
+    end
+
+    local memory_important = is_important_person(victim_obj, victim) or is_important_person(killer_obj, killer)
+
     -- send event to mod
-    trigger.talker_game_event(unformatted_description, {victim.name, victim.experience, victim.faction, killer.name, killer.experience, killer.faction}, witnesses, important)
+    local flags = { force_memory = memory_important }
+    trigger.talker_game_event(unformatted_description, {victim.name, victim.experience, victim.faction, killer.name, killer.experience, killer.faction}, witnesses, important, flags)
 end
 
 --------------------------------------------------------------------------------------------
