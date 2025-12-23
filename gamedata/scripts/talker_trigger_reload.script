@@ -6,7 +6,6 @@ package.path = package.path .. ";./bin/lua/?.lua;"
 local log = require('framework.logger')
 local game = require("infra.game_adapter")
 local trigger = require("interface.trigger")
-
 ----------------------------------------------------------------------------------------------------
 -- Constants
 ----------------------------------------------------------------------------------------------------
@@ -19,7 +18,7 @@ local NOTICE_CHANCE = 0.9
 -- Player reload event handler
 function on_player_reloads_weapon()
     log.debug("Player is reloading weapon")
-    local unformatted_description = "%s, a %s rank member of the %s faction is reloading %s"
+    local unformatted_description = "%s, a %s rank member of the %s faction is reloading their %s"
 
     -- ignore this 90% of the time
     if math.random() < NOTICE_CHANCE then
@@ -29,7 +28,7 @@ function on_player_reloads_weapon()
 
     -- Create event objects
     local player = game.get_player_character()
-    local player_weapon = game.get_player_weapon()
+    local player_weapon = player.weapon or "weapon"
     local witnesses = game.get_characters_near_player()
 
     trigger.talker_game_event(unformatted_description, {player.name, player.experience, player.faction, player_weapon}, witnesses, true)
@@ -48,9 +47,8 @@ function safe_on_player_reloads_weapon()
     end
 end
 
--- Game start callback
 function on_game_start()
-    -- RegisterScriptCallback("actor_on_weapon_reload", safe_on_player_reloads_weapon)
+    RegisterScriptCallback("actor_on_weapon_reload", safe_on_player_reloads_weapon)
 end
 
 -- Module loaded check
