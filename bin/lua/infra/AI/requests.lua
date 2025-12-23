@@ -199,13 +199,6 @@ function AI_request.pick_speaker(recent_events, compress_memories)
 end
 
 ------------------------------------------------------------------------------------------
--- Core Logic
-------------------------------------------------------------------------------------------
-
---- Updates the narrative if sufficient new events have occurred
--- @param speaker_id The ID of the speaker
--- @param request_dialogue Function to request dialogue after update
-------------------------------------------------------------------------------------------
 -- Hierarchical Memory Management
 ------------------------------------------------------------------------------------------
 
