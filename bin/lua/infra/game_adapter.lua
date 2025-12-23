@@ -48,6 +48,14 @@ function m.get_name_by_id(game_id)
     return query.get_name(game_obj)
 end
 
+function m.get_character_by_id(game_id)
+    local game_obj = query.get_obj_by_id(game_id)
+    if game_obj then
+        return m.create_character(game_obj)
+    end
+    return nil
+end
+
 function m.get_name(game_obj)
     if not game_obj then return "Unknown" end
     return query.get_name(game_obj)
@@ -74,10 +82,14 @@ function m.create_game_event(unformatted_description, involved_objects, witnesse
 end
 
 function m.create_character(game_object_person)
+    if not game_object_person then
+        log.warn('create_character called with nil object')
+        return nil
+    end
     local game_id = get_id(game_object_person)
     local name = query.get_name(game_object_person)
     local experience = query.get_rank(game_object_person)
-    local faction = get_faction_name(query.get_faction(game_object_person))
+    local faction = get_faction_name(query.get_faction(game_object_person)) or "unknown"
     local weapon = query.get_weapon(game_object_person)
     local weapon_description = nil
     if weapon then
