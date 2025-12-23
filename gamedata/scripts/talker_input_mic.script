@@ -4,7 +4,7 @@ local logger = require('framework.logger')
 local microphone_recorder = require('interface.recorder')
 local config = require("interface.config")
 local trigger = require("interface.trigger")
--- Import game interface modules
+-- Game interfaces
 local queries = talker_game_queries
 
 function talker_mic_transcribe_finished(dialogue)
