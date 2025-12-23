@@ -154,7 +154,7 @@ end
 
 function get_weapon(npc)
     must_exist(npc, "get_weapon")
-    return npc:active_item()
+    return try(npc.active_item, npc)
 end
 
 -- RELATIONS
@@ -625,12 +625,24 @@ local important_npcs = Set {
 }
 
 function is_unique_character_by_id(npc_id)
-    local npc = get_obj_by_id(npc_id)
-    if is_player(npc) then return true end
-    if not npc or not is_stalker(npc) then return false end
-    local technical_name = get_technical_name(npc)
-    local result = important_npcs[technical_name] ~= nil
-    return result
+    local npc = try(get_obj_by_id, npc_id) -- Use try to avoid error on nil
+    
+    if npc then
+        if is_player(npc) then return true end
+        if not is_stalker(npc) then return false end
+        local technical_name = get_technical_name(npc)
+        return important_npcs[technical_name] ~= nil
+    end
+
+    -- Fallback for offline characters
+    local se_obj = alife():object(tonumber(npc_id))
+    if se_obj and IsStalker(nil, se_obj:clsid()) then
+         -- For server objects, use section_name()
+        local technical_name = se_obj:section_name()
+        return important_npcs[technical_name] ~= nil
+    end
+
+    return false
 end
 
 function get_unique_character_personality(npc_id)
