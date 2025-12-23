@@ -23,6 +23,7 @@ local modules = {
     talker_trigger_map_transition = "Talker Trigger Map Transition",
     talker_trigger_reload = "Talker Trigger Reload",
     talker_trigger_sleep = "Talker Trigger Sleep",
+	talker_trigger_task = "Talker Trigger Task",
     talker_trigger_taunt = "Talker Trigger Taunt",
     talker_listener_player_speaks = "Talker Listener Player Speaks"
     
