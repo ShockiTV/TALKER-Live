@@ -1,3 +1,4 @@
+package.path = package.path .. ";./bin/lua/?.lua;"
 local log = require("framework.logger")
 local config = require("interface.config")
 local queries = talker_game_queries
@@ -160,4 +161,5 @@ _G.talker_trigger_task = {
 }
 
 -- Call on_game_start immediately when the module is loaded
+
 on_game_start()
