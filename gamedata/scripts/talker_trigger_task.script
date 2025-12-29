@@ -155,11 +155,5 @@ function is_loaded()
     return true
 end
 
--- Register module globally and initialize on load
-_G.talker_trigger_task = {
-    is_loaded = is_loaded
-}
 
--- Call on_game_start immediately when the module is loaded
 
-on_game_start()
