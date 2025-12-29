@@ -1,0 +1,60 @@
+-- Whisper State Tracker
+-- Tracks whether the whisper modifier key is currently held down
+
+local mcm = talker_mcm
+
+-- State variable
+local is_whisper_modifier_held = false
+
+-- DIK key codes for modifier keys
+local MODIFIER_KEYS = {
+    [0] = {DIK_keys.DIK_LSHIFT, DIK_keys.DIK_RSHIFT}, -- Shift
+    [1] = {DIK_keys.DIK_LMENU, DIK_keys.DIK_RMENU},   -- Alt
+    [2] = {DIK_keys.DIK_LCONTROL, DIK_keys.DIK_RCONTROL}, -- Ctrl
+}
+
+-- Get the currently configured modifier keys
+local function get_configured_modifier_keys()
+    local modifier_index = tonumber(mcm.get("whisper_modifier")) or 0
+    return MODIFIER_KEYS[modifier_index] or MODIFIER_KEYS[0]
+end
+
+-- Check if a key is the configured whisper modifier
+local function is_whisper_modifier_key(key)
+    local modifier_keys = get_configured_modifier_keys()
+    for _, modifier_key in ipairs(modifier_keys) do
+        if key == modifier_key then
+            return true
+        end
+    end
+    return false
+end
+
+-- Key press handler
+local function on_key_press(key)
+    if is_whisper_modifier_key(key) then
+        is_whisper_modifier_held = true
+    end
+end
+
+-- Key release handler
+local function on_key_release(key)
+    if is_whisper_modifier_key(key) then
+        is_whisper_modifier_held = false
+    end
+end
+
+-- Public API: Check if whisper mode is active
+function is_whisper_active()
+    return is_whisper_modifier_held
+end
+
+-- Register callbacks on game start
+function on_game_start()
+    RegisterScriptCallback("on_key_press", on_key_press)
+    RegisterScriptCallback("on_key_release", on_key_release)
+end
+
+function is_loaded()
+    return true
+end
