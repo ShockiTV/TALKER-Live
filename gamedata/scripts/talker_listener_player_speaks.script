@@ -1,7 +1,7 @@
 package.path = package.path .. ";./bin/lua/?.lua;"
-local logger = require('framework.logger')
+local logger = require("framework.logger")
 local game = require("infra.game_adapter")
-local Event = require("lua.domain.model.event")
+local Event = require("domain.model.event")
 local trigger = require("interface.trigger")
 
 AddScriptCallback("talker_player_speaks")
