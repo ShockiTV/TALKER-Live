@@ -67,7 +67,7 @@ function is_player(npc)
     if not npc then return false end
     -- Check if it is a game object
     if type(npc.id) ~= "function" then return false end
-    
+
     -- A pcall via `try` is necessary to safely check the object's state, as calling
     -- methods on a "dead" (but not nil) object can cause a script error.
     local is_alive = try(npc.alive, npc)
