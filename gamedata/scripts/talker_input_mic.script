@@ -6,9 +6,15 @@ local config = require("interface.config")
 local trigger = require("interface.trigger")
 -- Game interfaces
 local queries = talker_game_queries
+local whisper_state = talker_whisper_state
 
 function talker_mic_transcribe_finished(dialogue)
-    trigger.talker_player_speaks(dialogue)
+    -- Check if whisper mode is active
+    if whisper_state.is_whisper_active() then
+        trigger.talker_player_whispers(dialogue)
+    else
+        trigger.talker_player_speaks(dialogue)
+    end
 end
 
 -- Function to handle key press events 
