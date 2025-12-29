@@ -3,7 +3,7 @@
 -- Occasional comments by NPCs, or enemies saying that they can push the player
 --------------------------------------------------------------------------------------------
 package.path = package.path .. ";./bin/lua/?.lua;"
-local log = require('framework.logger')
+local log = require("framework.logger")
 local game = require("infra.game_adapter")
 local trigger = require("interface.trigger")
 ----------------------------------------------------------------------------------------------------
