@@ -61,7 +61,7 @@ function on_every_10_seconds()
     -- This prevents an idle conversation from starting immediately after combat ends, immediately after waking up, or while the player is sleeping.
     -- Safety check for db.actor
     if not db.actor then return end
-    
+
     local is_player_in_combat = #queries.get_enemies_fighting_player() ~= 0
     if is_player_in_combat or db.actor:has_info("actor_is_sleeping") then
         last_idle_conversation_time_ms = queries.get_game_time_ms()
