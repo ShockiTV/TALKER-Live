@@ -1,5 +1,5 @@
 local game = require("infra.game_adapter")
-local log = require('framework.logger')
+local log = require("framework.logger")
 
 -- Function called when the game starts
 local modules = {
