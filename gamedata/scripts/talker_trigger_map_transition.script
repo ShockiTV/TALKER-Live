@@ -5,7 +5,7 @@
 -- Imports
 package.path = package.path .. ";./bin/lua/?.lua;"
 local trigger = require("interface.trigger")
-local locations = require('infra.STALKER.locations')
+local locations = require("infra.STALKER.locations")
 local game = require("infra.game_adapter")
 -- Saved variable to track the number of visits to each map
 local level_visit_count = {}
