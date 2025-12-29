@@ -2,7 +2,7 @@
 package.path = package.path .. ";./bin/lua/?.lua;"
 local game = require("infra.game_adapter")
 local trigger = require("interface.trigger")
-local log = require('framework.logger')
+local log = require("framework.logger")
 
 -- Import game interface modules
 local queries = talker_game_queries
