@@ -1,11 +1,11 @@
 -- Scripts that persist data during saving and loading
 
 package.path = package.path .. ";./bin/lua/?.lua;"
-local memory_store = require('domain.repo.memory_store')
-local event_store = require('domain.repo.event_store')
-local personality_store = require('domain.repo.personalities')
-local backstories_store = require('domain.repo.backstories')
-local log = require('framework.logger')
+local memory_store = require("domain.repo.memory_store")
+local event_store = require("domain.repo.event_store")
+local personality_store = require("domain.repo.personalities")
+local backstories_store = require("domain.repo.backstories")
+local log = require("framework.logger")
 
 -- Save the data
 function save_state(saved_data)
