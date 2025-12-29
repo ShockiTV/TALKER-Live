@@ -19,6 +19,9 @@ end
 -- Load the data
 function load_state(saved_data)
     log.info("Loading state...")
+    if not saved_data or type(saved_data) ~= "table" then
+        return
+    end
     if (saved_data.compressed_memories) then
          memory_store:load_save_data(saved_data.compressed_memories)
     end
