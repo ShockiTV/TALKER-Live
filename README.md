@@ -5,6 +5,9 @@ This is my personal experiment attempting to get more immersion and roleplaying 
 
 I am an absolute hack, and all credit for this amazing mod goes to the creators and maintainers of the main repo. Credit to [this](https://github.com/danclave/TALKER/issues/39) and the discussion in that thread for setting me down on the road to fiddling with the prompt. I still use many of the ideas from that discussion in my current prompt. Credit to [issue#40](https://github.com/danclave/TALKER/issues/40) of the main repo for the basic code for reloading personalities on existing save games. Credit also to that same user again ([CanineHatTrickOnNose](https://github.com/CanineHatTrickOnNose)) for doing the initial revision of faction personalities and unique character personalities. I initially used his files from Discord with base TALKER, and looking at those files and making changes was how I started this mod. Some of his characterisations are still in the files wholesale alongside my additions as they fit the character well.
 
+## IMPORTANT:
+*  **STALKER Anomaly must be launched DIRECTLY from the .EXE file in MO2 for TALKER Expanded to work properly.** Do NOT use the "Anomaly Launcher" to launch the game.
+
 ## CHANGES FROM MAIN BUILD
 
 *   **Whispering:** Hold down a modifier key to talk ONLY to your companions. Their reply to your whisper will also only be heard by your companions. You can have private conversations with your companions wherever, even in crowded areas.
