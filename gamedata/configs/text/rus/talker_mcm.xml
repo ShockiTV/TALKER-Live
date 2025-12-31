@@ -2,10 +2,10 @@
 <string_table>
     <!-- GENERAL OPTIONS -->
     <string id="ui_mcm_talker_title">
-        <text>Настройки T.A.L.K.E.R.</text>
+        <text>Настройки - T.A.L.K.E.R. Expanded</text>
     </string>
     <string id="ui_mcm_menu_talker">
-        <text>T.A.L.K.E.R.</text>
+        <text>T.A.L.K.E.R. Expanded</text>
     </string>
     <string id="ui_mcm_talker_gpt_version">
         <text>Модель GPT для диалогов</text>
@@ -99,5 +99,24 @@
     </string>
     <string id="ui_mcm_talker_speak_key">
         <text>Клавиша ввода с микрофона.</text>
+    </string>
+		    <!-- WHISPER MODIFIER KEY CONFIGURATION -->
+    <string id="ui_mcm_talker_whisper_modifier_title">
+        <text>Настройка клавиши Whisper</text>
+    </string>
+    <string id="ui_mcm_talker_whisper_modifier_description">
+        <text>Если удерживать эту кнопку во время разговора или отправки сообщения, его услышат только ваши собеседники.</text>
+    </string>
+    <string id="ui_mcm_talker_whisper_modifier">
+        <text>Клавиша модификатора шепота</text>
+    </string>
+	    <string id="ui_mcm_lst_Shift">
+        <text>Shift (Шифт)</text>
+    </string>
+    <string id="ui_mcm_lst_Alt">
+        <text>Alt (Альт)</text>
+    </string>
+	    <string id="ui_mcm_lst_Ctrl">
+        <text>Ctrl (Контрол)</text>
     </string>
 </string_table>

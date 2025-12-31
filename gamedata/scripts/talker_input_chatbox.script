@@ -1,9 +1,11 @@
 --| based on Chernobyl Relay Chat
 package.path = package.path .. ";./bin/lua/?.lua;"
+local logger = require("framework.logger")
 local config = require("interface.config")
-local trigger = require('interface.trigger')
+local trigger = require("interface.trigger")
 -- Import game interface modules
 local queries = talker_game_queries
+local whisper_state = talker_whisper_state
 
 -- Options
 local option = {
@@ -15,8 +17,13 @@ local chatBox
 local showChatBox = false
 local ChatBoxEnabled = true
 
-local function process_player_input(input)
-	trigger.talker_player_speaks(input)
+function talker_chatbox_dialogue_finished(dialogue)
+	-- Check if whisper mode is active
+	if whisper_state.is_whisper_active() then
+		trigger.talker_player_whispers(dialogue)
+	else
+		trigger.talker_player_speaks(dialogue)
+	end
 end
 
 local function update()
@@ -95,7 +102,7 @@ function ChatBox:Send()
 	local input = self.editBox:GetText()
 	if input and input ~= "" then
 		self.editBox:SetText("")
-		process_player_input(input)
+		talker_chatbox_dialogue_finished(input)
 	end
 	if option.closeChat then
 		self:Cancel()

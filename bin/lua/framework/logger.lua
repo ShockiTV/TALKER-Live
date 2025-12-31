@@ -2,8 +2,8 @@
 local M = {}
 package.path = package.path .. ";./bin/lua/?.lua;"
 
-local inspect = require('framework.inspect')
-local file_io = require('infra.file_io')
+local inspect = require("framework.inspect")
+local file_io = require("infra.file_io")
 
 -- print functions
 local print_fun = printf or print -- depends on game state
