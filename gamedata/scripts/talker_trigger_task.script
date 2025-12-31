@@ -1,0 +1,159 @@
+package.path = package.path .. ";./bin/lua/?.lua;"
+local log = require("framework.logger")
+local config = require("interface.config")
+local queries = talker_game_queries
+local trigger = require("interface.trigger")
+-- Game interface
+local game_adapter = require("infra.game_adapter")
+
+local script_name = "TALKER Trigger Task"
+local original_task_callback = nil
+
+-- Faction name mapping from technical to display names
+local faction_map = {
+    killer = "Mercenary",
+    dolg = "Duty",
+    freedom = "Freedom",
+    bandit = "Bandit",
+    monolith = "Monolith",
+    stalker = "stalker",
+    csky = "Clear Sky",
+    ecolog = "Ecolog",
+    army = "Army",
+    renegade = "Renegade",
+    trader = "Trader",
+    greh = "Sin",
+    isg = "ISG",
+    zombied = "Zombied",
+    monster = "Monster"
+}
+
+local LAST_TASK_TIME = 0
+local TASK_COOLDOWN_CD = 15 * 1000 -- 15 seconds cooldown to prevent spam
+
+function is_valid_event()
+    local is_cd_over = (queries.get_game_time_ms() - LAST_TASK_TIME) > TASK_COOLDOWN_CD
+    local witnesses = game_adapter.get_characters_near_player()
+    local is_valid = is_cd_over and (#witnesses > 0)
+    -- reset cooldown if valid
+    if is_valid then LAST_TASK_TIME = queries.get_game_time_ms() end
+    return is_valid
+end
+
+function on_game_start()
+    -- Hook the task_callback function to intercept task completion
+    if task_manager and task_manager.task_callback then
+        original_task_callback = task_manager.task_callback
+        task_manager.task_callback = function(tsk, stage)
+            -- Call original first
+            original_task_callback(tsk, stage)
+            -- Then trigger our event if task was completed
+            if stage == task.completed then
+                on_task_completed_event(tsk)
+            end
+        end
+        log.info("%s: Hooked task_manager.task_callback", script_name)
+    else
+        log.error("%s: Could not hook task_manager.task_callback - function not found", script_name)
+    end
+end
+
+function on_task_completed_event(tsk)
+    if not is_valid_event() then return end
+    if not tsk then return end
+    local task_id = tsk:get_id()
+    local tm = task_manager.get_task_manager()
+    if not tm or not tm.task_info or not tm.task_info[task_id] then
+        log.info("%s: Cannot access task info for task %s", script_name, task_id)
+        return
+    end
+    
+    local task_info = tm.task_info[task_id]
+    local task_giver_id = task_info.task_giver_id
+    
+    if not task_giver_id then 
+        return 
+    end
+    
+    -- Check if task giver is valid
+    local server_entity = alife_object(task_giver_id)
+    if not server_entity then
+        log.info("%s: task giver server object not found, returning", script_name)
+        return
+    end
+
+    -- Proceed with event if task giver is unique, 10% chance for generic characters
+    local is_unique = queries.is_unique_character_by_id(task_giver_id)
+    if not is_unique then
+        if math.random() > 0.1 then
+            return
+        end
+    end
+    
+    -- Manually create character info from server object (works for both online/offline)
+    local task_giver_character = {
+        name = server_entity:character_name(),
+        experience = server_entity:rank(), -- Returns number
+        faction = tostring(server_entity:community())
+    }
+    
+    -- Try to get text rank name
+    if ranks and ranks.get_se_obj_rank_name then
+         task_giver_character.experience = ranks.get_se_obj_rank_name(server_entity)
+    end
+
+    -- Convert faction technical name to display name
+    task_giver_character.faction = faction_map[task_giver_character.faction] or task_giver_character.faction
+
+    -- Task Title from task object
+    local task_title = tsk:get_title()
+    if not task_title or task_title == "" then
+        -- fallback
+        local task_id = tsk:get_id()
+        if task_manager and task_manager.task_ini and task_manager.task_ini.r_string_ex then
+             local title_key = task_manager.task_ini:r_string_ex(task_id, "title")
+             if title_key then
+                 task_title = game.translate_string(title_key)
+             else
+                 task_title = game.translate_string(task_id)
+             end
+        else
+             task_title = game.translate_string(task_id)
+        end
+    end
+
+    local witnesses = game_adapter.get_characters_near_player()
+    local player = game_adapter.get_player_character()
+    local companions = game_adapter.get_companions() or {}
+    if #companions > 0 then 
+        local names_list = {}
+        for _, companion in ipairs(companions) do
+            table.insert(names_list, companion.name)
+            table.insert(witnesses, companion)
+        end
+        
+        local companion_names = ""
+        if #names_list == 1 then
+            companion_names = names_list[1]
+        else
+            local last_name = table.remove(names_list)
+            companion_names = table.concat(names_list, ", ") .. " and " .. last_name
+        end
+        -- Format and send the event
+        local description = string.format("%s, a %s rank member of the %s faction and their travelling companions %s completed the task '%s' for %s, a %s rank member of the %s faction!", player.name, player.experience, player.faction, companion_names, task_title, task_giver_character.name, task_giver_character.experience, task_giver_character.faction)
+        trigger.talker_game_event(description, {}, witnesses, true, { is_task = true })
+     
+else
+        local description = string.format("%s, a %s rank member of the %s faction completed the task '%s' for %s, a %s rank member of the %s faction!", player.name, player.experience, player.faction, task_title, task_giver_character.name, task_giver_character.experience, task_giver_character.faction)
+        trigger.talker_game_event(description, {}, witnesses, true, { is_task = true })
+end
+    LAST_TASK_TIME = queries.get_game_time_ms()
+end
+
+-- Module loaded check
+function is_loaded()
+    return true
+end
+
+
+

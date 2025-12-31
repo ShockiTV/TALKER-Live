@@ -83,7 +83,7 @@ function ollama.pick_speaker(msgs, callback)
 end
 
 function ollama.summarize_story(msgs, callback)
-  return send(msgs, callback, {model=MODEL.fast, temperature=0.2, max_tokens=100})
+  return send(msgs, callback, {model=MODEL.fast, temperature=0.2, max_tokens=1500})
 end
 
 return ollama

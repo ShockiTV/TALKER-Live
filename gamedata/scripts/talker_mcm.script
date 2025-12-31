@@ -8,6 +8,8 @@ function on_mcm_load()
         id = "talker",
         sh = true,
         gr = {
+		--Title Card
+		{id = "title",type= "slide",link= "ui_options_slider_player",text="ui_mcm_talker_title",size = {512,50}, spacing = 20 },
             -- Model Choice
             {
                 id = "gpt_version",
@@ -127,6 +129,30 @@ function on_mcm_load()
                 },
                 name = "ui_mcm_talker_input_option"
             },
+            -- Whisper modifier key
+            {
+                id = "whisper_modifier_title",
+                type = "desc",
+                clr = {200, 200, 255, 200},
+                text = "ui_mcm_talker_whisper_modifier_title"
+            },
+            {
+                id = "whisper_modifier_description",
+                type = "desc",
+                text = "ui_mcm_talker_whisper_modifier_description"
+            },
+            {
+                id = "whisper_modifier",
+                type = "radio_h",
+                val = "0",
+                def = "0",
+                content = {
+                    {"0", "Shift"},
+                    {"1", "Alt"},
+                    {"2", "Ctrl"},
+                },
+                name = "ui_mcm_talker_whisper_modifier"
+            },
         }
     }
     return options
@@ -142,6 +168,7 @@ local defaults = {
     ["custom_ai_model_fast"] = "google/gemini-2.5-flash-lite-preview-06-17",
     ["voice_provider"] = 2,
     ["reasoning_level"] = -1,
+    ["whisper_modifier"] = 0,
 }
 
 -- Function to retrieve the configuration value

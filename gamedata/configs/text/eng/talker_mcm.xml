@@ -2,10 +2,10 @@
 <string_table>
     <!-- GENERAL OPTIONS -->
     <string id="ui_mcm_talker_title">
-        <text>T.A.L.K.E.R. Options</text>
+        <text>T.A.L.K.E.R. Expanded - Options</text>
     </string>
     <string id="ui_mcm_menu_talker">
-        <text>T.A.L.K.E.R.</text>
+        <text>T.A.L.K.E.R. Expanded</text>
     </string>
     <string id="ui_mcm_talker_gpt_version">
         <text>GPT Model for dialogue</text>
@@ -115,5 +115,24 @@
     </string>
     <string id="ui_mcm_talker_speak_key">
         <text>Microphone input key.</text>
+    </string>
+	    <!-- WHISPER MODIFIER KEY CONFIGURATION -->
+    <string id="ui_mcm_talker_whisper_modifier_title">
+        <text>Whisper Key Configuration</text>
+    </string>
+    <string id="ui_mcm_talker_whisper_modifier_description">
+        <text>Holding down this button while speaking or sending a message will make it only be heard by your companions.</text>
+    </string>
+    <string id="ui_mcm_talker_whisper_modifier">
+        <text>Whisper Modifier Key</text>
+    </string>
+	    <string id="ui_mcm_lst_Shift">
+        <text>Shift</text>
+    </string>
+    <string id="ui_mcm_lst_Alt">
+        <text>Alt</text>
+    </string>
+	    <string id="ui_mcm_lst_Ctrl">
+        <text>Ctrl</text>
     </string>
 </string_table>

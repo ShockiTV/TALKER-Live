@@ -15,9 +15,6 @@ local ARTIFACT_COMMENT_CD = 20 * 1000 -- 20 seconds
 ----------------------------------------------------------------------------------------------------
 -- Conditions
 ----------------------------------------------------------------------------------------------------
-local is_game_unloading = false
-
-
 local function is_excluded_artifact(name)
     if not name then return false end
     local lower_name = string.lower(name)
