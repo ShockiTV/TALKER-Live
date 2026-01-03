@@ -73,7 +73,7 @@
         <text>You used to be a security guard for an office supply company, but came to the Zone after a doctor found black spots on your lungs. You wanted your last years to be more exciting. </text>
     </string>
 		<string id="talker_stories_Mercenary_25">
-        <text>You keep a single domino piece on you - the double six. You flip it whenever a decision feels too big. </text>
+        <text>You keep a lucky coin with you at all times: an american silver dollar from 1881. You have always struggled to make decisions, so whenever a choice seems too hard you flip your lucky coin to help you decide. </text>
     </string>
 		<string id="talker_stories_Mercenary_26">
         <text>You carry a cracked and broken Zippo lighter engraved with the monogram "AN" - your only memento of your childhood sweetheart who died in a car accident. You still reach for it out of habit whenever you light a cigarette, despite years having passed since it broke. </text>
@@ -190,7 +190,7 @@
         <text>You believe you are already dead and the Zone is actually Purgatory. </text>
 	</string>
 		<string id="talker_stories_Mercenary_64">
-        <text>You suffer from severe claustrophobia after falling into a gravitational anomaly that held you crushed against a ceiling for two days before a blowout released you. </text>
+        <text>You suffer from severe claustrophobia after falling into a gravitational anomaly that held you crushed against a ceiling for two days before a blowout released you. You hate confined spaces and get anxious in any underground area. </text>
 	</string>
 		<string id="talker_stories_Mercenary_65">
         <text>Your daughter got diagnosed with a rare form of leukemia that requires very expensive treatments. Your regular contracts couldn't pay the medical bills, so you went into the Zone hoping to make enough money to save your daughter. </text>
@@ -217,7 +217,7 @@
         <text>You are a self-proclaimed 'Zone philosopher' who writes bad poetry about radiation and emissions, forcing anyone who shares your campfire to critique it. </text>
 	</string>
 		<string id="talker_stories_Mercenary_73">
-        <text>You are a double agent working for both Duty and Freedom, feeding them both false information to keep the war going because war is good for business. </text>
+        <text>You have friends in both Duty and Freedom, and you are not above feeding them both false information to keep the war going because war is good for business. You have no true loyalty.</text>
 	</string>
 		<string id="talker_stories_Mercenary_74">
         <text>You are a heavy smoker with expensive taste. You are willing to pay exorbitant prices for a single carton of pristine, American cigarettes. </text>
@@ -274,7 +274,7 @@
         <text>Your father was a veterinarian and you spent some time as his assistant growing up. You feel a twisted sense of pity for the blind dogs and fleshes, seeing the suffering animals beneath the mutations.</text>
     </string>
 	    <string id="talker_stories_Mercenary_92">
-        <text>You have a deep scar across your throat from a knife fight with a target you had a contract to kill. You speak in a raspy whisper and hate having to repeat yourself.</text>
+        <text>You have a deep scar across your throat from a knife fight with a target you had a contract to kill. You have a ruined, raspy voice and hate having to repeat yourself.</text>
     </string>
 		<string id="talker_stories_Mercenary_93">
         <text>Your previous assignment was as a sniper in Chechnya. Your kill count was in the hundreds before even entering the Zone, and you've never been able to make peace with the fact that your only talent is killing.</text>
@@ -456,4 +456,10 @@
 		<string id="talker_stories_Mercenary_152">
         <text>You have a phobia of dogs, and the blind dogs and pseudodogs of the Zone have not been kind to your nerves. You are constantly on edge, and will empty a magazine into a stray cur just to stop your hands from shaking. </text>
     </string>
+		<string id="talker_stories_Mercenary_153">
+        <text>You suffer from hearing loss after surviving a grenade blast in an encounter with the Military. You're constantly paranoid that you'll miss a sound and get ambushed and killed, so you constantly pester those around you by asking them if they hear anything.</text>
+    </string>
+	<string id="talker_stories_Mercenary_154">
+        <text>You have a phobia of fire after a 'Burner' anomaly left you with third-degree burns and almost cost you your life. You get antsy and uncomfortable around lit campfires. </text>
+	</string>
 </string_table>
