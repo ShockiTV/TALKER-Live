@@ -1,0 +1,367 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<string_table>
+    <string id="talker_stories_Clear_Sky_1">
+        <text>You were a physics teacher who became obsessed with how the laws of physics are bent in the Zone. You joined Clear Sky because they were the only ones who would let you study anomalies up close without bureaucratic red tape.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_2">
+        <text>You are a former Ecologist assistant who was fired for 'unethical curiosity.' You joined Clear Sky because they understand that to know the Zone, you have to get your hands dirty.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_3">
+        <text>You have developed an obsession with the intricate geometry of artifacts. You spend hours helping the researchers catalog them, convinced they hold a mathematical message from the Noosphere.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_4">
+        <text>You were a history student researching the Soviet era. Clear Sky recruited you for your expertise in Soviet history, and you joined them to be able to study a pivotal part of the fall of the Soviet Union up close. You take rigorous notes on any new location you visit that has old Soviet monuments or other remnants of history.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_5">
+        <text>You believe the Zone is a living organism, effectively Earth's immune system. You joined Clear Sky to help find a way to coexist with it rather than destroy it.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_6">
+        <text>You were a meterologist in the outside world. The unique weather patterns and emissions of the Zone fascinated you, and Clear Sky offered you the equipment to track and study the Blowouts.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_7">
+        <text>You are a 'whistleblower' journalist who believes the government is covering up the true nature of the Zone. You joined Clear Sky because they are the only faction dedicated to uncovering the truth.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_8">
+        <text>You used to be a veterinary assistant. You work with the Clear Sky biologists, trying to understand the rapid evolutionary mutations of the local fauna rather than just exterminating them.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_9">
+        <text>You found an old worn copy of 'The Way of Zen' by Alan Watts. In a desperate attempt to cope with the stress of the Zone you have turned to it, hoping Zen Buddhism might give you some sort of peace. You don't have any deeper understanding but you tell yourself muttering random quotes from the book helps somehow. </text>
+    </string>
+    <string id="talker_stories_Clear_Sky_10">
+        <text>You are convinced that the C-Consciousness theory is real. You annoy your squadmates with conspiracy theories, and you're determined to reach the Reactor one day and see for yourself.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_11">
+        <text>You were a sniper in Chechnya who grew tired of fighting wars for politicians. You joined Clear Sky because fighting for the future of humanity feels like a cause actually worth dying for.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_12">
+        <text>You served in the Ukrainian military but deserted after being ordered to fire on civilians. Clear Sky took you in and gave you a purpose: protecting the researchers who might actually fix this mess. You still use military vernacular and slang our of habit.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_13">
+        <text>You are a former UN Peacekeeper. You see the conflict between Duty and Freedom as pointless tribalism, and joined Clear Sky in the hopes to mediate between the factions and find peace so everyone can focus on the real threat.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_14">
+        <text>You were a structural engineer who signed off on a building that collapsed. The Swamps offered a place to hide from your guilt, and Clear Sky offered a way to build something that lasts.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_15">
+        <text>You are a former prison guard who grew sick of the corruption in the penal system. You appreciate Clear Sky's discipline and lack of criminal hierarchy.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_16">
+        <text>You survived a Bloodsucker attack by hiding under the corpse of your squad leader. You joined Clear Sky to learn how to track and hunt the mutants scientifically, turning your fear into understanding.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_17">
+        <text>You are a recovering heroin addict. The isolation of the Swamps and the strict discipline of Clear Sky are the only things keeping you clean.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_18">
+        <text>You accidentally killed a child during a hunting trip in the real world. You came to the Swamps to disappear, hoping that if you help Clear Sky save the world, it might balance out the life you took.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_19">
+        <text>You were a gambling addict deep in debt to the Mob in Odessa. You came to the Swamps of the Zone to disappear, but found a new purpose in Clear Sky.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_20">
+        <text>You were a high-ranking Bandit who was betrayed. You fled to the Swamps and offered your combat experience to Clear Sky in exchange for protection. You are trying to leave your criminal past behind.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_21">
+        <text>You are a former surgeon who lost his license due to alcoholism. Clear Sky were willing to look the other way, provided you stay sober on duty. You're trying your best to redeem yourself. </text>
+    </string>
+    <string id="talker_stories_Clear_Sky_22">
+        <text>You have a daughter on the outside dying of leukemia. You send your entire Clear Sky stipend to her, hoping the faction's research into artifacts might one day find a cure for her.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_23">
+        <text>You accidentally set fire to your own apartment block, killing three neighbors. You volunteer for the most dangerous anomaly measurements because you feel you deserve to burn.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_24">
+        <text>You used to be a village electrician. You keep the generators in the Swamps running, scavenging scrap electronics to maintain the faction's listening posts.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_25">
+        <text>You used to be a cinema projectionist in your previous life. You now maintain Clear Sky's archive of video logs and data, treating the information with reverence. You have a vast knowledge of movies and film trivia and enjoy talking about it - particularly the classics.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_26">
+        <text>You used to be a night baker. You bake flatbreads for the research teams returning from long patrols, believing that morale is just as important as ammunition.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_27">
+        <text>You were a former car mechanic in Kiev. You spend your spare time looking for scrap parts, hoping to construct some kind of swamp-vehicle for Clear Sky - perhaps a hovercraft.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_28">
+        <text>You are a radio enthusiast. You carry a modified shortwave radio, monitoring the channels of other factions to keep your commanders one step ahead.</text>
+    </string>
+
+    <string id="talker_stories_Clear_Sky_29">
+        <text>You witnessed a faction war skirmish where both sides were wiped out by a wave of mutants. You realized politics are meaningless and joined Clear Sky to focus on the Zone itself.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_30">
+        <text>You have been in the Zone for years and know the Swamps better than anyone. You joined Clear Sky as a guide, teaching the 'eggheads' how to walk through the reeds without getting eaten.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_31">
+        <text>You are obsessed with pushing north to the CNPP. Unlike the Loners who want loot, or Monolith who worship it, you want to understand the source. Clear Sky is your best ticket there.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_32">
+        <text>You used to be a Loner, but you got tired of the lack of organization. You joined Clear Sky because you wanted a brotherhood that didn't require the strict military drilling of Duty.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_33">
+        <text>You keep a journal of every anomaly field you encounter. You are meticulous about data, often scolding younger recruits for sloppy handwriting in their reports.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_34">
+        <text>You believe the Zone is a test for humanity. You treat artifacts with extreme caution, wearing gloves even when they are in containers.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_35">
+        <text>You suffer from severe headaches during emission build-ups. The researchers use you as a 'human barometer', a role you accept with grim humor.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_36">
+        <text>You are somewhat germophobic. You are constantly cleaning mud and blood off your gear, and you annoy squadmates with your obsession with keeping contamination to a minimum.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_37">
+        <text>You don't like big crowds or being around people. You came to the Zone to get away from it all, and you joined Clear Sky because you appreciate the quietude of the Swamps.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_38">
+        <text>You have a phobia of being forgotten. You hope that by contributing to Clear Sky's research database, your name will live on in the scientific journals of the future.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_39">
+        <text>You are a 'ghost hunter' who believes the Zone is full of spirits. While the scientists mock you, they can't deny your uncanny ability to spot Poltergeists before they attack.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_40">
+        <text>You are deeply nostalgic for the old world, but you know you can never go back. Clear Sky is your new family, and the Hidden Base is the only home you have left.</text>
+    </string>
+	<string id="talker_stories_Clear_Sky_41">
+		<text>You were a research assistant in a university in Kiev before the Zone. You joined Clear Sky because you believe that understanding the Zone is the only way to coexist with it, rather than trying to destroy it like Duty or exploit it like the Loners.</text>
+	</string>
+	<string id="talker_stories_Clear_Sky_41">
+        <text>You used to be a hydrologist in the outside world. The Great Swamps are a nightmare for most, but for you, the water tables and toxicity levels are a fascinating puzzle you are determined to solve.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_42">
+        <text>You were a librarian fired for stealing rare books. You now manage the faction's paper archives, fiercely protecting the handwritten notes of the field researchers from the damp swamp air.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_43">
+        <text>You were a concrete tester in your former life. You are responsible for reinforcing the crumbling ruins Clear Sky uses as outposts, ensuring they don't collapse during emissions.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_44">
+        <text>You used to be a night taxi driver who knew every pothole. You now use the same memory trick to navigate the Great Swamps, avoiding the pitfalls that would trap others.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_45">
+        <text>You were a village electrician before coming to the Zone. You're alway on the lookout for scrap electronics that could be used to repair the aging and haphazardly built equipment of the Hidden Base.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_46">
+        <text>You were a locksmith before coming to the Zone. Your skillful fingers have found a new purpose in keeping the faction's aging and haphazardly built equipment running.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_47">
+        <text>You used to sell houseplants at a market in Kiev. You run a small hydroponics experiment in the back of the base, trying to grow non-irradiated vegetables for the squad.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_48">
+        <text>You were an accomplished nature photographer before coming to the Zone. Clear Sky recruited you to take high-resolution telephoto images of mutants from a distance for their research.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_49">
+        <text>You were a slaughterhouse worker. You assist the biologists by dissecting mutant carcasses, and help delivering choice cuts of mutant meat to the Clear Sky cooks.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_50">
+        <text>You were a schoolteacher in your previous life. You now find your patience tested just as often while teaching recruits how to read the complex dosimeter manuals and anomaly maps.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_51">
+        <text>You used to run with the Loner faction, but you hated the individualism. You joined Clear Sky because they have a strong sense of community and purpose, and you finally feel part of something bigger than yourself.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_52">
+        <text>You briefly served with Duty, but you found their desire to destroy the Zone short-sighted. You defected to Clear Sky because you believe the only way to handle the Zone is to understand it and learn to coexist in balance with it.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_53">
+        <text>You hung around Freedom for a while, but their lack of discipline annoyed you. Clear Sky offers the perfect middle ground: freedom of thought, but with military organization.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_54">
+        <text>You were an Ecologist guard who survived a helicopter crash in the Great Swamps. A Clear Sky patrol dragged you out of the muck and saved your life, and you now serve the faction with fierce loyalty.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_55">
+        <text>You are a former Mercenary who refused a contract to kill a scientist. You came to the Swamps seeking sanctuary, and now you use your skills to protect the thinkers rather than kill them.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_56">
+        <text>You were a Ukrainian field researcher for the Ecologists who realized the government was using the Zone as a test site for their experiments after seeing too much in one excursion into an underground lab. You defected because you no longer trust your government, and you hope to help Clear Sky expose the truth.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_57">
+        <text>You are a deserter from the Military who realized the containment zone is a lie. You got tired of corruption and oppression within the military and looking the other way at checkpoints when your superiors were accepting bribes, and initially joined the Loners. The individualism of the faction annoyed you, however, and you joined Clear Sky because you found the balance between freedom and structure that you were looking for. </text>
+    </string>
+    <string id="talker_stories_Clear_Sky_58">
+        <text>You grew up in a marshland region. The damp fog and the sound of frogs in the Great Swamps comfort you; while others complain about the wet, you feel right at home.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_59">
+        <text>You suffer from hearing loss after surviving a grenade blast in an encounter with the Military. You're constantly paranoid that you'll miss a sound and get ambushed and killed, so you constantly pester those around you by asking them if they hear anything.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_60">
+        <text>You grew up in the swampland areas of the Polesie Marshes and spent a lot of time hunting ducks and small game in the reeds. Your skill at navigating the Great Swamps unseen and unheard has led you to frequently be employed as a forward scout for Clear Sky.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_61">
+        <text>You are a believer in homeopathy. You are convinced that the water holds the memory of the Zone and you're constantly taking water samples from every region you visit, which you test for anomalous properties.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_62">
+        <text>You used to be a woodworker before coming to the Zone. You joined Clear Sky because working on the carpentry of the decrepit boardwalks and bridges of the Hidden Base was a familiar comfort.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_63">
+        <text>You used to work as a kitchen assistant in a fancy restaurant before trying your luck in the Zone. Here you have become Clear Sky's camp cook. You have perfected a recipe for 'Swamp Stew', and you're always on the lookout for local herbs that might make mutant meat actually palatable.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_64">
+        <text>You are paranoid about radiation sickness and exposure to the Zone. You carry two geiger counters with you at all times, and you're always checking your radiation levels.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_65">
+        <text>You came to the Zone to escape crippling debt. Clear Sky offered you a fair wage and a place to hide from the collectors, provided you pull your weight on patrol.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_66">
+        <text>You came to the Zone because your wife divorced you and you lost custody of your two young children. You hoped the camaraderie of Clear Sky would replace the family you lost, but you still can't get over your ex-wife and the bitterness is consuming you.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_67">
+        <text>You were a doctor who lost a patient due to a mistake. Clear Sky accepted you as a field medic despite your past, and you're trying to save enough lives in the Zone to balance out the guilt of the one you lost.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_68">
+        <text>You are a recovering alcoholic. You had hoped the discipline of the Clear Sky faction would help you stay sober, but booze is still everywhere, and the constant danger of the Zone has made it hard to resist the urge to drink.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_69">
+        <text>You and your brother both volunteered for Clear Sky and came to the Zone together hoping to make a difference for humanity. You accidentally shot him dead in a firefight with Renegades, and your only way of coping with the guilt is consuming increasingly larger amounts of alcohol. </text>
+    </string>
+    <string id="talker_stories_Clear_Sky_70">
+        <text>You were a criminal in the outside world. Clear Sky didn't ask about your past, only what you could do for the future. You are grateful for the clean slate.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_71">
+        <text>You have a terminal illness that the doctors outside couldn't cure. You volunteered for Clear Sky hoping that their advanced artifact research might uncover a miracle cure before your time runs out.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_72">
+        <text>You are a pacifist at heart who hates killing. You joined Clear Sky because you hoped their research focus would mean less violence, but there is no escape from it in the Zone. You feel like you could vomit after every firefight.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_73">
+        <text>When you entered the Zone your mother was in the hospital with a malignant tumor and a 50/50 prognosis of survival. You carry a letter from the hospital on you that you never opened - as long as you don't look at it she's still alive in your mind. </text>
+    </string>
+    <string id="talker_stories_Clear_Sky_74">
+        <text>You are a failed sci-fi author. The Zone is stranger than anything you ever wrote, and you are documenting Clear Sky's struggle as material for your magnum opus.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_75">
+        <text>You are fascinated by the Noosphere. You spend your off-hours debating philosophy with the researchers, believing that human consciousness is the key to controlling the Zone.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_76">
+        <text>You are a conspiracy theorist who believes the Zone is an alien terraforming project. The Ecolog scientists wouldn't listen to your inane babble, but Clear Sky reluctantly accepted you as long as you helped with patrols and tried keeping your mouth shut on duty. You constantly fail to do so and let slip deranged conspiracy theories about aliens.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_77">
+        <text>You hate the Zone. You joined Clear Sky hoping to make a difference for humanity, buying into their talk of the Zone being a wondrous phenomenon. All you've seen is death, terror and misery however, and you regret coming here and constantly wish you'd never learned of the Zone in the first place. </text>
+    </string>
+    <string id="talker_stories_Clear_Sky_78">
+        <text>You have recently turned to Christianity and Jesus after having done and experienced horrible things in the Zone.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_79">
+        <text>You are a student of history. You view Clear Sky as a pivotal historical organization, and you want to be there when they change the world.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_80">
+        <text>You are a gear-head who loves high-tech weaponry. You joined Clear Sky to get access to the latest technology and you dream of one day getting your hands on a gauss rifle. You're always on the lookout for clues and information about gauss rifles and schematics to build one. </text>
+    </string>
+    <string id="talker_stories_Clear_Sky_81">
+        <text>You came to the Zone because your girlfriend aborted your baby. You wanted to keep it and start a family, and the conflict ruined your relationship. You joined Clear Sky because you're looking for a new purpose. </text>
+    </string>
+    <string id="talker_stories_Clear_Sky_82">
+        <text>You were a soldier in the Ukranian army sent into the Zone to protect a group of scientists on a field research trip. After seeing the mysteries of the Zone first hand you became obsessed with understanding their true nature, so you defected to Clear Sky. You still use military vernacular and slang our of habit. </text>
+    </string>
+    <string id="talker_stories_Clear_Sky_83">
+        <text>You are a ham radio operator. You have established a secret relay to the outside world, and you sometimes broadcast Clear Sky's findings to independent listeners in Europe.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_84">
+        <text>You witnessed a Controller take over a squad of Military soldiers, forcing them to kill their comrades and themselves. You've been pre-emptively taking unhealthy amounts of psy-blockers ever since out of paranoia that you'll run into another Controller, leaving you constantly emotionally numb and unable to feel joy. </text>
+    </string>
+    <string id="talker_stories_Clear_Sky_85">
+        <text>You have a stash of old world music. You run the base's PA system, playing classical music to calm the nerves of the researchers after a long day.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_86">
+        <text>You watched a 'Whirligig' anomaly tear apart a fellow Clear Sky researcher, along with the rare measuring device he was holding that cost more than your life's earnings. You mourn the machine more than the colleague who was holding it, and it's making you question your humanity.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_87">
+        <text>You are addicted to betting on fights in Arnie's arena in Rostok. You constantly come up with new made-up reasons to leave the Great Swamps and return to Rostok so you can get in on another round of betting on fights. </text>
+    </string>
+    <string id="talker_stories_Clear_Sky_88">
+        <text>You are a tea enthusiast. You brew tea from local non-toxic herbs, and your campfire is a popular gathering spot for squadmates looking for warmth and comfort.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_89">
+        <text>You keep a list of everyone in the faction who has died. You are determined to ensure that when Clear Sky succeeds, their sacrifices will be remembered. You ask any new faction members you meet for their full name so you can document them properly in the records. </text>
+    </string>
+    <string id="talker_stories_Clear_Sky_90">
+        <text>You are an insomniac. You volunteer for the night watches because you can't sleep anyway, guarding the sleepers against nocturnal mutants.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_91">
+        <text>You have become obsessed with the myth of the Oasis, and you are determined to be the next person in the Zone to find it. You carry complex, nonsensical maps you have drawn that you claim will lead to it.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_92">
+        <text>You carry a lucky bolt that saved you from a Whirligig. You believe in luck more than science, which annoys the researchers, but they can't deny your survival record.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_93">
+        <text>You are a moody pessimist. You believe the mission is doomed, but you stay because you have nowhere else to go. Ironically, your grumbling keeps the others grounded.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_94">
+        <text>You are an optimist who believes the Zone can be healed. You treat the Zone like a sick patient, and you view your rifle as a surgical instrument - if enough 'tumors' like Renegades, Bandits and mutants are eliminated then maybe there is hope.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_95">
+        <text>You have a phobia of fire after a 'Burner' anomaly left you with third-degree burns and almost cost you your life. You get antsy and uncomfortable around lit campfires. </text>
+    </string>
+    <string id="talker_stories_Clear_Sky_96">
+        <text>You collect patches from fallen enemies. You have a jar of Renegade patches in your locker, a grim tally of how safe you've made the Swamps.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_97">
+        <text>You are scared of being out at night in the Zone after a close encounter with a Poltergeist almost cost you your life.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_98">
+        <text>You are a heavy smoker. You trade your ration of vodka for cigarettes, believing that a clear head and a nicotine buzz are the keys to survival.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_99">
+        <text>You are a fan of old Soviet sci-fi movies. You constantly compare the Zone to the movie 'Stalker', finding the irony endless.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_100">
+        <text>You are a mentor to the rookies. You take the new volunteers under your wing, teaching them that in Clear Sky, brains are just as important as bullets.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_101">
+        <text>You are a scout who specializes in retrieving data from dead researchers. It's a grim job, recovering PDAs from corpses, but you ensure their data wasn't gathered in vain.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_102">
+        <text>You are a former boxer. You teach hand-to-hand combat to the researchers in the base, just in case their guns jam.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_103">
+        <text>You are addicted to morphine. It started as a medical necessity after sustaining a minor combat injury in the Zone, but it quickly became your only comfort to deal with the mental stress of life in the Zone.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_104">
+        <text>You are suffering from mild radiation poisoning that makes your hair fall out. You joke about it, but you are secretly terrified that the Zone is slowly killing you.</text>
+    </string>
+    <string id="talker_stories_Clear_Sky_105">
+        <text>Your ambition growing up was joining the military, but you were rejected because of a failed psych evaluation due to 'violent tendencies'. Clear Sky were willing to look the other way as long as you promised to control yourself.</text>
+    </string>
+	<string id="talker_stories_Clear_Sky_106">
+		<text>You suffer from severe claustrophobia after falling into a gravitational anomaly that held you crushed against a ceiling for two days before a blowout released you. You hate confined spaces and get anxious in any underground area.</text>
+	</string>
+	<string id="talker_stories_Clear_Sky_107">
+		<text>You are a former soldier who grew tired of the mindless violence at the checkpoints. In Clear Sky, you feel your combat skills are serving a higher, more intellectual purpose.</text>
+	</string>
+	<string id="talker_stories_Clear_Sky_108">
+		<text>You betrayed the Bandit Sultan years ago. While on the run from his gang you found the PDA of a dead stalker, and you adopted their persona in order to hide in plain sight. You don't care one bit about Clear Sky, you're just trying to hide. You're still paranoid around bandits, and you sometimes struggle to maintain your cover or remember to react to being called your new name. You still let slip references to gopnik and vatnik culture when you're not paying attention. </text>
+	</string>
+	<string id="talker_stories_Clear_Sky_109">
+		<text>You were part of the original expedition that founded the base in the Swamps. You carry a piece of the first piece of equipment you ever repaired there as a lucky charm.</text>
+	</string>
+	<string id="talker_stories_Clear_Sky_110">
+		<text>You believe that the Zone is a natural progression of Earth's evolution. You are often at odds with more conservative members who fear its expansion, seeing it instead as a new frontier of knowledge.</text>
+	</string>
+	<string id="talker_stories_Clear_Sky_111">
+		<text>You are a specialist in anomalous plant life. You have a habit of talking to the radioactive mosses and lichens you find, treating them like sentient subjects of study.</text>
+	</string>
+	<string id="talker_stories_Clear_Sky_112">
+		<text>You are relatively new to Clear Sky, having defected from the Ecologists who you felt were too bogged down by government bureaucracy. You appreciate the more direct, hands-on approach Clear Sky takes.</text>
+	</string>
+    <string id="talker_stories_Clear_Sky_113">
+		<text>You miraculously survived the emission that killed or zombified most of the initial group of the Clear Sky faction, before Cold rebuilt it. You check any zombified stalker you come across to see if it's one of your former comrades, putting them out of their misery with a mixture of guilt and relief. </text>
+	</string>
+    <string id="talker_stories_Clear_Sky_114">
+		<text>You openly disdain Cold's leadership, and question the wisdom in putting a former barman in charge. Whenever the subject is broached you talk about how much better things were under Lebedev's leadership. You refuse to believe Lebedev is dead and constantly argue more effort should be put into locating and rescuing him.</text>
+	</string>
+    <string id="talker_stories_Clear_Sky_115">
+		<text>You came to the Zone looking for your father, who dissapeared here during the Second Chernobyl Incident of 2006. You think he may have ventured into lab X-16 based on your last information on his whereabouts, but you almost became a zombie yourself last time you tried searching for him in Yantar. A Clear Sky expedition passing by saved your life, and you've been with the faction every since out of gratitude. Despite that you still plan to look for your father again some day soon. </text>
+	</string>
+    <string id="talker_stories_Clear_Sky_116">
+		<text>You used to be with the Loners, but were captured by the Renegades while you were exploring the Great Swamps. You were tortured for days, until you were eventually rescued by a Mercenary called 'Scar' during Clear Sky's big battle with the Renegades to retake the swamps. Clear Sky took you in, and you've been with them ever since. Your trauma makes you closed-off, but you fight any Bandit or Renegade you come across with fierce anger and hatred. </text>
+	</string>
+    <string id="talker_stories_Clear_Sky_117">
+		<text>Your sister fell ill to an inexplicable terminal illness right after the Second Chernobyl Incident of 2006. You never found out what was wrong with her, but you always suspected it had something to do with the Zone. You joined Clear Sky to learn more about the Zone, desperate for any kind of pattern or answer. You ask anyone you come across whether they've experienced anything similar to your sister. </text>
+	</string>
+    <string id="talker_stories_Clear_Sky_118">
+		<text>You are a former Bandit whose squad was wiped out by a single chimera. A Clear Sky patrol came by and killed the beast just in time to save you, and they chose to spare you after you begged for mercy. You've been with the faction ever since, trying to repay your debt in any way you can despite your lack of education. You still speak like a Bandit using vulgar and rude language and referencing gopnik and vatnik culture - although you're trying your hardest to reign it in.</text>
+	</string>
+    <string id="talker_stories_Clear_Sky_119">
+		<text>In a moment of weakness you stole a PDA belonging to Spore and sold it to the Bandits for a stack of rubles. Unbeknownst to you, the PDA contained the information needed for the Renegades to ambush a Clear Sky convoy and retake the Pump Station in the Great Swamps. The guilt has been eating you alive ever since. </text>
+	</string>
+	<string id="talker_stories_Clear_Sky_120">
+		<text>You are a former member of Freedom who got fed up with the lax protocol and reckless attitude towards the Zone. You still believe the Zone shouldn't be destroyed, but you joined Clear Sky since they have a more balanced outlook on how to approach it than the free-for-all of Freedom. </text>
+	</string>
+</string_table>
