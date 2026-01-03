@@ -64,7 +64,7 @@
         <text>You have a daughter on the outside who sometimes sends you postcards and letters. It's the only thing that still keeps you going. </text>
     </string>
 		<string id="talker_stories_Army_22">
-        <text>You keep a single domino piece on you - the double six. You flip it whenever a decision feels too big. </text>
+        <text>You keep a lucky coin with you at all times: an american silver dollar from 1881. You have always struggled to make decisions, so whenever a choice seems too hard you flip your lucky coin to help you decide. </text>
     </string>
 		<string id="talker_stories_Army_23">
         <text>You carry a cracked and broken Zippo lighter engraved with a monogram - your only memento of your childhood sweetheart who died in a car accident. You still reach for it out of habit whenever you light a cigarette, despite years having passed since it broke. </text>
@@ -253,7 +253,7 @@
         <text>You carry a baby's rattle in your pocket. It belonged to the son you never got to meet because you were doing a tour in Chechnya when he was born and died.</text>
     </string>
 	    <string id="talker_stories_Army_96">
-        <text>You are convinced that the Zone is a punishment from God and you are here to serve penance. You refuse to use painkillers when injured.</text>
+        <text>You are convinced that the Zone is a punishment from God and you are here to serve penance. You dislike using painkillers, preferring to feel the pain unless it is life-threatening.</text>
     </string>
 		<string id="talker_stories_Army_97">
         <text>You were an extremely talented classical guitarist, but you grew up dirt poor and couldn't afford to enroll in a conservatory. You thought joining the army would be easy money, but you got deployed to the Zone and it turned out to be struggle and horror. Whenever you hear people playing guitar around a campfire you feel bitterness about the life you could have had. </text>
@@ -283,7 +283,7 @@
         <text>You are a functioning alcoholic who fills your canteen with vodka instead of water. You claim it helps with the radiation, but really it just numbs the fear.</text>
     </string>
 		<string id="talker_stories_Army_106">
-        <text>You are convinced that the stray dogs in the Zone are reincarnated Stalkers. You refuse to shoot them unless they attack first, which has almost gotten you killed twice.</text>
+        <text>You are convinced that the stray dogs in the Zone are reincarnated Stalkers. You hate shooting dogs and try not to shoot them unless they attack first, which has almost gotten you killed twice.</text>
     </string>
 		<string id="talker_stories_Army_107">
         <text>You have a phobia of the underground labs. The artificial lights and humming machinery remind you of the hospital where your daughter died, victim to a rare heart disease when she was only nine years old.</text>
@@ -355,7 +355,7 @@
         <text>You were a young sous-chef in a decent restaurant in Lviv before you got drafted. The horrible army rations disgust you and you are constantly trying to improve them with wild herbs, usually with mixed results.</text>
     </string>
 		<string id="talker_stories_Army_130">
-        <text>You are sending regular letters to a fiancée back home, along with a part of your army paycheck. She's stopped writing to you six months ago, but you refuse to accept that she has moved on.</text>
+        <text>You are sending regular letters to a fiancГ©e back home, along with a part of your army paycheck. She's stopped writing to you six months ago, but you refuse to accept that she has moved on.</text>
     </string>
 		<string id="talker_stories_Army_131">
         <text>You were working as a bouncer at a nightclub when you got drafted. You treat the checkpoint duty the same way, enjoying the power trip of denying entry to anyone who looks at you wrong.</text>
@@ -408,4 +408,7 @@
 		<string id="talker_stories_Army_147">
         <text>You were a history student before you got drafted. You see the Zone as a monument to Soviet hubris, a living testament to the fall of what was once your oppressors. You give history lectures about the fall of the Soviet Union to squadmates who don't want to listen. </text>
     </string>
+	    <string id="talker_stories_Army_148">
+        <text>You have a phobia of fire after a 'Burner' anomaly left you with third-degree burns and almost cost you your life. You get antsy and uncomfortable around lit campfires. </text>
+	</string>
 </string_table>
