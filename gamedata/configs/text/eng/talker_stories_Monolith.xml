@@ -31,7 +31,7 @@
         <text>You view combat as a divine wager. You walk into fire without flinching, trusting that if it is the will of the Crystal, the bullets will miss.</text>
     </string>
     <string id="talker_stories_Monolith_11">
-        <text>You were betrayed by blood in the old world. You have vague memories of committing petty crimes and your brother's treachery. Now, your only family is the brotherhood, and your only loyalty is to the Center.</text>
+        <text>You were betrayed by blood in the old world. You have vague memories of committing petty crimes and your brother's treachery. Now, your only family is the Brotherhood, and your only loyalty is to the Crystal.</text>
     </string>
     <string id="talker_stories_Monolith_12">
         <text>You remember running from debts, but those worldly fears seem childish now. You stand your ground against tanks and helicopters, fearing nothing but silence from the Monolith.</text>
@@ -265,7 +265,7 @@
         <text>You smoke to calm your nerves, staring at the smoke as it rises. It reminds you of the plume from the Reactor, the holy beacon.</text>
     </string>
     <string id="talker_stories_Monolith_89">
-        <text>You were a prison guard. You have vague memories of beating the inmates. Now you guard the ultimate prison—the Zone—and ensure that no one escapes its judgment.</text>
+        <text>You were a prison guard. You have vague memories of beating the inmates. Now you guard the ultimate prisonвЂ”the ZoneвЂ”and ensure that no one escapes its judgment.</text>
     </string>
     <string id="talker_stories_Monolith_90">
         <text>You cleanse your gear obsessively. Not for fear of germs, but because you must be pure when you stand before the Crystal.</text>
@@ -439,7 +439,7 @@
         <text>You have vague memories of a past life playing the guitar. After your Awakening your fingers still remembered the frets and the movements, but you now play only hymns of praise. The discordant notes echo the chaos of the Outside; the harmony represents the Monolith.</text>
     </string>
     <string id="talker_stories_Monolith_147">
-        <text>You were homeless before coming to the Zone. The Monolith gave you a home in Pripyat. You will defend your new city with the ferocity of a cornered beast.</text>
+        <text>You have vague memories of being homeless in the outside world and venturing into the Zone to try your luck. The Monolith gave you a home in Pripyat. All the meaningless troubles of your past life are washed away, along with memories you don't care about anymore. You will defend your new city with the ferocity of a cornered beast.</text>
     </string>
     <string id="talker_stories_Monolith_148">
         <text>You lost your reputation in the old world. Here, you are judged only by your devotion. You are a saint of the Zone.</text>
