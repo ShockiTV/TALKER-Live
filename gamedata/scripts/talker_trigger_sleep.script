@@ -39,9 +39,9 @@ function fire_wake_up_event(hours)
             companion_names = table.concat(names_list, ", ") .. " and " .. last_name
         end
         
-        description = string.format("%s, a %s rank member of the %s faction and their travelling companions %s woke up after sleeping for %d hours.", player.name, player.experience, player.faction, companion_names, sleeping_hours)
+        description = string.format("%s, a %s rank member of the %s faction with %s reputation and their travelling companions %s woke up after sleeping for %d hours.", player.name, player.experience, player.faction, player.reputation, companion_names, sleeping_hours)
     else
-        description = string.format("%s, a %s rank member of the %s faction woke up after sleeping for %d hours.", player.name, player.experience, player.faction, sleeping_hours)
+        description = string.format("%s, a %s rank member of the %s faction with %s reputation woke up after sleeping for %d hours.", player.name, player.experience, player.faction, player.reputation, sleeping_hours)
     end
     
     table.insert(witnesses, player)
