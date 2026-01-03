@@ -24,6 +24,7 @@
 
 -- This version was slightly modified by Dan to better work with STALKER Anomaly
 
+-- Further modified by Coelacanth for further safeguards against JSON decode errors
 -------------------------------------------------------------------------------
 -- CYRILIFIER
 ---------------------------------------------------------------------------------------------------------------------------------------------------
