@@ -21,7 +21,7 @@
         <text>You regret coming to the Zone and long to get back out to the normal world. But you still have a year-and-a-half left on your research grant, so you can't leave. </text>
 	</string>
 		<string id="talker_stories_Ecolog_8">
-        <text>You failed your dissertation for you Ph.D. and nobody would give you a research grant. In desperation you volunteered to come to the Zone to aid in field research. </text>
+        <text>You failed your dissertation for you Ph.D. and nobody would give you a research grant. In desperation you volunteered to come to the Zone to aid in field research, still hoping to redeem yourself. </text>
     </string>
 		<string id="talker_stories_Ecolog_9">
         <text>You stole your roommates work and managed to get it published before he did, which is what led you to be awarded your current research grant. You're still guilt-ridden about this. </text>
@@ -66,7 +66,7 @@
         <text>You used to work in a lab, but came to the Zone after a doctor found black spots on your lungs. You wanted your last years to be more exciting so you finally went into field research. </text>
     </string>
 		<string id="talker_stories_Ecolog_23">
-        <text>You keep a single domino piece on you - the double six. You flip it whenever a decision feels too big. </text>
+        <text>You keep a lucky coin with you at all times: an american silver dollar from 1881. You have always struggled to make decisions, so whenever a choice seems too hard you flip your lucky coin to help you decide. </text>
     </string>
 		<string id="talker_stories_Ecolog_24">
         <text>You carry a cracked and broken Zippo lighter engraved with the monogram "AN" - your only memento of your childhood sweetheart who died in a car accident. You still reach for it out of habit whenever you light a cigarette, despite years having passed since it broke. </text>
@@ -171,7 +171,7 @@
         <text>You lost your previous position as a lecturer at a university after sleeping with a female assistant. Your reputation made getting hired anywhere difficult, but Zone field researchers are always in demand. </text>
 	</string>
 		<string id="talker_stories_Ecolog_58">
-        <text>You suffer from severe claustrophobia after falling into a gravitational anomaly that held you crushed against a ceiling for two days before a blowout released you. </text>
+        <text>You suffer from severe claustrophobia after falling into a gravitational anomaly that held you crushed against a ceiling for two days before a blowout released you. You hate confined spaces and get anxious in any underground area. </text>
 	</string>
 		<string id="talker_stories_Ecolog_59">
         <text>Your daughter got diagnosed with a rare form of leukemia that requires very expensive treatments. Your teaching job couldn't pay the medical bills, but you were just BARELY qualified for a field research job in the Zone that paid enough money to save your daughter. You're constantly terrified for your life, as your daughter still needs months of treatments she can only recieve if you stay alive. </text>
@@ -306,7 +306,7 @@
         <text>You have a recurring dream that you are trapped in an anomaly, screaming for help, while your friends walk past you. This has led to you having severe abandonment issues. </text>
     </string>
 		<string id="talker_stories_Ecolog_102">
-        <text>You are a pacifist by nature. You thought you could stick to your principles, but the Zone had other plans. You vomit after every firefight.</text>
+		<text>You are a pacifist by nature. You thought you could stick to your principles, but the Zone had other plans. You feel like you are ready to vomit after every firefight.</text>
     </string>
 	    <string id="talker_stories_Ecolog_103">
         <text>You witnessed a faction war skirmish where both sides were wiped out by a single chimera. You realized then that politics in the Zone are meaningless.</text>
@@ -392,4 +392,13 @@
 		<string id="talker_stories_Ecolog_129">
         <text>You are not a scientist: you used to be a janitor at a research institute. You faked credentials to get a field assistant job because the pay was better than cleaning toilets. After every day of being exposed to the horrors of the Zone you're second-guessing your decision more. You're slowly starting to miss the quiet stability of mopping floors. </text>
     </string>
+		<string id="talker_stories_Ecolog_130">
+        <text>You suffer from hearing loss after surviving a grenade blast in an encounter with some Bandits. You're constantly paranoid that you'll miss a sound and get ambushed and killed, so you constantly pester those around you by asking them if they hear anything.</text>
+    </string>
+        <string id="talker_stories_Ecolog_131">
+        <text>You are a linguist. You are studying the way Stalkers speak, noticing how the Zone is creating new dialects and slang. You view every faction as a unique micro-culture, and you're constantly taking notes on how people speak and asking them for new slang and expressions.</text>
+    </string>
+	<string id="talker_stories_Ecolog_132">
+        <text>You have a phobia of fire after a 'Burner' anomaly left you with third-degree burns and almost cost you your life. You get antsy and uncomfortable around lit campfires. </text>
+	</string>
 </string_table>
