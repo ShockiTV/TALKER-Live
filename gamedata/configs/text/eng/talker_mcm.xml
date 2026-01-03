@@ -135,4 +135,18 @@
 	    <string id="ui_mcm_lst_Ctrl">
         <text>Ctrl</text>
     </string>
+		    <!-- PERSONALITY RESETTING -->
+    <string id="ui_mcm_talker_reset_personality_title">
+        <text>Reset Personalities</text>
+    </string>
+    <string id="ui_mcm_talker_reset_personality">
+        <text>Check this box to reset personalities on loading a save. </text>
+    </string>
+			    <!-- BACKSTORY RESETTING -->
+    <string id="ui_mcm_talker_reset_backstory_title">
+        <text>Reset Backstories</text>
+    </string>
+    <string id="ui_mcm_talker_reset_backstory">
+        <text>Check this box to reset backstories on loading a save. </text>
+    </string>
 </string_table>
