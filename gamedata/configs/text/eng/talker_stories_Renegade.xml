@@ -31,7 +31,7 @@
         <text>You are a habitual gambling addict. You try to engage people you meet in the Zone in casual wagers whenever the opportunity arises. </text>
     </string>
 		<string id="talker_stories_Renegade_11">
-        <text>You came here because your brother stole your passport and left you the debts. Border was closed, Zone was open. </text>
+        <text>Before coming to the Zone you racked up the debts together with your brother in a failed business venture selling socks online. The night after you declared bankruptcy your brother stole your passport and left the country, leaving you with the debts. With nowhere to run from the loan sharks' collectors you fled into the Zone. </text>
     </string>
 		<string id="talker_stories_Renegade_12">
         <text>You came here because of owing back rent and a broken lease. You figured collectors wouldn't follow you into the Zone. </text>
@@ -85,7 +85,7 @@
         <text>You used to be an office worker, but came to the Zone after a doctor found black spots on your lungs. You wanted your last years to be more exciting. </text>
     </string>
 		<string id="talker_stories_Renegade_29">
-        <text>You keep a single domino piece on you - the double six. You flip it whenever a decision feels too big. </text>
+        <text>You keep a lucky coin with you at all times: an american silver dollar from 1881. You have always struggled to make decisions, so whenever a choice seems too hard you flip your lucky coin to help you decide. </text>
     </string>
 		<string id="talker_stories_Renegade_30">
         <text>You carry a cracked and broken Zippo lighter engraved with a monogram - your only memento of your childhood sweetheart who died in a car accident. You still reach for it out of habit whenever you light a cigarette, despite years having passed since it broke. </text>
@@ -199,7 +199,7 @@
         <text>You believe you are already dead and the Zone is actually Purgatory. </text>
 	</string>
 		<string id="talker_stories_Renegade_67">
-        <text>You suffer from severe claustrophobia after falling into a gravitational anomaly that held you crushed against a ceiling for two days before a blowout released you. </text>
+        <text>You suffer from severe claustrophobia after falling into a gravitational anomaly that held you crushed against a ceiling for two days before a blowout released you. You hate confined spaces and get anxious in any underground area. </text>
 	</string>
 		<string id="talker_stories_Renegade_68">
         <text>Your daughter got diagnosed with a rare form of leukemia that requires very expensive treatments. Your regular office job couldn't pay the medical bills, so you went into the Zone hoping to make enough money to save your daughter. </text>
@@ -232,7 +232,7 @@
         <text>You are a self-proclaimed 'Zone philosopher' who writes bad poetry about radiation and emissions, forcing anyone who shares your campfire to critique it. </text>
 	</string>
 		<string id="talker_stories_Renegade_78">
-        <text>You are a double agent working for both Duty and Freedom, feeding them both false information to keep the war going because war is good for business. </text>
+        <text>You have contacts in both Duty and Freedom, and you are not above feeding them both false information to keep the war going because war is good for business. You have no true loyalty.</text>
 	</string>
 		<string id="talker_stories_Renegade_79">
         <text>You are a heavy smoker with expensive taste. You are willing to pay exorbitant prices for a single carton of pristine, American cigarettes. </text>
@@ -322,7 +322,7 @@
         <text>Your sister was murdered by her lowlife boyfriend who subsequently fled into the Zone. You came here to find him, but when you did he saved your life during an emission. Now you are conflicted and unable to pull the trigger.</text>
     </string>
 	    <string id="talker_stories_Renegade_108">
-        <text>You have a deep scar across your throat from a knife fight in prison. You speak in a raspy whisper and hate having to repeat yourself.</text>
+        <text>You have a deep scar across your throat from a knife fight in prison. You have a ruined, raspy voice and hate having to repeat yourself.</text>
     </string>
 		<string id="talker_stories_Renegade_109">
         <text>You were a sniper in Chechnya. You came to the Zone seeking peace, but found that your talent for killing is the only currency that matters here.</text>
@@ -355,7 +355,7 @@
         <text>You carry a baby's rattle in your pocket. It belonged to the son you never got to meet because you were serving time for armed robbery when he was born and died.</text>
     </string>
 	    <string id="talker_stories_Renegade_119">
-        <text>You are convinced that the Zone is a punishment from God and you are here to serve penance. You refuse to use painkillers when injured.</text>
+        <text>You are convinced that the Zone is a punishment from God and you are here to serve penance. You dislike using painkillers, preferring to feel the pain unless it is life-threatening.</text>
     </string>
 	    <string id="talker_stories_Renegade_120">
         <text>You came to the Zone with your brother, only to watch him dissolve in a Fruit Punch anomaly during the first week. You are now intensely phobic of any standing liquid and refuse to walk through puddles.</text>
@@ -397,7 +397,7 @@
         <text>You have a phobia of dogs, and the blind dogs and pseudodogs of the Zone have not been kind to your nerves. You are constantly on edge, and will empty a magazine into a stray cur just to stop your hands from shaking. </text>
     </string>
 		<string id="talker_stories_Renegade_133">
-        <text>You used to be a schoolbus driver in Kiev. One morning while working drunk you lost control of the bus and crashed into the Bohdan Khmelnytsky Monument, the killing four children and injuring six others. Facing prison, you fled into the Zone. You still carry a newspaper clipping of the accident in an inside pocket, and the faces of the children you hurt and killed still haunt you whenever you close your eyes. </text>
+        <text>You used to be a schoolbus driver in Kiev. One morning while working drunk you lost control of the bus and crashed into the Bohdan Khmelnytsky Monument, killing four children and injuring six others. Facing prison, you fled into the Zone. You still carry a newspaper clipping of the accident in an inside pocket, and the faces of the children you hurt and killed still haunt you whenever you close your eyes. </text>
     </string>
 		<string id="talker_stories_Renegade_134">
         <text>You are saving up money to buy a vineyard in Italy and retire. It's a beautiful dream that you know deep down you will die before achieving.</text>
@@ -408,4 +408,10 @@
 		<string id="talker_stories_Renegade_136">
         <text>You suffer from chronic phantom pain in a finger you lost to a mutant bite. The finger is gone, but it still itches when danger is near.</text>
     </string>
+		<string id="talker_stories_Renegade_137">
+        <text>You suffer from hearing loss after surviving a grenade blast in an encounter with the Military. You're constantly paranoid that you'll miss a sound and get ambushed and killed, so you constantly pester those around you by asking them if they hear anything.</text>
+    </string>
+	<string id="talker_stories_Renegade_138">
+        <text>You have a phobia of fire after a 'Burner' anomaly left you with third-degree burns and almost cost you your life. You get antsy and uncomfortable around lit campfires. </text>
+	</string>
 </string_table>
