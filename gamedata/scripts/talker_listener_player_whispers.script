@@ -27,7 +27,7 @@ function talker_on_player_whispers(dialogue)
     game.display_dialogue(player.game_id, dialogue)
     
     -- Create whisper event with companions-only witnesses and is_whisper flag
-    local unformatted_description = "%s, a %s rank member of the %s faction said: %s"
+    local unformatted_description = "%s, a %s rank member of the %s faction with %s reputation whispered to their companions: %s"
     local companions_characters = {}
     for _, companion_obj in ipairs(companions) do
         table.insert(companions_characters, game.create_character(companion_obj))
@@ -36,7 +36,7 @@ function talker_on_player_whispers(dialogue)
     local witnesses = companions_characters
     trigger.talker_game_event(
         unformatted_description, 
-        {player.name, player.experience, player.faction, dialogue}, 
+        {player.name, player.experience, player.faction, player.reputation, dialogue}, 
         witnesses,
         true,
         {is_whisper = true}
