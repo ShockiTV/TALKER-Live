@@ -28,7 +28,7 @@
         <text>You are a habitual gambling addict. You try to engage people you meet in the Zone in casual wagers whenever the opportunity arises. </text>
     </string>
 		<string id="talker_stories_Duty_10">
-        <text>You came to the Zone because your brother stole your passport and left you the debts. Border was closed, Zone was open. Lost and on the run, Duty gave you a new purpose. </text>
+        <text>Before coming to the Zone you racked up the debts together with your brother in a failed business venture selling socks online. The night after you declared bankruptcy your brother stole your passport and left the country, leaving you with the debts. With nowhere to run from the loan sharks' collectors you fled into the Zone. Lost and on the run, Duty gave you a new purpose. </text>
     </string>
 		<string id="talker_stories_Duty_11">
         <text>You were initally sent to the Zone as part of the Ukrainian Army deployment, but you defected to Duty after seeing the horrors first hand. The army is all too passive - the Zone must be contained and destroyed for the good of mankind. </text>
@@ -82,7 +82,7 @@
         <text>You used to be an office worker, but came to the Zone after a doctor found black spots on your lungs. You wanted your last years to be more exciting. Joining Duty felt natural - a way to give your last time on Earth more meaning and purpose. </text>
     </string>
 		<string id="talker_stories_Duty_28">
-        <text>You keep a single domino piece on you - the double six. You flip it whenever a decision feels too big. </text>
+        <text>You keep a lucky coin with you at all times: an american silver dollar from 1881. You have always struggled to make decisions, so whenever a choice seems too hard you flip your lucky coin to help you decide. </text>
     </string>
 		<string id="talker_stories_Duty_29">
         <text>You carry a cracked and broken Zippo lighter engraved with a monogram - your only memento of your childhood sweetheart who died in a car accident. You still reach for it out of habit whenever you light a cigarette, despite years having passed since it broke. </text>
@@ -211,7 +211,7 @@
         <text>You believe you are already dead and the Zone is actually Purgatory. </text>
 	</string>
 		<string id="talker_stories_Duty_71">
-        <text>You suffer from severe claustrophobia after falling into a gravitational anomaly that held you crushed against a ceiling for two days before a blowout released you. </text>
+        <text>You suffer from severe claustrophobia after falling into a gravitational anomaly that held you crushed against a ceiling for two days before a blowout released you. You hate confined spaces and get anxious in any underground area. </text>
 	</string>
 		<string id="talker_stories_Duty_72">
         <text>You once abandoned a rookie to a pack of blind dogs to save your own skin. You still feel the guilt coming back whenever you speak to rookies and newcomers. </text>
@@ -307,7 +307,7 @@
         <text>You used to be a veterinary assistant. You feel a twisted sense of pity for the blind dogs and fleshes, seeing the suffering animals beneath the mutations.</text>
     </string>
 	    <string id="talker_stories_Duty_103">
-        <text>You have a deep scar across your throat from a knife fight in prison. You speak in a raspy whisper and hate having to repeat yourself.</text>
+        <text>You have a deep scar across your throat from a knife fight in prison. You have a ruined, raspy voice and hate having to repeat yourself.</text>
     </string>
 		<string id="talker_stories_Duty_104">
         <text>You were a sniper in Chechnya. You came to the Zone seeking peace, but found that your talent for killing is the only currency that matters here.</text>
@@ -373,7 +373,7 @@
         <text>You have a recurring dream that you are trapped in an anomaly, screaming for help, while your friends walk past you. This has led to you having severe abandonment issues. </text>
     </string>
 		<string id="talker_stories_Duty_125">
-        <text>You are a pacifist by nature. You thought you could stick to your principles, but the Zone had other plans. You vomit after every firefight.</text>
+        <text>You are a pacifist by nature. You thought you could stick to your principles, but the Zone had other plans. You feel like you are ready to vomit after every firefight.</text>
     </string>
 		<string id="talker_stories_Duty_126">
         <text>You always dreamed of being a radio host. You use your shortwave to produce amateur radio in the Zone, despite having no evidence of anyone actually listening. You often talk to yourself as if you are broadcasting to an audience, narrating your own misery, and you pester everyone you meet for interviews.</text>
@@ -388,7 +388,7 @@
         <text>You are a functioning alcoholic who fills your canteen with vodka instead of water. You claim it helps with the radiation, but really it just numbs the fear.</text>
     </string>
 		<string id="talker_stories_Duty_130">
-        <text>You are convinced that the stray dogs in the Zone are reincarnated Stalkers. You refuse to shoot them unless they attack first, which has almost gotten you killed twice.</text>
+        <text>You are convinced that the stray dogs in the Zone are reincarnated Stalkers. You hate shooting dogs and try not to shoot them unless they attack first, which has almost gotten you killed twice.</text>
     </string>
 		<string id="talker_stories_Duty_131">
         <text>You have a phobia of the underground labs. The artificial lights and humming machinery remind you of the hospital where your daughter died, victim to a rare heart disease when she was only nine years old.</text>
@@ -408,4 +408,13 @@
 		<string id="talker_stories_Duty_136">
         <text>You have a phobia of dogs, and the blind dogs and pseudodogs of the Zone have not been kind to your nerves. You are constantly on edge, and will empty a magazine into a stray cur just to stop your hands from shaking. </text>
     </string>
+		<string id="talker_stories_Duty_137">
+        <text>You suffer from hearing loss after surviving a grenade blast in an encounter with Freedom. You're constantly paranoid that you'll miss a sound and get ambushed and killed, so you constantly pester those around you by asking them if they hear anything.</text>
+    </string>
+    	<string id="talker_stories_Duty_138">
+        <text>You have a bit of a drinking problem and lack discipline. You joined Duty because Rostok is the safest place in the Zone and has the 100 Rads bar, where you spend most of your free time. You hate being out in the deep Zone and prefer the mindless Rostok patrols, followed by a night of drinking Barkeep's finest.</text>
+    </string>
+		<string id="talker_stories_Duty_139">
+        <text>You have a phobia of fire after a 'Burner' anomaly left you with third-degree burns and almost cost you your life. You get antsy and uncomfortable around lit campfires. </text>
+	</string>
 </string_table>
