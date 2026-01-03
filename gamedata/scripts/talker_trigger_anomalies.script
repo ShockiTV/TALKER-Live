@@ -36,9 +36,9 @@ end
 ----------------------------------------------------------------------------------------------------
 
 function create_anomaly_interaction_event(anomaly_name)
-    local unformatted_description = "%s, a %s rank member of the %s faction got very close to a %s"
+    local unformatted_description = "%s, a %s rank member of the %s faction with %s reputation got very close to a %s"
     local player = game.get_player_character()
-    trigger.talker_game_event_near_player(unformatted_description, {player.name, player.experience, player.faction, anomaly_name})
+    trigger.talker_game_event_near_player(unformatted_description, {player.name, player.experience, player.faction, player.reputation, anomaly_name})
 end
 
 --------------------------------------------------------------------------------------------
@@ -53,7 +53,7 @@ function actor_on_feeling_anomaly(anomaly)
     end
 
     local anomaly_name = queries.load_xml(section)
-    log.debug("handle_actor_on_feeling_anomaly called with: ", anomaly_name)
+    log.debug("handle_actor_on_feeling_anomaly called with: %s", anomaly_name)
     -- Skip if the anomaly is not close enough
     if is_valid_event(anomaly) then
         create_anomaly_interaction_event(anomaly_name)
