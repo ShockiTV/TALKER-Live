@@ -147,21 +147,6 @@ function memory_store:get_new_events(character_id)
 	return uncompressed_memories
 end
 
--- Deprecated but keeping signature for safety. get_memory_context should be used instead
--- This function was used to get a list for compression.
-function memory_store:get_current_memories(character_id)
-	return memory_store:get_new_events(character_id)
-end
-
-local function merge_table(t1, t2)
-	for _, v in ipairs(t2) do
-		table.insert(t1, v)
-	end
-	table.sort(t1, function(a, b)
-		return a.game_time_ms < b.game_time_ms
-	end) -- Ensure the merged table is sorted
-end
-
 -- gets new and compressed memories ready for dialogue generation
 -- Returns the full context for prompts: { narrative = ..., new_events = ... }
 function memory_store:get_memory_context(character_id)
@@ -173,11 +158,6 @@ function memory_store:get_memory_context(character_id)
 		last_update_time_ms = mem_struct and mem_struct.last_update_time_ms or 0,
 		new_events = new_events,
 	}
-end
-
--- Deprecated but keeping signature for safety. get_memory_context should be used instead
-function memory_store:get_all_memories(character_id)
-	return memory_store:get_memory_context(character_id)
 end
 
 -- for mocks
