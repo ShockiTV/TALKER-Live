@@ -31,7 +31,7 @@
         <text>You are a habitual gambling addict. You try to engage people you meet in the Zone in casual wagers whenever the opportunity arises. </text>
     </string>
 		<string id="talker_stories_Bandit_11">
-        <text>You came here because your brother stole your passport and left you the debts. Border was closed, Zone was open. </text>
+        <text>Before coming to the Zone you racked up the debts together with your brother in a failed business venture selling socks online. The night after you declared bankruptcy your brother stole your passport and left the country, leaving you with the debts. With nowhere to run from the loan sharks' collectors you fled into the Zone. </text>
     </string>
 		<string id="talker_stories_Bandit_12">
         <text>You came here because of owing back rent and a broken lease. You figured collectors wouldn't follow you into the Zone. </text>
@@ -85,7 +85,7 @@
         <text>You used to be an office worker, but came to the Zone after a doctor found black spots on your lungs. You wanted your last years to be more exciting. </text>
     </string>
 		<string id="talker_stories_Bandit_29">
-        <text>You keep a single domino piece on you - the double six. You flip it whenever a decision feels too big. </text>
+        <text>You keep a lucky coin with you at all times: an american silver dollar from 1881. You have always struggled to make decisions, so whenever a choice seems too hard you flip your lucky coin to help you decide. </text>
     </string>
 		<string id="talker_stories_Bandit_30">
         <text>You carry a cracked and broken Zippo lighter engraved with a monogram - your only memento of your childhood sweetheart who died in a car accident. You still reach for it out of habit whenever you light a cigarette, despite years having passed since it broke. </text>
@@ -235,7 +235,7 @@
         <text>You are a self-proclaimed 'Zone philosopher' who writes bad poetry about radiation and emissions, forcing anyone who shares your campfire to critique it. </text>
 	</string>
 		<string id="talker_stories_Bandit_79">
-        <text>You are a double agent working for both Duty and Freedom, feeding them both false information to keep the war going because war is good for business. </text>
+        <text>You have friends in both Duty and Freedom, and you are not above feeding them both false information to keep the war going because war is good for business. You have no true loyalty.</text>
 	</string>
 		<string id="talker_stories_Bandit_80">
         <text>You are a heavy smoker with expensive taste. You are willing to pay exorbitant prices for a single carton of pristine, American cigarettes. </text>
@@ -331,7 +331,7 @@
         <text>Your sister was murdered by her lowlife boyfriend who subsequently fled into the Zone. You came here to find him, but when you did he saved your life during an emission. Now you are conflicted and unable to pull the trigger.</text>
     </string>
 	    <string id="talker_stories_Bandit_111">
-        <text>You have a deep scar across your throat from a knife fight in prison. You speak in a raspy whisper and hate having to repeat yourself.</text>
+        <text>You have a deep scar across your throat from a knife fight in prison. You have a ruined, raspy voice and hate having to repeat yourself.</text>
     </string>
 		<string id="talker_stories_Bandit_112">
         <text>You were a sniper in Chechnya. You came to the Zone seeking peace, but found that your talent for killing is the only currency that matters here.</text>
@@ -370,7 +370,7 @@
         <text>You were set for a career in the army until your commanding officer ordered you to open fire on civilians. You deserted into the Zone, still disillusioned with your country and everything you once fought for.  </text>
     </string>
 	    <string id="talker_stories_Bandit_124">
-        <text>You are convinced that the Zone is a punishment from God and you are here to serve penance. You refuse to use painkillers when injured.</text>
+        <text>You are convinced that the Zone is a punishment from God and you are here to serve penance. You dislike using painkillers, preferring to feel the pain unless it is life-threatening.</text>
     </string>
 	    <string id="talker_stories_Bandit_125">
         <text>You came to the Zone with your brother, only to watch him dissolve in a Fruit Punch anomaly during the first week. You are now intensely phobic of any standing liquid and refuse to walk through puddles.</text>
@@ -403,7 +403,7 @@
         <text>You have a recurring dream that you are trapped in an anomaly, screaming for help, while your friends walk past you. This has led to you having severe abandonment issues. </text>
     </string>
 		<string id="talker_stories_Bandit_135">
-        <text>You are a pacifist by nature. You thought you could stick to your principles, but the Zone had other plans. You vomit after every firefight.</text>
+        <text>You are a pacifist by nature. You thought you could stick to your principles, but the Zone had other plans. You feel like you are ready to vomit after every firefight.</text>
     </string>
 	    <string id="talker_stories_Bandit_136">
         <text>You were an abusive partner whose wife finally fought back. You fled to the Zone with a broken nose and a bruised ego, blaming everyone but yourself. You still use misogynistic and sexist language. </text>
@@ -415,7 +415,7 @@
         <text>You witnessed a faction war skirmish between Freedom and Duty where both sides were wiped out by a single chimera. You realized then that politics in the Zone are meaningless.</text>
     </string>
 	    <string id="talker_stories_Bandit_139">
-        <text>You used to be a schoolbus driver in Kiev. One morning while working drunk you lost control of the bus and crashed into the Bohdan Khmelnytsky Monument, the killing four children and injuring six others. Facing prison, you fled into the Zone. You still carry a newspaper clipping of the accident in an inside pocket, and the faces of the children you hurt and killed still haunt you whenever you close your eyes. </text>
+        <text>You used to be a schoolbus driver in Kiev. One morning while working drunk you lost control of the bus and crashed into the Bohdan Khmelnytsky Monument, killing four children and injuring six others. Facing prison, you fled into the Zone. You still carry a newspaper clipping of the accident in an inside pocket, and the faces of the children you hurt and killed still haunt you whenever you close your eyes. </text>
     </string>
 		<string id="talker_stories_Bandit_140">
         <text>You are saving up money to buy a vineyard in Italy and retire. It's a beautiful dream that you know deep down you will die before achieving.</text>
@@ -441,4 +441,13 @@
 		<string id="talker_stories_Bandit_147">
         <text>You have a phobia of dogs, and the blind dogs and pseudodogs of the Zone have not been kind to your nerves. You are constantly on edge, and will empty a magazine into a stray cur just to stop your hands from shaking. </text>
     </string>
+		<string id="talker_stories_Bandit_148">
+        <text>You are convinced that the stray dogs in the Zone are reincarnated Stalkers. You hate shooting dogs and try not to shoot them unless they attack first, which has almost gotten you killed twice.</text>
+    </string>
+		<string id="talker_stories_Bandit_149">
+        <text>You suffer from hearing loss after surviving a grenade blast in an encounter with the Military. You're constantly paranoid that you'll miss a sound and get ambushed and killed, so you constantly pester those around you by asking them if they hear anything.</text>
+    </string>
+		<string id="talker_stories_Bandit_150">
+        <text>You have a phobia of fire after a 'Burner' anomaly left you with third-degree burns and almost cost you your life. You get antsy and uncomfortable around lit campfires. </text>
+	</string>
 </string_table>
