@@ -153,6 +153,32 @@ function on_mcm_load()
                 },
                 name = "ui_mcm_talker_whisper_modifier"
             },
+             -- Reset personalities
+            {
+                id = "reset_personality_title",
+                type = "desc",
+                clr = {200, 200, 255, 200},
+                text = "ui_mcm_talker_reset_personality_title"
+            },
+            {
+                id = "reset_personality",
+                type = "check",
+                val = 1,
+                def = false,
+            },
+             -- Reset backstories
+            {
+                id = "reset_backstory_title",
+                type = "desc",
+                clr = {200, 200, 255, 200},
+                text = "ui_mcm_talker_reset_backstory_title"
+            },
+            {
+                id = "reset_backstory",
+                type = "check",
+                val = 1,
+                def = false,
+            },
         }
     }
     return options
@@ -165,10 +191,12 @@ local defaults = {
     ["language"] = language.any.long,
     ["ai_model_method"] = 3,
     ["custom_ai_model"] = "google/gemini-2.5-flash",
-    ["custom_ai_model_fast"] = "google/gemini-2.5-flash-lite-preview-06-17",
+    ["custom_ai_model_fast"] = "google/gemini-2.5-flash-lite",
     ["voice_provider"] = 2,
     ["reasoning_level"] = -1,
     ["whisper_modifier"] = 0,
+    ["reset_personality"] = false,
+    ["reset_backstory"] = false,
 }
 
 -- Function to retrieve the configuration value
