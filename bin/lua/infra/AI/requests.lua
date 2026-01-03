@@ -162,7 +162,67 @@ function AI_request.pick_speaker(recent_events, compress_memories)
 		return compress_memories(selected_speaker_id)
 	end
 
-	local messages = prompt_builder.create_pick_speaker_prompt(recent_events, available_speakers)
+	-- Helper to reliably extract speaker ID
+	local function extract_speaker_id(event)
+		if not event then
+			return nil
+		end
+		-- Try involved_objects first (if they are character objects)
+		if
+			event.involved_objects
+			and event.involved_objects[1]
+			and type(event.involved_objects[1]) == "table"
+			and event.involved_objects[1].game_id
+		then
+			return event.involved_objects[1].game_id
+		end
+		-- Fallback to witnesses (guaranteed to be character objects)
+		-- The speaker is virtually always the first witness to their own event
+		if event.witnesses and event.witnesses[1] and event.witnesses[1].game_id then
+			return event.witnesses[1].game_id
+		end
+		return nil
+	end
+
+	-- Determine context from last speaker
+	local context_speaker_id = extract_speaker_id(recent_events[#recent_events])
+
+	-- Fallback to second last event if needed
+	if not context_speaker_id and #recent_events > 1 then
+		context_speaker_id = extract_speaker_id(recent_events[#recent_events - 1])
+	end
+
+	local mid_term_memory = nil
+	local combined_events_list = {}
+
+	-- If we found a context speaker, try to fetch their narrative context
+	if context_speaker_id then
+		logger.debug("Fetching context for speaker ID: " .. tostring(context_speaker_id))
+		local new_events_context = memory_store:get_new_events(context_speaker_id)
+
+		if new_events_context and #new_events_context > 0 then
+			local start_idx = 1
+			-- Check for compressed event (Mid-Term Memory)
+			-- Assume new_events_context is already sorted by time (as per memory_store implementation)
+			if new_events_context[1].flags and new_events_context[1].flags.is_compressed then
+				mid_term_memory = new_events_context[1].content
+				start_idx = 2
+			end
+
+			-- Add the rest as raw events
+			for i = start_idx, #new_events_context do
+				table.insert(combined_events_list, new_events_context[i])
+			end
+		end
+	end
+
+	-- Fallback: If no context speaker or no events found, usage original recent_events
+	if #combined_events_list == 0 then
+		combined_events_list = recent_events
+	end
+
+	local messages =
+		prompt_builder.create_pick_speaker_prompt(combined_events_list, available_speakers, mid_term_memory)
 	-- call the model to pick the next speaker
 	return model().pick_speaker(messages, function(response)
 		local picked_speaker_id = nil
@@ -187,6 +247,8 @@ function AI_request.pick_speaker(recent_events, compress_memories)
 			return
 		end
 		-- check if AI picked a valid speaker
+		-- Note: we check against 'recent_events' (the raw inputs) for validity to ensure
+		-- we don't pick someone far away just because they were in memory
 		if not is_valid_speaker(recent_events, picked_speaker_id) then
 			return
 		end
