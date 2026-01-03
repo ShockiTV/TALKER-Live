@@ -1,171 +1,248 @@
 <?xml version="1.0" encoding="windows-1251"?>
 <string_table>
     <string id="talker_zone_mine_acidic_weak">
-        <text>a weak gas anomaly</text>
+        <text>a Gas Anomaly (chemical cloud causing corrosive and toxic damage as well as choking).</text>
     </string>
     <string id="talker_zone_mine_acidic_average">
-        <text>a gas anomaly</text>
+        <text>a Gas Anomaly (chemical cloud causing corrosive and toxic damage as well as choking).</text>
     </string>
     <string id="talker_zone_mine_acidic_strong">
-        <text>a strong gas anomaly</text>
+        <text>a Gas Anomaly (chemical cloud causing corrosive and toxic damage as well as choking).</text>
     </string>
     <string id="talker_zone_mine_electric_weak">
-        <text>a weak electrical anomaly</text>
+        <text>an Electro anomaly (electrical field discharging lightning).</text>
     </string>
     <string id="talker_zone_mine_electric_average">
-        <text>an electrical anomaly</text>
+        <text>an Electro anomaly (electrical field discharging lightning).</text>
     </string>
     <string id="talker_zone_mine_electric_strong">
-        <text>a strong electrical anomaly</text>
+        <text>an Electro anomaly (electrical field discharging lightning).</text>
     </string>
     <string id="talker_zone_mine_gravitational_weak">
-        <text>a weak gravitational anomaly</text>
+        <text>a gravitational anomaly (spatial distortion).</text>
     </string>
     <string id="talker_zone_mine_gravitational_average">
-        <text>a gravitational anomaly</text>
+        <text>a gravitational anomaly (spatial distortion).</text>
     </string>
     <string id="talker_zone_mine_gravitational_strong">
-        <text>a strong gravitational anomaly</text>
+        <text>a gravitational anomaly (spatial distortion).</text>
     </string>
     <string id="talker_zone_mine_thermal_weak">
-        <text>a weak thermal anomaly</text>
+        <text>a Burner anomaly (thermal pillar of flame causing fire damage).</text>
     </string>
     <string id="talker_zone_mine_thermal_average">
-        <text>a thermal anomaly</text>
+        <text>a Burner anomaly (thermal pillar of flame causing fire damage).</text>
     </string>
     <string id="talker_zone_mine_thermal_strong">
-        <text>a strong thermal anomaly</text>
+        <text>a Burner anomaly (thermal pillar of flame causing fire damage).</text>
     </string>
 	<string id="talker_zone_mine_steam_weak">
-        <text>a weak steam anomaly</text>
+        <text>a Steam anomaly (intense heat source causing thermal damage).</text>
     </string>
     <string id="talker_zone_mine_steam_average">
-        <text>an steam anomaly</text>
+        <text>a Steam anomaly (intense heat source causing thermal damage).</text>
     </string>
     <string id="talker_zone_mine_steam_strong">
-        <text>a strong steam anomaly</text>
+        <text>a Steam anomaly (intense heat source causing thermal damage).</text>
     </string>
     <string id="talker_zone_mine_acidic_big">
-        <text>a large acidic anomaly</text>
+        <text>a Gas Anomaly (chemical cloud causing corrosive and toxic damage as well as choking).</text>
     </string>
     <string id="talker_zone_mine_chemical_weak">
-        <text>a weak chemical anomaly</text>
+        <text>a Gas Anomaly (chemical cloud causing corrosive and toxic damage as well as choking).</text>
     </string>
     <string id="talker_zone_mine_chemical_average">
-        <text>an chemical anomaly</text>
+        <text>a Gas Anomaly (chemical cloud causing corrosive and toxic damage as well as choking).</text>
     </string>
     <string id="talker_zone_mine_chemical_strong">
-        <text>a strong chemical anomaly</text>
+        <text>a Gas Anomaly (chemical cloud causing corrosive and toxic damage as well as choking).</text>
     </string>
     <string id="talker_zone_buzz_weak">
-        <text>a weak buzzing anomaly</text>
+        <text>a Fruit Punch anomaly (green corrosive puddle causing chemical damage).</text>
     </string>
     <string id="talker_zone_buzz_average">
-        <text>an buzzing anomaly</text>
+        <text>a Fruit Punch anomaly (green corrosive puddle causing chemical damage).</text>
     </string>
     <string id="talker_zone_buzz_strong">
-        <text>a strong buzzing anomaly</text>
+        <text>a Fruit Punch anomaly (green corrosive puddle causing chemical damage).</text>
     </string>
     <string id="talker_zone_mine_static_weak">
-        <text>a weak static anomaly</text>
+        <text>an Electro anomaly (electrical field discharging lightning).</text>
     </string>
     <string id="talker_zone_mine_static_average">
-        <text>an static anomaly</text>
+        <text>an Electro anomaly (electrical field discharging lightning).</text>
     </string>
     <string id="talker_zone_mine_static_strong">
-        <text>a strong static anomaly</text>
+        <text>an Electro anomaly (electrical field discharging lightning).</text>
     </string>
     <string id="talker_zone_witches_galantine_weak">
-        <text>a weak toxic anomaly</text>
+        <text>a weak toxic anomaly.</text>
     </string>
     <string id="talker_zone_witches_galantine_average">
-        <text>a toxic anomaly</text>
+        <text>a toxic anomaly.</text>
     </string>
     <string id="talker_zone_witches_galantine_strong">
-        <text>a very toxic anomaly</text>
+        <text>a very toxic anomaly.</text>
     </string>
     <string id="talker_zone_mine_gravitational_big">
-        <text>a large gravitational anomaly</text>
+        <text>a gravitational anomaly (spatial distortion).</text>
     </string>
     <string id="talker_zone_vortex">
-        <text>a vortex anomaly</text>
+        <text>a Vortex anomaly (gravitational whirlwind pulling objects inward).</text>
     </string>
     <string id="talker_zone_gravi_zone">
-        <text>a gravitational zone anomaly</text>
+        <text>a gravitational zone (area of spatial distortion).</text>
     </string>
     <string id="talker_zone_zharka_static_weak">
-        <text>a weak zharka static anomaly</text>  	<!-- The fuck is zharka? -->
+        <text>a Zharka thermal anomaly (intense heat source).</text>
     </string>
     <string id="talker_zone_zharka_static_average">
-        <text>an zharka static anomaly</text> 		<!-- The fuck is zharka? -->
+        <text>a Zharka thermal anomaly (intense heat source).</text>
     </string>
     <string id="talker_zone_zharka_static_strong">
-        <text>a strong zharka static anomaly</text>  <!-- The fuck is zharka? -->
+        <text>a Zharka thermal anomaly (intense heat source).</text>
     </string>
     <string id="talker_zone_field_radioactive">
-        <text>a radioactive field</text>
+        <text>a radioactive field.</text>
     </string>
     <string id="talker_zone_field_radioactive_weak">
-        <text>a weakly radioactive field</text>
+        <text>a weakly radioactive field.</text>
     </string>
     <string id="talker_zone_field_radioactive_average">
-        <text>an averagely radioactive field</text>
+        <text>an averagely radioactive field.</text>
     </string>
     <string id="talker_zone_field_radioactive_strong">
-        <text>a strongly radioactive field</text>
+        <text>a strongly radioactive field.</text>
     </string>
     <string id="talker_zone_radioactive">
-        <text>a radioactive zone</text>
+        <text>a radioactive zone.</text>
     </string>
     <string id="talker_zone_radioactive_weak">
-        <text>a weakly radioactive zone</text>
+        <text>a weakly radioactive zone.</text>
     </string>
     <string id="talker_zone_radioactive_average">
-        <text>an averagely radioactive zone</text>
+        <text>an averagely radioactive zone.</text>
     </string>
     <string id="talker_zone_radioactive_strong">
-        <text>a strongly radioactive zone</text>
+        <text>a strongly radioactive zone.</text>
     </string>
     <string id="talker_zone_field_acidic">
-        <text>an acidic field</text>
+        <text>an acidic field.</text>
     </string>
     <string id="talker_zone_field_acidic_weak">
-        <text>a weakly acidic field</text>
+        <text>a weakly acidic field.</text>
     </string>
     <string id="talker_zone_field_acidic_average">
-        <text>an averagely acidic field</text>
+        <text>an averagely acidic field.</text>
     </string>
     <string id="talker_zone_field_acidic_strong">
-        <text>a strongly acidic field</text>
+        <text>a strongly acidic field.</text>
     </string>
     <string id="talker_zone_field_psychic">
-        <text>a psychic field</text>
+        <text>a Psy-field (psychic interference causing mental damage. Prolonged unprotected exposure results in hallucinations and eventually zombification.).</text>
     </string>
     <string id="talker_zone_field_psychic_weak">
-        <text>a weakly psychic field</text>
+        <text>a Psy-field (psychic interference causing mental damage. Prolonged unprotected exposure results in hallucinations and eventually zombification.).</text>
     </string>
     <string id="talker_zone_field_psychic_average">
-        <text>an averagely psychic field</text>
+        <text>a Psy-field (psychic interference causing mental damage. Prolonged unprotected exposure results in hallucinations and eventually zombification.).</text>
     </string>
     <string id="talker_zone_field_psychic_strong">
-        <text>a strongly psychic field</text>
+        <text>a Psy-field (psychic interference causing mental damage. Prolonged unprotected exposure results in hallucinations and eventually zombification.).</text>
     </string>
     <string id="talker_zone_field_thermal">
-        <text>a thermal field</text>
+        <text>a thermal field.</text>
     </string>
     <string id="talker_zone_field_thermal_weak">
-        <text>a weakly thermal field</text>
+        <text>a weakly thermal field.</text>
     </string>
     <string id="talker_zone_field_thermal_average">
-        <text>an averagely thermal field</text>
+        <text>an averagely thermal field.</text>
     </string>
     <string id="talker_zone_field_thermal_strong">
-        <text>a strongly thermal field</text>
+        <text>a strongly thermal field.</text>
     </string>
     <string id="talker_zone_mine_radar">
-        <text>a psy-damaging 'radar' anomaly</text>
+        <text>a Psy-field caused by the Brain Scorcher (psychic interference causing mental damage. Prolonged exposure without a psi-helmet results in hallucinations and eventually zombification.).</text>
     </string>
     <string id="talker_zone_mine_vortex">
-        <text>a gravitational vortex anomaly</text>
+        <text>a Vortex anomaly (gravitational whirlwind pulling objects inward).</text>
     </string>
+        <!-- New anomaly types discovered in base game files -->
+    <string id="talker_zone_zhar">
+        <text>a Comet anomaly (mobile fireball causing severe burn damage).</text>
+    </string>
+    <string id="talker_zone_liana">
+        <text>a Pulse anomaly (pulsating energy field).</text>
+    </string>
+    <string id="talker_zone_teleport">
+        <text>a Teleport anomaly (spatial distortion causing displacement).</text>
+    </string>
+    <string id="talker_zone_student">
+        <text>a Burnt Fuzz anomaly (resembles moss or vines, hanging down like curtains from its growing spot. Relatively harmless, but can damage unarmored stalkers upon contact.).</text>
+    </string>
+    <string id="talker_zone_emi">
+        <text>a Tesla anomaly (mobile ball of electricity).</text>
+    </string>
+    <string id="talker_zone_mosquito_bald_weak">
+        <text>a Space anomaly (spatial distortion).</text>
+    </string>
+    <string id="talker_zone_mosquito_bald_average">
+        <text>a Space anomaly (spatial distortion).</text>
+    </string>
+    <string id="talker_zone_mosquito_bald_strong">
+        <text>a Space anomaly (spatial distortion).</text>
+    </string>
+        <!-- Anomalies from the 'Arrival' mod -->
+    	<string id="talker_zone_mine_cdf">
+		<text>a Cognitive Dissonance Field anomaly (a highly localized breach in the fabric of the Noosphere, causing psychic damage. Prolonged exposure can lead to hallucinations and eventually zombification).</text>
+	</string>
+	
+	<string id="talker_zone_mine_umbra">
+		<text>an Umbral Cluster anomaly (a swarm of shadow-like entities that move in unison, creating an eerie and unsettling atmosphere. Causes psychic damage).</text>
+	</string>
+	
+	<string id="talker_zone_mine_flash">
+		<text>a Flash anomaly (a tear in the space-time continuum that disrupts the fabric of the universe itself).</text>
+	</string>
+	
+	<string id="talker_zone_mine_ghost">
+		<text>a Ghost anomaly (a puff of smoky, ethereal substance that moves with seemingly sentient purpose. Touching it can lead to electrocution or disintegration).</text>
+	</string>
+	
+	<string id="talker_zone_mine_gold">
+		<text>a Liquid Gold anomaly (a cloud of golden orange colored toxic chemical substance).</text>
+	</string>
+	
+	<string id="talker_zone_mine_thorn">
+		<text>a Thorn anomaly (a small, unremarkable patch on the ground that when set off rapidly expands into jagged spiky thorns in all directions).</text>
+	</string>
+	
+	<string id="talker_zone_mine_seed">
+		<text>a Seed anomaly (a highly radioactive cloud of tiny particles that seem to multiply when agitated).</text>
+	</string>
+	
+	<string id="talker_zone_mine_shatterpoint">
+		<text>a Shatterpoint anomaly (a cluster of glass-like shards tied to a central point and suspended in the air).</text>
+	</string>
+	
+	<string id="talker_zone_mine_sloth">
+		<text>a Sloth anomaly (a highly dangerous chemical anomaly).</text>
+	</string>
+	
+	<string id="talker_zone_mine_mefistotel">
+		<text>a Mefistotel anomaly (a strange flower-like formation, with delicate tendrils that emit an eerie sound when any living organism approaches. It looks like an artifact, but pulls in and shreds any stalker who approaches too closely).</text>
+	</string>
+	
+	<string id="talker_zone_mine_net">
+		<text>a Net anomaly (a cloud of charged particles trapping anyone that touches it).</text>
+	</string>
+	
+	<string id="talker_zone_mine_point">
+		<text>a Point anomaly (crystalline orb charged with electric energy).</text>
+	</string>
+	
+	<string id="talker_zone_mine_sphere">
+		<text>a Rebounder anomaly (a gravitational anomaly altering the trajectory of moving objects that enter it).</text>
+	</string>
 </string_table> 
