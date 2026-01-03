@@ -31,7 +31,7 @@
         <text>You are a habitual gambling addict. You try to engage people you meet in the Zone in casual wagers whenever the opportunity arises. </text>
     </string>
 		<string id="talker_stories_11">
-        <text>You came here because your brother stole your passport and left you the debts. Border was closed, Zone was open. </text>
+        <text>Before coming to the Zone you racked up the debts together with your brother in a failed business venture selling socks online. The night after you declared bankruptcy your brother stole your passport and left the country, leaving you with the debts. With nowhere to run from the loan sharks' collectors you fled into the Zone. </text>
     </string>
 		<string id="talker_stories_12">
         <text>You came here because of owing back rent and a broken lease. You figured collectors wouldn't follow you into the Zone. </text>
@@ -85,7 +85,7 @@
         <text>You used to be an office worker, but came to the Zone after a doctor found black spots on your lungs. You wanted your last years to be more exciting. </text>
     </string>
 		<string id="talker_stories_29">
-        <text>You keep a single domino piece on you - the double six. You flip it whenever a decision feels too big. </text>
+        <text>You keep a lucky coin with you at all times: an american silver dollar from 1881. You have always struggled to make decisions, so whenever a choice seems too hard you flip your lucky coin to help you decide. </text>
     </string>
 		<string id="talker_stories_30">
         <text>You carry a cracked and broken Zippo lighter engraved with a monogram - your only memento of your childhood sweetheart who died in a car accident. You still reach for it out of habit whenever you light a cigarette, despite years having passed since it broke. </text>
@@ -217,7 +217,7 @@
         <text>You believe you are already dead and the Zone is actually Purgatory. </text>
 	</string>
 		<string id="talker_stories_73">
-        <text>You suffer from severe claustrophobia after falling into a gravitational anomaly that held you crushed against a ceiling for two days before a blowout released you. </text>
+        <text>You suffer from severe claustrophobia after falling into a gravitational anomaly that held you crushed against a ceiling for two days before a blowout released you. You hate confined spaces and get anxious in any underground area. </text>
 	</string>
 		<string id="talker_stories_74">
         <text>Your daughter got diagnosed with a rare form of leukemia that requires very expensive treatments. Your regular office job couldn't pay the medical bills, so you went into the Zone hoping to make enough money to save your daughter. </text>
@@ -463,7 +463,7 @@
         <text>You have a recurring dream that you are trapped in an anomaly, screaming for help, while your friends walk past you. This has led to you having severe abandonment issues. </text>
     </string>
 		<string id="talker_stories_155">
-        <text>You are a pacifist by nature. You thought you could stick to your principles, but the Zone had other plans. You vomit after every firefight.</text>
+        <text>You are a pacifist by nature. You thought you could stick to your principles, but the Zone had other plans. You feel like you are ready to vomit after every firefight.</text>
     </string>
 	    <string id="talker_stories_156">
         <text>You were an abusive partner whose wife finally fought back. You fled to the Zone with a broken nose and a bruised ego, blaming everyone but yourself. You still use misogynistic and sexist language. </text>
@@ -478,7 +478,7 @@
         <text>You were a safety inspector in your previous life. The utter lack of safety in the Zone stresses you out, and you constantly point out hazards to people who don't care.</text>
     </string>
 		<string id="talker_stories_160">
-        <text>You used to be a schoolbus driver in Kiev. One morning while working drunk you lost control of the bus and crashed into the Bohdan Khmelnytsky Monument, the killing four children and injuring six others. Facing prison, you fled into the Zone. You still carry a newspaper clipping of the accident in an inside pocket, and the faces of the children you hurt and killed still haunt you whenever you close your eyes. </text>
+        <text>You used to be a schoolbus driver in Kiev. One morning while working drunk you lost control of the bus and crashed into the Bohdan Khmelnytsky Monument, killing four children and injuring six others. Facing prison, you fled into the Zone. You still carry a newspaper clipping of the accident in an inside pocket, and the faces of the children you hurt and killed still haunt you whenever you close your eyes. </text>
     </string>
 		<string id="talker_stories_161">
         <text>You are saving up money to buy a vineyard in Italy and retire. It's a beautiful dream that you know deep down you will die before achieving.</text>
@@ -490,7 +490,7 @@
         <text>You are a functioning alcoholic who fills your canteen with vodka instead of water. You claim it helps with the radiation, but really it just numbs the fear.</text>
     </string>
 		<string id="talker_stories_164">
-        <text>You are convinced that the stray dogs in the Zone are reincarnated Stalkers. You refuse to shoot them unless they attack first, which has almost gotten you killed twice.</text>
+        <text>You are convinced that the stray dogs in the Zone are reincarnated Stalkers. You hate shooting dogs and try not to shoot them unless they attack first, which has almost gotten you killed twice.</text>
     </string>
 		<string id="talker_stories_165">
         <text>You have a phobia of the underground labs. The artificial lights and humming machinery remind you of the hospital where your daughter died, victim to a rare heart disease when she was only nine years old.</text>
@@ -513,4 +513,13 @@
 		<string id="talker_stories_172">
         <text>You have a phobia of dogs, and the blind dogs and pseudodogs of the Zone have not been kind to your nerves. You are constantly on edge, and will empty a magazine into a stray cur just to stop your hands from shaking. </text>
     </string>
+        <string id="talker_stories_173">
+        <text>You suffer from hearing loss after surviving a grenade blast in an encounter with the Military. You're constantly paranoid that you'll miss a sound and get ambushed and killed, so you constantly pester those around you by asking them if they hear anything.</text>
+    </string>
+	    <string id="talker_stories_174">
+        <text>You have a phobia of fire after a 'Burner' anomaly left you with third-degree burns and almost cost you your life. You get antsy and uncomfortable around lit campfires. </text>
+	</string>
+		<string id="talker_stories_175">
+        <text>You are a former member of Freedom, drawn to the faction by their ethos of freedom and equitable access to the Zone. An adherent to the Revolutionary Anarchist tradition purported by Nestor Makhno, you were expelled for trying to organize other members of Freedom into 'STALKER Councils' in an attempt to democratize leadership in Freedom. You frequently advocate for true stalker Anarchism of democratic stalker councils, and like to lambast the Freedom faction as 'Gigwork Libertarianism masquerading as anarchism'. </text>
+	</string>
 </string_table>
