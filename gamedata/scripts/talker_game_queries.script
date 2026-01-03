@@ -218,6 +218,14 @@ end
 
 -- FACTIONS
 
+function get_community_goodwill(community)
+    local actor = db.actor
+    if actor and actor.community_goodwill then
+        return actor:community_goodwill(community) or 0
+    end
+    return 0
+end
+
 function get_faction(npc)
     local faction = try(character_community, npc) or "no faction"
     return faction
@@ -231,6 +239,13 @@ function get_real_player_faction()
     return get_actor_true_community()
 end
 
+function get_community_relation(faction1, faction2)
+    if relation_registry then
+        return relation_registry.community_relation(faction1, faction2)
+    end
+    return 0
+end
+
 -- WORLD
 function get_location_technical_name()
     return level.name() or ''
@@ -239,6 +254,93 @@ end
 function get_location_name()
     local technical_name = get_location_technical_name()
     return game.translate_string(technical_name)
+end
+
+function get_nearby_smart_terrain_name(obj)
+    local obj = obj or db.actor
+    if not obj then return nil end
+    local pos = obj:position()
+    local nearest_smart = nil
+    
+    -- 1. Try to get smart by assignment (for NPCs)
+    if obj:id() ~= 0 then
+        local smart = xr_gulag.get_npc_smart(obj)
+        if smart then
+            nearest_smart = smart
+        end
+    end
+
+    -- 2. If no smart assigned or it's the player, seek nearest
+    if not nearest_smart then
+        local min_dist = 70 -- 70 meters range
+        if SIMBOARD and SIMBOARD.smarts_by_names then
+            local current_level = level.name()
+            for name, smart in pairs(SIMBOARD.smarts_by_names) do
+                -- Defensive check for level name
+                local smart_lvl = smart.m_level_name
+                if not smart_lvl and smart.m_game_vertex_id then
+                    smart_lvl = alife():level_name(game_graph():vertex(smart.m_game_vertex_id):level_id())
+                end
+
+                if smart_lvl == current_level then
+                    -- Defensive check for position (server property vs client method)
+                    local smart_pos = (type(smart.position) == "function" and smart:position()) or smart.position
+                    if smart_pos then
+                        local dist = pos:distance_to(smart_pos)
+                        if dist < min_dist then
+                            min_dist = dist
+                            nearest_smart = smart
+                        end
+                    end
+                end
+            end
+        else
+            log.error("get_nearby_smart_terrain_name: SIMBOARD or smarts_by_names missing")
+        end
+    end
+
+    if nearest_smart then
+        local smart_name = nearest_smart:name()
+        local translated = smart_terrain.get_smart_terrain_name(nearest_smart)
+        
+        -- If translation fails or returns the internal name, try the standard key pattern
+        if not translated or translated == "" or translated == smart_name then
+            local fallback_key = "st_" .. smart_name .. "_name"
+            local fallback_translated = game.translate_string(fallback_key)
+            if fallback_translated ~= fallback_key then
+                translated = fallback_translated
+            end
+        end
+
+        if translated and translated ~= "" and translated ~= smart_name then
+            return translated
+        end
+    end
+    
+    return nil
+end
+
+function get_nearby_campfire_status(obj)
+    local obj = obj or db.actor
+    if not obj then return nil end
+    local pos = obj:position()
+    local range = 5 -- 5 meters is a reasonable "next to" distance
+    
+    if bind_campfire and bind_campfire.campfires_all then
+        for id, binder in pairs(bind_campfire.campfires_all) do
+            if binder and binder.object then
+                local dist = pos:distance_to(binder.object:position())
+                if dist < range then
+                    if binder.campfire and binder.campfire:is_on() then
+                        return "lit"
+                    else
+                        return "unlit"
+                    end
+                end
+            end
+        end
+    end
+    return nil
 end
 
 function iterate_nearest(location, distance, fun)
@@ -715,10 +817,22 @@ end
 
 function describe_world(speaker, listener)
     local weather_description = describe_weather()
-    local location_name = get_location_name()
+    local location_name = get_nearby_smart_terrain_name(speaker) or get_location_name()
+    location_name = string.gsub(location_name, "%.", ",")
     local time_description = describe_current_time()
     local shelter_description = describe_shelter(speaker, listener)
-    local formattedString = string.format("In %s at %s %s during %s weather.", location_name, time_description, shelter_description, weather_description)
+    
+    -- Campfire context
+    local campfire_status = get_nearby_campfire_status(speaker)
+    local campfire_context = ""
+    if campfire_status == "lit" then
+        campfire_context = ", next to a lit campfire"
+    elseif campfire_status == "unlit" then
+        campfire_context = ", next to an unlit campfire"
+    end
+
+    local formattedString = string.format("In %s at %s %sduring %s weather%s.", location_name, time_description, shelter_description, weather_description, campfire_context)
+    log.info("Dialogue Context: " .. formattedString)
     return formattedString
 end
 
