@@ -39,6 +39,10 @@ function is_valid_callout(npc_obj, target_obj)
         return false
     end
 
+if queries.is_companion(target_obj) and not queries.are_enemies(db.actor, npc_obj) then
+        return false
+    end
+
     -- Global cooldown check
     if (queries.get_game_time_ms() - last_callout_time_ms) < callout_cooldown_ms then
         return false
@@ -50,10 +54,10 @@ function is_valid_callout(npc_obj, target_obj)
     local since_time = queries.get_game_time_ms() - repeated_callout_cooldown_ms
     local recent_events = event_store:get_events_since(since_time)    
     for _, event in ipairs(recent_events) do
-        if event.description == "%s, a %s rank member of the %s faction spotted %s, a %s rank member of the %s faction" then
+        if event.description == "%s, a %s rank member of the %s faction with %s reputation spotted %s, a %s rank member of the %s faction with %s reputation!" then
             -- Check if the target (4th involved object, after spotter name, rank, faction) has the same name
             -- involved_objects: {spotter_name, spotter_rank, spotter_faction, target_name, target_rank, target_faction}
-            local event_target_name = event.involved_objects and event.involved_objects[4]
+            local event_target_name = event.involved_objects and event.involved_objects[5]
             if event_target_name then
                 if event_target_name == target_name then
                     local time_ago = queries.get_game_time_ms() - event.game_time_ms
@@ -88,7 +92,7 @@ function on_enemy_eval(npc_obj, target_obj)
     if not is_valid_callout(npc_obj, target_obj) then return end
 
     --- create callout event
-    local unformatted_description = "%s, a %s rank member of the %s faction spotted %s, a %s rank member of the %s faction"
+    local unformatted_description = "%s, a %s rank member of the %s faction with %s reputation spotted %s, a %s rank member of the %s faction with %s reputation!"
     local spotter = game.create_character(npc_obj)
     -- If the character object couldn't be created (e.g., NPC was despawned), abort.
     if not spotter then return end
@@ -99,7 +103,7 @@ function on_enemy_eval(npc_obj, target_obj)
 
     -- register event
     log.info(spotter.name .. " spotted " .. enemy.name)
-    trigger.talker_game_event(unformatted_description, {spotter.name, spotter.experience, spotter.faction, enemy.name, enemy.experience, enemy.faction}, witnesses, true)
+    trigger.talker_game_event(unformatted_description, {spotter.name, spotter.experience, spotter.faction, spotter.reputation, enemy.name, enemy.experience, enemy.faction, enemy.reputation}, witnesses, true)
 
     -- Update global timer
     last_callout_time_ms = queries.get_game_time_ms()
