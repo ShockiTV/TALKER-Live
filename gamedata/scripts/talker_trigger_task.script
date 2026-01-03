@@ -140,11 +140,11 @@ function on_task_completed_event(tsk)
             companion_names = table.concat(names_list, ", ") .. " and " .. last_name
         end
         -- Format and send the event
-        local description = string.format("%s, a %s rank member of the %s faction and their travelling companions %s completed the task '%s' for %s, a %s rank member of the %s faction!", player.name, player.experience, player.faction, companion_names, task_title, task_giver_character.name, task_giver_character.experience, task_giver_character.faction)
+        local description = string.format("%s, a %s rank member of the %s faction with %s reputation and their travelling companions %s completed the task '%s' for %s, a %s rank member of the %s faction with %s reputation!", player.name, player.experience, player.faction, player.reputation, companion_names, task_title, task_giver_character.name, task_giver_character.experience, task_giver_character.faction, task_giver_character.reputation)
         trigger.talker_game_event(description, {}, witnesses, true, { is_task = true })
      
 else
-        local description = string.format("%s, a %s rank member of the %s faction completed the task '%s' for %s, a %s rank member of the %s faction!", player.name, player.experience, player.faction, task_title, task_giver_character.name, task_giver_character.experience, task_giver_character.faction)
+        local description = string.format("%s, a %s rank member of the %s faction with %s reputation completed the task '%s' for %s, a %s rank member of the %s faction with %s reputation!", player.name, player.experience, player.faction, player.reputation, task_title, task_giver_character.name, task_giver_character.experience, task_giver_character.faction, task_giver_character.reputation)
         trigger.talker_game_event(description, {}, witnesses, true, { is_task = true })
 end
     LAST_TASK_TIME = queries.get_game_time_ms()
