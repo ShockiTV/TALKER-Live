@@ -246,6 +246,33 @@ function get_community_relation(faction1, faction2)
     return 0
 end
 
+-- REPUTATION
+
+function get_reputation_tier(reputation_value)
+    if not reputation_value then
+        return "Neutral"
+    end
+    if reputation_value >= 2000 then
+        return "Excellent"
+    elseif reputation_value >= 1500 then
+        return "Brilliant"
+    elseif reputation_value >= 1000 then
+        return "Great"
+    elseif reputation_value >= 500 then
+        return "Good"
+    elseif reputation_value >= -499 then
+        return "Neutral"
+    elseif reputation_value >= -999 then
+        return "Bad"
+    elseif reputation_value >= -1499 then
+        return "Awful"
+    elseif reputation_value >= -1999 then
+        return "Dreary"
+    else
+        return "Terrible"
+    end
+end
+
 -- WORLD
 function get_location_technical_name()
     return level.name() or ''
@@ -883,3 +910,6 @@ end
 function is_loaded()
     return true
 end
+
+
+
