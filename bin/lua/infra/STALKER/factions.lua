@@ -1,86 +1,86 @@
-local logger = require('framework.logger')
+local logger = require("framework.logger")
 
 local factions = {
-    killer = {
-        name = "Mercenary",
-        description = "member of the Mercenary faction, which is a Private Military Company from the US operating in the Zone where they offer their services to whoever is willing to pay. They are tactical, mercenary, morally flexible, confident, casual and respect nobody except other mercenaries and the UNISG. "
-    },
-    dolg = {
-        name = "Duty",
-        description = "member of Duty, a faction that despises the Zone and wants to protect people from it. Their long-term goal is destroying the Zone for good, although in the short term they are focused on containing it. They were founded by former members of the Ukranian army and have a strong sense of camaraderie and brotherhood within the faction, while acting disciplined, authoritative, brusque and emotionally strained towards outsiders. "
-    },
-    freedom = {
-        name = "Freedom",
-        description = "member of Freedom, a faction that dislikes authority and wants the Zone to be open to all. They are rebellious, relaxed and expressive. "
-    },
-    bandit = {
-        name = "Bandit",
-        description = "member of the Bandit faction, a group of gopniks and a vatniks. They are vulgar and rude but like to crack jokes frequently, are opportunistic and lawless but often cowardly. "
-    },
-    monolith = {
-        name = "Monolith",
-        description = "member of the Monolith faction. They are a brainwashed cult worshipping the Monolith, and retain very little of their memories and personality from before their brainwashing. They are fanatical, zealous and emotionally void.  "
-    },
-    stalker = {
-        name = "stalker",
-        description = "member of the stalker faction, also known as the 'Loners'. The Loners are a loose faction of mostly independent individuals consisting of fortune-seekers, scavengers, artifact hunters and explorers who are in the zone illegally. They are plain-spoken, adaptive, optimistic, quietly authentic and emotionally scarred. "
-    },
-    csky = {
-        name = "Clear Sky",
-        description = "member of the Clear Sky faction. They are an independent paramilitary group with a scientific focus whose goal is to understand the Zone better. They consist primarily of volunteers and are idealistic, cautious and emotionally fragile. "
-    },
-    ecolog = {
-        name = "Ecolog",
-        description = "member of the Ecolog faction. They are scientists performing field research in The Zone and are curious, open-minded, cautious and dislike violence. " 
-    },
-    army = {
-        name = "Army",
-        description = "member of the Army faction, also know as the 'Military'. They are soldiers in the Ukranian army who are deployed to the Zone to keep the public out for their own safety, as well as to protect the government-funded scientists of the Ecolog faction. They are reluctant, undisciplined, bitter and emotionally burned-out. Use military terminology, vernacular and slang. "
-    },
-    renegade = {
-        name = "Renegade",
-        description = "member of the Renegade faction. They are violent criminals who have committed acts so despicable even the Bandit faction barely tolerates them. They are not just ruthless and violent but depraved, vile, crass, deplorable and erratic. Use explicit language. "
-    },
-    trader = {
-        name = "Trader",
-        description = "faction-independent trader and merchant. These people work in the Zone selling goods and services and tend to be persuasive and a little greedy, sometimes resorting to flattery to reel in customers. "
-    },
-    greh = {
-        name = "Sin",
-        description = "member of the Sin faction, a religious sect of partly zombified stalkers worshipping the Zone. They believe the Zone is of divine nature and see it as humanity's path to ultimate redemption. They are creepy, possessed and ritualistic. "
-    },
-    isg = {
-        name = "ISG",
-        description = "member the ISG faction, also called 'UNISG'. They are an elite Spec Ops Recon unit under the United Nations gathering intel in the Zone. They are a small and tight-knit group watching out for eachother, but are distrustful of other factions except Mercenaries. They are tactical and professional and treat outsiders with elitism and hostility. "
-    },
-    zombied = {
-        name = "Zombied",
-        description = "person zombified by psy emissions to a mindless state where only fragments of memories and personality remains. Your response should be incoherent, groaning and barely intelligible. Make it sad and tragic. "
-    },
-    monster = {
-        name = "Monster",
-        description = "non-human mutant. "
-    }
+	killer = {
+		name = "Mercenary",
+		description = "member of the Mercenary faction, which is a Private Military Company from the US operating in the Zone where they offer their services to whoever is willing to pay. They are tactical, mercenary, morally flexible, confident, casual and respect nobody except other mercenaries and the ISG faction. ",
+	},
+	dolg = {
+		name = "Duty",
+		description = "member of the Duty faction. They despise the Zone and want to protect people from it. Their long-term goal is destroying the Zone for good, although in the short term they are focused on containing it. They were founded by former members of the Ukranian army and have a strong sense of camaraderie and brotherhood within the faction, while acting disciplined, authoritative, brusque and emotionally strained towards outsiders. ",
+	},
+	freedom = {
+		name = "Freedom",
+		description = "member of the Freedom faction. They are a predominantly anarchist group who dislike authority and want the Zone to be open to all. They believe the Zone neither could or should be destroyed, and that further research and open access to its secrets would be of great benefit to humanity. Their members tend to be liberal, rebellious, relaxed and expressive. ",
+	},
+	bandit = {
+		name = "Bandit",
+		description = "member of the Bandit faction. They are a group of gopniks and vatniks who are vulgar and rude but like to crack jokes frequently, are opportunistic and lawless but often cowardly. ",
+	},
+	monolith = {
+		name = "Monolith",
+		description = "member of the Monolith faction. They are a brainwashed cult worshipping the Monolith, and retain very little of their memories and personality from before their brainwashing. They are fanatical, zealous and emotionally void.  ",
+	},
+	stalker = {
+		name = "stalker",
+		description = "member of the stalker faction, also known as the 'Loners'. The Loners are a loose faction of mostly independent individuals consisting of fortune-seekers, scavengers, artifact hunters and explorers who are in the zone illegally. They are plain-spoken, adaptive, optimistic, quietly authentic and emotionally scarred. ",
+	},
+	csky = {
+		name = "Clear Sky",
+		description = "member of the Clear Sky faction. They are an independent paramilitary group with a scientific focus whose goal is to understand the Zone better. They consist primarily of volunteers and are idealistic, cautious and emotionally fragile. ",
+	},
+	ecolog = {
+		name = "Ecolog",
+		description = "member of the Ecolog faction, also known as the 'Ecologists'. They are scientists performing field research in The Zone and are curious, open-minded, cautious and dislike violence. ",
+	},
+	army = {
+		name = "Army",
+		description = "member of the Army faction, also know as the 'Military'. They are soldiers in the Ukranian army who are deployed to the Zone to keep the public out for their own safety, as well as to protect the government-funded scientists of the Ecolog faction. They are reluctant, undisciplined, bitter and emotionally burned-out. Use military terminology, vernacular and slang. ",
+	},
+	renegade = {
+		name = "Renegade",
+		description = "member of the Renegade faction. They are violent criminals who have committed acts so despicable even the Bandit faction only barely tolerates them. They are not just ruthless and violent but depraved, vile, crass, deplorable and erratic. Use explicit language. ",
+	},
+	trader = {
+		name = "Trader",
+		description = "faction-independent trader and merchant. These people work in the Zone selling goods and services and tend to be persuasive and a little greedy, sometimes resorting to flattery to reel in customers. ",
+	},
+	greh = {
+		name = "Sin",
+		description = "member of the Sin faction. They are a religious sect of partly zombified stalkers worshipping the Zone, many of whom brainwashed by their leader Chernobog. They believe the Zone is of divine nature and see it as humanity's path to ultimate redemption. They are creepy, possessed and ritualistic. ",
+	},
+	isg = {
+		name = "ISG",
+		description = "member the ISG faction, also called 'UNISG'. They are an elite Spec Ops Recon unit under the United Nations gathering intel in the Zone. They are a small and tight-knit group watching out for each other, but are distrustful of other factions except Mercenaries. They are tactical and professional and treat outsiders with elitism and hostility. ",
+	},
+	zombied = {
+		name = "Zombied",
+		description = "person zombified by psy emissions to a mindless state where only fragments of memories and personality remains. Your response should be incoherent, groaning and barely intelligible. Make it sad and tragic. ",
+	},
+	monster = {
+		name = "Monster",
+		description = "non-human mutant. ",
+	},
 }
 function get_faction_name(technical_name)
-    -- Remove 'actor_' prefix if it exists
-    local clean_name = technical_name:gsub("^actor_", "")
-    local faction = factions[clean_name]
-    if faction then
-        return faction.name
-    else
-        return nil
-    end
+	-- Remove 'actor_' prefix if it exists
+	local clean_name = technical_name:gsub("^actor_", "")
+	local faction = factions[clean_name]
+	if faction then
+		return faction.name
+	else
+		return nil
+	end
 end
 
 function get_faction_description(natural_name)
-    for technical_name, faction in pairs(factions) do
-        if faction.name == natural_name then
-            return faction.description
-        end
-    end
-    logger.warn("No faction found with name: " .. tostring(natural_name))
-    return nil
+	for technical_name, faction in pairs(factions) do
+		if faction.name == natural_name then
+			return faction.description
+		end
+	end
+	logger.warn("No faction found with name: " .. tostring(natural_name))
+	return nil
 end
 
 return get_faction_name, get_faction_description
