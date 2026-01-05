@@ -218,17 +218,18 @@ function m.get_technical_faction_name(display_name)
 		["stalker"] = "stalker",
 		["Clear Sky"] = "csky",
 		["Ecolog"] = "ecolog",
-		["Ecologist"] = "ecolog",
-		["Army"] = "army",
+		["scientist"] = "ecolog",
+		["egghead"] = "ecolog",
 		["Military"] = "army",
+		["Army"] = "army",
 		["Renegade"] = "renegade",
 		["Trader"] = "trader",
 		["Sin"] = "greh",
 		["ISG"] = "isg",
 		["UNISG"] = "isg",
+		["Zombie"] = "zombied",
 		["Zombied"] = "zombied",
 		["Loner"] = "stalker",
-		["Loners"] = "stalker",
 	}
 	return faction_map[display_name] or display_name:lower()
 end
@@ -259,9 +260,23 @@ function m.get_faction_relations_string(speaker_faction, mentioned_factions_map)
 		mentioned_factions_map[speaker_faction] = true
 	end
 
+	-- Deduplicate: use canonical names from factions.lua
+	local unique_factions = {}
+	for f_display, _ in pairs(mentioned_factions_map) do
+		-- Convert to technical name, then back to canonical display name
+		local tech_name = m.get_technical_faction_name(f_display)
+		local canonical = get_faction_name(tech_name)
+		if canonical then
+			unique_factions[canonical] = true
+		else
+			-- Fallback: use the display name we have if no canonical name found
+			unique_factions[f_display] = true
+		end
+	end
+
 	-- Flatten and sort
 	local rel_factions_list = {}
-	for f, _ in pairs(mentioned_factions_map) do
+	for f, _ in pairs(unique_factions) do
 		table.insert(rel_factions_list, f)
 	end
 	table.sort(rel_factions_list)
@@ -293,20 +308,22 @@ function m.get_faction_relations_string(speaker_faction, mentioned_factions_map)
 			end
 		end
 
-		local rel_output_lines = {}
+		local sections = {}
 		local tiers_order = { "Hostile", "Neutral", "Allied" }
 		for _, tier in ipairs(tiers_order) do
 			if #relations[tier] > 0 then
+				local section_lines = {}
 				-- Header: HOSTILE:
-				table.insert(rel_output_lines, tier:upper() .. ": ")
+				table.insert(section_lines, tier:upper() .. ": ")
 				for _, pair in ipairs(relations[tier]) do
-					table.insert(rel_output_lines, " " .. pair)
+					table.insert(section_lines, " " .. pair)
 				end
+				table.insert(sections, table.concat(section_lines, " \n"))
 			end
 		end
 
-		if #rel_output_lines > 0 then
-			return table.concat(rel_output_lines, " \n")
+		if #sections > 0 then
+			return table.concat(sections, " \n\n ")
 		end
 	end
 	return nil
