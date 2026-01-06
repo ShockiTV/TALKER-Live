@@ -26,7 +26,7 @@ function actor_on_hit_callback(obj, amount, local_direction, who, bone_index)
     local attacker = game.create_character(who)
     local unformatted_description = "%s, a %s rank member of the %s faction with %s reputation is critically injured while fighting %s, a %s rank member of the %s faction with %s reputation!"
     logger.info("%s: %s", script_name, unformatted_description)
-    trigger.talker_game_event_near_player(unformatted_description, {player.name, player.experience, player.faction, player.reputation, attacker.name, attacker.experience, attacker.faction, attacker.reputation})
+    trigger.talker_game_event_near_player(unformatted_description, {player.name, player.experience, player.faction, player.reputation, attacker.name, attacker.experience, attacker.faction, attacker.reputation}, true, { is_injury = true })
     
     LAST_INJURY_TIME = queries.get_game_time_ms()
 end
