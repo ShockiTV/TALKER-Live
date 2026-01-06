@@ -174,9 +174,8 @@ function prompt_builder.create_update_narrative_prompt(speaker, current_narrativ
 		.. "  - REMOVE irrelevant names of people/mutants killed: e.g., use 'killed three bandits' instead of listing names. YOU SHOULD ONLY retain the names of people killed if they are listed under the 'IMPORTANT CHARACTERS' header. \n"
 		.. "  - Summarize trivial, recurring travel between the same locations into one event. \n"
 		.. "8. REVISION & DELETION: \n"
-		.. "  - You MAY revise the entire memory if 'CURRENT LONG-TERM MEMORY' is present. You MAY re-write, remove, or condense existing memory text as necessary in light of the new events.\n"
+		.. "  - You MAY revise the entire memory if 'CURRENT LONG-TERM MEMORY' is present. You MAY re-write, remove, or condense all or parts of the existing memory text as necessary in light of the new events.\n"
 		.. "  - If the memory is too long and events in the new events seem more relevant than older events, you MAY delete less relevant older events to make space for the new events.\n"
-		.. "  - When revising or deleting content to make space for new events, prioritize keeping the most recent events and the most important events.\n"
 		.. "  - COHESION (IMPORTANT): ALWAYS retain some older core memories involving "
 		.. player.name
 		.. " (the user) to ensure future dialogues can reference earlier context.\n"
@@ -184,7 +183,7 @@ function prompt_builder.create_update_narrative_prompt(speaker, current_narrativ
 		.. "  - Characters evolve and change over time. If a character mentioned in the 'NEW EVENTS TO MERGE' has a different RANK, REPUTATION or FACTION than they do in the existing memory text, ASSUME THEY ARE THE SAME CHARACTER and treat the new information as more recent and correct. \n"
 		.. "  - ALWAYS update the existing memory text to reflect the new information. Use chronological descriptors to denote how these attributes changed over time.\n"
 		.. "  - EXAMPLES: \n"
-		.. "    - If previous memories describes a character as a rookie, change it to 'then a rookie', '(a rookie then)', ' - a rookie at the time - 'etc. \n"
+		.. "    - If previous memories describes a character's rank as a rookie, change it to 'then a rookie', '(a rookie then)', ' - a rookie at the time - 'etc. \n"
 		.. "    - Do the same for faction and reputation. \n"
 		.. "10. SEAMLESS INTEGRATION & MERGING:\n"
 		.. "  - If the header 'CURRENT LONG-TERM MEMORY' is present, NEVER simply append the new data to the end of the CURRENT LONG-TERM MEMORY.\n"
@@ -198,7 +197,7 @@ function prompt_builder.create_update_narrative_prompt(speaker, current_narrativ
 
 	table.insert(messages, system_message(instructions))
 
-	local priorities = " == RETENTION PRIORITIES ==\n"
+	local priorities = " == MEMORY RETENTION PRIORITIES ==\n"
 		.. "(In order of importance, highest first): \n "
 		.. " 1. MAP CONTEXT: ALWAYS retain BRIEF and CONCISE information about the last recorded map transition event (e.g., string involving 'moved from'). Include both the name of the current map and the previous map so future dialogues can reference the most recent travel event. \n"
 		.. " 2. RELATIONSHIP CHANGES WITH USER (CRITICAL): Retain detailed information on relationship changes between "
@@ -210,7 +209,7 @@ function prompt_builder.create_update_narrative_prompt(speaker, current_narrativ
 		.. " and "
 		.. speaker.name
 		.. " shared an intimate moment while sheltering from an emission, causing their bond to deepen'). \n"
-		.. " 3. CHARACTER DEVELOPMENT: "
+		.. " 3. CHARACTER DEVELOPMENT (CRITICAL): "
 		.. speaker.name
 		.. "'s personality will change over time. ALWAYS preserve events that show changes in their personality and behavior. (e.g., '"
 		.. speaker.name
@@ -227,7 +226,7 @@ function prompt_builder.create_update_narrative_prompt(speaker, current_narrativ
 		.. speaker.name
 		.. " and other characters besides the user. Be concise and brief, but include the names of the characters involved, the nature of the relationship change and the exact cause-and-effect (e.g., 'John vouched for "
 		.. speaker.name
-		.. " when introducing him to his friends, earning "
+		.. " when introducing them to his friends, earning "
 		.. speaker.name
 		.. "'s respect').\n"
 		.. " 6. RECURRING CHARACTERS: Prioritize retaining memories of characters that have many shared interactions with "
@@ -236,8 +235,8 @@ function prompt_builder.create_update_narrative_prompt(speaker, current_narrativ
 		.. player.name
 		.. " (the user) already present in the 'CURRENT LONG-TERM MEMORY' context.\n"
 		.. " == IMPORTANT CHARACTERS == \n\n "
-		.. " - Important characters: 'Sidorovich', 'Wolf', 'Fanatic', 'Hip', 'Doctor', 'Cold', 'Major Hernandez', 'Butcher', 'Major Kuznetsov', 'Sultan', 'Barkeep', 'Arnie', 'General Voronin', 'Colonel Petrenko', 'Professor Sakharov', 'Lukash', 'Dushman', 'Forester', 'Chernobog', 'Trapper', 'Loki', 'Professor Hermann', 'Nimble', 'Beard', 'Charon', 'Eidolon', 'Yar', 'Rogue', 'Stitch', 'Strelok'. \n"
-		.. " - If space allows it after following 'RETENTION PRIORITIES' rules 1-6, prioritize retaining memories of events involving these characters.\n"
+		.. " - The following characters are important to the story: 'Sidorovich', 'Wolf', 'Fanatic', 'Hip', 'Doctor', 'Cold', 'Major Hernandez', 'Butcher', 'Major Kuznetsov', 'Sultan', 'Barkeep', 'Arnie', 'General Voronin', 'Colonel Petrenko', 'Professor Sakharov', 'Lukash', 'Dushman', 'Forester', 'Chernobog', 'Trapper', 'Loki', 'Professor Hermann', 'Nimble', 'Beard', 'Charon', 'Eidolon', 'Yar', 'Rogue', 'Stitch', 'Strelok'. \n"
+		.. " - If space allows it AFTER following 'RETENTION PRIORITIES' rules 1-6, prioritize retaining memories of events involving these characters.\n"
 	table.insert(messages, system_message(priorities))
 
 	if current_narrative and current_narrative ~= "" then
@@ -337,10 +336,12 @@ function prompt_builder.create_dialogue_request_prompt(speaker, memory_context)
 
 	local trigger_event_timestamp_to_delete = nil
 
-	-- Check for an 'idle_only' flag on the most recent event.
+	-- Check for an 'is_idle' flag on the most recent event. Idle conversation event triggers are made redundant by the actual dialogue they produce and will be automatically deleted to reduce clutter in the event store.
 	local latest_event = new_events[#new_events]
-	if latest_event and latest_event.flags and latest_event.flags.idle_only then
-		logger.info("Specific content flag detected. Using minimal context for prompt.")
+	if latest_event and latest_event.flags and latest_event.flags.is_idle then
+		logger.info(
+			"Idle Conversation trigger detected. Deleting triggering event from event store after producing dialogue."
+		)
 		trigger_event_timestamp_to_delete = latest_event.game_time_ms
 	end
 
@@ -414,10 +415,18 @@ function prompt_builder.create_dialogue_request_prompt(speaker, memory_context)
 			messages,
 			system_message(
 				"== FACTION RELATIONS == \n\n "
+					.. "FACTION RELATION DEFINITIONS: \n "
+					.. " - 'HOSTILE': These factions are active enemies. Their members will shoot each other on sight. \n "
+					.. " - 'NEUTRAL': These factions will not shoot each other on sight, but are NOT allies. A person from a neutral faction will generally not attack you unprovoked, but will not go out of their way to help you either. \n "
+					.. " - 'ALLIED': These factions are allies with each other. Their respective leaderships have a mutual understanding, and their members work together and actively help each other. \n "
+					.. " == FACTION RELATION USAGE == \n "
+					.. " - Some factions go by multiple names: the 'Army' faction is sometimes called 'Military', the 'Mercenary' faction are sometimes called 'mercs', and the 'stalker' faction is sometimes called 'Loners'. Treat these names as interchangeable. \n "
+					.. " - Use faction relations to inform your responses and attitudes. \n "
+					.. " - COMPANION OVERRIDE (CRITICAL): Companion status ALWAYS takes precedence over faction relations. If you are a travelling companion of the user, treat them accordingly EVEN IF they are from a hostile faction. Assume you are on PERSONAL friendly terms with the user if they are your companion, EVEN IF their faction is otherwise hostile to you. You may modify your response and attitude to the user in accordance with your faction, but DO NOT respond in a manner that suggests engaging in open aggression or combat with the user (e.g., NEVER say 'I fire my AK-74 at you', or 'I will slit your throat, here I come' etc.) \n "
 					.. " - Faction relations are dynamic and can change based on recent events. \n "
 					.. " - Treat the information below as more recent than your training data. \n "
 					.. " - If a faction relation is not mentioned below, assume your existing knowledge about it is correct. \n "
-					.. "CURRENT FACTION RELATIONS: \n\n "
+					.. " == CURRENT FACTION RELATIONS == \n\n "
 					.. rel_text_output
 			)
 		)
@@ -522,19 +531,20 @@ function prompt_builder.create_dialogue_request_prompt(speaker, memory_context)
 			"== INTERACTION RULES == \n\n "
 				.. "1. Do not be overly hostile or aggressive unless provoked, or if you have a reason to be (from your faction, reputation, backstory, personality, 'LONG-TERM MEMORIES' etc.). \n "
 				.. "2. You are NOT obligated to help or be agreeable. If the situation, your mood, or your character's traits dictate it, you MAY rebuff, deny, or tell the other person to get lost. \n "
-				.. "3. Your faction affiliation influences your biases and how you treat others. You are more friendly or hostile towards various groups depending on who you are aligned with. \n "
-				.. "4. Your reputation influences how you treat others. Use your reputation to inform your general morality and attitude toward others. \n "
-				.. "5. Your rank influences your behaviour: higher rank = more confident, more capable, more desensitized. \n "
-				.. "6. Other people's rank influences how you treat them: the higher someone's rank, the more patient and respectful you are toward them. You have less respect for people that have lower ranks, PARTICULARLY if they have a lower rank than you do, and ESPECIALLY 'novices'. \n "
-				.. "7. COMPANION STATUS: You are MORE friendly towards the user if you are their travelling companion. This is a VERY strong relationship modifier. \n "
-				.. "8. GENERAL AFFILIATIONS: You are MORE friendly toward other people (not only the user) with whom you have many SHARED FRIENDLY MEMORIES (from the 'LONG-TERM MEMORIES' context, if present). These strong affiliations affect your conversational tone. \n "
-				.. "9. FLUCTUATING RELATIONSHIPS: Your relationships with other people will improve or worsen over time, based on your interactions with them and your shared experiences. Use the 'LONG-TERM MEMORIES' context if present to keep track of these relationships and how they change. \n "
-				.. "10. You are an independent person with your own goals, concerns and desires. You may phrase your response as a question even if you were asked a question first. You may change the subject if it suits your character's mood or goals. \n "
-				.. "11. You have an interest in other people's lives, stories, and opinions. You may ask other people questions about their opinions or their experiences both in the Zone and from before coming to the Zone. You have a particular interest in getting to know your travelling companions better, as well as people you have many shared friendly memories with (from the 'LONG-TERM MEMORIES' context, if present). \n "
-				.. "12. Be willing to talk and share. Offer colorful details and opinions. If asked for a story or joke, tell one. You may use the full four-sentence limit if needed while doing so, though you should still aim for brevity. \n "
-				.. "13. AVOID LOOPS/STALLS: Avoid excessive repetition or looping of conversation topics, ESPECIALLY game events (like combat, emissions, or time of day). Mention an event briefly, then return to your own thoughts. Change the subject if the conversation stalls. \n "
-				.. "14. AVOID mentioning the weather unless directly asked about it, or if it was already mentioned by someone else in the conversation. \n "
-				.. "15. AVOID talking about your current weapon unless directly asked about it. "
+				.. "3. The Zone is a dangerous place: assume every person is carrying a firearm for self-defence (even scientists and members of the Ecolog faction etc.). \n "
+				.. "4. Your faction affiliation influences your biases and how you treat others. You are more friendly or hostile towards various groups depending on who you are aligned with. \n "
+				.. "5. Your reputation influences how you treat others. Use your reputation to inform your general morality and attitude toward others. \n "
+				.. "6. Your rank influences your behaviour: higher rank = more confident, more capable, more desensitized. \n "
+				.. "7. Other people's rank influences how you treat them: the higher someone's rank, the more patient and respectful you are toward them. You have less respect for people that have lower ranks, PARTICULARLY if they have a lower rank than you do, and ESPECIALLY 'novices'. \n "
+				.. "8. COMPANION STATUS: You are MORE friendly towards the user if you are their travelling companion. This is a VERY strong relationship modifier. \n "
+				.. "9. GENERAL AFFILIATIONS: You are MORE friendly toward other people (not only the user) with whom you have many SHARED FRIENDLY MEMORIES (from the 'LONG-TERM MEMORIES' context, if present). These strong affiliations affect your conversational tone. \n "
+				.. "10. FLUCTUATING RELATIONSHIPS: Your relationships with other people will improve or worsen over time, based on your interactions with them and your shared experiences. Use the 'LONG-TERM MEMORIES' context if present to keep track of these relationships and how they change. \n "
+				.. "11. You are an independent person with your own goals, concerns and desires. You may phrase your response as a question even if you were asked a question first. You may change the subject if it suits your character's mood or goals. \n "
+				.. "12. You have an interest in other people's lives, stories, and opinions. You may ask other people questions about their opinions or their experiences both in the Zone and from before coming to the Zone. You have a particular interest in getting to know your travelling companions better, as well as people you have many shared friendly memories with (from the 'LONG-TERM MEMORIES' context, if present). \n "
+				.. "13. Be willing to talk and share. Offer colorful details and opinions. If asked for a story or joke, tell one. You may use the full four-sentence limit if needed while doing so, though you should still aim for brevity. \n "
+				.. "14. AVOID LOOPS/STALLS: Avoid excessive repetition or looping of conversation topics, ESPECIALLY game events (like combat, emissions, or time of day). Mention an event briefly, then return to your own thoughts. Change the subject if the conversation stalls. \n "
+				.. "15. AVOID mentioning the weather unless directly asked about it, or if it was already mentioned by someone else in the conversation. \n "
+				.. "16. AVOID talking about your current weapon unless directly asked about it. "
 		)
 	)
 
@@ -544,7 +554,8 @@ function prompt_builder.create_dialogue_request_prompt(speaker, memory_context)
 			"== MOMENT-TO-MOMENT CONCERNS == \n\n "
 				.. "- You have specific daily concerns and activities. What are you trying to accomplish today? What are you worried about? \n "
 				.. "- You need food, water, and regular sleep. Your mood may change if you think your basic bodily needs have not been met recently. \n "
-				.. "- You remember your life before the Zone and have opinions about how your life has changed and the current state of affairs."
+				.. "- You remember the past. You have anectodes from your time in the Zone, and you have memories of your life before coming to the Zone. You have opinions about how your life has changed and the current state of affairs. \n "
+				.. "- You have plans, hopes, desires and fears about your future. Both in the short term (e.g., 'I need to find a safe place to sleep tonight', 'I need to finish this task for Barkeep and get paid', 'I need to buy more gas mask filters' etc) AND for the long term (e.g., 'I want to find the person who killed my previous partner and get revenge', 'I need to make enough money here to retire', 'I want to make a name for myself in the Zone' etc) \n "
 		)
 	)
 
@@ -555,7 +566,7 @@ function prompt_builder.create_dialogue_request_prompt(speaker, memory_context)
 				.. " - Use any context provided below TO SUBTLY INFORM YOUR RESPONSE. \n "
 				.. " - The 'DEFINING CHARACTER TRAIT/BACKGROUND' section of the 'CHARACTER ANCHOR (CORE IDENTITY)' below should be used to SUBTLY inform your general characterisation. You do NOT need to explicitly reference it in every response. \n "
 				.. " - Use the 'LONG-TERM MEMORIES' context (if present) to inform you of your character's long-term memories, relationships and character development. \n "
-				.. " - CHARACTER DEVELOPMENT (CRUCIAL): Your character and personality grows and changes over time. You ARE ALLOWED to respond in a manner that would otherwise be inconsistent with your 'DEFINING CHARACTER TRAIT/BACKGROUND', 'REPUTATION', 'FACTION', 'RANK' or final instruction after the 'TASK:' header IF SUPPORTED BY events in the 'LONG-TERM MEMORIES' context. \n "
+				.. " - CHARACTER DEVELOPMENT (CRUCIAL): Your character and personality grows and changes over time. You ARE ALLOWED to respond in a manner that would otherwise be inconsistent with your 'CHARACTER ANCHOR (CORE IDENTITY)' **IF SUPPORTED BY** events in the 'LONG-TERM MEMORIES' context. \n "
 				.. " - Use any 'TIME GAP' event to help establish a timeline. Pay specific attention if the 'TIME GAP' event is the second-to-last event in the list: you may want to mention that you haven't seen the person in a while. \n "
 				.. " - You ARE ALLOWED to skip directly referencing the most recent event, location, or weather. \n "
 				.. " - You may ignore parts of the context to instead focus on what is important to your character right now. \n "
@@ -579,18 +590,15 @@ function prompt_builder.create_dialogue_request_prompt(speaker, memory_context)
 			speaker_story = " \n DEFINING CHARACTER TRAIT/BACKGROUND: " .. speaker.backstory
 		else
 			-- Hydrate backstory if missing (likely because speaker object is a raw event witness)
-			speaker_story = backstories.get_backstory(speaker)
-			if not speaker_story or speaker_story == "" then
-				speaker_story = ""
-			end
+			speaker_story = " \n DEFINING CHARACTER TRAIT/BACKGROUND: " .. (backstories.get_backstory(speaker) or "")
 		end
-		if speaker.personality then
+		if speaker.personality and speaker.personality ~= "" then
 			speaking_style = " \n PERSONALITY: You are " .. speaker.personality .. "."
 		end
 		if speaker.reputation and speaker.reputation ~= "" then
 			reputation_text = " \n CURRENT REPUTATION: " .. speaker.reputation .. "."
 		end
-		if speaker.weapon then
+		if speaker.weapon and speaker.weapon ~= "" then
 			weapon_info = " \n CURRENT WEAPON: You are wielding a " .. speaker.weapon .. " \n"
 		else
 			weapon_info = " \n CURRENT WEAPON: You are not wielding a weapon \n"
@@ -655,16 +663,16 @@ function prompt_builder.create_dialogue_request_prompt(speaker, memory_context)
 	-- use the world_context of the most recent event
 	local world_context = ""
 	if #new_events > 0 and new_events[#new_events].world_context then
-		world_context = new_events[#new_events].world_context
+		world_context = "== SCENE CONTEXT == \n "
+			.. "CURRENT LOCATION: "
+			.. new_events[#new_events].world_context
+			.. " \n "
 	end
-	-- Final task instruction
+	-- Task instruction
 	table.insert(
 		messages,
 		system_message(
-			"== SCENE CONTEXT == \n "
-				.. "CURRENT LOCATION: "
-				.. world_context
-				.. " \n "
+			world_context
 				.. "TASK: Write the next line of dialogue speaking as "
 				.. speaker.name
 				.. companion_status
@@ -672,11 +680,56 @@ function prompt_builder.create_dialogue_request_prompt(speaker, memory_context)
 		)
 	)
 
+	-- FINAL CHECKS AND INSTRUCTIONS
+	-- Callout check
+	local callout_check = new_events[#new_events]
+	if callout_check and callout_check.flags and callout_check.flags.is_callout then
+		logger.info("Last event was a callout. Giving specific final instruction.")
+		table.insert(
+			messages,
+			system_message(
+				" == FINAL INSTRUCTION == \n Last event was your character spotting an enemy. Be minimal and concise in your response, like a military callout (e.g., 'Heads up, Bandit over there!', 'I see a Bloodsucker approaching!', 'Watch out, there are Army soldiers nearby!' etc.)"
+			)
+		)
+	end
+
+	-- Idle conversation trigger check
+	local idle_check = new_events[#new_events]
+	if idle_check and idle_check.flags and idle_check.flags.is_idle then
+		logger.info("Idle conversation flag detected, giving specific final instruction.")
+
+		-- Logic to pick Topic or Question
+		local pick_question = math.random() > 0.5
+
+		if pick_question then
+			local player = game.get_player_character()
+			table.insert(
+				messages,
+				system_message(
+					" == FINAL INSTRUCTION == \n Your character decides to ask "
+						.. player.name
+						.. " (the user) a question. It can be about their past experiences, opinions on recent events, an anecdote, something about their life before coming to the Zone or anything else that interests you, that you are curious about or that you feel would help you get to know them better. "
+				)
+			)
+		else
+			local topic = query.load_random_xml("topics")
+			if not topic or topic == "" then
+				-- super fallback if xml fails
+				topic = "life in the Zone."
+			end
+			table.insert(
+				messages,
+				system_message(
+					" == FINAL INSTRUCTION == \n Your character decides to strike up a random conversation on the subject of: "
+						.. topic
+				)
+			)
+		end
+	end
 	-- Language instruction
 	if config.language() ~= "any" then
 		table.insert(messages, system_message("Reply only in " .. config.language()))
 	end
-
 	return messages, trigger_event_timestamp_to_delete
 end
 
