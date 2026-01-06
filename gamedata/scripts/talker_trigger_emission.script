@@ -23,7 +23,7 @@ function create_emission_event(typ, status)
     local unformatted_description = "An %s is %s!"
     log.info(unformatted_description, typ, status)
     local witnesses = game.get_characters_near_player(200)
-    trigger.talker_game_event(unformatted_description, {typ, status}, witnesses, true)
+    trigger.talker_game_event(unformatted_description, {typ, status}, witnesses, true, { is_emission = true })
 end
 
 -- Technically this is triggered by more than just emissions, but our name filter takes care of that
