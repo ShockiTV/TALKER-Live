@@ -103,7 +103,7 @@ function on_enemy_eval(npc_obj, target_obj)
 
     -- register event
     log.info(spotter.name .. " spotted " .. enemy.name)
-    trigger.talker_game_event(unformatted_description, {spotter.name, spotter.experience, spotter.faction, spotter.reputation, enemy.name, enemy.experience, enemy.faction, enemy.reputation}, witnesses, true)
+    trigger.talker_game_event(unformatted_description, {spotter.name, spotter.experience, spotter.faction, spotter.reputation, enemy.name, enemy.experience, enemy.faction, enemy.reputation}, witnesses, true, {is_callout = true})
 
     -- Update global timer
     last_callout_time_ms = queries.get_game_time_ms()
