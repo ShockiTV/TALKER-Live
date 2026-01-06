@@ -31,7 +31,7 @@ function on_player_reloads_weapon()
     local player_weapon = player.weapon or "weapon"
     local witnesses = game.get_characters_near_player()
 
-    trigger.talker_game_event(unformatted_description, {player.name, player.experience, player.faction, player.reputation, player_weapon}, witnesses, true)
+    trigger.talker_game_event(unformatted_description, {player.name, player.experience, player.faction, player.reputation, player_weapon}, witnesses, true, { is_reload = true })
 
     log.info("Reload event registered")
 end
