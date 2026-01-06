@@ -209,27 +209,28 @@ end
 
 function m.get_technical_faction_name(display_name)
 	local faction_map = {
-		["Mercenary"] = "killer",
 		["Mercenaries"] = "killer",
+		["Mercs"] = "killer",
+		["Mercenary"] = "killer",
 		["Duty"] = "dolg",
 		["Freedom"] = "freedom",
 		["Bandit"] = "bandit",
 		["Monolith"] = "monolith",
+		["Loner"] = "stalker",
 		["stalker"] = "stalker",
 		["Clear Sky"] = "csky",
-		["Ecolog"] = "ecolog",
 		["scientist"] = "ecolog",
 		["egghead"] = "ecolog",
+		["Ecolog"] = "ecolog",
 		["Military"] = "army",
 		["Army"] = "army",
 		["Renegade"] = "renegade",
 		["Trader"] = "trader",
 		["Sin"] = "greh",
-		["ISG"] = "isg",
 		["UNISG"] = "isg",
+		["ISG"] = "isg",
 		["Zombie"] = "zombied",
 		["Zombied"] = "zombied",
-		["Loner"] = "stalker",
 	}
 	return faction_map[display_name] or display_name:lower()
 end
@@ -333,24 +334,28 @@ function m.get_mentioned_factions(events)
 	local mentioned = {}
 	-- Faction names as they appear in event descriptions
 	local faction_names = {
-		"Mercenary",
 		"Mercenaries",
+		"Mercs",
+		"Mercenary",
 		"Duty",
 		"Freedom",
 		"Bandit",
 		"Monolith",
+		"Loner",
 		"stalker",
 		"Clear Sky",
+		"scientist",
+		"egghead",
 		"Ecolog",
 		"Army",
 		"Military",
 		"Renegade",
 		"Trader",
 		"Sin",
-		"ISG",
 		"UNISG",
+		"ISG",
+		"Zombie",
 		"Zombied",
-		"Loner",
 	}
 
 	for _, event in ipairs(events) do
