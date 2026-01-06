@@ -11,12 +11,6 @@ function M.set_queries(q)
 	queries = q
 end
 
-local function get_random_faction_personality(faction)
-	log.spam("Fetching random personality for faction: " .. tostring(faction))
-	local sanitized_faction = tostring(faction):gsub(" ", "_")
-	return queries.load_random_xml("traits_" .. sanitized_faction)
-end
-
 local function get_random_personality()
 	local personality = queries.load_random_xml("traits")
 	local pid = ""
@@ -29,13 +23,13 @@ local function get_random_personality()
 	return personality
 end
 
-local function get_random_personalities(amountOfPersonalities)
+local function get_random_personalities(amountOfPersonalities, xml_key)
 	local loadedPersonalities = {}
 	local maxAttempts = math.max(10, amountOfPersonalities * 10)
 	local attempts = 0
 
 	while #loadedPersonalities < amountOfPersonalities and attempts < maxAttempts do
-		local candidate = queries.load_random_xml("traits")
+		local candidate = queries.load_random_xml(xml_key or "traits")
 		attempts = attempts + 1
 		if candidate then
 			local candidate_id = candidate.id or tostring(candidate)
@@ -85,6 +79,16 @@ local function get_random_personalities(amountOfPersonalities)
 	return result
 end
 
+local function get_random_faction_personalities(faction)
+	log.spam("Fetching random personalities for faction: " .. tostring(faction))
+	local sanitized_faction = tostring(faction):gsub(" ", "_")
+	local key = "traits_" .. sanitized_faction
+	if not queries.load_random_xml(key) then
+		return nil
+	end
+	return get_random_personalities(2, key)
+end
+
 local function set_random_personality(character)
 	-- If the character is unique, we need to assign a specific personality
 	if tostring(character.game_id) == "0" then
@@ -105,7 +109,7 @@ local function set_random_personality(character)
 		return
 	end
 	-- Otherwise, we assign a random personality
-	local personality = get_random_faction_personality(character.faction)
+	local personality = get_random_faction_personalities(character.faction)
 	if not personality or personality == "" then
 		log.spam("Faction personality empty, loading generic personality.")
 		personality = get_random_personalities(2)
