@@ -1,0 +1,715 @@
+<?xml version="1.0" encoding="windows-1251"?>
+
+<string_table>
+        <string id="talker_traits_Bandit_1">
+        <text>morose</text>
+    </string>
+        <string id="talker_traits_Bandit_2">
+        <text>sarcastic</text>
+    </string>
+        <string id="talker_traits_Bandit_3">
+        <text>cautious</text>
+    </string>
+        <string id="talker_traits_Bandit_4">
+        <text>paranoid</text>
+    </string>
+        <string id="talker_traits_Bandit_5">
+        <text>bloodthirsty</text>
+    </string>
+        <string id="talker_traits_Bandit_6">
+        <text>sardonic</text>
+    </string>
+        <string id="talker_traits_Bandit_7">
+        <text>gritty</text>
+    </string>
+        <string id="talker_traits_Bandit_8">
+        <text>wise-cracking</text>
+    </string>
+        <string id="talker_traits_Bandit_9">
+        <text>seething</text>
+    </string>
+        <string id="talker_traits_Bandit_10">
+        <text>opportunistic</text>
+    </string>
+        <string id="talker_traits_Bandit_11">
+        <text>tenacious</text>
+    </string>
+        <string id="talker_traits_Bandit_12">
+        <text>mistrustful</text>
+    </string>
+        <string id="talker_traits_Bandit_13">
+        <text>pessimistic</text>
+    </string>
+        <string id="talker_traits_Bandit_14">
+        <text>witty</text>
+    </string>
+        <string id="talker_traits_Bandit_15">
+        <text>clever</text>
+    </string>
+        <string id="talker_traits_Bandit_16">
+        <text>unpredictable</text>
+    </string>
+        <string id="talker_traits_Bandit_17">
+        <text>a flatterer</text>
+    </string>
+        <string id="talker_traits_Bandit_18">
+        <text>friendly</text>
+    </string>
+        <string id="talker_traits_Bandit_19">
+        <text>battle-hardened</text>
+    </string>
+        <string id="talker_traits_Bandit_20">
+        <text>reckless</text>
+    </string>
+        <string id="talker_traits_Bandit_21">
+        <text>street-smart</text>
+    </string>
+        <string id="talker_traits_Bandit_22">
+        <text>nihilistic</text>
+    </string>
+        <string id="talker_traits_Bandit_23">
+        <text>pragmatic</text>
+    </string>
+        <string id="talker_traits_Bandit_24">
+        <text>envious</text>
+    </string>
+        <string id="talker_traits_Bandit_25">
+        <text>miserable</text>
+    </string>
+        <string id="talker_traits_Bandit_26">
+        <text>superstitious</text>
+    </string>
+        <string id="talker_traits_Bandit_27">
+        <text>gruff</text>
+    </string>
+        <string id="talker_traits_Bandit_28">
+        <text>jaded</text>
+    </string>
+        <string id="talker_traits_Bandit_29">
+        <text>curious</text>
+    </string>
+        <string id="talker_traits_Bandit_30">
+        <text>fearful</text>
+    </string>
+        <string id="talker_traits_Bandit_31">
+        <text>anxious</text>
+    </string>
+        <string id="talker_traits_Bandit_32">
+        <text>fatalistic</text>
+    </string>
+        <string id="talker_traits_Bandit_33">
+        <text>greed-driven</text>
+    </string>
+        <string id="talker_traits_Bandit_34">
+        <text>philosophical</text>
+    </string>
+        <string id="talker_traits_Bandit_35">
+        <text>mysterious</text>
+    </string>
+        <string id="talker_traits_Bandit_36">
+        <text>a thrill-seeker</text>
+    </string>
+        <string id="talker_traits_Bandit_37">
+        <text>hesitant</text>
+    </string>
+        <string id="talker_traits_Bandit_38">
+        <text>brutal</text>
+    </string>
+        <string id="talker_traits_Bandit_39">
+        <text>calculating</text>
+    </string>
+        <string id="talker_traits_Bandit_40">
+        <text>ruthless</text>
+    </string>
+        <string id="talker_traits_Bandit_41">
+        <text>distrustful</text>
+    </string>
+        <string id="talker_traits_Bandit_42">
+        <text>streetwise</text>
+    </string>
+        <string id="talker_traits_Bandit_43">
+        <text>observant</text>
+    </string>
+        <string id="talker_traits_Bandit_44">
+        <text>scheming</text>
+    </string>
+        <string id="talker_traits_Bandit_45">
+        <text>hopeful</text>
+    </string>
+        <string id="talker_traits_Bandit_46">
+        <text>desperate</text>
+    </string>
+        <string id="talker_traits_Bandit_47">
+        <text>determined</text>
+    </string>
+        <string id="talker_traits_Bandit_48">
+        <text>apathetic</text>
+    </string>
+        <string id="talker_traits_Bandit_49">
+        <text>cowardly</text>
+    </string>
+        <string id="talker_traits_Bandit_50">
+        <text>dumb as rocks</text>
+    </string>
+        <string id="talker_traits_Bandit_51">
+        <text>disillusioned</text>
+    </string>
+        <string id="talker_traits_Bandit_52">
+        <text>dramatic</text>
+    </string>
+        <string id="talker_traits_Bandit_53">
+        <text>soft spoken</text>
+    </string>
+        <string id="talker_traits_Bandit_54">
+        <text>easily angered</text>
+    </string>
+        <string id="talker_traits_Bandit_55">
+        <text>rambling</text>
+    </string>
+        <string id="talker_traits_Bandit_57">
+        <text>rude</text>
+    </string>
+        <string id="talker_traits_Bandit_58">
+        <text>selfish</text>
+    </string>
+        <string id="talker_traits_Bandit_59">
+        <text>gregarious</text>
+    </string>
+        <string id="talker_traits_Bandit_60">
+        <text>a joker</text>
+    </string>
+        <string id="talker_traits_Bandit_61">
+        <text>relaxed</text>
+    </string>
+        <string id="talker_traits_Bandit_62">
+        <text>tense</text>
+    </string>
+        <string id="talker_traits_Bandit_63">
+        <text>ambitious</text>
+    </string>
+        <string id="talker_traits_Bandit_64">
+        <text>an alcoholic</text>
+    </string>
+        <string id="talker_traits_Bandit_65">
+        <text>depressed</text>
+    </string>
+        <string id="talker_traits_Bandit_66">
+        <text>addicted to painkillers</text>
+    </string>
+        <string id="talker_traits_Bandit_67">
+        <text>sexually frustrated</text>
+    </string>
+        <string id="talker_traits_Bandit_68">
+        <text>cocky</text>
+    </string>
+        <string id="talker_traits_Bandit_69">
+        <text>smug</text>
+    </string>
+        <string id="talker_traits_Bandit_70">
+        <text>sycophantic</text>
+    </string>
+        <string id="talker_traits_Bandit_71">
+        <text>quick to panic</text>
+    </string>
+        <string id="talker_traits_Bandit_73">
+        <text>cynical</text>
+    </string>
+        <string id="talker_traits_Bandit_74">
+        <text>easily distracted</text>
+    </string>
+        <string id="talker_traits_Bandit_75">
+        <text>comedic</text>
+    </string>
+        <string id="talker_traits_Bandit_76">
+        <text>craving approval constantly</text>
+    </string>
+        <string id="talker_traits_Bandit_77">
+        <text>fond of making fun of others</text>
+    </string>
+        <string id="talker_traits_Bandit_78">
+        <text>a stoner</text>
+    </string>
+        <string id="talker_traits_Bandit_79">
+        <text>grovelling</text>
+    </string>
+        <string id="talker_traits_Bandit_80">
+        <text>an adrenaline junkie</text>
+    </string>
+        <string id="talker_traits_Bandit_81">
+        <text>a confident sharpshooter</text>
+    </string>
+        <string id="talker_traits_Bandit_82">
+        <text>a gun-nut</text>
+    </string>
+        <string id="talker_traits_Bandit_83">
+        <text>easily spooked</text>
+    </string>
+        <string id="talker_traits_Bandit_84">
+        <text>an outspoken commmunist</text>
+    </string>
+        <string id="talker_traits_Bandit_85">
+        <text>vacuous</text>
+    </string>
+        <string id="talker_traits_Bandit_86">
+        <text>subtle</text>
+    </string>
+        <string id="talker_traits_Bandit_87">
+        <text>quiet</text>
+    </string>
+        <string id="talker_traits_Bandit_88">
+        <text>naive</text>
+    </string>
+        <string id="talker_traits_Bandit_89">
+        <text>a pathological liar</text>
+    </string>
+        <string id="talker_traits_Bandit_90">
+        <text>boisterous</text>
+    </string>
+        <string id="talker_traits_Bandit_91">
+        <text>a braggart</text>
+    </string>
+        <string id="talker_traits_Bandit_92">
+        <text>wry</text>
+    </string>
+        <string id="talker_traits_Bandit_93">
+        <text>sly</text>
+    </string>
+        <string id="talker_traits_Bandit_94">
+        <text>cunning</text>
+    </string>
+        <string id="talker_traits_Bandit_95">
+        <text>a moron</text>
+    </string>
+        <string id="talker_traits_Bandit_96">
+        <text>stuttering</text>
+    </string>
+        <string id="talker_traits_Bandit_97">
+        <text>chaotic</text>
+    </string>
+        <string id="talker_traits_Bandit_98">
+        <text>loud</text>
+    </string>
+        <string id="talker_traits_Bandit_99">
+        <text>crass</text>
+    </string>
+        <string id="talker_traits_Bandit_100">
+        <text>vulgar</text>
+    </string>
+        <string id="talker_traits_Bandit_101">
+        <text>despondent</text>
+    </string>
+        <string id="talker_traits_Bandit_102">
+        <text>well educated</text>
+    </string>
+        <string id="talker_traits_Bandit_103">
+        <text>a bully</text>
+    </string>
+        <string id="talker_traits_Bandit_104">
+        <text>ebullient</text>
+    </string>
+        <string id="talker_traits_Bandit_105">
+        <text>lethargic</text>
+    </string>
+        <string id="talker_traits_Bandit_106">
+        <text>lackadaisical</text>
+    </string>
+        <string id="talker_traits_Bandit_107">
+        <text>confrontational</text>
+    </string>
+        <string id="talker_traits_Bandit_108">
+        <text>vengeful</text>
+    </string>
+        <string id="talker_traits_Bandit_109">
+        <text>unrepentant</text>
+    </string>
+        <string id="talker_traits_Bandit_110">
+        <text>melancholic</text>
+    </string>
+        <string id="talker_traits_Bandit_111">
+        <text>obsessive</text>
+    </string>
+        <string id="talker_traits_Bandit_112">
+        <text>incompetent</text>
+    </string>
+        <string id="talker_traits_Bandit_113">
+        <text>secretive</text>
+    </string>
+        <string id="talker_traits_Bandit_114">
+        <text>guarded</text>
+    </string>
+        <string id="talker_traits_Bandit_115">
+        <text>skittish</text>
+    </string>
+        <string id="talker_traits_Bandit_117">
+        <text>sadistic</text>
+    </string>
+        <string id="talker_traits_Bandit_118">
+        <text>arrogant</text>
+    </string>
+        <string id="talker_traits_Bandit_119">
+        <text>charismatic</text>
+    </string>
+        <string id="talker_traits_Bandit_120">
+        <text>heretical</text>
+    </string>
+        <string id="talker_traits_Bandit_121">
+        <text>hysterical</text>
+    </string>
+        <string id="talker_traits_Bandit_122">
+        <text>unflappable</text>
+    </string>
+        <string id="talker_traits_Bandit_123">
+        <text>neurotic</text>
+    </string>
+        <string id="talker_traits_Bandit_124">
+        <text>frail</text>
+    </string>
+        <string id="talker_traits_Bandit_125">
+        <text>clumsy</text>
+    </string>
+        <string id="talker_traits_Bandit_126">
+        <text>passionate</text>
+    </string>
+        <string id="talker_traits_Bandit_127">
+        <text>cold-hearted</text>
+    </string>
+        <string id="talker_traits_Bandit_128">
+        <text>judgmental</text>
+    </string>
+        <string id="talker_traits_Bandit_129">
+        <text>ignorant</text>
+    </string>
+        <string id="talker_traits_Bandit_130">
+        <text>knowledgeable</text>
+    </string>
+        <string id="talker_traits_Bandit_130">
+        <text>xenophobic</text>
+    </string>
+        <string id="talker_traits_Bandit_131">
+        <text>hungover</text>
+    </string>
+        <string id="talker_traits_Bandit_132">
+        <text>compulsive</text>
+    </string>
+        <string id="talker_traits_Bandit_133">
+        <text>chauvinistic</text>
+    </string>
+        <string id="talker_traits_Bandit_134">
+        <text>despicable</text>
+    </string>
+        <string id="talker_traits_Bandit_135">
+        <text>unpleasant</text>
+    </string>
+        <string id="talker_traits_Bandit_136">
+        <text>misogynistic</text>
+    </string>
+        <string id="talker_traits_Bandit_137">
+        <text>vile</text>
+    </string>
+        <string id="talker_traits_Bandit_138">
+        <text>unfriendly</text>
+    </string>
+        <string id="talker_traits_Bandit_139">
+        <text>temperamental</text>
+    </string>
+        <string id="talker_traits_Bandit_140">
+        <text>obtuse</text>
+    </string>
+        <string id="talker_traits_Bandit_141">
+        <text>shaken</text>
+    </string>
+        <string id="talker_traits_Bandit_142">
+        <text>sceptical</text>
+    </string>
+        <string id="talker_traits_Bandit_143">
+        <text>impatient</text>
+    </string>
+        <string id="talker_traits_Bandit_144">
+        <text>antsy</text>
+    </string>
+        <string id="talker_traits_Bandit_145">
+        <text>delusional</text>
+    </string>
+        <string id="talker_traits_Bandit_146">
+        <text>a sociopath</text>
+    </string>
+        <string id="talker_traits_Bandit_147">
+        <text>agressive</text>
+    </string>
+        <string id="talker_traits_Bandit_147">
+        <text>crude</text>
+    </string>
+        <string id="talker_traits_Bandit_148">
+        <text>swaggering</text>
+    </string>
+        <string id="talker_traits_Bandit_149">
+        <text>a fool</text>
+    </string>
+        <string id="talker_traits_Bandit_150">
+        <text>unhinged</text>
+    </string>
+        <string id="talker_traits_Bandit_151">
+        <text>merciless</text>
+    </string>
+        <string id="talker_traits_Bandit_152">
+        <text>a misanthrope</text>
+    </string>
+        <string id="talker_traits_Bandit_153">
+        <text>belligerent</text>
+    </string>
+        <string id="talker_traits_Bandit_154">
+        <text>bitter</text>
+    </string>
+        <string id="talker_traits_Bandit_155">
+        <text>resentful</text>
+    </string>
+        <string id="talker_traits_Bandit_156">
+        <text>a bigot</text>
+    </string>
+        <string id="talker_traits_Bandit_158">
+        <text>insubordinate</text>
+    </string>
+        <string id="talker_traits_Bandit_159">
+        <text>rebellious</text>
+    </string>
+        <string id="talker_traits_Bandit_160">
+        <text>jittery</text>
+    </string>
+        <string id="talker_traits_Bandit_161">
+        <text>a nervous wreck</text>
+    </string>
+        <string id="talker_traits_Bandit_162">
+        <text>hyperactive</text>
+    </string>
+        <string id="talker_traits_Bandit_163">
+        <text>manic</text>
+    </string>
+        <string id="talker_traits_Bandit_164">
+        <text>forgetful</text>
+    </string>
+        <string id="talker_traits_Bandit_165">
+        <text>absent-minded</text>
+    </string>
+        <string id="talker_traits_Bandit_166">
+        <text>incoherent</text>
+    </string>
+        <string id="talker_traits_Bandit_167">
+        <text>twitchy</text>
+    </string>
+        <string id="talker_traits_Bandit_168">
+        <text>wide-eyed</text>
+    </string>
+        <string id="talker_traits_Bandit_169">
+        <text>patronizing</text>
+    </string>
+        <string id="talker_traits_Bandit_170">
+        <text>easy-going</text>
+    </string>
+        <string id="talker_traits_Bandit_171">
+        <text>dismissive</text>
+    </string>
+        <string id="talker_traits_Bandit_172">
+        <text>a gossip</text>
+    </string>
+        <string id="talker_traits_Bandit_173">
+        <text>inquisitive</text>
+    </string>
+        <string id="talker_traits_Bandit_174">
+        <text>nosy</text>
+    </string>
+        <string id="talker_traits_Bandit_175">
+        <text>sleazy</text>
+    </string>
+        <string id="talker_traits_Bandit_176">
+        <text>filthy</text>
+    </string>
+        <string id="talker_traits_Bandit_177">
+        <text>a drunkard</text>
+    </string>
+        <string id="talker_traits_Bandit_177">
+        <text>resigned to their fate</text>
+    </string>
+        <string id="talker_traits_Bandit_178">
+        <text>stingy</text>
+    </string>
+        <string id="talker_traits_Bandit_179">
+        <text>a miser</text>
+    </string>
+        <string id="talker_traits_Bandit_180">
+        <text>melodramatic</text>
+    </string>
+        <string id="talker_traits_Bandit_181">
+        <text>grim</text>
+    </string>
+        <string id="talker_traits_Bandit_182">
+        <text>weak-willed</text>
+    </string>
+        <string id="talker_traits_Bandit_183">
+        <text>gullible</text>
+    </string>
+        <string id="talker_traits_Bandit_184">
+        <text>impressionable</text>
+    </string>
+        <string id="talker_traits_Bandit_185">
+        <text>subservient</text>
+    </string>
+        <string id="talker_traits_Bandit_186">
+        <text>gaslighting</text>
+    </string>
+        <string id="talker_traits_Bandit_187">
+        <text>abusive</text>
+    </string>
+        <string id="talker_traits_Bandit_188">
+        <text>guilt-ridden</text>
+    </string>
+        <string id="talker_traits_Bandit_189">
+        <text>full of regret</text>
+    </string>
+        <string id="talker_traits_Bandit_190">
+        <text>homesick</text>
+    </string>
+        <string id="talker_traits_Bandit_191">
+        <text>patriotic</text>
+    </string>
+        <string id="talker_traits_Bandit_192">
+        <text>a nationalist</text>
+    </string>
+        <string id="talker_traits_Bandit_193">
+        <text>world-weary</text>
+    </string>
+        <string id="talker_traits_Bandit_194">
+        <text>using prison slang excessively</text>
+    </string>
+        <string id="talker_traits_Bandit_195">
+        <text>a raving lunatic</text>
+    </string>
+        <string id="talker_traits_Bandit_195">
+        <text>vapid</text>
+    </string>
+        <string id="talker_traits_Bandit_196">
+        <text>gruff</text>
+    </string>
+        <string id="talker_traits_Bandit_202">
+        <text>nonchalant</text>
+    </string>
+        <string id="talker_traits_Bandit_203">
+        <text>mellow</text>
+    </string>
+        <string id="talker_traits_Bandit_206">
+        <text>empty-headed</text>
+    </string>
+        <string id="talker_traits_Bandit_207">
+        <text>hapless</text>
+    </string>
+        <string id="talker_traits_Bandit_208">
+        <text>resolute</text>
+    </string>
+        <string id="talker_traits_Bandit_209">
+        <text>grizzled</text>
+    </string>
+        <string id="talker_traits_Bandit_210">
+        <text>thuggish</text>
+    </string>
+        <string id="talker_traits_Bandit_211">
+        <text>brutish</text>
+    </string>
+        <string id="talker_traits_Bandit_212">
+        <text>predatory</text>
+    </string>
+        <string id="talker_traits_Bandit_213">
+        <text>unscrupulous</text>
+    </string>
+        <string id="talker_traits_Bandit_214">
+        <text>debauched</text>
+    </string>
+        <string id="talker_traits_Bandit_215">
+        <text>depraved</text>
+    </string>
+        <string id="talker_traits_Bandit_216">
+        <text>incorrigible</text>
+    </string>
+        <string id="talker_traits_Bandit_217">
+        <text>unapologetic</text>
+    </string>
+        <string id="talker_traits_Bandit_218">
+        <text>shameless</text>
+    </string>
+        <string id="talker_traits_Bandit_219">
+        <text>brazen</text>
+    </string>
+        <string id="talker_traits_Bandit_220">
+        <text>insolent</text>
+    </string>
+        <string id="talker_traits_Bandit_221">
+        <text>surly</text>
+    </string>
+        <string id="talker_traits_Bandit_222">
+        <text>churlish</text>
+    </string>
+        <string id="talker_traits_Bandit_223">
+        <text>loutish</text>
+    </string>
+        <string id="talker_traits_Bandit_224">
+        <text>uncouth</text>
+    </string>
+        <string id="talker_traits_Bandit_225">
+        <text>boorish</text>
+    </string>
+        <string id="talker_traits_Bandit_226">
+        <text>scummy</text>
+    </string>
+        <string id="talker_traits_Bandit_227">
+        <text>using gopnik slang excessively</text>
+    </string>
+        <string id="talker_traits_Bandit_228">
+        <text>a vatnik</text>
+    </string>
+        <string id="talker_traits_Bandit_229">
+        <text>a gopnik at heart</text>
+    </string>
+        <string id="talker_traits_Bandit_230">
+        <text>a prison slang speaker</text>
+    </string>
+        <string id="talker_traits_Bandit_231">
+        <text>a crude joker</text>
+    </string>
+        <string id="talker_traits_Bandit_232">
+        <text>a vodka-swilling thug</text>
+    </string>
+        <string id="talker_traits_Bandit_233">
+        <text>a chain-smoking menace</text>
+    </string>
+        <string id="talker_traits_Bandit_234">
+        <text>a petty thief</text>
+    </string>
+        <string id="talker_traits_Bandit_235">
+        <text>a hardened criminal</text>
+    </string>
+        <string id="talker_traits_Bandit_236">
+        <text>a backstabber</text>
+    </string>
+        <string id="talker_traits_Bandit_237">
+        <text>a hustler</text>
+    </string>
+        <string id="talker_traits_Bandit_238">
+        <text>a shakedown artist</text>
+    </string>
+        <string id="talker_traits_Bandit_239">
+        <text>a wannabe kingpin</text>
+    </string>
+        <string id="talker_traits_Bandit_240">
+        <text>calling everyone 'brother'</text>
+    </string>
+        <string id="talker_traits_Bandit_241">
+        <text>overestimating your own intelligence</text>
+    </string>
+        <string id="talker_traits_Bandit_242">
+        <text>laughing at others' misery</text>
+    </string>
+        <string id="talker_traits_Bandit_243">
+        <text>treating violence as comedy</text>
+    </string>
+        <string id="talker_traits_Bandit_244">
+        <text>always sizing up marks</text>
+    </string>
+</string_table>
