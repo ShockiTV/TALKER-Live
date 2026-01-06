@@ -13,7 +13,7 @@ function actor_on_weapon_jammed()
     local player = game.get_player_character()
     local witnesses = game.get_characters_near_player()
     local weapon_name = player.weapon or "weapon"
-    trigger.talker_game_event(unformatted_description, {player.name, player.experience, player.faction, player.reputation, weapon_name}, witnesses, true)
+    trigger.talker_game_event(unformatted_description, {player.name, player.experience, player.faction, player.reputation, weapon_name}, witnesses, true, { is_weapon_jam = true })
 end
 
 --------------------------------------------------------------------------------------------
