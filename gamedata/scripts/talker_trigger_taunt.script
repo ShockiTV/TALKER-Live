@@ -40,7 +40,7 @@ function on_enemy_eval(npc_obj, enemy_obj) -- could check for human enemy if we 
     local speaker = game.create_character(npc_obj)
     local witnesses = {speaker}
 
-    trigger.talker_game_event(unformatted_description, {speaker.name, speaker.experience, speaker.faction, speaker.reputation}, witnesses, true)
+    trigger.talker_game_event(unformatted_description, {speaker.name, speaker.experience, speaker.faction, speaker.reputation}, witnesses, true, { is_taunt = true })
 end
 
 --------------------------------------------------------------------------------------------
