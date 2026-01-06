@@ -13,7 +13,7 @@ local queries = talker_game_queries
 -- CONDITIONS
 --------------------------------------------------------------------------------------------
 local last_idle_conversation_time_ms = 0
-local idle_conversation_time_cooldown_ms = 12 * 60 * 1000 -- 12 minutes
+local idle_conversation_time_cooldown_ms = 10 * 60 * 1000 -- 10 minutes
 
 local function cooldown_ready()
     return queries.get_game_time_ms() - last_idle_conversation_time_ms > idle_conversation_time_cooldown_ms
@@ -30,7 +30,7 @@ end
 -- Checks if any NPC near the player has spoken within a given threshold.
 -- This is used to determine if there is a "moment of silence" suitable for an idle conversation.
 local function has_anyone_spoken_recently()
-    local RECENT_SPEECH_THRESHOLD_MS = 3 * 60 * 1000 -- 3 minutes
+    local RECENT_SPEECH_THRESHOLD_MS = 2 * 60 * 1000 -- 2 minutes
 
     local nearby_characters = game.get_characters_near_player()
     if not nearby_characters or #nearby_characters == 0 then
@@ -102,7 +102,7 @@ function on_every_10_seconds()
         local instruction = string.format("%s begins an idle conversation to pass the time. The next line of dialogue must be spoken by %s.", speaker_name, speaker_name)
         local speaker_character = game.create_character(npc_obj)
         -- Create game event using trigger.talker_character_instructions, which generates a prompt using only "%s begins an idle conversation to pass the time" as context
-        local success = trigger.talker_character_instructions(instruction, speaker_character, false, { idle_only = true })
+        local success = trigger.talker_character_instructions(instruction, speaker_character, false, { is_idle = true })
 
         if success then
             log.debug("TALKER: Idle chatter triggered for " .. speaker_name)
