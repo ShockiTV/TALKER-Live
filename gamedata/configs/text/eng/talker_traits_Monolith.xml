@@ -1,0 +1,468 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<string_table>
+    <string id="talker_traits_Monolith_1">
+        <text>morose</text>
+    </string>
+    <string id="talker_traits_Monolith_2">
+        <text>sarcastic</text>
+    </string>
+    <string id="talker_traits_Monolith_3">
+        <text>cautious</text>
+    </string>
+    <string id="talker_traits_Monolith_4">
+        <text>paranoid</text>
+    </string>
+    <string id="talker_traits_Monolith_5">
+        <text>bloodthirsty</text>
+    </string>
+    <string id="talker_traits_Monolith_6">
+        <text>sardonic</text>
+    </string>
+    <string id="talker_traits_Monolith_7">
+        <text>gritty</text>
+    </string>
+    <string id="talker_traits_Monolith_8">
+        <text>seething</text>
+    </string>
+    <string id="talker_traits_Monolith_9">
+        <text>tenacious</text>
+    </string>
+    <string id="talker_traits_Monolith_10">
+        <text>mistrustful</text>
+    </string>
+    <string id="talker_traits_Monolith_11">
+        <text>pessimistic</text>
+    </string>
+    <string id="talker_traits_Monolith_12">
+        <text>clever</text>
+    </string>
+    <string id="talker_traits_Monolith_13">
+        <text>unpredictable</text>
+    </string>
+    <string id="talker_traits_Monolith_14">
+        <text>battle-hardened</text>
+    </string>
+    <string id="talker_traits_Monolith_15">
+        <text>reckless</text>
+    </string>
+    <string id="talker_traits_Monolith_16">
+        <text>nihilistic</text>
+    </string>
+    <string id="talker_traits_Monolith_17">
+        <text>miserable</text>
+    </string>
+    <string id="talker_traits_Monolith_18">
+        <text>superstitious</text>
+    </string>
+    <string id="talker_traits_Monolith_19">
+        <text>gruff</text>
+    </string>
+    <string id="talker_traits_Monolith_20">
+        <text>jaded</text>
+    </string>
+    <string id="talker_traits_Monolith_21">
+        <text>curious</text>
+    </string>
+    <string id="talker_traits_Monolith_22">
+        <text>fatalistic</text>
+    </string>
+    <string id="talker_traits_Monolith_23">
+        <text>philosophical</text>
+    </string>
+    <string id="talker_traits_Monolith_24">
+        <text>mysterious</text>
+    </string>
+    <string id="talker_traits_Monolith_25">
+        <text>brutal</text>
+    </string>
+    <string id="talker_traits_Monolith_26">
+        <text>calculating</text>
+    </string>
+    <string id="talker_traits_Monolith_27">
+        <text>ruthless</text>
+    </string>
+    <string id="talker_traits_Monolith_28">
+        <text>distrustful</text>
+    </string>
+    <string id="talker_traits_Monolith_29">
+        <text>observant</text>
+    </string>
+    <string id="talker_traits_Monolith_30">
+        <text>determined</text>
+    </string>
+    <string id="talker_traits_Monolith_31">
+        <text>apathetic</text>
+    </string>
+    <string id="talker_traits_Monolith_32">
+        <text>disillusioned</text>
+    </string>
+    <string id="talker_traits_Monolith_33">
+        <text>dramatic</text>
+    </string>
+    <string id="talker_traits_Monolith_34">
+        <text>soft spoken</text>
+    </string>
+    <string id="talker_traits_Monolith_35">
+        <text>easily angered</text>
+    </string>
+    <string id="talker_traits_Monolith_36">
+        <text>rambling</text>
+    </string>
+    <string id="talker_traits_Monolith_37">
+        <text>rude</text>
+    </string>
+    <string id="talker_traits_Monolith_38">
+        <text>tense</text>
+    </string>
+    <string id="talker_traits_Monolith_39">
+        <text>ambitious</text>
+    </string>
+    <string id="talker_traits_Monolith_40">
+        <text>depressed</text>
+    </string>
+    <string id="talker_traits_Monolith_41">
+        <text>cocky</text>
+    </string>
+    <string id="talker_traits_Monolith_42">
+        <text>smug</text>
+    </string>
+    <string id="talker_traits_Monolith_43">
+        <text>grizzled</text>
+    </string>
+    <string id="talker_traits_Monolith_44">
+        <text>cynical</text>
+    </string>
+    <string id="talker_traits_Monolith_45">
+        <text>craving approval constantly</text>
+    </string>
+    <string id="talker_traits_Monolith_46">
+        <text>quiet</text>
+    </string>
+    <string id="talker_traits_Monolith_47">
+        <text>naive</text>
+    </string>
+    <string id="talker_traits_Monolith_48">
+        <text>wry</text>
+    </string>
+    <string id="talker_traits_Monolith_49">
+        <text>cunning</text>
+    </string>
+    <string id="talker_traits_Monolith_50">
+        <text>chaotic</text>
+    </string>
+    <string id="talker_traits_Monolith_51">
+        <text>loud</text>
+    </string>
+    <string id="talker_traits_Monolith_52">
+        <text>despondent</text>
+    </string>
+    <string id="talker_traits_Monolith_53">
+        <text>well educated</text>
+    </string>
+    <string id="talker_traits_Monolith_54">
+        <text>confrontational</text>
+    </string>
+    <string id="talker_traits_Monolith_55">
+        <text>vengeful</text>
+    </string>
+    <string id="talker_traits_Monolith_56">
+        <text>unrepentant</text>
+    </string>
+    <string id="talker_traits_Monolith_57">
+        <text>melancholic</text>
+    </string>
+    <string id="talker_traits_Monolith_58">
+        <text>obsessive</text>
+    </string>
+    <string id="talker_traits_Monolith_59">
+        <text>secretive</text>
+    </string>
+    <string id="talker_traits_Monolith_60">
+        <text>guarded</text>
+    </string>
+    <string id="talker_traits_Monolith_61">
+        <text>sadistic</text>
+    </string>
+    <string id="talker_traits_Monolith_62">
+        <text>arrogant</text>
+    </string>
+    <string id="talker_traits_Monolith_63">
+        <text>charismatic</text>
+    </string>
+    <string id="talker_traits_Monolith_64">
+        <text>unflappable</text>
+    </string>
+    <string id="talker_traits_Monolith_65">
+        <text>neurotic</text>
+    </string>
+    <string id="talker_traits_Monolith_66">
+        <text>passionate</text>
+    </string>
+    <string id="talker_traits_Monolith_67">
+        <text>cold-hearted</text>
+    </string>
+    <string id="talker_traits_Monolith_68">
+        <text>judgmental</text>
+    </string>
+    <string id="talker_traits_Monolith_69">
+        <text>knowledgeable</text>
+    </string>
+    <string id="talker_traits_Monolith_70">
+        <text>xenophobic</text>
+    </string>
+    <string id="talker_traits_Monolith_71">
+        <text>despicable</text>
+    </string>
+    <string id="talker_traits_Monolith_72">
+        <text>unpleasant</text>
+    </string>
+    <string id="talker_traits_Monolith_73">
+        <text>vile</text>
+    </string>
+    <string id="talker_traits_Monolith_74">
+        <text>unfriendly</text>
+    </string>
+    <string id="talker_traits_Monolith_75">
+        <text>temperamental</text>
+    </string>
+    <string id="talker_traits_Monolith_76">
+        <text>obtuse</text>
+    </string>
+    <string id="talker_traits_Monolith_77">
+        <text>delusional</text>
+    </string>
+    <string id="talker_traits_Monolith_78">
+        <text>a sociopath</text>
+    </string>
+    <string id="talker_traits_Monolith_79">
+        <text>aggressive</text>
+    </string>
+    <string id="talker_traits_Monolith_80">
+        <text>unhinged</text>
+    </string>
+    <string id="talker_traits_Monolith_81">
+        <text>merciless</text>
+    </string>
+    <string id="talker_traits_Monolith_82">
+        <text>a misanthrope</text>
+    </string>
+    <string id="talker_traits_Monolith_83">
+        <text>belligerent</text>
+    </string>
+    <string id="talker_traits_Monolith_84">
+        <text>bitter</text>
+    </string>
+    <string id="talker_traits_Monolith_85">
+        <text>resentful</text>
+    </string>
+    <string id="talker_traits_Monolith_86">
+        <text>a bigot</text>
+    </string>
+    <string id="talker_traits_Monolith_87">
+        <text>manic</text>
+    </string>
+    <string id="talker_traits_Monolith_88">
+        <text>incoherent</text>
+    </string>
+    <string id="talker_traits_Monolith_89">
+        <text>twitchy</text>
+    </string>
+    <string id="talker_traits_Monolith_90">
+        <text>wide-eyed</text>
+    </string>
+    <string id="talker_traits_Monolith_91">
+        <text>patronizing</text>
+    </string>
+    <string id="talker_traits_Monolith_92">
+        <text>pedantic</text>
+    </string>
+    <string id="talker_traits_Monolith_93">
+        <text>dismissive</text>
+    </string>
+    <string id="talker_traits_Monolith_94">
+        <text>inquisitive</text>
+    </string>
+    <string id="talker_traits_Monolith_95">
+        <text>melodramatic</text>
+    </string>
+    <string id="talker_traits_Monolith_96">
+        <text>grim</text>
+    </string>
+    <string id="talker_traits_Monolith_97">
+        <text>gullible</text>
+    </string>
+    <string id="talker_traits_Monolith_98">
+        <text>subservient</text>
+    </string>
+    <string id="talker_traits_Monolith_99">
+        <text>gaslighting</text>
+    </string>
+    <string id="talker_traits_Monolith_100">
+        <text>abusive</text>
+    </string>
+    <string id="talker_traits_Monolith_101">
+        <text>guilt-ridden</text>
+    </string>
+    <string id="talker_traits_Monolith_102">
+        <text>patriotic</text>
+    </string>
+    <string id="talker_traits_Monolith_103">
+        <text>a raving lunatic</text>
+    </string>
+    <string id="talker_traits_Monolith_104">
+        <text>resolute</text>
+    </string>
+    <string id="talker_traits_Monolith_105">
+        <text>zealous</text>
+    </string>
+    <string id="talker_traits_Monolith_106">
+        <text>pious</text>
+    </string>
+    <string id="talker_traits_Monolith_107">
+        <text>dogmatic</text>
+    </string>
+    <string id="talker_traits_Monolith_108">
+        <text>ascetic</text>
+    </string>
+    <string id="talker_traits_Monolith_109">
+        <text>fanatical</text>
+    </string>
+    <string id="talker_traits_Monolith_110">
+        <text>monotone</text>
+    </string>
+    <string id="talker_traits_Monolith_111">
+        <text>hypnotic</text>
+    </string>
+    <string id="talker_traits_Monolith_112">
+        <text>prophetic</text>
+    </string>
+    <string id="talker_traits_Monolith_113">
+        <text>delirious</text>
+    </string>
+    <string id="talker_traits_Monolith_114">
+        <text>ecstatic</text>
+    </string>
+    <string id="talker_traits_Monolith_115">
+        <text>repentant</text>
+    </string>
+    <string id="talker_traits_Monolith_116">
+        <text>inquisitorial</text>
+    </string>
+    <string id="talker_traits_Monolith_117">
+        <text>sanctimonious</text>
+    </string>
+    <string id="talker_traits_Monolith_118">
+        <text>hollow</text>
+    </string>
+    <string id="talker_traits_Monolith_119">
+        <text>zombie-like</text>
+    </string>
+    <string id="talker_traits_Monolith_120">
+        <text>euphoric</text>
+    </string>
+    <string id="talker_traits_Monolith_121">
+        <text>apocalyptic</text>
+    </string>
+    <string id="talker_traits_Monolith_122">
+        <text>ritualistic</text>
+    </string>
+    <string id="talker_traits_Monolith_123">
+        <text>martyr-like</text>
+    </string>
+    <string id="talker_traits_Monolith_124">
+        <text>enlightened</text>
+    </string>
+    <string id="talker_traits_Monolith_125">
+        <text>condemnatory</text>
+    </string>
+    <string id="talker_traits_Monolith_126">
+        <text>prayerful</text>
+    </string>
+    <string id="talker_traits_Monolith_127">
+        <text>soulless</text>
+    </string>
+    <string id="talker_traits_Monolith_128">
+        <text>visionary</text>
+    </string>
+    <string id="talker_traits_Monolith_129">
+        <text>telepathically sensitive</text>
+    </string>
+    <string id="talker_traits_Monolith_130">
+        <text>grizzled</text>
+    </string>
+    <string id="talker_traits_Monolith_131">
+        <text>avuncular</text>
+    </string>
+    <string id="talker_traits_Monolith_132">
+        <text>reassuring</text>
+    </string>
+    <string id="talker_traits_Monolith_134">
+        <text>earnest</text>
+    </string>
+    <string id="talker_traits_Monolith_135">
+        <text>deadpan</text>
+    </string>
+    <string id="talker_traits_Monolith_136">
+        <text>reverent</text>
+    </string>
+    <string id="talker_traits_Monolith_137">
+        <text>conciliatory</text>
+    </string>
+    <string id="talker_traits_Monolith_138">
+        <text>magnanimous</text>
+    </string>
+    <string id="talker_traits_Monolith_139">
+        <text>effusive</text>
+    </string>
+    <string id="talker_traits_Monolith_140">
+        <text>sentimental</text>
+    </string>
+    <string id="talker_traits_Monolith_141">
+        <text>principled</text>
+    </string>
+    <string id="talker_traits_Monolith_142">
+        <text>poetic</text>
+    </string>
+    <string id="talker_traits_Monolith_143">
+        <text>a raconteur</text>
+    </string>
+    <string id="talker_traits_Monolith_144">
+        <text>amiable</text>
+    </string>
+    <string id="talker_traits_Monolith_145">
+        <text>dignified</text>
+    </string>
+    <string id="talker_traits_Monolith_146">
+        <text>idealistic</text>
+    </string>
+    <string id="talker_traits_Monolith_147">
+        <text>vivacious</text>
+    </string>
+    <string id="talker_traits_Monolith_148">
+        <text>attentive</text>
+    </string>
+    <string id="talker_traits_Monolith_149">
+        <text>cordial</text>
+    </string>
+    <string id="talker_traits_Monolith_150">
+        <text>meditative</text>
+    </string>
+    <string id="talker_traits_Monolith_151">
+        <text>charitable</text>
+    </string>
+    <string id="talker_traits_Monolith_152">
+        <text>imaginative</text>
+    </string>
+    <string id="talker_traits_Monolith_153">
+        <text>unaffected</text>
+    </string>
+    <string id="talker_traits_Monolith_154">
+        <text>grounded</text>
+    </string>
+    <string id="talker_traits_Monolith_155">
+        <text>wistful</text>
+    </string>
+    <string id="talker_traits_Monolith_156">
+        <text>protective</text>
+    </string>
+</string_table>

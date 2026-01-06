@@ -1,0 +1,633 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<string_table>
+    <string id="talker_traits_Ecolog_1">
+        <text>morose</text>
+    </string>
+    <string id="talker_traits_Ecolog_2">
+        <text>sarcastic</text>
+    </string>
+    <string id="talker_traits_Ecolog_3">
+        <text>cautious</text>
+    </string>
+    <string id="talker_traits_Ecolog_4">
+        <text>paranoid</text>
+    </string>
+    <string id="talker_traits_Ecolog_5">
+        <text>sardonic</text>
+    </string>
+    <string id="talker_traits_Ecolog_6">
+        <text>gritty</text>
+    </string>
+    <string id="talker_traits_Ecolog_7">
+        <text>wise-cracking</text>
+    </string>
+    <string id="talker_traits_Ecolog_8">
+        <text>seething</text>
+    </string>
+    <string id="talker_traits_Ecolog_9">
+        <text>opportunistic</text>
+    </string>
+    <string id="talker_traits_Ecolog_10">
+        <text>tenacious</text>
+    </string>
+    <string id="talker_traits_Ecolog_11">
+        <text>mistrustful</text>
+    </string>
+    <string id="talker_traits_Ecolog_12">
+        <text>pessimistic</text>
+    </string>
+    <string id="talker_traits_Ecolog_13">
+        <text>witty</text>
+    </string>
+    <string id="talker_traits_Ecolog_14">
+        <text>clever</text>
+    </string>
+    <string id="talker_traits_Ecolog_15">
+        <text>unpredictable</text>
+    </string>
+    <string id="talker_traits_Ecolog_16">
+        <text>a flatterer</text>
+    </string>
+    <string id="talker_traits_Ecolog_17">
+        <text>friendly</text>
+    </string>
+    <string id="talker_traits_Ecolog_18">
+        <text>battle-hardened</text>
+    </string>
+    <string id="talker_traits_Ecolog_19">
+        <text>reckless</text>
+    </string>
+    <string id="talker_traits_Ecolog_20">
+        <text>nihilistic</text>
+    </string>
+    <string id="talker_traits_Ecolog_21">
+        <text>pragmatic</text>
+    </string>
+    <string id="talker_traits_Ecolog_22">
+        <text>envious</text>
+    </string>
+    <string id="talker_traits_Ecolog_23">
+        <text>miserable</text>
+    </string>
+    <string id="talker_traits_Ecolog_24">
+        <text>superstitious</text>
+    </string>
+    <string id="talker_traits_Ecolog_25">
+        <text>gruff</text>
+    </string>
+    <string id="talker_traits_Ecolog_26">
+        <text>jaded</text>
+    </string>
+    <string id="talker_traits_Ecolog_27">
+        <text>curious</text>
+    </string>
+    <string id="talker_traits_Ecolog_28">
+        <text>fearful</text>
+    </string>
+    <string id="talker_traits_Ecolog_29">
+        <text>anxious</text>
+    </string>
+    <string id="talker_traits_Ecolog_30">
+        <text>fatalistic</text>
+    </string>
+    <string id="talker_traits_Ecolog_31">
+        <text>greed-driven</text>
+    </string>
+    <string id="talker_traits_Ecolog_32">
+        <text>altruistic</text>
+    </string>
+    <string id="talker_traits_Ecolog_33">
+        <text>philosophical</text>
+    </string>
+    <string id="talker_traits_Ecolog_34">
+        <text>mysterious</text>
+    </string>
+    <string id="talker_traits_Ecolog_35">
+        <text>a thrill-seeker</text>
+    </string>
+    <string id="talker_traits_Ecolog_36">
+        <text>hesitant</text>
+    </string>
+    <string id="talker_traits_Ecolog_37">
+        <text>calculating</text>
+    </string>
+    <string id="talker_traits_Ecolog_38">
+        <text>ruthless</text>
+    </string>
+    <string id="talker_traits_Ecolog_39">
+        <text>distrustful</text>
+    </string>
+    <string id="talker_traits_Ecolog_40">
+        <text>observant</text>
+    </string>
+    <string id="talker_traits_Ecolog_41">
+        <text>scheming</text>
+    </string>
+    <string id="talker_traits_Ecolog_42">
+        <text>hopeful</text>
+    </string>
+    <string id="talker_traits_Ecolog_43">
+        <text>desperate</text>
+    </string>
+    <string id="talker_traits_Ecolog_44">
+        <text>determined</text>
+    </string>
+    <string id="talker_traits_Ecolog_45">
+        <text>apathetic</text>
+    </string>
+    <string id="talker_traits_Ecolog_46">
+        <text>cowardly</text>
+    </string>
+    <string id="talker_traits_Ecolog_47">
+        <text>disillusioned</text>
+    </string>
+    <string id="talker_traits_Ecolog_48">
+        <text>dramatic</text>
+    </string>
+    <string id="talker_traits_Ecolog_49">
+        <text>soft spoken</text>
+    </string>
+    <string id="talker_traits_Ecolog_50">
+        <text>easily angered</text>
+    </string>
+    <string id="talker_traits_Ecolog_51">
+        <text>rambling</text>
+    </string>
+    <string id="talker_traits_Ecolog_52">
+        <text>polite</text>
+    </string>
+    <string id="talker_traits_Ecolog_53">
+        <text>rude</text>
+    </string>
+    <string id="talker_traits_Ecolog_54">
+        <text>selfish</text>
+    </string>
+    <string id="talker_traits_Ecolog_55">
+        <text>gregarious</text>
+    </string>
+    <string id="talker_traits_Ecolog_56">
+        <text>relaxed</text>
+    </string>
+    <string id="talker_traits_Ecolog_57">
+        <text>tense</text>
+    </string>
+    <string id="talker_traits_Ecolog_58">
+        <text>ambitious</text>
+    </string>
+    <string id="talker_traits_Ecolog_59">
+        <text>an alcoholic</text>
+    </string>
+    <string id="talker_traits_Ecolog_60">
+        <text>depressed</text>
+    </string>
+    <string id="talker_traits_Ecolog_61">
+        <text>addicted to painkillers</text>
+    </string>
+    <string id="talker_traits_Ecolog_62">
+        <text>sexually frustrated</text>
+    </string>
+    <string id="talker_traits_Ecolog_63">
+        <text>cocky</text>
+    </string>
+    <string id="talker_traits_Ecolog_64">
+        <text>smug</text>
+    </string>
+    <string id="talker_traits_Ecolog_65">
+        <text>sycophantic</text>
+    </string>
+    <string id="talker_traits_Ecolog_66">
+        <text>quick to panic</text>
+    </string>
+    <string id="talker_traits_Ecolog_67">
+        <text>full of childlike wonder</text>
+    </string>
+    <string id="talker_traits_Ecolog_68">
+        <text>cynical</text>
+    </string>
+    <string id="talker_traits_Ecolog_69">
+        <text>easily distracted</text>
+    </string>
+    <string id="talker_traits_Ecolog_70">
+        <text>comedic</text>
+    </string>
+    <string id="talker_traits_Ecolog_71">
+        <text>craving approval constantly</text>
+    </string>
+    <string id="talker_traits_Ecolog_72">
+        <text>grovelling</text>
+    </string>
+    <string id="talker_traits_Ecolog_73">
+        <text>an adrenaline junkie</text>
+    </string>
+    <string id="talker_traits_Ecolog_74">
+        <text>easily spooked</text>
+    </string>
+    <string id="talker_traits_Ecolog_75">
+        <text>subtle</text>
+    </string>
+    <string id="talker_traits_Ecolog_76">
+        <text>quiet</text>
+    </string>
+    <string id="talker_traits_Ecolog_77">
+        <text>naive</text>
+    </string>
+    <string id="talker_traits_Ecolog_78">
+        <text>a pathological liar</text>
+    </string>
+    <string id="talker_traits_Ecolog_79">
+        <text>boisterous</text>
+    </string>
+    <string id="talker_traits_Ecolog_80">
+        <text>a braggart</text>
+    </string>
+    <string id="talker_traits_Ecolog_81">
+        <text>wry</text>
+    </string>
+    <string id="talker_traits_Ecolog_82">
+        <text>sly</text>
+    </string>
+    <string id="talker_traits_Ecolog_83">
+        <text>cunning</text>
+    </string>
+    <string id="talker_traits_Ecolog_84">
+        <text>stuttering</text>
+    </string>
+    <string id="talker_traits_Ecolog_85">
+        <text>chaotic</text>
+    </string>
+    <string id="talker_traits_Ecolog_86">
+        <text>loud</text>
+    </string>
+    <string id="talker_traits_Ecolog_87">
+        <text>despondent</text>
+    </string>
+    <string id="talker_traits_Ecolog_88">
+        <text>well educated</text>
+    </string>
+    <string id="talker_traits_Ecolog_89">
+        <text>a bully</text>
+    </string>
+    <string id="talker_traits_Ecolog_90">
+        <text>ebullient</text>
+    </string>
+    <string id="talker_traits_Ecolog_91">
+        <text>lethargic</text>
+    </string>
+    <string id="talker_traits_Ecolog_92">
+        <text>lackadaisical</text>
+    </string>
+    <string id="talker_traits_Ecolog_93">
+        <text>confrontational</text>
+    </string>
+    <string id="talker_traits_Ecolog_94">
+        <text>vengeful</text>
+    </string>
+    <string id="talker_traits_Ecolog_95">
+        <text>unrepentant</text>
+    </string>
+    <string id="talker_traits_Ecolog_96">
+        <text>melancholic</text>
+    </string>
+    <string id="talker_traits_Ecolog_97">
+        <text>obsessive</text>
+    </string>
+    <string id="talker_traits_Ecolog_98">
+        <text>incompetent</text>
+    </string>
+    <string id="talker_traits_Ecolog_99">
+        <text>secretive</text>
+    </string>
+    <string id="talker_traits_Ecolog_100">
+        <text>guarded</text>
+    </string>
+    <string id="talker_traits_Ecolog_101">
+        <text>skittish</text>
+    </string>
+    <string id="talker_traits_Ecolog_102">
+        <text>meek</text>
+    </string>
+    <string id="talker_traits_Ecolog_103">
+        <text>sadistic</text>
+    </string>
+    <string id="talker_traits_Ecolog_104">
+        <text>arrogant</text>
+    </string>
+    <string id="talker_traits_Ecolog_105">
+        <text>charismatic</text>
+    </string>
+    <string id="talker_traits_Ecolog_106">
+        <text>hysterical</text>
+    </string>
+    <string id="talker_traits_Ecolog_107">
+        <text>unflappable</text>
+    </string>
+    <string id="talker_traits_Ecolog_108">
+        <text>neurotic</text>
+    </string>
+    <string id="talker_traits_Ecolog_109">
+        <text>frail</text>
+    </string>
+    <string id="talker_traits_Ecolog_110">
+        <text>clumsy</text>
+    </string>
+    <string id="talker_traits_Ecolog_111">
+        <text>passionate</text>
+    </string>
+    <string id="talker_traits_Ecolog_112">
+        <text>cold-hearted</text>
+    </string>
+    <string id="talker_traits_Ecolog_113">
+        <text>judgmental</text>
+    </string>
+    <string id="talker_traits_Ecolog_114">
+        <text>ignorant</text>
+    </string>
+    <string id="talker_traits_Ecolog_115">
+        <text>knowledgeable</text>
+    </string>
+    <string id="talker_traits_Ecolog_116">
+        <text>xenophobic</text>
+    </string>
+    <string id="talker_traits_Ecolog_117">
+        <text>hungover</text>
+    </string>
+    <string id="talker_traits_Ecolog_118">
+        <text>compulsive</text>
+    </string>
+    <string id="talker_traits_Ecolog_119">
+        <text>chauvinistic</text>
+    </string>
+    <string id="talker_traits_Ecolog_120">
+        <text>despicable</text>
+    </string>
+    <string id="talker_traits_Ecolog_121">
+        <text>unpleasant</text>
+    </string>
+    <string id="talker_traits_Ecolog_122">
+        <text>vile</text>
+    </string>
+    <string id="talker_traits_Ecolog_123">
+        <text>unfriendly</text>
+    </string>
+    <string id="talker_traits_Ecolog_124">
+        <text>temperamental</text>
+    </string>
+    <string id="talker_traits_Ecolog_125">
+        <text>obtuse</text>
+    </string>
+    <string id="talker_traits_Ecolog_126">
+        <text>shaken</text>
+    </string>
+    <string id="talker_traits_Ecolog_127">
+        <text>sceptical</text>
+    </string>
+    <string id="talker_traits_Ecolog_128">
+        <text>impatient</text>
+    </string>
+    <string id="talker_traits_Ecolog_129">
+        <text>antsy</text>
+    </string>
+    <string id="talker_traits_Ecolog_130">
+        <text>delusional</text>
+    </string>
+    <string id="talker_traits_Ecolog_131">
+        <text>a sociopath</text>
+    </string>
+    <string id="talker_traits_Ecolog_132">
+        <text>agressive</text>
+    </string>
+    <string id="talker_traits_Ecolog_133">
+        <text>swaggering</text>
+    </string>
+    <string id="talker_traits_Ecolog_134">
+        <text>unhinged</text>
+    </string>
+    <string id="talker_traits_Ecolog_135">
+        <text>merciless</text>
+    </string>
+    <string id="talker_traits_Ecolog_136">
+        <text>a misanthrope</text>
+    </string>
+    <string id="talker_traits_Ecolog_137">
+        <text>belligerent</text>
+    </string>
+    <string id="talker_traits_Ecolog_138">
+        <text>bitter</text>
+    </string>
+    <string id="talker_traits_Ecolog_139">
+        <text>resentful</text>
+    </string>
+    <string id="talker_traits_Ecolog_140">
+        <text>a bigot</text>
+    </string>
+    <string id="talker_traits_Ecolog_141">
+        <text>insubordinate</text>
+    </string>
+    <string id="talker_traits_Ecolog_142">
+        <text>rebellious</text>
+    </string>
+    <string id="talker_traits_Ecolog_143">
+        <text>jittery</text>
+    </string>
+    <string id="talker_traits_Ecolog_144">
+        <text>a nervous wreck</text>
+    </string>
+    <string id="talker_traits_Ecolog_145">
+        <text>hyperactive</text>
+    </string>
+    <string id="talker_traits_Ecolog_146">
+        <text>manic</text>
+    </string>
+    <string id="talker_traits_Ecolog_147">
+        <text>forgetful</text>
+    </string>
+    <string id="talker_traits_Ecolog_148">
+        <text>absent-minded</text>
+    </string>
+    <string id="talker_traits_Ecolog_149">
+        <text>incoherent</text>
+    </string>
+    <string id="talker_traits_Ecolog_150">
+        <text>twitchy</text>
+    </string>
+    <string id="talker_traits_Ecolog_151">
+        <text>wide-eyed</text>
+    </string>
+    <string id="talker_traits_Ecolog_152">
+        <text>patronizing</text>
+    </string>
+    <string id="talker_traits_Ecolog_153">
+        <text>pedantic</text>
+    </string>
+    <string id="talker_traits_Ecolog_154">
+        <text>dismissive</text>
+    </string>
+    <string id="talker_traits_Ecolog_155">
+        <text>a gossip</text>
+    </string>
+    <string id="talker_traits_Ecolog_156">
+        <text>inquisitive</text>
+    </string>
+    <string id="talker_traits_Ecolog_157">
+        <text>nosy</text>
+    </string>
+    <string id="talker_traits_Ecolog_158">
+        <text>sleazy</text>
+    </string>
+    <string id="talker_traits_Ecolog_159">
+        <text>a drunkard</text>
+    </string>
+    <string id="talker_traits_Ecolog_160">
+        <text>resigned to their fate</text>
+    </string>
+    <string id="talker_traits_Ecolog_161">
+        <text>stingy</text>
+    </string>
+    <string id="talker_traits_Ecolog_162">
+        <text>a miser</text>
+    </string>
+    <string id="talker_traits_Ecolog_163">
+        <text>melodramatic</text>
+    </string>
+    <string id="talker_traits_Ecolog_164">
+        <text>grim</text>
+    </string>
+    <string id="talker_traits_Ecolog_165">
+        <text>weak-willed</text>
+    </string>
+    <string id="talker_traits_Ecolog_166">
+        <text>gullible</text>
+    </string>
+    <string id="talker_traits_Ecolog_167">
+        <text>impressionable</text>
+    </string>
+    <string id="talker_traits_Ecolog_168">
+        <text>subservient</text>
+    </string>
+    <string id="talker_traits_Ecolog_169">
+        <text>gaslighting</text>
+    </string>
+    <string id="talker_traits_Ecolog_170">
+        <text>abusive</text>
+    </string>
+    <string id="talker_traits_Ecolog_171">
+        <text>guilt-ridden</text>
+    </string>
+    <string id="talker_traits_Ecolog_172">
+        <text>full of regret</text>
+    </string>
+    <string id="talker_traits_Ecolog_173">
+        <text>homesick</text>
+    </string>
+    <string id="talker_traits_Ecolog_174">
+        <text>patriotic</text>
+    </string>
+    <string id="talker_traits_Ecolog_175">
+        <text>world-weary</text>
+    </string>
+    <string id="talker_traits_Ecolog_176">
+        <text>good-natured</text>
+    </string>
+    <string id="talker_traits_Ecolog_177">
+        <text>jovial</text>
+    </string>
+    <string id="talker_traits_Ecolog_178">
+        <text>companionable</text>
+    </string>
+    <string id="talker_traits_Ecolog_179">
+        <text>affable</text>
+    </string>
+    <string id="talker_traits_Ecolog_180">
+        <text>easygoing</text>
+    </string>
+    <string id="talker_traits_Ecolog_181">
+        <text>nonchalant</text>
+    </string>
+    <string id="talker_traits_Ecolog_182">
+        <text>mellow</text>
+    </string>
+    <string id="talker_traits_Ecolog_183">
+        <text>carefree</text>
+    </string>
+    <string id="talker_traits_Ecolog_184">
+        <text>hapless</text>
+    </string>
+    <string id="talker_traits_Ecolog_185">
+        <text>resolute</text>
+    </string>
+    <string id="talker_traits_Ecolog_186">
+        <text>methodical</text>
+    </string>
+    <string id="talker_traits_Ecolog_187">
+        <text>clinical</text>
+    </string>
+    <string id="talker_traits_Ecolog_188">
+        <text>detached</text>
+    </string>
+    <string id="talker_traits_Ecolog_189">
+        <text>verbose</text>
+    </string>
+    <string id="talker_traits_Ecolog_190">
+        <text>condescending</text>
+    </string>
+    <string id="talker_traits_Ecolog_191">
+        <text>elitist</text>
+    </string>
+    <string id="talker_traits_Ecolog_192">
+        <text>intellectually vain</text>
+    </string>
+    <string id="talker_traits_Ecolog_193">
+        <text>a workaholic</text>
+    </string>
+    <string id="talker_traits_Ecolog_194">
+        <text>an insomniac</text>
+    </string>
+    <string id="talker_traits_Ecolog_195">
+        <text>caffeine-addicted</text>
+    </string>
+    <string id="talker_traits_Ecolog_196">
+        <text>technocratic</text>
+    </string>
+    <string id="talker_traits_Ecolog_197">
+        <text>theoretical</text>
+    </string>
+    <string id="talker_traits_Ecolog_198">
+        <text>data-obsessed</text>
+    </string>
+    <string id="talker_traits_Ecolog_199">
+        <text>jargon-heavy</text>
+    </string>
+    <string id="talker_traits_Ecolog_200">
+        <text>over-analytical</text>
+    </string>
+    <string id="talker_traits_Ecolog_201">
+        <text>ethically flexible</text>
+    </string>
+    <string id="talker_traits_Ecolog_202">
+        <text>a visionary</text>
+    </string>
+    <string id="talker_traits_Ecolog_203">
+        <text>absent-minded</text>
+    </string>
+    <string id="talker_traits_Ecolog_204">
+        <text>a hypochondriac</text>
+    </string>
+    <string id="talker_traits_Ecolog_205">
+        <text>germophobic</text>
+    </string>
+    <string id="talker_traits_Ecolog_206">
+        <text>bureaucratic</text>
+    </string>
+    <string id="talker_traits_Ecolog_207">
+        <text>didactic</text>
+    </string>
+    <string id="talker_traits_Ecolog_208">
+        <text>soft-handed</text>
+    </string>
+    <string id="talker_traits_Ecolog_209">
+        <text>a pacifist</text>
+    </string>
+    <string id="talker_traits_Ecolog_210">
+        <text>eloquent</text>
+    </string>
+</string_table>
