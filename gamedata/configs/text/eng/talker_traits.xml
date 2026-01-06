@@ -15,9 +15,6 @@
 		<string id="talker_traits_5">
         <text>bloodthirsty</text>
     </string>
-		<string id="talker_traits_5">
-        <text>sardonic</text>
-    </string>
 		<string id="talker_traits_6">
         <text>gritty</text>
     </string>
@@ -635,5 +632,116 @@
     </string>
 		<string id="talker_traits_208">
         <text>resolute</text>
+    </string>
+    	<string id="talker_traits_209">
+        <text>grizzled</text>
+    </string>
+    <string id="talker_traits_210">
+        <text>hospitable</text>
+    </string>
+    <string id="talker_traits_211">
+        <text>avuncular</text>
+    </string>
+    <string id="talker_traits_212">
+        <text>reassuring</text>
+    </string>
+    <string id="talker_traits_213">
+        <text>earnest</text>
+    </string>
+    <string id="talker_traits_214">
+        <text>chivalrous</text>
+    </string>
+    <string id="talker_traits_215">
+        <text>whimsical</text>
+    </string>
+    <string id="talker_traits_216">
+        <text>deadpan</text>
+    </string>
+    <string id="talker_traits_217">
+        <text>reverent</text>
+    </string>
+    <string id="talker_traits_218">
+        <text>conciliatory</text>
+    </string>
+    <string id="talker_traits_219">
+        <text>magnanimous</text>
+    </string>
+    <string id="talker_traits_220">
+        <text>effusive</text>
+    </string>
+    <string id="talker_traits_221">
+        <text>diplomatic</text>
+    </string>
+    <string id="talker_traits_222">
+        <text>self-deprecating</text>
+    </string>
+    <string id="talker_traits_223">
+        <text>sentimental</text>
+    </string>
+    <string id="talker_traits_224">
+        <text>encouraging</text>
+    </string>
+    <string id="talker_traits_225">
+        <text>principled</text>
+    </string>
+    <string id="talker_traits_226">
+        <text>poetic</text>
+    </string>
+    <string id="talker_traits_227">
+        <text>a raconteur</text>
+    </string>
+    <string id="talker_traits_228">
+        <text>amiable</text>
+    </string>
+    <string id="talker_traits_229">
+        <text>dignified</text>
+    </string>
+    <string id="talker_traits_230">
+        <text>idealistic</text>
+    </string>
+    <string id="talker_traits_231">
+        <text>soft-hearted</text>
+    </string>
+    <string id="talker_traits_232">
+        <text>vivacious</text>
+    </string>
+    <string id="talker_traits_233">
+        <text>attentive</text>
+    </string>
+    <string id="talker_traits_234">
+        <text>cordial</text>
+    </string>
+    <string id="talker_traits_235">
+        <text>meditative</text>
+    </string>
+    <string id="talker_traits_236">
+        <text>charitable</text>
+    </string>
+    <string id="talker_traits_237">
+        <text>imaginative</text>
+    </string>
+    <string id="talker_traits_238">
+        <text>unaffected</text>
+    </string>
+    <string id="talker_traits_239">
+        <text>grounded</text>
+    </string>
+    <string id="talker_traits_240">
+        <text>charmingly awkward</text>
+    </string>
+    <string id="talker_traits_241">
+        <text>pacifying</text>
+    </string>
+    <string id="talker_traits_242">
+        <text>deferential</text>
+    </string>
+    <string id="talker_traits_243">
+        <text>wistful</text>
+    </string>
+    <string id="talker_traits_244">
+        <text>protective</text>
+    </string>
+    <string id="talker_traits_245">
+        <text>sardonic</text>
     </string>
 </string_table>
