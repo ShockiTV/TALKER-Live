@@ -52,7 +52,7 @@ function on_map_change_event(previous_map, current_map)
     end
 
     table.insert(witnesses, player)
-    trigger.talker_game_event(description, {}, witnesses, true)
+    trigger.talker_game_event(description, {}, witnesses, true, { is_map_transition = true })
 end
 
 local previous_map
