@@ -49,7 +49,7 @@ function on_creature_death(victim_obj, killer_obj)
     local memory_important = is_important_person(victim_obj, victim) or is_important_person(killer_obj, killer)
 
     -- send event to mod
-    local flags = { force_memory = memory_important }
+    local flags = { force_memory = memory_important, is_death = true }
     trigger.talker_game_event(unformatted_description, {victim.name, victim.experience, victim.faction, victim.reputation, killer.name, killer.experience, killer.faction, killer.reputation}, witnesses, important, flags)
 end
 
