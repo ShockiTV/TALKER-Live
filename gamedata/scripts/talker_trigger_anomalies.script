@@ -38,7 +38,7 @@ end
 function create_anomaly_interaction_event(anomaly_name)
     local unformatted_description = "%s, a %s rank member of the %s faction with %s reputation got very close to a %s"
     local player = game.get_player_character()
-    trigger.talker_game_event_near_player(unformatted_description, {player.name, player.experience, player.faction, player.reputation, anomaly_name})
+    trigger.talker_game_event_near_player(unformatted_description, {player.name, player.experience, player.faction, player.reputation, anomaly_name}, { is_anomaly = true })
 end
 
 --------------------------------------------------------------------------------------------
