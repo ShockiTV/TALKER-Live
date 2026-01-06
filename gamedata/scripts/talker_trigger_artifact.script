@@ -62,7 +62,7 @@ local function actor_on_item_before_pickup(obj)
     local player = game.get_player_character()
     local witnesses = game.get_characters_near_player()
     local unformatted_description = "%s, a %s rank member of the %s faction picked up an artifact called %s"
-    trigger.talker_game_event(unformatted_description, {player.name, player.experience, player.faction, artifact}, witnesses, true)
+    trigger.talker_game_event(unformatted_description, {player.name, player.experience, player.faction, artifact}, witnesses, true, { is_artifact = true })
 end
 
 
