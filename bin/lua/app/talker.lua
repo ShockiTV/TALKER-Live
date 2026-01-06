@@ -11,9 +11,9 @@ function talker.register_event(event, is_important)
 	logger.info("talker.register_event")
 	event_store:store_event(event)
 
-	-- If the event has the 'idle_only' flag, it's a direct instruction.
+	-- If the event has the 'is_idle' flag, it's a direct instruction.
 	-- Bypass the 'should_someone_speak' and generic 'generate_dialogue' logic.
-	if event.flags and event.flags.idle_only then
+	if event.flags and event.flags.is_idle then
 		logger.info("Idle conversation event detected. Using direct generation path.")
 		-- The first object in an idle event is the character object of the intended speaker.
 		local speaker_character = event.involved_objects[1]
