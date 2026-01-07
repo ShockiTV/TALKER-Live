@@ -531,7 +531,7 @@ function prompt_builder.create_dialogue_request_prompt(speaker, memory_context)
 			"== INTERACTION RULES == \n\n "
 				.. "1. Do not be overly hostile or aggressive unless provoked, or if you have a reason to be (from your faction, reputation, backstory, personality, 'LONG-TERM MEMORIES' etc.). \n "
 				.. "2. You are NOT obligated to help or be agreeable. If the situation, your mood, or your character's traits dictate it, you MAY rebuff, deny, or tell the other person to get lost. \n "
-				.. "3. The Zone is a dangerous place: assume every person is carrying a firearm for self-defence (even scientists and members of the Ecolog faction etc.). \n "
+				.. "3. The Zone is a dangerous place: assume every person is carrying a firearm for self-defence (even scientists and members of the Ecolog faction etc.). There are no 'unarmed civilians' in the Zone. \n "
 				.. "4. Your faction affiliation influences your biases and how you treat others. You are more friendly or hostile towards various groups depending on who you are aligned with. \n "
 				.. "5. Your reputation influences how you treat others. Use your reputation to inform your general morality and attitude toward others. \n "
 				.. "6. Your rank influences your behaviour: higher rank = more confident, more capable, more desensitized. \n "
@@ -555,7 +555,7 @@ function prompt_builder.create_dialogue_request_prompt(speaker, memory_context)
 				.. "- You have specific daily concerns and activities. What are you trying to accomplish today? What are you worried about? \n "
 				.. "- You need food, water, and regular sleep. Your mood may change if you think your basic bodily needs have not been met recently. \n "
 				.. "- You remember the past. You have anectodes from your time in the Zone, and you have memories of your life before coming to the Zone. You have opinions about how your life has changed and the current state of affairs. \n "
-				.. "- You have plans, hopes, desires and fears about your future. Both in the short term (e.g., 'I need to find a safe place to sleep tonight', 'I need to finish this task for Barkeep and get paid', 'I need to buy more gas mask filters' etc) AND for the long term (e.g., 'I want to find the person who killed my previous partner and get revenge', 'I need to make enough money here to retire', 'I want to make a name for myself in the Zone' etc) \n "
+				.. "- You have plans, hopes, desires and fears about your future. Both in the short term (e.g., 'I need to find a safe place to sleep tonight', 'I need to finish this task for Barkeep and get paid', 'I need to buy more gas mask filters' etc.) AND for the long term (e.g., 'I want to find the person who killed my previous partner and get revenge', 'I need to make enough money here to retire', 'I want to make a name for myself in the Zone' etc.). \n "
 		)
 	)
 
@@ -568,7 +568,7 @@ function prompt_builder.create_dialogue_request_prompt(speaker, memory_context)
 				.. " - Use the 'LONG-TERM MEMORIES' context (if present) to inform you of your character's long-term memories, relationships and character development. \n "
 				.. " - CHARACTER DEVELOPMENT (CRUCIAL): Your character and personality grows and changes over time. You ARE ALLOWED to respond in a manner that would otherwise be inconsistent with your 'CHARACTER ANCHOR (CORE IDENTITY)' **IF SUPPORTED BY** events in the 'LONG-TERM MEMORIES' context. \n "
 				.. " - Use any 'TIME GAP' event to help establish a timeline. Pay specific attention if the 'TIME GAP' event is the second-to-last event in the list: you may want to mention that you haven't seen the person in a while. \n "
-				.. " - You ARE ALLOWED to skip directly referencing the most recent event, location, or weather. \n "
+				.. " - You **ARE ALLOWED** to skip directly referencing the most recent event, location, or weather. \n "
 				.. " - You may ignore parts of the context to instead focus on what is important to your character right now. \n "
 				.. " - You may choose to bring up an older memory, or completely disregard recent events and talk about something else entirely if that is what's on your character's mind."
 		)
@@ -688,7 +688,10 @@ function prompt_builder.create_dialogue_request_prompt(speaker, memory_context)
 		table.insert(
 			messages,
 			system_message(
-				" == FINAL INSTRUCTION == \n Last event was your character spotting an enemy. Be minimal and concise in your response, like a military callout (e.g., 'Heads up, Bandit over there!', 'I see a Bloodsucker approaching!', 'Watch out, there are Army soldiers nearby!' etc.)"
+				" == FINAL INSTRUCTION == \n\n "
+					.. " - Last event was your character spotting an enemy. Be minimal and concise in your response, like a military callout (e.g., 'Heads up, Bandit over there!', 'I see a Bloodsucker approaching!', 'Watch out, there are Army soldiers nearby!' etc.)."
+					.. " - Your response should adress your nearby allies, warning of the spotted threat. DO NOT directly adress the entitiy you spotted. "
+					.. " - IMPORTANT: **IF** the spotted enemy belongs to the 'Monster' or 'Zombied' faction, **IGNORE** their rank and reputation."
 			)
 		)
 	end
@@ -706,7 +709,8 @@ function prompt_builder.create_dialogue_request_prompt(speaker, memory_context)
 			table.insert(
 				messages,
 				system_message(
-					" == FINAL INSTRUCTION == \n Your character decides to ask "
+					" == FINAL INSTRUCTION == \n\n "
+						.. "Your character decides to ask "
 						.. player.name
 						.. " (the user) a question. It can be about their past experiences, opinions on recent events, an anecdote, something about their life before coming to the Zone or anything else that interests you, that you are curious about or that you feel would help you get to know them better. "
 				)
@@ -720,7 +724,8 @@ function prompt_builder.create_dialogue_request_prompt(speaker, memory_context)
 			table.insert(
 				messages,
 				system_message(
-					" == FINAL INSTRUCTION == \n Your character decides to strike up a random conversation on the subject of: "
+					" == FINAL INSTRUCTION == \n\n "
+						.. "Your character decides to strike up a random conversation on the subject of: "
 						.. topic
 				)
 			)
