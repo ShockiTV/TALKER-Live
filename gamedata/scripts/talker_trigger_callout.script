@@ -22,14 +22,14 @@ local event_store = require("domain.repo.event_store")
 local last_callout_time_ms = 0
 local callout_cooldown_ms = 30 * 1000 -- 30 seconds, for ANY callout.
 local repeated_callout_cooldown_ms = 4 * 60 * 1000 -- 4 minutes, for callouts of enemies with the same name.
-local MAX_CALLOUT_DISTANCE = 40  -- Max distance of callout in meters
+local MAX_CALLOUT_DISTANCE = 30  -- Max distance of callout in meters
 
 function is_valid_callout(npc_obj, target_obj)
     -- Perform initial checks. If any of these fail, the callout is invalid.
     if not (
         queries.is_living_character(npc_obj) and
         queries.are_enemies(npc_obj, target_obj) and
-        queries.get_distance_between(npc_obj, target_obj) >= MAX_CALLOUT_DISTANCE and
+        queries.get_distance_between(npc_obj, target_obj) <= MAX_CALLOUT_DISTANCE and
         not queries.is_in_combat(npc_obj)
     ) then
         return false
@@ -54,7 +54,8 @@ if queries.is_companion(target_obj) and not queries.are_enemies(db.actor, npc_ob
     local since_time = queries.get_game_time_ms() - repeated_callout_cooldown_ms
     local recent_events = event_store:get_events_since(since_time)    
     for _, event in ipairs(recent_events) do
-        if event.description == "%s, a %s rank member of the %s faction with %s reputation spotted %s, a %s rank member of the %s faction with %s reputation!" then
+        if event.description == "%s, a %s rank member of the %s faction with %s reputation spotted %s, a %s rank member of the %s faction with %s reputation!" or
+        event.description == "%s, a %s rank member of the %s faction with %s reputation spotted %s of the %s faction!" then
             -- Check if the target (4th involved object, after spotter name, rank, faction) has the same name
             -- involved_objects: {spotter_name, spotter_rank, spotter_faction, target_name, target_rank, target_faction}
             local event_target_name = event.involved_objects and event.involved_objects[5]
@@ -91,19 +92,26 @@ function on_enemy_eval(npc_obj, target_obj)
     -- determine if it's a callout
     if not is_valid_callout(npc_obj, target_obj) then return end
 
-    --- create callout event
-    local unformatted_description = "%s, a %s rank member of the %s faction with %s reputation spotted %s, a %s rank member of the %s faction with %s reputation!"
     local spotter = game.create_character(npc_obj)
     -- If the character object couldn't be created (e.g., NPC was despawned), abort.
     if not spotter then return end
+
     local enemy = game.create_character(target_obj)
     -- If the character object couldn't be created (e.g., NPC was despawned), abort.
     if not enemy then return end
-    local witnesses = {spotter} -- information is conveyed through their dialogue event itself
-
-    -- register event
-    log.info(spotter.name .. " spotted " .. enemy.name)
-    trigger.talker_game_event(unformatted_description, {spotter.name, spotter.experience, spotter.faction, spotter.reputation, enemy.name, enemy.experience, enemy.faction, enemy.reputation}, witnesses, true, {is_callout = true})
+    
+    local witnesses = {spotter}
+    
+    -- create callout event
+    if enemy.faction == "Monster" or enemy.faction == "Zombied" then
+        local unformatted_description = "%s, a %s rank member of the %s faction with %s reputation spotted %s of the %s faction!"
+        log.info(spotter.name .. " spotted " .. enemy.name)
+        trigger.talker_game_event(unformatted_description, {spotter.name, spotter.experience, spotter.faction, spotter.reputation, enemy.name, enemy.faction}, witnesses, true, {is_callout = true})
+    else
+        local unformatted_description = "%s, a %s rank member of the %s faction with %s reputation spotted %s, a %s rank member of the %s faction with %s reputation!"
+        log.info(spotter.name .. " spotted " .. enemy.name)
+        trigger.talker_game_event(unformatted_description, {spotter.name, spotter.experience, spotter.faction, spotter.reputation, enemy.name, enemy.experience, enemy.faction, enemy.reputation}, witnesses, true, {is_callout = true})
+    end
 
     -- Update global timer
     last_callout_time_ms = queries.get_game_time_ms()
