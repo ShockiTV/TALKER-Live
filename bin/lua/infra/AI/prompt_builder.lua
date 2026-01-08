@@ -691,7 +691,6 @@ function prompt_builder.create_dialogue_request_prompt(speaker, memory_context)
 				" == FINAL INSTRUCTION == \n\n "
 					.. " - Last event was your character spotting an enemy. Be minimal and concise in your response, like a military callout (e.g., 'Heads up, Bandit over there!', 'I see a Bloodsucker approaching!', 'Watch out, there are Army soldiers nearby!' etc.)."
 					.. " - Your response should adress your nearby allies, warning of the spotted threat. DO NOT directly adress the entitiy you spotted. "
-					.. " - IMPORTANT: **IF** the spotted enemy belongs to the 'Monster' or 'Zombied' faction, **IGNORE** their rank and reputation."
 			)
 		)
 	end
