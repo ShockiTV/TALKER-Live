@@ -98,7 +98,7 @@ function proxy.pick_speaker(msgs, cb)
 end
 
 function proxy.summarize_story(msgs, cb)
-  return send(msgs, cb, {model=MODEL.fast, temperature=0.2, max_tokens=1500})
+  return send(msgs, cb, {model=MODEL.fast, temperature=0.2, max_tokens=2500})
 end
 
 return proxy
