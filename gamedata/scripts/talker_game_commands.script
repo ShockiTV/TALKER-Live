@@ -14,7 +14,7 @@ local function get_character_icon(sender)
     if sender ~= nil then
         if type(sender) == "string" then
             image = "ui_inGame2_Radiopomehi"
-        elseif queries.is_stalker(sender) then
+        elseif queries.is_stalker(sender) or queries.is_trader(sender) then
             image = sender:character_icon()
         end
     end
