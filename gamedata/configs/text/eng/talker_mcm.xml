@@ -149,4 +149,159 @@
     <string id="ui_mcm_talker_reset_backstory">
         <text>Check this box to reset backstories on loading a save. </text>
     </string>
+    <!-- TRIGGERS -->
+    <string id="ui_mcm_talker_triggers_title">
+        <text>Dialogue Triggers Configuration</text>
+    </string>
+    <string id="ui_mcm_talker_trigger_anomalies_title">
+        <text>Anomalies</text>
+    </string>
+    <string id="ui_mcm_talker_enable_trigger_proximity_anomalies">
+        <text>Enable dialogue trigger on getting close to an anomaly</text>
+    </string>
+    <string id="ui_mcm_talker_max_rank_for_warning">
+        <text>Rank above which NPCs no longer comment on you getting close to anomalies (0 = rookie, 7 = legend).</text>
+    </string>
+    <string id="ui_mcm_talker_anomaly_proximity_comment_cd">
+        <text>Anomaly Proximity Trigger Cooldown (seconds)</text>
+    </string>
+    <string id="ui_mcm_talker_enable_trigger_damage_anomalies">
+        <text>Enable dialogue trigger on getting hit by an anomaly</text>
+    </string>
+    <string id="ui_mcm_talker_anomaly_damage_comment_cd">
+        <text>Anomaly Damage Trigger Cooldown (seconds)</text>
+    </string>
+    <string id="ui_mcm_talker_trigger_artifacts_title">
+        <text>Artifacts</text>
+    </string>
+    <string id="ui_mcm_talker_enable_trigger_artifact_pickup">
+        <text>Enable dialogue trigger on picking up an artifact</text>
+    </string>
+    <string id="ui_mcm_talker_artifact_pickup_comment_cd">
+        <text>Artifact Pickup Trigger Cooldown (seconds)</text>
+    </string>
+    <string id="ui_mcm_talker_enable_trigger_artifact_use">
+        <text>Enable dialogue trigger on using an artifact</text>
+    </string>
+    <string id="ui_mcm_talker_artifact_use_comment_cd">
+        <text>Artifact Use Trigger Cooldown (seconds)</text>
+    </string>
+    <string id="ui_mcm_talker_trigger_callout_title">
+        <text>Callouts</text>
+    </string>
+    <string id="ui_mcm_talker_enable_trigger_callout">
+        <text>Enable dialogue trigger on spotting an enemy</text>
+    </string>
+    <string id="ui_mcm_talker_callout_cooldown">
+        <text>Callout Trigger Cooldown (seconds)</text>
+    </string>
+    <string id="ui_mcm_talker_repeated_callout_cooldown">
+        <text>Cooldown for repeated callouts on enemies with the same name (seconds)</text>
+    </string>
+    <string id="ui_mcm_talker_max_callout_distance">
+        <text>Max Callout Distance (meters)</text>
+    </string>
+    <string id="ui_mcm_talker_trigger_death_title">
+        <text>Deaths</text>
+    </string>
+    <string id="ui_mcm_talker_enable_trigger_death_player">
+        <text>Enable dialogue trigger when player kills an enemy.</text>
+    </string>
+    <string id="ui_mcm_talker_enable_trigger_death_npc">
+        <text>Enable dialogue trigger when an NPC kills an enemy.</text>
+    </string>
+    <string id="ui_mcm_talker_trigger_emission_title">
+        <text>Emissions</text>
+    </string>
+    <string id="ui_mcm_talker_enable_trigger_emission">
+        <text>Enable dialogue trigger on emissions/psy-storms.</text>
+    </string>
+    <string id="ui_mcm_talker_trigger_idle_title">
+        <text>Idle Conversation</text>
+    </string>
+    <string id="ui_mcm_talker_enable_trigger_idle">
+        <text>Enable idle conversations.</text>
+    </string>
+    <string id="ui_mcm_talker_idle_conversation_cooldown">
+        <text>Minimum time between idle conversations (seconds)</text>
+    </string>
+    <string id="ui_mcm_talker_recent_speech_threshold">
+        <text>Minimum window of silence (since the last time anyone said anything) before idle conversation is attempted (seconds)</text>
+    </string>
+    <string id="ui_mcm_talker_idle_question_chance">
+        <text>Percentage chance to ask the player a question instead of starting idle conversation</text>
+    </string>
+    <string id="ui_mcm_talker_trigger_injury_title">
+        <text>Injuries</text>
+    </string>
+    <string id="ui_mcm_talker_enable_trigger_injury">
+        <text>Enable dialogue trigger on player being critically injured.</text>
+    </string>
+    <string id="ui_mcm_talker_injury_cooldown">
+        <text>Injury comment cooldown (seconds)</text>
+    </string>
+    <string id="ui_mcm_talker_trigger_map_transition_title">
+        <text>Map Transition</text>
+    </string>
+    <string id="ui_mcm_talker_enable_trigger_map_transition">
+        <text>Enable dialogue trigger on moving between areas.</text>
+    </string>
+    <string id="ui_mcm_talker_trigger_reload_title">
+        <text>Reload</text>
+    </string>
+    <string id="ui_mcm_talker_enable_trigger_reload">
+        <text>Enable dialogue trigger on player reloading their weapon.</text>
+    </string>
+    <string id="ui_mcm_talker_reload_notice_chance">
+        <text>Chance to comment on reload (keep this LOW or it will be too spammy!)</text>
+    </string>
+    <string id="ui_mcm_talker_trigger_sleep_title">
+        <text>Sleep</text>
+    </string>
+    <string id="ui_mcm_talker_enable_trigger_sleep">
+        <text>Enable dialogue trigger on player waking up from sleep.</text>
+    </string>
+    <string id="ui_mcm_talker_trigger_task_title">
+        <text>Task</text>
+    </string>
+    <string id="ui_mcm_talker_enable_trigger_task">
+        <text>Enable dialogue trigger on player completing a task.</text>
+    </string>
+    <string id="ui_mcm_talker_task_cooldown">
+        <text>Task completion comment cooldown (seconds)</text>
+    </string>
+    <string id="ui_mcm_talker_task_notice_chance">
+        <text>Comment chance on tasks given by random NPCs (tasks from unique NPCs always trigger dialogue regardless of this value.)</text>
+    </string>
+    <string id="ui_mcm_talker_trigger_taunt_title">
+        <text>Taunt</text>
+    </string>
+    <string id="ui_mcm_talker_enable_trigger_taunt">
+        <text>Enable NPCs taunting enemies.</text>
+    </string>
+    <string id="ui_mcm_talker_taunt_cooldown">
+        <text>NPC taunt cooldown (seconds)</text>
+    </string>
+    <string id="ui_mcm_talker_trigger_weapon_jam_title">
+        <text>Weapon Jam</text>
+    </string>
+    <string id="ui_mcm_talker_enable_trigger_weapon_jam">
+        <text>Enable dialogue trigger on player's weapon jamming.</text>
+    </string>
+        <!-- GENERAL CONFIGURATION -->
+    <string id="ui_mcm_talker_general_configuration_title">
+        <text>General Configuration</text>
+    </string>
+    <string id="ui_mcm_talker_time_gap">
+        <text>Time gap threshold (hours). If this amount of time has passed between two events, a 'time gap' event is injected to help the AI understand the passage of time.</text>
+    </string>
+    <string id="ui_mcm_talker_base_dialogue_chance">
+        <text>Base dialogue chance for unimportant events (important events such as the player speaking always generate dialogue)</text>
+    </string>
+    <string id="ui_mcm_talker_witness_distance">
+        <text>NPCs within this distance count as witnesses of an event (meters)</text>
+    </string>
+    <string id="ui_mcm_talker_npc_speak_distance">
+        <text>NPCs within this distance can speak to the player (meters)</text>
+    </string>
 </string_table>
