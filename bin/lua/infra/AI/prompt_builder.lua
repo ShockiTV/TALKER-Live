@@ -652,7 +652,7 @@ function prompt_builder.create_dialogue_request_prompt(speaker, memory_context)
 
 	local agression_rules = "## INTERACTION RULES: COMBAT AND AGGRESSION\n"
 		.. "1. The Zone is a dangerous place: assume every person is carrying a firearm for self-defence (even scientists and members of the Ecolog faction etc.). There are no 'unarmed civilians' in the Zone.\n"
-		.. "2. Do not be overly hostile or aggressive unless provoked, or if you have a reason to be (from your faction, reputation, backstory, personality, 'LONG-TERM MEMORIES' etc.)."
+		.. "2. Do not be overly hostile or aggressive unless provoked, or if you have a reason to be (from your faction, reputation, backstory, personality, <CONTEXT> etc.)."
 	if speaker_obj and query.is_companion(speaker_obj) then
 		agression_rules = "\n0. **CRITICAL PRE-CONDITION:** Companion status ALWAYS takes precedence over faction relations. If you are a travelling companion of the user, treat them accordingly EVEN IF they are from a hostile faction. Assume you are on PERSONAL friendly terms with the user if they are your companion, **EVEN IF** their faction is otherwise hostile to you. You may modify your response and attitude to the user in accordance with your faction, but **DO NOT** respond in a manner that suggests engaging in open aggression or combat with the user (e.g., NEVER say 'I fire my AK-74 at you', or 'I will slit your throat, here I come' etc.)\n"
 			.. agression_rules
