@@ -5,6 +5,7 @@ local queries = talker_game_queries
 local trigger = require("interface.trigger")
 -- Game interface
 local game_adapter = require("infra.game_adapter")
+local mcm = talker_mcm
 
 local script_name = "TALKER Trigger Task"
 local original_task_callback = nil
@@ -29,7 +30,7 @@ local faction_map = {
 }
 
 local LAST_TASK_TIME = 0
-local TASK_COOLDOWN_CD = 15 * 1000 -- 15 seconds cooldown to prevent spam
+local TASK_COOLDOWN_CD = mcm.get("task_cooldown") * 1000 -- default 15 seconds cooldown to prevent spam
 
 function is_valid_event()
     local is_cd_over = (queries.get_game_time_ms() - LAST_TASK_TIME) > TASK_COOLDOWN_CD
@@ -59,6 +60,8 @@ function on_game_start()
 end
 
 function on_task_completed_event(tsk)
+    if not mcm.get("enable_trigger_task") then return end
+
     if not is_valid_event() then return end
     if not tsk then return end
     local task_id = tsk:get_id()
@@ -85,7 +88,7 @@ function on_task_completed_event(tsk)
     -- Proceed with event if task giver is unique, 10% chance for generic characters
     local is_unique = queries.is_unique_character_by_id(task_giver_id)
     if not is_unique then
-        if math.random() > 0.1 then
+        if math.random() > mcm.get("task_notice_chance") then
             return
         end
     end
@@ -140,11 +143,11 @@ function on_task_completed_event(tsk)
             companion_names = table.concat(names_list, ", ") .. " and " .. last_name
         end
         -- Format and send the event
-        local description = string.format("%s, a %s rank member of the %s faction with %s reputation and their travelling companions %s completed the task '%s' for %s, a %s rank member of the %s faction with %s reputation!", player.name, player.experience, player.faction, player.reputation, companion_names, task_title, task_giver_character.name, task_giver_character.experience, task_giver_character.faction, task_giver_character.reputation)
+        local description = string.format("%s (%s %s, %s rep) and their travelling companions %s completed the task '%s' for %s (%s %s, %s rep)!", player.name, player.experience, player.faction, player.reputation, companion_names, task_title, task_giver_character.name, task_giver_character.experience, task_giver_character.faction, task_giver_character.reputation)
         trigger.talker_game_event(description, {}, witnesses, true, { is_task = true })
      
 else
-        local description = string.format("%s, a %s rank member of the %s faction with %s reputation completed the task '%s' for %s, a %s rank member of the %s faction with %s reputation!", player.name, player.experience, player.faction, player.reputation, task_title, task_giver_character.name, task_giver_character.experience, task_giver_character.faction, task_giver_character.reputation)
+        local description = string.format("%s (%s %s, %s rep) completed the task '%s' for %s (%s %s, %s rep)!", player.name, player.experience, player.faction, player.reputation, task_title, task_giver_character.name, task_giver_character.experience, task_giver_character.faction, task_giver_character.reputation)
         trigger.talker_game_event(description, {}, witnesses, true, { is_task = true })
 end
     LAST_TASK_TIME = queries.get_game_time_ms()
