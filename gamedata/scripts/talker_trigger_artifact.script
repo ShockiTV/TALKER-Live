@@ -8,10 +8,12 @@ local trigger = require("interface.trigger")
 
 local queries = talker_game_queries
 local commands = talker_game_commands
+local mcm = talker_mcm
 ----------------------------------------------------------------------------------------------------
 -- Constants
 ----------------------------------------------------------------------------------------------------
-local ARTIFACT_COMMENT_CD = 20 * 1000 -- 20 seconds
+local ARTIFACT_PICKUP_COMMENT_CD = mcm.get("artifact_pickup_comment_cd") * 1000
+local ARTIFACT_USE_COMMENT_CD = mcm.get("artifact_use_comment_cd") * 1000
 ----------------------------------------------------------------------------------------------------
 -- Conditions
 ----------------------------------------------------------------------------------------------------
@@ -24,15 +26,25 @@ local function is_excluded_artifact(name)
     return false
 end
 
-local LAST_ARTIFACT_COMMENT = 0
-
-function is_valid_event(artifact_name)
+local LAST_ARTIFACT_PICKUP_COMMENT = 0
+function is_valid_pickup(artifact_name)
     if is_excluded_artifact(artifact_name) then return false end   
-    if not game.is_cooldown_over(LAST_ARTIFACT_COMMENT, ARTIFACT_COMMENT_CD) then 
+    if not game.is_cooldown_over(LAST_ARTIFACT_PICKUP_COMMENT, ARTIFACT_PICKUP_COMMENT_CD) then 
         return false 
     end
 
-    LAST_ARTIFACT_COMMENT = queries.get_game_time_ms()
+    LAST_ARTIFACT_PICKUP_COMMENT = queries.get_game_time_ms()
+    return true
+end
+
+local LAST_ARTIFACT_USE_COMMENT = 0
+function is_valid_use(artifact_name)
+    if is_excluded_artifact(artifact_name) then return false end   
+    if not game.is_cooldown_over(LAST_ARTIFACT_USE_COMMENT, ARTIFACT_USE_COMMENT_CD) then 
+        return false 
+    end
+
+    LAST_ARTIFACT_USE_COMMENT = queries.get_game_time_ms()
     return true
 end
 
@@ -42,28 +54,43 @@ end
 
 
 local function actor_on_item_use(obj)
+    if not mcm.get("enable_trigger_artifact_use") then return end
     if not queries.is_artifact(obj) then return end
     
-    local artifact = queries.get_item_name(obj)
-    if not is_valid_event(artifact) then return end
+    local section = obj:section()
+    local artifact_description = queries.load_xml(section)
+    if artifact_description == "" then
+        artifact_description = queries.get_item_name(obj)
+    end
+
+    if not is_valid_use(artifact_description) then return end
 
     local player = game.get_player_character()
     local witnesses = game.get_characters_near_player()
-    local unformatted_description = "%s, a %s rank member of the %s faction with %s reputation used an artifact called %s"
-    trigger.talker_game_event(unformatted_description, {player.name, player.experience, player.faction, player.reputation, artifact}, witnesses, true)
+    local unformatted_description = "%s (%s %s, %s rep) used an artifact called %s"
+    trigger.talker_game_event(unformatted_description, {player.name, player.experience, player.faction, player.reputation, artifact_description}, witnesses, true)
 end
 
 local function actor_on_item_before_pickup(obj)
+    if not mcm.get("enable_trigger_artifact_pickup") then return end
     if not queries.is_artifact(obj) then return end
 
-    local artifact = queries.get_item_name(obj)
-    if not is_valid_event(artifact) then return end
+    local section = obj:section()
+    local artifact_description = queries.load_xml(section)
+    
+    -- If load_xml returns an empty string, fall back to the basic item name
+    if artifact_description == "" then
+        artifact_description = queries.get_item_name(obj)
+    end
+    
+    if not is_valid_pickup(artifact_description) then return end
 
     local player = game.get_player_character()
     local witnesses = game.get_characters_near_player()
-    local unformatted_description = "%s, a %s rank member of the %s faction picked up an artifact called %s"
-    trigger.talker_game_event(unformatted_description, {player.name, player.experience, player.faction, artifact}, witnesses, true, { is_artifact = true })
+    local unformatted_description = "%s (%s %s, %s rep) picked up an artifact called %s"
+    trigger.talker_game_event(unformatted_description, {player.name, player.experience, player.faction, player.reputation, artifact_description}, witnesses, true, { is_artifact = true })
 end
+
 
 
 ----------------------------------------------------------------------------------------------------
