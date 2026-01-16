@@ -2,6 +2,7 @@ package.path = package.path .. ";./bin/lua/?.lua;"
 local log = require("framework.logger")
 local game = require("infra.game_adapter")
 local trigger = require("interface.trigger")
+local mcm = talker_mcm
 
 ----------------------------------------------------------------------------------------------------
 -- Constants
@@ -28,6 +29,8 @@ end
 
 -- Technically this is triggered by more than just emissions, but our name filter takes care of that
 function on_emission(name)
+    if not mcm.get("enable_trigger_emission") then return end
+
     -- PSY STORMS
     if name == "psi_storm_start" then
         create_emission_event(PSY_STORM, START)
