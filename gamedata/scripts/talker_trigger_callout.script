@@ -6,6 +6,7 @@ local log = require("framework.logger")
 
 -- Import game interface modules
 local queries = talker_game_queries
+local mcm = talker_mcm
 ----------------------------------------------------------------------------------------------------
 -- INFO
 ----------------------------------------------------------------------------------------------------
@@ -20,9 +21,9 @@ local queries = talker_game_queries
 local event_store = require("domain.repo.event_store")
 
 local last_callout_time_ms = 0
-local callout_cooldown_ms = 30 * 1000 -- 30 seconds, for ANY callout.
-local repeated_callout_cooldown_ms = 4 * 60 * 1000 -- 4 minutes, for callouts of enemies with the same name.
-local MAX_CALLOUT_DISTANCE = 30  -- Max distance of callout in meters
+local callout_cooldown_ms = mcm.get("callout_cooldown") * 1000 -- default 30 seconds, for ANY callout.
+local repeated_callout_cooldown_ms = mcm.get("repeated_callout_cooldown") * 1000 -- default 4 minutes, for callouts of enemies with the same name.
+local MAX_CALLOUT_DISTANCE = mcm.get("max_callout_distance")  -- default 30 meters, max distance of callout in meters
 
 function is_valid_callout(npc_obj, target_obj)
     -- Perform initial checks. If any of these fail, the callout is invalid.
@@ -56,10 +57,9 @@ function is_valid_callout(npc_obj, target_obj)
     local since_time = queries.get_game_time_ms() - repeated_callout_cooldown_ms
     local recent_events = event_store:get_events_since(since_time)    
     for _, event in ipairs(recent_events) do
-        if event.description == "%s, a %s rank member of the %s faction with %s reputation spotted %s, a %s rank member of the %s faction with %s reputation!" or
-        event.description == "%s, a %s rank member of the %s faction with %s reputation spotted %s of the %s faction!" then
-            -- Check if the target (4th involved object, after spotter name, rank, faction) has the same name
-            -- involved_objects: {spotter_name, spotter_rank, spotter_faction, target_name, target_rank, target_faction}
+        if event.description == "%s (%s %s, %s rep) spotted %s (%s %s, %s rep)!" or
+        event.description == "%s (%s %s, %s rep) spotted %s (%s faction)!" then
+            -- involved_objects: {spotter_name, spotter_rank, spotter_faction, spotter_reputation, target_name, ...}
             local event_target_name = event.involved_objects and event.involved_objects[5]
             if event_target_name then
                 if event_target_name == target_name then
@@ -91,6 +91,8 @@ end
 -- ENEMY CALLOUTS
 --------------------------------------------------------------------------------------------
 function on_enemy_eval(npc_obj, target_obj)
+    if not mcm.get("enable_trigger_callout") then return end
+    
     -- determine if it's a callout
     if not is_valid_callout(npc_obj, target_obj) then return end
 
@@ -102,14 +104,16 @@ function on_enemy_eval(npc_obj, target_obj)
     -- If the character object couldn't be created (e.g., NPC was despawned), abort.
     if not enemy then return end
     
+    if enemy.faction == spotter.faction and not queries.is_companion(npc_obj) then return end
+
     -- create callout event
     local witnesses = {spotter}
     if enemy.faction == "Monster" or enemy.faction == "Zombied" then
-        local unformatted_description = "%s, a %s rank member of the %s faction with %s reputation spotted %s of the %s faction!"
+        local unformatted_description = "%s (%s %s, %s rep) spotted %s (%s faction)!"
         log.info(spotter.name .. " spotted " .. enemy.name)
         trigger.talker_game_event(unformatted_description, {spotter.name, spotter.experience, spotter.faction, spotter.reputation, enemy.name, enemy.faction}, witnesses, true, {is_callout = true})
     else
-        local unformatted_description = "%s, a %s rank member of the %s faction with %s reputation spotted %s, a %s rank member of the %s faction with %s reputation!"
+        local unformatted_description = "%s (%s %s, %s rep) spotted %s (%s %s, %s rep)!"
         log.info(spotter.name .. " spotted " .. enemy.name)
         trigger.talker_game_event(unformatted_description, {spotter.name, spotter.experience, spotter.faction, spotter.reputation, enemy.name, enemy.experience, enemy.faction, enemy.reputation}, witnesses, true, {is_callout = true})
     end
