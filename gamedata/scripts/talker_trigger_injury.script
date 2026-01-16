@@ -4,10 +4,11 @@ local trigger = require("interface.trigger")
 local game = require("infra.game_adapter")
 -- Game interface
 local queries = talker_game_queries
+local mcm = talker_mcm
 
 local script_name = "TALKER Trigger Injury"
 local LAST_INJURY_TIME = 0
-local INJURY_COOLDOWN_CD = 90 * 1000 -- 90 seconds cooldown to prevent spam
+local INJURY_COOLDOWN_CD = mcm.get("injury_cooldown") * 1000 -- default 90 seconds cooldown to prevent spam
 
 function is_valid_event()
     local is_cd_over = (queries.get_game_time_ms() - LAST_INJURY_TIME) > INJURY_COOLDOWN_CD
@@ -19,14 +20,24 @@ function is_valid_event()
 end
 
 function actor_on_hit_callback(obj, amount, local_direction, who, bone_index)
+    if not mcm.get("enable_trigger_injury") then return end
+
     if not is_valid_event() then return end
     if db.actor.health >= 0.4 then return end
 
     local player = game.get_player_character()
     local attacker = game.create_character(who)
-    local unformatted_description = "%s, a %s rank member of the %s faction with %s reputation is critically injured while fighting %s, a %s rank member of the %s faction with %s reputation!"
-    logger.info("%s: %s", script_name, unformatted_description)
-    trigger.talker_game_event_near_player(unformatted_description, {player.name, player.experience, player.faction, player.reputation, attacker.name, attacker.experience, attacker.faction, attacker.reputation}, true, { is_injury = true })
+    local witnesses = game.get_characters_near_player()
+    
+    if attacker and attacker.faction == "Monster" or attacker.faction == "Zombied" then
+        local unformatted_description = "%s (%s %s, %s rep) was critically injured while fighting %s (%s faction)!"
+        logger.info("%s: %s", script_name, unformatted_description)
+        trigger.talker_game_event(unformatted_description, {player.name, player.experience, player.faction, player.reputation, attacker.name, attacker.faction}, witnesses, true, { is_injury = true })
+    else
+        local unformatted_description = "%s (%s %s, %s rep) was critically injured while fighting %s (%s %s, %s rep)!"
+        logger.info("%s: %s", script_name, unformatted_description)
+        trigger.talker_game_event(unformatted_description, {player.name, player.experience, player.faction, player.reputation, attacker.name, attacker.experience, attacker.faction, attacker.reputation}, witnesses, true, { is_injury = true })
+    end
     
     LAST_INJURY_TIME = queries.get_game_time_ms()
 end
