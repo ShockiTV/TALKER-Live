@@ -63,7 +63,7 @@ function m.player_character_speaks(dialogue)
 	local player = game_adapter.get_player_character()
 	-- register new event
 	m.register_game_event_near_player(
-		"%s, a %s rank member of the %s faction with %s reputation said: %s",
+		"%s (%s %s, %s rep) said: %s",
 		{ player.name, player.experience, player.faction, player.reputation, dialogue },
 		true
 	)
