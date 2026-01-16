@@ -2,11 +2,14 @@ package.path = package.path .. ";./bin/lua/?.lua;"
 local logger = require("framework.logger")
 local game = require("infra.game_adapter")
 local trigger = require("interface.trigger")
+local mcm = talker_mcm
 
 local script_name = "TALKER Trigger Sleep"
 
 -- Callback when player initiates sleep
 function actor_on_sleep(hours)
+    if not mcm.get("enable_trigger_sleep") then return end
+
     logger.warn("%s: actor_on_sleep called with hours: %s", script_name, tostring(hours))
     if not hours or hours <= 0 then return end
     
@@ -39,9 +42,9 @@ function fire_wake_up_event(hours)
             companion_names = table.concat(names_list, ", ") .. " and " .. last_name
         end
         
-        description = string.format("%s, a %s rank member of the %s faction with %s reputation and their travelling companions %s woke up after sleeping for %d hours.", player.name, player.experience, player.faction, player.reputation, companion_names, sleeping_hours)
+        description = string.format("%s (%s %s, %s rep) and their travelling companions %s woke up after sleeping for %d hours.", player.name, player.experience, player.faction, player.reputation, companion_names, sleeping_hours)
     else
-        description = string.format("%s, a %s rank member of the %s faction with %s reputation woke up after sleeping for %d hours.", player.name, player.experience, player.faction, player.reputation, sleeping_hours)
+        description = string.format("%s (%s %s, %s rep) woke up after sleeping for %d hours.", player.name, player.experience, player.faction, player.reputation, sleeping_hours)
     end
     
     table.insert(witnesses, player)
