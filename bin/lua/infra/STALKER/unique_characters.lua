@@ -71,6 +71,7 @@ local unique_characters = {
 	["mechanic_army_yan_mlr"] = "quiet, methodical and reliable", -- Peregrine
 	["yan_povar_army_mlr"] = "alcoholic, unreliable and emotionally numb", -- Spirit
 	["yan_ecolog_kruglov"] = "anxious, cautious and dedicated", -- Professor Kruglov
+	["yan_ecolog_semenov"] = "a young woman that is diligent, highly intelligent, short-tempered and frustrated at working in a male-dominated field.", -- Professor Semenov
 
 	--[[ ARMY WAREHOUSES ]]
 	["mil_smart_terrain_7_7_freedom_leader_stalker"] = "charismatic, strategic and protective", -- Lukash
