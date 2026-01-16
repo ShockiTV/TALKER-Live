@@ -70,7 +70,8 @@ local function is_speaker_on_cooldown(speaker_id, current_game_time)
 end
 
 -- Set the last spoke time for a speaker
-local function set_speaker_last_spoke(speaker_id, current_game_time)
+-- Set the last spoke time for a speaker
+function AI_request.set_speaker_last_spoke(speaker_id, current_game_time)
 	speaker_last_spoke[tostring(speaker_id)] = current_game_time
 	logger.debug("Set cooldown for speaker " .. speaker_id .. " at time " .. current_game_time)
 end
@@ -157,7 +158,7 @@ function AI_request.pick_speaker(recent_events, compress_memories)
 	if #available_speakers == 1 then -- no need to pick using AI
 		logger.debug("Only one possible speaker nearby (after cooldown filter)")
 		local selected_speaker_id = available_speakers[1].game_id
-		set_speaker_last_spoke(selected_speaker_id, current_game_time) -- Set cooldown
+		AI_request.set_speaker_last_spoke(selected_speaker_id, current_game_time) -- Set cooldown
 		logger.debug("Compressing memories after picking speaker")
 		return compress_memories(selected_speaker_id)
 	end
@@ -253,7 +254,7 @@ function AI_request.pick_speaker(recent_events, compress_memories)
 			return
 		end
 		-- Set the speaker's cooldown
-		set_speaker_last_spoke(picked_speaker_id, current_game_time)
+		AI_request.set_speaker_last_spoke(picked_speaker_id, current_game_time)
 		-- move on to update narrative step
 		-- this is actually a callback given to the pick_speaker function, but it's expected to be update_narrative
 		logger.debug("Updating narrative after picking speaker")
