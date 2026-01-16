@@ -6,6 +6,8 @@ local trigger = require("interface.trigger")
 local AI_request = require("infra.AI.requests")
 local game = require("infra.game_adapter")
 local log = require("framework.logger")
+local config = require("interface.config")
+local mcm = talker_mcm
 
 -- Import game interface modules
 local queries = talker_game_queries
@@ -13,7 +15,7 @@ local queries = talker_game_queries
 -- CONDITIONS
 --------------------------------------------------------------------------------------------
 local last_idle_conversation_time_ms = 0
-local idle_conversation_time_cooldown_ms = 10 * 60 * 1000 -- 10 minutes
+local idle_conversation_time_cooldown_ms = mcm.get("idle_conversation_cooldown") * 1000 -- default 10 minutes
 
 local function cooldown_ready()
     return queries.get_game_time_ms() - last_idle_conversation_time_ms > idle_conversation_time_cooldown_ms
@@ -30,7 +32,7 @@ end
 -- Checks if any NPC near the player has spoken within a given threshold.
 -- This is used to determine if there is a "moment of silence" suitable for an idle conversation.
 local function has_anyone_spoken_recently()
-    local RECENT_SPEECH_THRESHOLD_MS = 2 * 60 * 1000 -- 2 minutes
+    local RECENT_SPEECH_THRESHOLD_MS = config.recent_speech_threshold() * 1000 -- default 2 minutes
 
     local nearby_characters = game.get_characters_near_player()
     if not nearby_characters or #nearby_characters == 0 then
@@ -43,7 +45,7 @@ local function has_anyone_spoken_recently()
         local last_spoke_time = AI_request.get_last_spoke_time(character.game_id)
         if last_spoke_time then
             if current_game_time - last_spoke_time < RECENT_SPEECH_THRESHOLD_MS then
-                -- Found someone who spoke within the last 3 minutes.
+                -- Found someone who spoke within the last 2 minutes.
                 return true
             end
         end
@@ -57,6 +59,8 @@ end
 -- IDLE CONVERSATION
 --------------------------------------------------------------------------------------------
 function on_every_10_seconds()
+    if not mcm.get("enable_trigger_idle") then return end
+
     -- If the player is in combat or sleeping, reset the idle conversation cooldown and abort.
     -- This prevents an idle conversation from starting immediately after combat ends, immediately after waking up, or while the player is sleeping.
     -- Safety check for db.actor
@@ -101,10 +105,14 @@ function on_every_10_seconds()
         local speaker_name = queries.get_name(npc_obj)
         local instruction = string.format("%s begins an idle conversation to pass the time. The next line of dialogue must be spoken by %s.", speaker_name, speaker_name)
         local speaker_character = game.create_character(npc_obj)
-        -- Create game event using trigger.talker_character_instructions, which generates a prompt using only "%s begins an idle conversation to pass the time" as context
-        local success = trigger.talker_character_instructions(instruction, speaker_character, false, { is_idle = true })
+        
+        -- Create game event manually to isolate witnesses
+        -- CRITICAL: Only the speaker should witness this instruction event.
+        local witnesses = { speaker_character }
+        trigger.talker_game_event(instruction, {speaker_character}, witnesses, false, { is_idle = true })
 
-        if success then
+        -- We assume success if we sent the event
+        if true then
             log.debug("TALKER: Idle chatter triggered for " .. speaker_name)
             conversation_triggered = true
             break -- Exit the loop on the first success
