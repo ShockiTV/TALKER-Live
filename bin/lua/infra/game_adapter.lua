@@ -98,7 +98,8 @@ function m.create_character(game_object_person)
 	local game_id = get_id(game_object_person)
 	local name = query.get_name(game_object_person)
 	local experience = query.get_rank(game_object_person)
-	local faction = get_faction_name(query.get_faction(game_object_person)) or "unknown"
+	local raw_faction = query.get_faction(game_object_person) -- Returns "Trader" for traders, or technical faction name
+	local faction = get_faction_name(raw_faction) or raw_faction or "unknown" -- Map to display name, or use raw if no mapping exists
 	local raw_reputation = nil
 	if game_object_person.character_reputation then
 		raw_reputation = game_object_person:character_reputation()
@@ -159,7 +160,7 @@ function m.create_dialogue_event(speaker_id, dialogue, source_event)
 		flags.is_whisper = true
 		log.debug("Creating whisper dialogue event with companion-only witnesses")
 		local dialogue_event = m.create_game_event(
-			"%s, a %s rank member of the %s faction with %s reputation whispered to their companions: %s",
+			"%s (%s %s, %s rep) whispered to companions: %s",
 			{ speaker_char.name, speaker_char.experience, speaker_char.faction, speaker_char.reputation, dialogue },
 			witnesses,
 			flags
@@ -170,7 +171,7 @@ function m.create_dialogue_event(speaker_id, dialogue, source_event)
 		witnesses = m.get_characters_near(speaker_obj)
 		log.debug("Creating normal dialogue event with nearby witnesses")
 		local dialogue_event = m.create_game_event(
-			"%s, a %s rank member of the %s faction with %s reputation said: %s",
+			"%s (%s %s, %s rep) said: %s",
 			{ speaker_char.name, speaker_char.experience, speaker_char.faction, speaker_char.reputation, dialogue },
 			witnesses,
 			flags
@@ -314,17 +315,17 @@ function m.get_faction_relations_string(speaker_faction, mentioned_factions_map)
 		for _, tier in ipairs(tiers_order) do
 			if #relations[tier] > 0 then
 				local section_lines = {}
-				-- Header: HOSTILE:
-				table.insert(section_lines, tier:upper() .. ": ")
+				-- Header: ### HOSTILE
+				table.insert(section_lines, "### " .. tier:upper())
 				for _, pair in ipairs(relations[tier]) do
-					table.insert(section_lines, " " .. pair)
+					table.insert(section_lines, "- " .. pair)
 				end
-				table.insert(sections, table.concat(section_lines, " \n"))
+				table.insert(sections, table.concat(section_lines, "\n"))
 			end
 		end
 
 		if #sections > 0 then
-			return table.concat(sections, " \n\n ")
+			return table.concat(sections, "\n\n")
 		end
 	end
 	return nil
