@@ -7,6 +7,7 @@ package.path = package.path .. ";./bin/lua/?.lua;"
 local trigger = require("interface.trigger")
 local locations = require("infra.STALKER.locations")
 local game = require("infra.game_adapter")
+local mcm = talker_mcm
 -- Saved variable to track the number of visits to each map
 local level_visit_count = {}
 local commented_already = false
@@ -15,6 +16,8 @@ local commented_already = false
 -- @param previous_map String name of the previous map
 -- @param current_map String name of the current map
 function on_map_change_event(previous_map, current_map)
+    if not mcm.get("enable_trigger_map_transition") then return end
+    
     if not current_map or not previous_map then return end
 
     -- Update visit count for the current map
@@ -46,9 +49,9 @@ function on_map_change_event(previous_map, current_map)
             local last_name = table.remove(names_list)
             companion_names = table.concat(names_list, ", ") .. " and " .. last_name
         end
-        description = string.format("%s, a %s rank member of the %s faction with %s reputation and their travelling companions %s traveled from %s to %s %s. %s", player.name, player.experience, player.faction, player.reputation, companion_names, previous_map_name, current_map_name, visit_amount, current_map_description)
+        description = string.format("%s (%s %s, %s rep) and their travelling companions %s traveled from %s to %s %s. %s", player.name, player.experience, player.faction, player.reputation, companion_names, previous_map_name, current_map_name, visit_amount, current_map_description)
     else
-        description = string.format("%s, a %s rank member of the %s faction with %s reputation traveled from %s to %s %s. %s", player.name, player.experience, player.faction, player.reputation, previous_map_name, current_map_name, visit_amount, current_map_description)
+        description = string.format("%s (%s %s, %s rep) traveled from %s to %s %s. %s", player.name, player.experience, player.faction, player.reputation, previous_map_name, current_map_name, visit_amount, current_map_description)
     end
 
     table.insert(witnesses, player)
