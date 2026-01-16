@@ -1,6 +1,7 @@
 -- dynamic_config.lua – values that depend on talker_mcm are now getters
 local game_config = talker_mcm
 local language = require("infra.language")
+local mcm = talker_mcm
 
 -- helper
 local function cfg(key, default)
@@ -57,9 +58,9 @@ end
 local c = {}
 
 -- static values
-c.EVENT_WITNESS_RANGE = 25
-c.NPC_SPEAK_DISTANCE = 30
-c.BASE_DIALOGUE_CHANCE = 0.25
+c.EVENT_WITNESS_RANGE = mcm.get("witness_distance")
+c.NPC_SPEAK_DISTANCE = mcm.get("npc_speak_distance")
+c.BASE_DIALOGUE_CHANCE = mcm.get("base_dialogue_chance")
 c.player_speaks = false
 c.SHOW_HUD_MESSAGES = true
 c.PROXY_API_KEY = "VerysecretKey"
@@ -125,6 +126,10 @@ end
 
 function c.dialogue_model()
 	return cfg("gpt_version", "gpt-4o")
+end
+
+function c.recent_speech_threshold()
+	return mcm.get("recent_speech_threshold")
 end
 
 return c
