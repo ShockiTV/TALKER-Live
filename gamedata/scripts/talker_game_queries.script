@@ -95,6 +95,11 @@ function is_monster(object)
     return try(IsMonster, object)
 end
 
+function is_trader(object)
+    must_exist(object, "is_trader")
+    return try(IsTrader, object)
+end
+
 function get_id(obj)
     local function get_id_logic() return tostring(obj:id()) end
     return try(get_id_logic)
@@ -227,12 +232,29 @@ function get_community_goodwill(community)
 end
 
 function get_faction(npc)
-    local faction = try(character_community, npc) or "no faction"
+    if is_trader(npc) then
+        return "Trader"
+    end
+    local faction = try(character_community, npc) or "unknown"
     return faction
 end
 
 function get_rank(npc)
     return try(ranks.get_obj_rank_name, npc) or ""
+end
+
+function get_rank_value(rank_name)
+    local ranks_map = {
+        ["novice"] = 0,
+        ["trainee"] = 1,
+        ["experienced"] = 2,
+        ["professional"] = 3,
+        ["veteran"] = 4,
+        ["expert"] = 5,
+        ["master"] = 6,
+        ["legend"] = 7
+    }
+    return ranks_map[rank_name] or -1
 end
 
 function get_real_player_faction()
@@ -376,7 +398,7 @@ end
 
 function is_living_character(obj)
     must_exist(obj, "is_living_character")
-    return obj and is_stalker(obj) and obj:alive()
+    return obj and (is_stalker(obj) or is_trader(obj)) and obj:alive()
 end
 
 -- Function to get a list of nearby allies
@@ -558,10 +580,7 @@ end
 
 
 
--- Check if the sender is valid
-function is_living_character(character)
-    return is_stalker(character) and character:alive()
-end
+
 
 
 
@@ -661,6 +680,7 @@ local important_npcs = Set {
 "mechanic_army_yan_mlr", 									-- Peregrine
 "yan_povar_army_mlr", 										-- Spirit
 "yan_ecolog_kruglov",										-- Professor Kruglov
+"yan_ecolog_semenov",										-- Professor Semenov
 
     --[[ ARMY WAREHOUSES ]]--
 
@@ -761,7 +781,7 @@ function is_unique_character_by_id(npc_id)
     
     if npc then
         if is_player(npc) then return true end
-        if not is_stalker(npc) then return false end
+        if not (is_stalker(npc) or is_trader(npc)) then return false end
         local technical_name = get_technical_name(npc)
         return important_npcs[technical_name] ~= nil
     end
