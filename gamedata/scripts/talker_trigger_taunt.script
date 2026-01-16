@@ -4,6 +4,7 @@ package.path = package.path .. ";./bin/lua/?.lua;"
 local trigger = require("interface.trigger")
 local game = require("infra.game_adapter")
 local log = require("framework.logger")
+local mcm = talker_mcm
 
 -- Import game interface modules
 local queries = talker_game_queries
@@ -16,11 +17,12 @@ local queries = talker_game_queries
 ---------------------------------------------------------------------------------------------
 -- CONDITIONS
 --------------------------------------------------------------------------------------------
-last_taunt_time_ms = 0
-taunt_cooldown_ms = 5 * 60 * 1000
+local last_taunt_time_ms = 0
+local TAUNT_COOLDOWN_CD = mcm.get("taunt_cooldown") * 1000 -- default 5 minutes
+
 function someone_should_taunt(npc_obj)
     is_valid =
-        (queries.get_game_time_ms() - last_taunt_time_ms) > taunt_cooldown_ms and
+        (queries.get_game_time_ms() - last_taunt_time_ms) > TAUNT_COOLDOWN_CD and
         queries.is_living_character(npc_obj) and
         queries.is_in_combat(npc_obj)
     -- reset cooldown
@@ -32,23 +34,40 @@ end
 -- ENEMY CALLOUTS
 --------------------------------------------------------------------------------------------
 function on_enemy_eval(npc_obj, enemy_obj) -- could check for human enemy if we wanted
+    if not mcm.get("enable_trigger_taunt") then return end
+
     -- determine if it's a taunt
     if not someone_should_taunt(npc_obj) then return end
 
+    local taunter = game.create_character(npc_obj)
+    -- If the character object couldn't be created (e.g., NPC was despawned), abort. Also abort for monsters and zombied (they shouldn't be taunting).
+    if not taunter or taunter.faction == "Monster" or taunter.faction == "Zombied" then return end
+
+    local enemy = game.create_character(enemy_obj)
+    -- If the character object couldn't be created (e.g., NPC was despawned), abort.
+    if not enemy then return end
+    
+    -- Prevent edge cases where taunter and enemy are the same faction, while still allowing hostile faction companions to taunt their own faction.
+    if enemy.faction == taunter.faction and not queries.is_companion(npc_obj) then return end
+
+    -- Safety check for companions, preventing taunt spam in friendly bases while using companions from a hostile faction.
     if queries.is_companion(npc_obj) and not queries.are_enemies(db.actor, enemy_obj) then
         return
     end
-
     if queries.is_companion(enemy_obj) and not queries.are_enemies(db.actor, npc_obj) then
         return
     end
 
     --- create callout event
-    local unformatted_description = "%s, a %s rank member of the %s faction with %s reputation decides to taunt a nearby enemy!"
     local speaker = game.create_character(npc_obj)
     local witnesses = {speaker}
-
-    trigger.talker_game_event(unformatted_description, {speaker.name, speaker.experience, speaker.faction, speaker.reputation}, witnesses, true, { is_taunt = true })
+    if enemy.faction == "Monster" or enemy.faction == "Zombied" then
+        local unformatted_description = "%s (%s %s, %s rep) decides to taunt %s (%s faction)!"
+        trigger.talker_game_event(unformatted_description, {speaker.name, speaker.experience, speaker.faction, speaker.reputation, enemy.name, enemy.faction}, witnesses, true, { is_taunt = true })
+    else
+        local unformatted_description = "%s (%s %s, %s rep) decides to taunt %s (%s %s, %s rep)!"
+        trigger.talker_game_event(unformatted_description, {speaker.name, speaker.experience, speaker.faction, speaker.reputation, enemy.name, enemy.experience, enemy.faction, enemy.reputation}, witnesses, true, { is_taunt = true })
+    end
 end
 
 --------------------------------------------------------------------------------------------
