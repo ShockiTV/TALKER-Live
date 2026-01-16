@@ -4,7 +4,7 @@ local logger = require("framework.logger")
 local AI_request = require("infra.AI.requests")
 local game_adapter = require("infra.game_adapter")
 local config = require("interface.config")
-
+local queries = talker_game_queries
 local talker = {}
 
 function talker.register_event(event, is_important)
@@ -66,6 +66,32 @@ function talker.generate_dialogue_from_instruction(speaker_name, event)
 					.. ", dialogue: "
 					.. dialogue
 			)
+
+			-- Race condition check:
+			-- If the speaker has spoken recently (e.g. while this slow request was processing), we abort.
+			-- This prevents rare occurances where the "Idle Conversation" event triggers just as another event generates dialogue,
+			-- leading to moments of double dialogue from the same character.
+			local last_spoke_time = AI_request.get_last_spoke_time(speaker_id)
+			local current_time = queries.get_game_time_ms()
+			local threshold_ms = config.recent_speech_threshold() * 1000
+
+			if last_spoke_time and (current_time - last_spoke_time < threshold_ms) then
+				logger.warn(
+					"Idle conversation aborted: speaker "
+						.. speaker_id
+						.. " spoke recently ("
+						.. (current_time - last_spoke_time)
+						.. "ms ago)."
+				)
+				if timestamp_to_delete then
+					event_store:remove_event(timestamp_to_delete)
+				end
+				return
+			end
+
+			-- Check passed, proceed with dialogue
+			-- CRITICAL: We must now update the last spoke time so they don't speak AGAIN immediately after this.
+			AI_request.set_speaker_last_spoke(speaker_id, current_time)
 
 			game_adapter.display_dialogue(speaker_id, dialogue)
 			local dialogue_event = game_adapter.create_dialogue_event(speaker_id, dialogue, event)
