@@ -10,24 +10,47 @@ local game = require("infra.game_adapter")
 local trigger = require("interface.trigger")
 -- Import game interface modules
 local queries = talker_game_queries
+local mcm = talker_mcm
 ----------------------------------------------------------------------------------------------------
 -- Constants
 ----------------------------------------------------------------------------------------------------
-local ANOMALY_COMMENT_CD = 20 * 1000 -- 20 seconds
 local INTERACTION_DISTANCE = 1
+local ANOMALY_PROXIMITY_COMMENT_CD = mcm.get("anomaly_proximity_comment_cd") * 1000
+local ANOMALY_DAMAGE_COMMENT_CD = mcm.get("anomaly_damage_comment_cd") * 1000
+local MAX_RANK_FOR_WARNING = mcm.get("max_rank_for_warning")
 
 ----------------------------------------------------------------------------------------------------
 -- Conditions
 ----------------------------------------------------------------------------------------------------
-local LAST_ANOMALY_COMMENT = 0
+local LAST_ANOMALY_PROXIMITY_COMMENT = 0
+local LAST_ANOMALY_DAMAGE_COMMENT = 0
 
-function is_valid_event(anomaly)
+function is_valid_proximity_event(anomaly)
     local player = queries.get_player()
-    is_valid =
-        game.is_cooldown_over(LAST_ANOMALY_COMMENT, ANOMALY_COMMENT_CD) and
+    
+    -- Rank Check: Only warn inexperienced players
+    local player_rank_name = queries.get_rank(player)
+    local player_rank_val = queries.get_rank_value(player_rank_name)
+    
+
+    if player_rank_val > mcm.get("max_rank_for_warning") then
+        return false
+    end
+
+
+    local is_valid =
+        game.is_cooldown_over(LAST_ANOMALY_PROXIMITY_COMMENT, ANOMALY_PROXIMITY_COMMENT_CD) and
         queries.distance_between(player, anomaly) > INTERACTION_DISTANCE
+    
     -- reset cooldown
-    if is_valid then LAST_ANOMALY_COMMENT = queries.get_game_time_ms() end
+    if is_valid then LAST_ANOMALY_PROXIMITY_COMMENT = queries.get_game_time_ms() end
+    return is_valid
+end
+
+function is_valid_damage_event()
+    -- Damage events always trigger if cooldown is over, regardless of rank
+    local is_valid = game.is_cooldown_over(LAST_ANOMALY_DAMAGE_COMMENT, ANOMALY_DAMAGE_COMMENT_CD)
+    if is_valid then LAST_ANOMALY_DAMAGE_COMMENT = queries.get_game_time_ms() end
     return is_valid
 end
 
@@ -35,28 +58,60 @@ end
 -- Function
 ----------------------------------------------------------------------------------------------------
 
-function create_anomaly_interaction_event(anomaly_name)
-    local unformatted_description = "%s, a %s rank member of the %s faction with %s reputation got very close to a %s"
+function create_anomaly_interaction_event(anomaly_name, is_damage)
+    local unformatted_description
     local player = game.get_player_character()
-    trigger.talker_game_event_near_player(unformatted_description, {player.name, player.experience, player.faction, player.reputation, anomaly_name}, false, { is_anomaly = true })
+    if is_damage then
+        unformatted_description = "%s (%s %s, %s rep) was hurt by %s"
+    trigger.talker_game_event_near_player(unformatted_description, {player.name, player.experience, player.faction, player.reputation, anomaly_name}, true, { is_anomaly = true })
+    else
+        unformatted_description = "%s (%s %s, %s rep) almost got close to a %s"
+        trigger.talker_game_event_near_player(unformatted_description, {player.name, player.experience, player.faction, player.reputation, anomaly_name}, false, { is_anomaly = true })
+    end
 end
 
 --------------------------------------------------------------------------------------------
--- Main function
+-- Main functions
 --------------------------------------------------------------------------------------------
 
--- Anomaly interaction
+-- Anomaly interaction (Proximity)
 function actor_on_feeling_anomaly(anomaly)
+    if not mcm.get("enable_trigger_proximity_anomalies") then return end
+
     local section = anomaly:section()
     if string.find(section, "radioactive") or string.find(section, "radiation") then
         return
     end
 
     local anomaly_name = queries.load_xml(section)
-    log.debug("handle_actor_on_feeling_anomaly called with: %s", anomaly_name)
-    -- Skip if the anomaly is not close enough
-    if is_valid_event(anomaly) then
-        create_anomaly_interaction_event(anomaly_name)
+    if anomaly_name == "" then return end -- Not a supported anomaly
+
+    -- Skip if the anomaly is not close enough OR if player rank is too high
+    if is_valid_proximity_event(anomaly) then
+        log.debug("Proximity event triggered for: %s", anomaly_name)
+        create_anomaly_interaction_event(anomaly_name, false)
+    end
+end
+
+-- Anomaly hit (Damage)
+function actor_on_hit_callback(obj, amount, local_direction, who, bone_index)
+    if not mcm.get("enable_trigger_damage_anomalies") then return end
+    if not who then return end
+    
+    -- Check if the source of damage is an anomaly we recognize
+    local section = who:section()
+    local anomaly_name = queries.load_xml(section)
+    
+    -- If load_xml returns an empty string, it's not in our list of supported anomalies
+    if anomaly_name == "" then return end
+    
+    if string.find(section, "radioactive") or string.find(section, "radiation") then
+        return
+    end
+
+    if is_valid_damage_event() then
+        log.debug("Damage event triggered for: %s", anomaly_name)
+        create_anomaly_interaction_event(anomaly_name, true)
     end
 end
 
@@ -67,12 +122,20 @@ end
 function safe_actor_on_feeling_anomaly(anomaly)
     local status, err = pcall(actor_on_feeling_anomaly, anomaly)
     if not status then
-        log.error("Error in on_player_interaction: %s", err)
+        log.error("Error in actor_on_feeling_anomaly: %s", err)
+    end
+end
+
+function safe_actor_on_hit_callback(obj, amount, local_direction, who, bone_index)
+    local status, err = pcall(actor_on_hit_callback, obj, amount, local_direction, who, bone_index)
+    if not status then
+        log.error("Error in actor_on_hit_callback: %s", err)
     end
 end
 
 function on_game_start()
     RegisterScriptCallback("actor_on_feeling_anomaly", safe_actor_on_feeling_anomaly)
+    RegisterScriptCallback("actor_on_hit_callback", safe_actor_on_hit_callback)
 end
 
 -- Module loaded check
