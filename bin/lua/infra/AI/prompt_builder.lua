@@ -86,13 +86,18 @@ function prompt_builder.create_pick_speaker_prompt(recent_events, witnesses)
 
 	local messages = {
 		system_message(
-			"# You are a Speaker ID Selection Engine. Your task is to identify the next speaker based on events and the conversation flow."
-				.. "\n\n## INSTRUCTIONS:\n "
-				.. "1. Analyze the 'CANDIDATES' and <EVENTS> to see who was addressed or who would logically react based on their traits.\n"
-				.. "2. Return ONLY a valid JSON object with the 'id' of the selected speaker.\n\n\nExample Output: { \"id\": 123 } \n"
-				.. "3. Do not include markdown formatting (like ```json).\n"
+			"# CORE DIRECTIVE: SPEAKER ID SELECTION ENGINE\n\n"
+				.. "You are a Speaker ID Selection Engine. Your task is to identify the next speaker based on events and the conversation flow."
+				.. "\n\n## INSTRUCTIONS:\n"
+				.. "1. Analyze the <CANDIDATES> and <EVENTS> to see who was addressed or who would logically react based on their traits.\n"
+				.. "2. Return ONLY a valid JSON object with the 'id' of the selected speaker.\n\n\nExample Output: { \"id\": 123 }\n"
+				.. "3. Do not include markdown formatting (like ```json)."
 		),
-		system_message("## CANDIDATES (in order of distance): " .. describe_characters_with_ids(witnesses)),
+		system_message(
+			"## CANDIDATES (in order of distance): <CANDIDATES>\n\n"
+				.. describe_characters_with_ids(witnesses)
+				.. "\n\n</CANDIDATES>"
+		),
 	}
 
 	table.insert(messages, system_message("## CURRENT EVENTS (oldest to newest):\n\n<EVENTS>\n"))
