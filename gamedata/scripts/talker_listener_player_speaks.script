@@ -11,7 +11,7 @@ function talker_on_player_speaks(dialogue)
     game.display_dialogue(player.game_id, dialogue)
     
     -- Using the detailed format string to include rank, reputation and faction
-    local unformatted_description = "%s, a %s rank member of the %s faction with %s reputation said: %s"
+    local unformatted_description = "%s (%s %s, %s rep) said: %s"
     trigger.talker_game_event_near_player(unformatted_description, {player.name, player.experience, player.faction, player.reputation, dialogue}, true)
 end
 
