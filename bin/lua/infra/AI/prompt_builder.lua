@@ -347,7 +347,8 @@ function prompt_builder.create_compress_memories_prompt(raw_events, speaker)
 				.. "2. CHARACTER LIMIT (ABSOLUTE): NEVER exceed a total limit of 900 characters in the final output.\n"
 				.. "3. FORMAT: Output a single, continuous paragraph of text. NEVER use bullet points, numbered lists, line breaks, or carriage returns. The output must be one fluid block of text.\n"
 				.. "4. CHRONOLOGY (ABSOLUTE): You MUST strictly MAINTAIN the chronological order of the source events. NEVER alter the chronological sequence.\n"
-				.. "5. OUTPUT: Output ONLY the single, summarized paragraph text. DO NOT include any headers, titles, introductory phrases or concluding phrases."
+				.. "5. **OUTPUT (CRITICAL):** Output ONLY the single, summarized paragraph text. DO NOT include any headers, titles, introductory phrases or concluding phrases.\n"
+				.. "6. TONE & STYLE: Write in a concise, matter-of-fact style like a dry biography or history textbook. DO NOT use flowery language, metaphors, or elaborate descriptions.\n"
 		)
 	)
 
@@ -366,19 +367,26 @@ function prompt_builder.create_compress_memories_prompt(raw_events, speaker)
 				.. " killed Sargeant Major Paulsen, Lieutenant Frank and Senior Private Johnson' use '"
 				.. speaker_name
 				.. " killed several Army soldiers').\n"
-				.. "4. CONSOLIDATION: Combine sequential or similar actions (e.g., fighting multiple enemies, or a long journey through several areas, etc.) into concise, merged sentences. Use any 'TIME GAP' event to establish a timeline and signal transitions between events, rather than including the literal 'TIME GAP' phrase.\n"
+				.. "4. CONSOLIDATION: Combine sequential or similar actions (e.g., fighting multiple enemies, or a long journey through several areas, etc.) into concise, merged sentences.\n"
+				.. "5. TIMELINE: Use any 'TIME GAP' event to establish a timeline and signal transitions between events, rather than including the literal 'TIME GAP' phrase.\n"
 				.. "### FILTERING (IMPORTANT):\n"
-				.. " - REMOVE repetitive, low-value mechanical events (e.g., REMOVE routine weapon checks, someone spotting something, taunts, people getting close to anomalies and people picking up or using artifacts.).\n"
-				.. " - REMOVE people's current reputation - it is not relevant to the story.\n"
-				.. " - REMOVE information about whatever weapon a character is using - it's not relevant to the story."
+				.. " - REMOVE people's current reputation.\n"
+				.. " - REMOVE information about whatever weapon a character is using."
 		)
 	)
 
 	table.insert(messages, system_message("## EVENTS TO SUMMARIZE\n\n <EVENTS>"))
 
 	for _, event in ipairs(raw_events) do
-		local content = event.content or Event.describe_short(event)
-		table.insert(messages, user_message(content))
+		local flags = event.flags
+		local is_junk = flags
+			and (flags.is_artifact or flags.is_anomaly or flags.is_reload or flags.is_weapon_jam or flags.is_callout)
+
+		-- Skip junk events to preserve summary conciseness
+		if not is_junk then
+			local content = event.content or Event.describe_short(event)
+			table.insert(messages, user_message(content))
+		end
 	end
 	table.insert(messages, system_message("\n</EVENTS>"))
 	return messages
@@ -428,31 +436,31 @@ function prompt_builder.create_dialogue_request_prompt(speaker, memory_context)
 		)
 	)
 
-	table.insert(
-		messages,
-		system_message(
-			"## CRITICAL OUTPUT FORMAT (ABSOLUTE RULES)\n\n"
-				.. "0. **ABSOLUTE RESTRICTION:**  **DO NOT** use any structured output, tool calls, or function calls in your response.\n "
-				.. "1. SPEAK AS ONE PERSON; **DO NOT BE AN AI**. Respond **ONLY** with your character's raw spoken dialogue. Your entire response must be a single, coherent **spoken** statement from your character.\n "
-				.. "2. BE **BRIEF** and **CONCISE**. One or two short sentences is ideal. **FOUR SENTENCES IS THE ABSOLUTE MAXIMUM**. \n "
-				.. "3. You are **ONLY** allowed to use up to the full four-sentence limit if you are **SPECIFICALLY** asked to tell a story or recall an event from your character's past. \n "
-				.. "4. Use natural slang and, if appropriate, uncensored language. Swear naturally when it fits your character and the situation. Be vulgar if that is who your character is, or the moment calls for it."
-		)
-	)
+	local output_format = "## CRITICAL OUTPUT FORMAT (ABSOLUTE RULES)\n\n"
+		.. "0. **ABSOLUTE RESTRICTION:** DO NOT use any structured output, tool calls, or function calls.\n "
+		.. "1. SPEAK AS ONE PERSON; **DO NOT BE AN AI**. Respond **ONLY** with your character's raw spoken dialogue. Your entire response must be a single, coherent **spoken** statement from your character.\n "
+		.. "2. **BREVITY:** Be **BRIEF** and **CONCISE**. One or two short sentences is ideal. **FOUR SENTENCES IS THE ABSOLUTE MAXIMUM**. \n "
+		.. "3. You are **ONLY** allowed to use up to the full four-sentence limit if you are **SPECIFICALLY** asked to tell a story or recall an event from your character's past. \n "
+		.. "4. **NATURAL SPEECH:** Use natural slang, stuttering, or pauses if appropriate. Swear naturally when it fits the situation. Be vulgar if that is who your character is or the moment calls for it."
+	if not mcm.get("action_descriptions") then
+		output_format = output_format
+			.. "5. **DIALOGUE ONLY:** Respond **ONLY** with the spoken words. Your output must be the raw audio transcript of what your character says. Do not include *actions*, (emotions), or [intentions]."
+			.. "6. **IMPLY, DON'T DESCRIBE:** If your character performs an action (e.g., reloading, sighing, handing over an item), you MUST imply it through the dialogue itself or omit it entirely. (Example: Instead of '*hands over money* \"Here.\"', say 'Here is the cash.')"
+	end
+	table.insert(messages, system_message(output_format))
 
-	table.insert(
-		messages,
-		system_message(
-			"## FORBIDDEN BEHAVIOUR:\n\n "
-				.. "1. NEVER write the user's lines.\n "
-				.. "2. NEVER simulate a back-and-forth dialogue with yourself.\n "
-				.. "3. NEVER use quotes, prefixes (like [Name]:), narration, or action descriptions (like *chuckles* or (sighs)).\n "
-				.. "### FORBIDDEN RESPONSES\n"
-				.. "1. **FORBIDDEN PHRASES (ABSOLUTELY DO NOT USE!):** 'Get out of here, Stalker!' 'I have a mission for you.' 'What do you need?' 'Stay safe out there.' 'Nice weather we're having.' 'Welcome to the Zone!'\n"
-				.. "2. **AVOID CLICHES:** Avoid generic NPC dialogue, cliches, or exposition dumping.\n"
-				.. "3. **NEVER make jokes about people 'glowing in the dark' due to radiation."
-		)
-	)
+	local forbidden_behaviour = "1. **NO SCRIPT FORMATTING:** NEVER use quotes around your speech. NEVER use prefixes (like Barkeep: or [You]:)."
+		.. "2. **NO PUPPETEERING:** NEVER write the user's lines or describe the user's actions.\n "
+		.. "3. **NO SELF-TALK:** NEVER simulate a back-and-forth dialogue with yourself. You speak only your line.\n "
+		.. "### FORBIDDEN PHRASES (Video Game Cliches)\n"
+		.. "1. **DO NOT USE:** 'Get out of here, Stalker!', 'I have a mission for you', 'What do you need?', 'Stay safe out there', 'Welcome to the Zone!'.\n"
+		.. "2. AVOID generic NPC exposition. You are a living person, not a quest giver.\n"
+		.. "3. **NEVER make jokes about people 'glowing' from radiation."
+	if not mcm.get("action_descriptions") then
+		forbidden_behaviour = "0. **NO STAGE DIRECTIONS:** NEVER use action descriptions, emotes, or asterisks (e.g., *chuckles*, *scratches head*, (sighs), [reloads]).\n "
+			.. forbidden_behaviour
+	end
+	table.insert(messages, system_message("## FORBIDDEN BEHAVIOUR:\n\n" .. forbidden_behaviour))
 
 	table.insert(
 		messages,
@@ -634,18 +642,25 @@ function prompt_builder.create_dialogue_request_prompt(speaker, memory_context)
 			.. speaking_style
 			.. reputation_text
 			.. weapon_info
+
+		local character_anchor = "1. **SUBTLETY:** The 'DEFINING CHARACTER TRAIT' should inform your characterisation subtly. Do not explicitly reference it in every response (e.g., if your backstory says you are in debt to the mob, be generally more focused on making money rather than say 'I'm in debt to the mob')."
+			.. "2. **PRIORITY:** Your individual personality always takes precedence over general faction traits."
+			.. "3. AVOID talking about your weapon unless directly asked about it, or you have a **GOOD** reason to do so (e.g., your personality includes 'gun-nut' or <CONTEXT> indicates active combat)."
+			.. "\n\n### CHARACTER DETAILS:\n"
+			.. "\n\n<CHARACTER>\n"
+			.. speaker_info
+			.. "\n</CHARACTER>\n\n"
+
+		if not mcm.get("action_descriptions") then
+			character_anchor = "0. **INTERNAL MONOLOGUE VS EXTERNAL ACTION:** Your traits (e.g., folding paper figures, cleaning a gun, drinking vodka) define your **MINDSET**. They do **NOT** require you to narrate the action. If you are folding a paper crane, simply speak the line you would say while doing it. **Do NOT describe the folding in asterisks.**\n"
+				.. character_anchor
+		end
 		table.insert(
 			messages,
 			system_message(
 				"## CHARACTER ANCHOR (CORE IDENTITY)\n\n "
 					.. "### CHARACTER ANCHOR USE GUIDELINES:\n"
-					.. "1. The 'DEFINING CHARACTER TRAIT/BACKGROUND' should be used to **SUBTLY** inform your general characterisation. You do NOT need to explicitly reference it in every response.\n"
-					.. "2. Your individual personality always takes precedence over general behavioural traits from your faction.\n"
-					.. "3. AVOID talking about your weapon unless directly asked about it, or you have a **GOOD** reason to do so (e.g., your personality includes 'gun-nut', you are taunting an enemy, you just killed an enemy etc.)."
-					.. "\n\n### CHARACTER DETAILS:\n"
-					.. "\n\n<CHARACTER>\n"
-					.. speaker_info
-					.. "\n</CHARACTER>\n\n"
+					.. character_anchor
 			)
 		)
 	end
@@ -730,12 +745,14 @@ function prompt_builder.create_dialogue_request_prompt(speaker, memory_context)
 	end
 	table.insert(messages, system_message("\n\n</EVENTS>\n"))
 
+	-- 4. Inject information about the current scene
 	-- Use the world_context of the most recent event to get the current location
 	local world_context = ""
 	if #new_events > 0 and new_events[#new_events].world_context then
 		world_context = "### CURRENT LOCATION:\n" .. new_events[#new_events].world_context .. "\n"
 	end
 
+	-- Special rules for specific locations
 	if string.find(world_context, "Cordon") then
 		world_context = world_context
 			.. "\n### CORDON TRUCE: \nThere is a fragile ceasefire between the stalkers of Rookie Village and the Army at the southern checkpoint, thanks to Sidorovich."
@@ -849,6 +866,7 @@ function prompt_builder.create_dialogue_request_prompt(speaker, memory_context)
 			idle_instruction = "Your character decides to strike up a random conversation on the subject of: " .. topic
 		end
 	end
+
 	-- Faction specific instructions
 	if speaker.faction == "Army" then
 		army_instruction = "\n### **ARMY BEHAVIOUR (IMPORTANT):**\n\n Use military terminology, vernacular and slang."
