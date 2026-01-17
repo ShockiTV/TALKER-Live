@@ -29,15 +29,13 @@ function actor_on_hit_callback(obj, amount, local_direction, who, bone_index)
     local attacker = game.create_character(who)
     local witnesses = game.get_characters_near_player()
     
-    if attacker and attacker.faction == "Monster" or attacker.faction == "Zombied" then
-        local unformatted_description = "%s (%s %s, %s rep) was critically injured while fighting %s (%s faction)!"
-        logger.info("%s: %s", script_name, unformatted_description)
-        trigger.talker_game_event(unformatted_description, {player.name, player.experience, player.faction, player.reputation, attacker.name, attacker.faction}, witnesses, true, { is_injury = true })
-    else
-        local unformatted_description = "%s (%s %s, %s rep) was critically injured while fighting %s (%s %s, %s rep)!"
-        logger.info("%s: %s", script_name, unformatted_description)
-        trigger.talker_game_event(unformatted_description, {player.name, player.experience, player.faction, player.reputation, attacker.name, attacker.experience, attacker.faction, attacker.reputation}, witnesses, true, { is_injury = true })
-    end
+    local player_fmt, player_vals = queries.get_character_event_info(player)
+    local attacker_fmt, attacker_vals = queries.get_character_event_info(attacker)
+    local unformatted_description = player_fmt .. " was critically injured while fighting " .. attacker_fmt .. "!"
+    local values = queries.join_tables(player_vals, attacker_vals)
+    
+    logger.info("%s: %s", script_name, unformatted_description)
+    trigger.talker_game_event(unformatted_description, values, witnesses, true, { is_injury = true })
     
     LAST_INJURY_TIME = queries.get_game_time_ms()
 end
