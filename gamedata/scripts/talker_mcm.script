@@ -192,6 +192,8 @@ function on_mcm_load()
             {id = "artifact_pickup_comment_cd", type = "input", val = 2, min = 0, max = 3600, def = 20},
             {id = "enable_trigger_artifact_use", type = "check", val = 1, def = true},
             {id = "artifact_use_comment_cd", type = "input", val = 2, min = 0, max = 3600, def = 20},
+            {id = "enable_trigger_artifact_equip", type = "check", val = 1, def = true},
+            {id = "artifact_equip_comment_cd", type = "input", val = 2, min = 0, max = 3600, def = 20},
             {id = "trigger_callout_title", type = "desc", clr = {200, 200, 255, 200}, text = "ui_mcm_talker_trigger_callout_title"},
             {id = "enable_trigger_callout", type = "check", val = 1, def = true},
             {id = "max_callout_distance", type = "track", val = 2, min = 5, max = 100, step = 1, def = 30},
@@ -271,6 +273,12 @@ function on_mcm_load()
                 step = 1,
                 def = 30,
             },
+                        {
+                id = "action_descriptions",
+                type = "check",
+                val = 1,
+                def = false,
+            },
         }
     }
     return options
@@ -293,6 +301,7 @@ local defaults = {
     ["enable_trigger_damage_anomalies"] = true,
     ["enable_trigger_artifact_pickup"] = true,
     ["enable_trigger_artifact_use"] = true,
+    ["enable_trigger_artifact_equip"] = true,
     ["enable_trigger_callout"] = true,
     ["enable_trigger_death_player"] = true,
     ["enable_trigger_death_npc"] = true,
@@ -310,6 +319,7 @@ local defaults = {
     ["max_rank_for_warning"] = 1,
     ["artifact_pickup_comment_cd"] = 20,
     ["artifact_use_comment_cd"] = 20,
+    ["artifact_equip_comment_cd"] = 20,
     ["max_callout_distance"] = 30,
     ["callout_cooldown"] = 30,
     ["repeated_callout_cooldown"] = 240,
@@ -325,6 +335,7 @@ local defaults = {
     ["witness_distance"] = 25,
     ["npc_speak_distance"] = 30,
     ["time_gap"] = 12,
+    ["action_descriptions"] = false,
 }
 
 -- Function to retrieve the configuration value
