@@ -149,7 +149,7 @@
     <string id="talker_af_cell">
         <text>Cell (A non-radioactive artifact formed in gravitational anomalies, likely due to intense localized magnetic fields. It emits a force field that disintegrates incoming bullets, converting their kinetic energy into radiation. When thrown at the ground it explodes, causing a temporary localized field where this effect is even stronger.)</text>
     </string>
-    <string id="talker_af_chain">
+    <string id="talker_af_chelust">
         <text>Chain (An unusual circular non-radioactive artifact resembling a gold-link chain. It grants the wearer minor stamina and health regeneration. Members of the Sin faction resonate with this artifact and gain quadruple the effect - making it sought after by them.)</text>
     </string>
     <string id="talker_af_cocoon">
