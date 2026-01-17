@@ -5,6 +5,7 @@
 package.path = package.path .. ";./bin/lua/?.lua;"
 local game = require("infra.game_adapter")
 local trigger = require("interface.trigger")
+local logger = require("framework.logger")
 
 local queries = talker_game_queries
 local commands = talker_game_commands
@@ -14,6 +15,9 @@ local mcm = talker_mcm
 ----------------------------------------------------------------------------------------------------
 local ARTIFACT_PICKUP_COMMENT_CD = mcm.get("artifact_pickup_comment_cd") * 1000
 local ARTIFACT_USE_COMMENT_CD = mcm.get("artifact_use_comment_cd") * 1000
+local ARTIFACT_EQUIP_COMMENT_CD = mcm.get("artifact_equip_comment_cd") * 1000
+
+local LOAD_SAFE = false
 ----------------------------------------------------------------------------------------------------
 -- Conditions
 ----------------------------------------------------------------------------------------------------
@@ -48,13 +52,24 @@ function is_valid_use(artifact_name)
     return true
 end
 
+local LAST_ARTIFACT_EQUIP_COMMENT = 0
+function is_valid_equip(artifact_name)
+    if is_excluded_artifact(artifact_name) then return false end   
+    if not game.is_cooldown_over(LAST_ARTIFACT_EQUIP_COMMENT, ARTIFACT_EQUIP_COMMENT_CD) then 
+        return false 
+    end
+
+    LAST_ARTIFACT_EQUIP_COMMENT = queries.get_game_time_ms()
+    return true
+end
+
 ----------------------------------------------------------------------------------------------------
 -- Handlers
 ----------------------------------------------------------------------------------------------------
 
 
-local function actor_on_item_use(obj)
-    if not mcm.get("enable_trigger_artifact_use") then return end
+local function actor_on_item_use(obj, str)
+    if not (LOAD_SAFE and mcm.get("enable_trigger_artifact_use")) then return end
     if not queries.is_artifact(obj) then return end
     
     local section = obj:section()
@@ -68,11 +83,47 @@ local function actor_on_item_use(obj)
     local player = game.get_player_character()
     local witnesses = game.get_characters_near_player()
     local unformatted_description = "%s (%s %s, %s rep) used an artifact called %s"
-    trigger.talker_game_event(unformatted_description, {player.name, player.experience, player.faction, player.reputation, artifact_description}, witnesses, true)
+    trigger.talker_game_event(unformatted_description, {player.name, player.experience, player.faction, player.reputation, artifact_description}, witnesses, true, { is_artifact = true })
+end
+
+local function actor_item_to_belt(obj)
+    if not (LOAD_SAFE and mcm.get("enable_trigger_artifact_equip")) then return end
+    if not queries.is_artifact(obj) then return end
+    
+    local section = obj:section()
+    local artifact_description = queries.load_xml(section)
+    if artifact_description == "" then
+        artifact_description = queries.get_item_name(obj)
+    end
+
+    if not is_valid_equip(artifact_description) then return end
+
+    local player = game.get_player_character()
+    local witnesses = game.get_characters_near_player()
+    local unformatted_description = "%s (%s %s, %s rep) equipped an artifact called %s"
+    trigger.talker_game_event(unformatted_description, {player.name, player.experience, player.faction, player.reputation, artifact_description}, witnesses, true, { is_artifact = true })
+end
+
+local function actor_on_item_to_slot(obj)
+    if not (LOAD_SAFE and mcm.get("enable_trigger_artifact_equip")) then return end
+    if not queries.is_artifact(obj) then return end
+    
+    local section = obj:section()
+    local artifact_description = queries.load_xml(section)
+    if artifact_description == "" then
+        artifact_description = queries.get_item_name(obj)
+    end
+
+    if not is_valid_equip(artifact_description) then return end
+
+    local player = game.get_player_character()
+    local witnesses = game.get_characters_near_player()
+    local unformatted_description = "%s (%s %s, %s rep) equipped an artifact called %s"
+    trigger.talker_game_event(unformatted_description, {player.name, player.experience, player.faction, player.reputation, artifact_description}, witnesses, true, { is_artifact = true })
 end
 
 local function actor_on_item_before_pickup(obj)
-    if not mcm.get("enable_trigger_artifact_pickup") then return end
+    if not (LOAD_SAFE and mcm.get("enable_trigger_artifact_pickup")) then return end
     if not queries.is_artifact(obj) then return end
 
     local section = obj:section()
@@ -97,9 +148,22 @@ end
 -- Setup
 ----------------------------------------------------------------------------------------------------
 
+local function on_loading_screen_dismissed()
+    -- Wait 3 seconds after loading screen is gone before enabling triggers
+    -- to avoid engine-driven equipment calls
+    CreateTimeEvent("talker_artifact_load", "safe_enable", 3, function()
+        LOAD_SAFE = true
+        logger.info("Artifact triggers are now LOAD_SAFE and active.")
+        return true
+    end)
+end
+
 function on_game_start()
+    RegisterScriptCallback("on_loading_screen_dismissed", on_loading_screen_dismissed)
     commands.RegisterSafeScriptCallback("actor_on_item_before_pickup", actor_on_item_before_pickup)
     commands.RegisterSafeScriptCallback("actor_on_item_use", actor_on_item_use)
+    commands.RegisterSafeScriptCallback("actor_on_item_to_slot", actor_on_item_to_slot)
+    commands.RegisterSafeScriptCallback("actor_item_to_belt", actor_item_to_belt)
 end
 
 function is_loaded()
