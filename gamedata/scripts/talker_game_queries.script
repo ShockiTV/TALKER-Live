@@ -18,11 +18,36 @@ function try(func, ...)
     return result
 end
 
+function join_tables(table1, table2)
+    local result = {}
+    if table1 then
+        for _, value in ipairs(table1) do
+            table.insert(result, value)
+        end
+    end
+    if table2 then
+        for _, value in ipairs(table2) do
+            table.insert(result, value)
+        end
+    end
+    return result
+end
+
 function get_game_path()
     return getFS():update_path("$game_config$", "") .. "\\"
 end
 
 -- OBJECTS
+
+-- Helper to get consistent formatting for monsters/zombies vs humans in event logs
+function get_character_event_info(char)
+    if not char then return "%s", {"Unknown"} end
+    if char.faction == "Monster" or char.faction == "Zombied" then
+        return "%s (%s)", {char.name, char.faction}
+    else
+        return "%s (%s %s, %s rep)", {char.name, char.experience, char.faction, char.reputation}
+    end
+end
 
 function get_technical_name(object)
     must_exist(object, "get_technical_name")
@@ -54,7 +79,28 @@ function is_weapon(item)
 end
 
 function is_artifact(obj)
-    return obj:is_artefact() -- base game
+    if not obj then return false end
+    
+    -- 1. Base engine check
+    if obj:is_artefact() then return true end
+    
+    -- 2. Global script helper check (common in mods)
+    if IsArtefact and IsArtefact(obj) then return true end
+    
+    -- 3. Config-based check (for "usable" artifacts that might use II_FOOD or other classes)
+    local section = obj:section()
+    local kind = SYS_GetParam(0, section, "kind", "")
+    if kind == "i_arty" or kind == "i_arty_junk" then
+        return true
+    end
+    
+    -- 4. Database-driven check (if it's in our lore file, it's an artifact)
+    local desc = load_xml(section)
+    if desc and desc ~= "" then
+        return true
+    end
+    
+    return false
 end
 
 -- PLAYER
@@ -519,13 +565,18 @@ end
 -- XML Loading
 --------------------------------------------------------------------------------
 
--- Load a translated string from the game's XML files. Vibe coding below, copilot thought this was a good idea.
+-- Load a translated string from the game's XML files.
 function load_xml(input)
     if not input then return "" end
-    key = "talker_" .. input
-    local result = game.translate_string("talker_" .. input) or game.translate_string(input)
+    local key = "talker_" .. input
+    local result = game.translate_string(key)
     if result == key then
-        log.warn("Translation not found for " .. input)
+        -- Try without prefix as a fallback
+        result = game.translate_string(input)
+        if result == input then
+            log.warn("Translation not found for " .. input)
+            return ""
+        end
     end
     return result == "talkerIgnore" and "" or result
 end
