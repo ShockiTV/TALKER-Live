@@ -7,21 +7,6 @@ local mcm = talker_mcm
 local queries = talker_game_queries
 
 --------------------------------------------------------------------------------------------
--- UTILS
---------------------------------------------------------------------------------------------
-
-local function join_tables(table1, table2)
-    local result = {}
-    for _, value in ipairs(table1) do
-        table.insert(result, value)
-    end
-    for _, value in ipairs(table2) do
-        table.insert(result, value)
-    end
-    return result
-end
-
---------------------------------------------------------------------------------------------
 -- CALLBACK
 --------------------------------------------------------------------------------------------
 
@@ -39,7 +24,7 @@ function on_creature_death(victim_obj, killer_obj)
     if killer_obj then
         witnesses_near_killer = game.get_characters_near(killer_obj)
     end
-    local witnesses = join_tables(witnesses_near_victim, witnesses_near_killer)
+    local witnesses = queries.join_tables(witnesses_near_victim, witnesses_near_killer)
     -- make characters
     local killer = nil
     if killer_obj then
@@ -72,15 +57,17 @@ function on_creature_death(victim_obj, killer_obj)
         important_death = true
     end
     local flags = { important_death = important_death, is_death = true }
-    -- send event to mod
-    local unformatted_description = ""
+    local victim_fmt, victim_vals = queries.get_character_event_info(victim)
+
     if killer and killer.name ~= victim.name then
-        unformatted_description = "%s (%s %s, %s rep) was killed by %s (%s %s, %s rep)!"
-        trigger.talker_game_event(unformatted_description, {victim.name, victim.experience, victim.faction, victim.reputation, killer.name, killer.experience, killer.faction, killer.reputation}, witnesses, important_event, flags)
+        local killer_fmt, killer_vals = queries.get_character_event_info(killer)
+        local unformatted_description = victim_fmt .. " was killed by " .. killer_fmt .. "!"
+        local values = queries.join_tables(victim_vals, killer_vals)
+        trigger.talker_game_event(unformatted_description, values, witnesses, important_event, flags)
     else
-        -- Environmental death (anomaly, fall damage, etc.)
-        unformatted_description = "%s (%s %s, %s rep) died!"
-        trigger.talker_game_event(unformatted_description, {victim.name, victim.experience, victim.faction, victim.reputation}, witnesses, important_event, flags)
+        -- Environmental death or suicide
+        local unformatted_description = victim_fmt .. " died!"
+        trigger.talker_game_event(unformatted_description, victim_vals, witnesses, important_event, flags)
     end
 end
 
