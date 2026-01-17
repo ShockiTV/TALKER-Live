@@ -39,7 +39,7 @@ function talker_on_player_whispers(dialogue)
         {player.name, player.experience, player.faction, player.reputation, dialogue}, 
         witnesses,
         true,
-        {is_whisper = true}
+        {is_whisper = true, is_dialogue = true}
     )
 end
 
