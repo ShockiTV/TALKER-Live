@@ -108,15 +108,14 @@ function on_enemy_eval(npc_obj, target_obj)
 
     -- create callout event
     local witnesses = {spotter}
-    if enemy.faction == "Monster" or enemy.faction == "Zombied" then
-        local unformatted_description = "%s (%s %s, %s rep) spotted %s (%s faction)!"
-        log.info(spotter.name .. " spotted " .. enemy.name)
-        trigger.talker_game_event(unformatted_description, {spotter.name, spotter.experience, spotter.faction, spotter.reputation, enemy.name, enemy.faction}, witnesses, true, {is_callout = true})
-    else
-        local unformatted_description = "%s (%s %s, %s rep) spotted %s (%s %s, %s rep)!"
-        log.info(spotter.name .. " spotted " .. enemy.name)
-        trigger.talker_game_event(unformatted_description, {spotter.name, spotter.experience, spotter.faction, spotter.reputation, enemy.name, enemy.experience, enemy.faction, enemy.reputation}, witnesses, true, {is_callout = true})
-    end
+    local spotter_fmt, spotter_vals = queries.get_character_event_info(spotter)
+    local enemy_fmt, enemy_vals = queries.get_character_event_info(enemy)
+    
+    local unformatted_description = spotter_fmt .. " spotted " .. enemy_fmt .. "!"
+    local values = queries.join_tables(spotter_vals, enemy_vals)
+    
+    log.info(spotter.name .. " spotted " .. enemy.name)
+    trigger.talker_game_event(unformatted_description, values, witnesses, true, {is_callout = true})
 
     -- Update global timer
     last_callout_time_ms = queries.get_game_time_ms()
