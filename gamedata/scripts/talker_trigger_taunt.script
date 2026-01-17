@@ -59,15 +59,14 @@ function on_enemy_eval(npc_obj, enemy_obj) -- could check for human enemy if we 
     end
 
     --- create callout event
-    local speaker = game.create_character(npc_obj)
-    local witnesses = {speaker}
-    if enemy.faction == "Monster" or enemy.faction == "Zombied" then
-        local unformatted_description = "%s (%s %s, %s rep) decides to taunt %s (%s faction)!"
-        trigger.talker_game_event(unformatted_description, {speaker.name, speaker.experience, speaker.faction, speaker.reputation, enemy.name, enemy.faction}, witnesses, true, { is_taunt = true })
-    else
-        local unformatted_description = "%s (%s %s, %s rep) decides to taunt %s (%s %s, %s rep)!"
-        trigger.talker_game_event(unformatted_description, {speaker.name, speaker.experience, speaker.faction, speaker.reputation, enemy.name, enemy.experience, enemy.faction, enemy.reputation}, witnesses, true, { is_taunt = true })
-    end
+    local witnesses = {taunter}
+    local taunter_fmt, taunter_vals = queries.get_character_event_info(taunter)
+    local enemy_fmt, enemy_vals = queries.get_character_event_info(enemy)
+    
+    local unformatted_description = taunter_fmt .. " decides to taunt " .. enemy_fmt .. "!"
+    local values = queries.join_tables(taunter_vals, enemy_vals)
+    
+    trigger.talker_game_event(unformatted_description, values, witnesses, true, { is_taunt = true })
 end
 
 --------------------------------------------------------------------------------------------
