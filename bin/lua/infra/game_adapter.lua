@@ -149,6 +149,9 @@ function m.create_dialogue_event(speaker_id, dialogue, source_event)
 		return nil
 	end
 
+	-- Use get_character_event_info to get reduced event log clutter for zombied (and hypothetically monster) characters
+	local speaker_format, speaker_values = query.get_character_event_info(speaker_char)
+
 	-- Determine witnesses based on is_whisper flag
 	local witnesses
 	local flags = {}
@@ -157,11 +160,11 @@ function m.create_dialogue_event(speaker_id, dialogue, source_event)
 	if source_event and source_event.flags and source_event.flags.is_whisper then
 		-- Whisper mode: only companions can witness
 		witnesses = m.get_companions()
-		flags.is_whisper = true
+		flags = { is_whisper = true, is_dialogue = true }
 		log.debug("Creating whisper dialogue event with companion-only witnesses")
 		local dialogue_event = m.create_game_event(
-			"%s (%s %s, %s rep) whispered to companions: %s",
-			{ speaker_char.name, speaker_char.experience, speaker_char.faction, speaker_char.reputation, dialogue },
+			speaker_format .. " whispered to companions: %s",
+			query.join_tables(speaker_values, { dialogue }),
 			witnesses,
 			flags
 		)
@@ -169,10 +172,11 @@ function m.create_dialogue_event(speaker_id, dialogue, source_event)
 	else
 		-- Normal mode: nearby characters can witness
 		witnesses = m.get_characters_near(speaker_obj)
+		flags = { is_dialogue = true }
 		log.debug("Creating normal dialogue event with nearby witnesses")
 		local dialogue_event = m.create_game_event(
-			"%s (%s %s, %s rep) said: %s",
-			{ speaker_char.name, speaker_char.experience, speaker_char.faction, speaker_char.reputation, dialogue },
+			speaker_format .. " said: %s",
+			query.join_tables(speaker_values, { dialogue }),
 			witnesses,
 			flags
 		)
