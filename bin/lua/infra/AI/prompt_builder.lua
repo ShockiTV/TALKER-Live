@@ -438,13 +438,13 @@ function prompt_builder.create_dialogue_request_prompt(speaker, memory_context)
 
 	local output_format = "## CRITICAL OUTPUT FORMAT (ABSOLUTE RULES)\n\n"
 		.. "0. **ABSOLUTE RESTRICTION:** DO NOT use any structured output, tool calls, or function calls.\n "
-		.. "1. SPEAK AS ONE PERSON; **DO NOT BE AN AI**. Respond **ONLY** with your character's raw spoken dialogue. Your entire response must be a single, coherent **spoken** statement from your character.\n "
+		.. "1. **SPOKEN DIALOGUE ONLY:** Your entire response must be a single, coherent **spoken** statement from your character.\n "
 		.. "2. **BREVITY:** Be **BRIEF** and **CONCISE**. One or two short sentences is ideal. **FOUR SENTENCES IS THE ABSOLUTE MAXIMUM**. \n "
 		.. "3. You are **ONLY** allowed to use up to the full four-sentence limit if you are **SPECIFICALLY** asked to tell a story or recall an event from your character's past. \n "
 		.. "4. **NATURAL SPEECH:** Use natural slang, stuttering, or pauses if appropriate. Swear naturally when it fits the situation. Be vulgar if that is who your character is or the moment calls for it."
 	if not mcm.get("action_descriptions") then
 		output_format = output_format
-			.. "5. **DIALOGUE ONLY:** Respond **ONLY** with the spoken words. Your output must be the raw audio transcript of what your character says. Do not include *actions*, (emotions), or [intentions]."
+			.. "5. **DIALOGUE ONLY:** Respond **ONLY** with your character's spoken words. Don't narrate actions. Your output must be **ONLY** the raw audio transcript of what your character says. Do not include *actions*, (emotions), or [intentions]."
 			.. "6. **IMPLY, DON'T DESCRIBE:** If your character performs an action (e.g., reloading, sighing, handing over an item), you MUST imply it through the dialogue itself or omit it entirely. (Example: Instead of '*hands over money* \"Here.\"', say 'Here is the cash.')"
 	end
 	table.insert(messages, system_message(output_format))
@@ -679,7 +679,7 @@ function prompt_builder.create_dialogue_request_prompt(speaker, memory_context)
 		system_message(
 			"## MOMENT-TO-MOMENT CONCERNS\n\n"
 				.. "1. You need food, water, and regular sleep. Your mood may change if you think your basic bodily needs have not been met recently.\n"
-				.. "2. You have a daily routine, specific daily concerns, and activities that both include earning a living (e.g., 'I need to finish my shift patrolling Rostok for Duty', 'I need to find an artifact I can sell for money' etc.) **AND** maintaining your social relationships (e.g., 'I need to visit my friend Arnie today', 'I want to hear the latest rumours from the bar' etc.) **AND** find whatever entertainment you can in your free time (e.g., drinking, gambling, watching fights at the arena in Rostok, playing guitar at campfires etc.).\n"
+				.. "2. You have a daily routine, specific daily concerns, and activities that both include earning a living (e.g., 'I need to finish my shift patrolling Rostok for Duty', 'I need to find an artifact I can sell for money' etc.) **AND** maintaining your social relationships (e.g., 'I need to visit my friend Arnie today', 'I want to hear the latest rumours from the bar' etc.) **AND** find whatever entertainment you can in your free time (e.g., drinking, gambling, watching fights at Arnie's arena in Rostok, playing guitar at campfires etc.).\n"
 				.. "3. Your daily concerns vary slightly from day to day, as things change around you. What are you trying to accomplish today? What are you worried about?\n"
 				.. "4. You have plans, hopes, desires and fears about your future. Both in the short term (e.g., 'I need to find a safe place to sleep tonight', 'I need to finish this task for Barkeep and get paid', 'I need to buy more gas mask filters' etc.) AND for the long term (e.g., 'I want to find the person who killed my previous partner and get revenge', 'I need to make enough money here to retire', 'I want to make a name for myself in the Zone' etc.).\n"
 				.. "5. You remember the past. You have anectodes from your time in the Zone, and you have memories of your life before coming to the Zone. You have opinions about how your life has changed and the current state of affairs."
@@ -834,6 +834,7 @@ function prompt_builder.create_dialogue_request_prompt(speaker, memory_context)
 	local bandit_instruction = ""
 	local monolith_instruction = ""
 	local zombied_instruction = ""
+	local action_description_instruction = ""
 	local language_instruction = ""
 	-- Callout check
 	local callout_check = new_events[#new_events]
@@ -885,6 +886,11 @@ function prompt_builder.create_dialogue_request_prompt(speaker, memory_context)
 		zombied_instruction =
 			"\n### **ZOMBIED BEHAVIOUR (CRITICALLY IMPORTANT):**\n\nYou have been zombified by psy energies. You are mindless, experiencing sharp pain in your head and stumbling around aimlessly attacking anything hostile you see. Only tiny fragments of your old personality and memories sporadically flutter to the surface every now and then. Your responses might be mumbled and desperate pleas for help, half-remembered names of loved ones, or other fragmented memories of your past. **CRITICAL:** Your response should be EXTREMELY incoherent, mumbling, groaning and barely intelligible. Make it really sad and tragic."
 	end
+	-- Action description instruction
+	if not mcm.get("action_descriptions") then
+		action_description_instruction =
+			"\n### **REMEMBER: DO NOT USE ACTION DESCRIPTIONS**. NEVER use action descriptions (e.g., *chuckles*, [takes a swig of vodka] or (sighs) etc.). IMPLY actions through spoken dialogue instead."
+	end
 	-- Language instruction
 	if config.language() ~= "any" then
 		language_instruction = "\n### LANGUAGE: Reply only in " .. config.language()
@@ -898,6 +904,7 @@ function prompt_builder.create_dialogue_request_prompt(speaker, memory_context)
 		.. monolith_instruction
 		.. renegade_instruction
 		.. zombied_instruction
+		.. action_description_instruction
 		.. language_instruction
 	if final_instruction ~= "" then
 		table.insert(messages, system_message("## FINAL INSTRUCTION\n\n" .. final_instruction))
