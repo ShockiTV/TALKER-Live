@@ -11,6 +11,12 @@ function talker.register_event(event, is_important)
 	logger.info("talker.register_event")
 	event_store:store_event(event)
 
+	-- Silent events go into the store but don't generate dialogue
+	if event.flags and event.flags.is_silent then
+		logger.info("Silent event registered - no dialogue will be generated")
+		return
+	end
+
 	-- If the event has the 'is_idle' flag, it's a direct instruction.
 	-- Bypass the 'should_someone_speak' and generic 'generate_dialogue' logic.
 	if event.flags and event.flags.is_idle then
@@ -76,7 +82,7 @@ function talker.generate_dialogue_from_instruction(speaker_name, event)
 			local threshold_ms = config.recent_speech_threshold() * 1000
 
 			if last_spoke_time and (current_time - last_spoke_time < threshold_ms) then
-				logger.warn(
+				logger.debug(
 					"Idle conversation aborted: speaker "
 						.. speaker_id
 						.. " spoke recently ("
@@ -111,7 +117,7 @@ function should_someone_speak(event, is_important)
 	-- always should reply to player dialogue
 	-- for all others, 25% chance
 	if #event.witnesses == 1 and game_adapter.is_player(event.witnesses[1]) then
-		logger.warn("Only witness is player, not generating dialogue, should probably not save this event at all")
+		logger.debug("Only witness is player, not generating dialogue, should probably not save this event at all")
 		-- player is only witness
 		return false
 	end
