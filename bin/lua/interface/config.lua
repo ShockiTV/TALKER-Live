@@ -132,4 +132,15 @@ function c.recent_speech_threshold()
 	return mcm.get("recent_speech_threshold")
 end
 
+function c.is_gemini()
+	local model = mcm.get("custom_ai_model") or ""
+	local model_fast = mcm.get("custom_ai_model_fast") or ""
+
+	-- We'll check if either model string contains gemini or google.
+	if model:find("gemini") or model:find("google") or model_fast:find("gemini") or model_fast:find("google") then
+		return true
+	end
+	return false
+end
+
 return c
