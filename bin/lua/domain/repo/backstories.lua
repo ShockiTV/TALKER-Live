@@ -35,9 +35,9 @@ local function set_random_backstory(character)
 		local tech_name = queries.get_technical_name_by_id(character.game_id)
 		local backstory = unique_backstories[tech_name]
 		if not backstory then
-			log.warn("No backstory found for unique character: " .. tech_name)
+			log.info("No backstory found for unique character: " .. tech_name)
 			backstory = get_random_backstory()
-			log.warn("Assigning random backstory instead: " .. backstory)
+			log.info("Assigning random backstory instead: " .. backstory)
 			character_backstories[character.game_id] = backstory
 			return
 		end
@@ -72,7 +72,7 @@ function M.get_backstory(character)
 		set_random_backstory(character)
 		backstory = character_backstories[character.game_id]
 		if not backstory then
-			log.warn("No backstory found after assignment: " .. tostring(character.game_id))
+			log.info("No backstory found after assignment: " .. tostring(character.game_id))
 		end
 	end
 	return backstory or ""
@@ -97,7 +97,7 @@ function M.load_save_data(saved_character_backstories)
 			log.debug("TALKER backstory reset is disabled. Loading saved backstories.")
 			character_backstories = saved_character_backstories
 		else
-			log.warn("No saved backstories provided to load_save_data; keeping current cache.")
+			log.info("No saved backstories provided to load_save_data; keeping current cache.")
 		end
 	end
 end
