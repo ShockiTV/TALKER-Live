@@ -6,17 +6,46 @@ local mcm = talker_mcm
 -- Game interfaces
 local queries = talker_game_queries
 
+local mode_player = tonumber(mcm.get("enable_trigger_death_player") or "0")
+local mode_npc = tonumber(mcm.get("enable_trigger_death_npc") or "0")
+
+local DEATH_COOLDOWN_CD_PLAYER = mcm.get("death_cooldown_player") * 1000 -- default 90 seconds cooldown to prevent spam
+local DEATH_COOLDOWN_CD_NPC = mcm.get("death_cooldown_npc") * 1000 -- default 90 seconds cooldown to prevent spam
+
+-- Cooldown tracking variables
+local LAST_DEATH_TIME_PLAYER = 0
+local LAST_DEATH_TIME_NPC = 0
+
+-- Helper to determine if an event should be silent based on MCM mode and cooldown
+-- Mode: 0 = On, 1 = Off, 2 = Silent
+local function get_silence_status(mode, is_player)
+    if mode == 2 then return true end -- Silent mode is always silent
+    
+    local current_time = queries.get_game_time_ms()
+    local cooldown = is_player and DEATH_COOLDOWN_CD_PLAYER or DEATH_COOLDOWN_CD_NPC
+    local last_time = is_player and LAST_DEATH_TIME_PLAYER or LAST_DEATH_TIME_NPC
+    
+    if (current_time - last_time) < cooldown then
+        return true -- On cooldown, so silent
+    end
+    
+    -- Not on cooldown and mode is 0 (On), so update timer and speak
+    if is_player then 
+        LAST_DEATH_TIME_PLAYER = current_time 
+    else 
+        LAST_DEATH_TIME_NPC = current_time 
+    end
+    return false
+end
 --------------------------------------------------------------------------------------------
 -- CALLBACK
 --------------------------------------------------------------------------------------------
 
 function on_creature_death(victim_obj, killer_obj)
-    -- Check if player is killer (ID 0)
-    if killer_obj and killer_obj:id() == 0 then
-        if not mcm.get("enable_trigger_death_player") then return end
-    else
-        if not mcm.get("enable_trigger_death_npc") then return end
-    end
+    local is_player = killer_obj and killer_obj:id() == 0
+    local mode = is_player and mode_player or mode_npc
+    
+    if mode == 1 then return end -- Mode 1 = Off: Exit immediately
 
     -- get and combine witnesses
     local witnesses_near_victim = game.get_characters_near(victim_obj)
@@ -57,9 +86,13 @@ function on_creature_death(victim_obj, killer_obj)
         important_death = true
     end
     local flags = { important_death = important_death, is_death = true }
+    
+    -- Determine if this should be a silent event based on mode and cooldown
+    flags.is_silent = get_silence_status(mode, is_player)
+    
     local victim_fmt, victim_vals = queries.get_character_event_info(victim)
 
-    if killer and killer.name ~= victim.name then
+    if killer and killer.name ~= victim.name then   
         local killer_fmt, killer_vals = queries.get_character_event_info(killer)
         local unformatted_description = victim_fmt .. " was killed by " .. killer_fmt .. "!"
         local values = queries.join_tables(victim_vals, killer_vals)
@@ -68,6 +101,9 @@ function on_creature_death(victim_obj, killer_obj)
         -- Environmental death or suicide
         local unformatted_description = victim_fmt .. " died!"
         trigger.talker_game_event(unformatted_description, victim_vals, witnesses, important_event, flags)
+    end
+    if flags.is_silent == true then
+        log.info("TALKER: Death event registered (silent)")
     end
 end
 
