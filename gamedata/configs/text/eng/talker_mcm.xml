@@ -149,7 +149,38 @@
     <string id="ui_mcm_talker_reset_backstory">
         <text>Check this box to reset backstories on loading a save. </text>
     </string>
+        <!-- GENERAL CONFIGURATION -->
+    <string id="ui_mcm_talker_general_configuration_title">
+        <text>General Configuration</text>
+    </string>
+    <string id="ui_mcm_talker_action_descriptions">
+        <text>Allow the AI to use action descriptions (e.g., *chuckles* or (sighs) etc.).</text>
+    </string>
+    <string id="ui_mcm_talker_female_gender">
+        <text>Female player (LASS support): Check if playing as a female character to have the AI adress the player as female.</text>
+    </string>
+    <string id="ui_mcm_talker_anti_spam_cd">
+        <text>Anti-spam cooldown (seconds). Used for anomaly, artifact, and task triggers. If this cooldown isn't ready, the trigger will abort to prevent spam. If this cooldown is ready but the event cooldown is not, the event is recorded silently.</text>
+    </string>
+    <string id="ui_mcm_talker_time_gap">
+        <text>Time gap threshold (hours). If this amount of time has passed between two events, a 'time gap' event is injected to help the AI understand the passage of time.</text>
+    </string>
+    <string id="ui_mcm_talker_base_dialogue_chance">
+        <text>Base dialogue chance for unimportant events (important events such as the player speaking always generate dialogue)</text>
+    </string>
+    <string id="ui_mcm_talker_witness_distance">
+        <text>NPCs within this distance count as witnesses of an event (meters)</text>
+    </string>
+    <string id="ui_mcm_talker_npc_speak_distance">
+        <text>NPCs within this distance can speak to the player (meters)</text>
+    </string>
     <!-- TRIGGERS -->
+    <string id="ui_mcm_talker_instructions_title">
+        <text>Instructions</text>
+    </string>
+    <string id="ui_mcm_talker_instructions_text">
+        <text>'Off' prevents a trigger from firing completely (no entry will be added to the event history, NPCs will not know the event happened at all). 'Silent' registers the event in the event store, but does NOT trigger immediate dialogue. Nearby NPCs will remember seeing it happen, and might bring it up in later dialogue. </text>
+    </string>
     <string id="ui_mcm_talker_triggers_title">
         <text>Dialogue Triggers Configuration</text>
     </string>
@@ -157,16 +188,34 @@
         <text>Anomalies</text>
     </string>
     <string id="ui_mcm_talker_enable_trigger_proximity_anomalies">
-        <text>Enable dialogue trigger on getting close to an anomaly</text>
+        <text>Event handling for getting close to an anomaly</text>
+    </string>
+    <string id="ui_mcm_lst_anomaly_proximity_On">
+        <text>On</text>
+    </string>
+    <string id="ui_mcm_lst_anomaly_proximity_Off">
+        <text>Off</text>
+    </string>
+    <string id="ui_mcm_lst_anomaly_proximity_Silent">
+        <text>Silent</text>
     </string>
     <string id="ui_mcm_talker_max_rank_for_warning">
-        <text>Rank above which NPCs no longer comment on you getting close to anomalies (0 = rookie, 7 = legend).</text>
+        <text>Rank above which NPCs IGNORE you getting close to anomalies (0 = rookie, 7 = legend).</text>
     </string>
     <string id="ui_mcm_talker_anomaly_proximity_comment_cd">
         <text>Anomaly Proximity Trigger Cooldown (seconds)</text>
     </string>
     <string id="ui_mcm_talker_enable_trigger_damage_anomalies">
-        <text>Enable dialogue trigger on getting hit by an anomaly</text>
+        <text>Event handling for getting hit by an anomaly</text>
+    </string>
+    <string id="ui_mcm_lst_anomaly_damage_On">
+        <text>On</text>
+    </string>
+    <string id="ui_mcm_lst_anomaly_damage_Off">
+        <text>Off</text>
+    </string>
+    <string id="ui_mcm_lst_anomaly_damage_Silent">
+        <text>Silent</text>
     </string>
     <string id="ui_mcm_talker_anomaly_damage_comment_cd">
         <text>Anomaly Damage Trigger Cooldown (seconds)</text>
@@ -175,19 +224,46 @@
         <text>Artifacts</text>
     </string>
     <string id="ui_mcm_talker_enable_trigger_artifact_pickup">
-        <text>Enable dialogue trigger on picking up an artifact</text>
+        <text>Event handling for picking up an artifact</text>
+    </string>
+    <string id="ui_mcm_lst_artifact_pickup_On">
+        <text>On</text>
+    </string>
+    <string id="ui_mcm_lst_artifact_pickup_Off">
+        <text>Off</text>
+    </string>
+    <string id="ui_mcm_lst_artifact_pickup_Silent">
+        <text>Silent</text>
     </string>
     <string id="ui_mcm_talker_artifact_pickup_comment_cd">
         <text>Artifact Pickup Trigger Cooldown (seconds)</text>
     </string>
     <string id="ui_mcm_talker_enable_trigger_artifact_use">
-        <text>Enable dialogue trigger on using an artifact</text>
+        <text>Event handling for using an artifact</text>
+    </string>
+    <string id="ui_mcm_lst_artifact_use_On">
+        <text>On</text>
+    </string>
+    <string id="ui_mcm_lst_artifact_use_Off">
+        <text>Off</text>
+    </string>
+    <string id="ui_mcm_lst_artifact_use_Silent">
+        <text>Silent</text>
     </string>
     <string id="ui_mcm_talker_artifact_use_comment_cd">
         <text>Artifact Use Trigger Cooldown (seconds)</text>
     </string>
 	    <string id="ui_mcm_talker_enable_trigger_artifact_equip">
-        <text>Enable trigger when an artifact is equipped to a slot.</text>
+        <text>Event handling for equipping an artifact</text>
+    </string>
+    <string id="ui_mcm_lst_artifact_equip_On">
+        <text>On</text>
+    </string>
+    <string id="ui_mcm_lst_artifact_equip_Off">
+        <text>Off</text>
+    </string>
+    <string id="ui_mcm_lst_artifact_equip_Silent">
+        <text>Silent</text>
     </string>
     <string id="ui_mcm_talker_artifact_equip_comment_cd">
         <text>Cooldown between comments about equipping artifacts (seconds).</text>
@@ -210,17 +286,53 @@
     <string id="ui_mcm_talker_trigger_death_title">
         <text>Deaths</text>
     </string>
+    <string id="ui_mcm_talker_trigger_death_desc">
+        <text>'Silent' mode records death events but does not generate dialogue (witnessing NPCs will remember them and can talk about them later). 'On' requests dialogue when the cooldown is ready, otherwise records deaths silently. No deaths will be ignored in either 'On' or 'Silent' mode.</text>
+    </string>
     <string id="ui_mcm_talker_enable_trigger_death_player">
-        <text>Enable dialogue trigger when player kills an enemy.</text>
+        <text>Event handling for player kills</text>
+    </string>
+    <string id="ui_mcm_lst_death_player_On">
+        <text>On</text>
+    </string>
+    <string id="ui_mcm_lst_death_player_Off">
+        <text>Off</text>
+    </string>
+    <string id="ui_mcm_lst_death_player_Silent">
+        <text>Silent</text>
+    </string>
+    <string id="ui_mcm_talker_death_cooldown_player">
+        <text>Cooldown for player kills (seconds)</text>
     </string>
     <string id="ui_mcm_talker_enable_trigger_death_npc">
-        <text>Enable dialogue trigger when an NPC kills an enemy.</text>
+        <text>Event handling for NPC kills</text>
+    </string>
+    <string id="ui_mcm_lst_death_npc_On">
+        <text>On</text>
+    </string>
+    <string id="ui_mcm_lst_death_npc_Off">
+        <text>Off</text>
+    </string>
+    <string id="ui_mcm_lst_death_npc_Silent">
+        <text>Silent</text>
+    </string>
+    <string id="ui_mcm_talker_death_cooldown_npc">
+        <text>Cooldown for NPC kills (seconds)</text>
     </string>
     <string id="ui_mcm_talker_trigger_emission_title">
         <text>Emissions</text>
     </string>
     <string id="ui_mcm_talker_enable_trigger_emission">
-        <text>Enable dialogue trigger on emissions/psy-storms.</text>
+        <text>Event handling for emissions/psy-storms.</text>
+    </string>
+    <string id="ui_mcm_lst_emission_On">
+        <text>On</text>
+    </string>
+    <string id="ui_mcm_lst_emission_Off">
+        <text>Off</text>
+    </string>
+    <string id="ui_mcm_lst_emission_Silent">
+        <text>Silent</text>
     </string>
     <string id="ui_mcm_talker_trigger_idle_title">
         <text>Idle Conversation</text>
@@ -241,7 +353,19 @@
         <text>Injuries</text>
     </string>
     <string id="ui_mcm_talker_enable_trigger_injury">
-        <text>Enable dialogue trigger on player being critically injured.</text>
+        <text>Event handling for player being critically injured.</text>
+    </string>
+    <string id="ui_mcm_talker_injury_threshold">
+        <text>Percentage of health at which an injury is considered critical</text>
+    </string>
+    <string id="ui_mcm_lst_injury_On">
+        <text>On</text>
+    </string>
+    <string id="ui_mcm_lst_injury_Off">
+        <text>Off</text>
+    </string>
+    <string id="ui_mcm_lst_injury_Silent">
+        <text>Silent</text>
     </string>
     <string id="ui_mcm_talker_injury_cooldown">
         <text>Injury comment cooldown (seconds)</text>
@@ -250,34 +374,70 @@
         <text>Map Transition</text>
     </string>
     <string id="ui_mcm_talker_enable_trigger_map_transition">
-        <text>Enable dialogue trigger on moving between areas.</text>
+        <text>Event handling for moving between areas.</text>
+    </string>
+    <string id="ui_mcm_lst_map_transition_On">
+        <text>On</text>
+    </string>
+    <string id="ui_mcm_lst_map_transition_Off">
+        <text>Off</text>
+    </string>
+    <string id="ui_mcm_lst_map_transition_Silent">
+        <text>Silent</text>
     </string>
     <string id="ui_mcm_talker_trigger_reload_title">
         <text>Reload</text>
     </string>
     <string id="ui_mcm_talker_enable_trigger_reload">
-        <text>Enable dialogue trigger on player reloading their weapon.</text>
+        <text>Event handling for player reloading their weapon.</text>
+    </string>
+    <string id="ui_mcm_lst_reload_On">
+        <text>On</text>
+    </string>
+    <string id="ui_mcm_lst_reload_Off">
+        <text>Off</text>
+    </string>
+    <string id="ui_mcm_lst_reload_Silent">
+        <text>Silent</text>
     </string>
     <string id="ui_mcm_talker_reload_notice_chance">
-        <text>Chance to comment on reload (keep this LOW or it will be too spammy!)</text>
+        <text>Chance to notice player reloading (keep this LOW or it will be too spammy!)</text>
     </string>
     <string id="ui_mcm_talker_trigger_sleep_title">
         <text>Sleep</text>
     </string>
     <string id="ui_mcm_talker_enable_trigger_sleep">
-        <text>Enable dialogue trigger on player waking up from sleep.</text>
+        <text>Event handling for player waking up from sleep.</text>
+    </string>
+    <string id="ui_mcm_lst_sleep_On">
+        <text>On</text>
+    </string>
+    <string id="ui_mcm_lst_sleep_Off">
+        <text>Off</text>
+    </string>
+    <string id="ui_mcm_lst_sleep_Silent">
+        <text>Silent</text>
     </string>
     <string id="ui_mcm_talker_trigger_task_title">
         <text>Task</text>
     </string>
     <string id="ui_mcm_talker_enable_trigger_task">
-        <text>Enable dialogue trigger on player completing a task.</text>
+        <text>Event handling for player completing a task.</text>
+    </string>
+    <string id="ui_mcm_lst_task_On">
+        <text>On</text>
+    </string>
+    <string id="ui_mcm_lst_task_Off">
+        <text>Off</text>
+    </string>
+    <string id="ui_mcm_lst_task_Silent">
+        <text>Silent</text>
     </string>
     <string id="ui_mcm_talker_task_cooldown">
         <text>Task completion comment cooldown (seconds)</text>
     </string>
     <string id="ui_mcm_talker_task_notice_chance">
-        <text>Comment chance on tasks given by random NPCs (tasks from unique NPCs always trigger dialogue regardless of this value.)</text>
+        <text>Trigger chance on tasks given by random NPCs (tasks from unique NPCs always trigger an event regardless of this value.)</text>
     </string>
     <string id="ui_mcm_talker_trigger_taunt_title">
         <text>Taunt</text>
@@ -292,25 +452,34 @@
         <text>Weapon Jam</text>
     </string>
     <string id="ui_mcm_talker_enable_trigger_weapon_jam">
-        <text>Enable dialogue trigger on player's weapon jamming.</text>
+        <text>Event handling for player's weapon jamming.</text>
     </string>
-        <!-- GENERAL CONFIGURATION -->
-    <string id="ui_mcm_talker_general_configuration_title">
-        <text>General Configuration</text>
+    <string id="ui_mcm_lst_weapon_jam_On">
+        <text>On</text>
     </string>
-    <string id="ui_mcm_talker_time_gap">
-        <text>Time gap threshold (hours). If this amount of time has passed between two events, a 'time gap' event is injected to help the AI understand the passage of time.</text>
+    <string id="ui_mcm_lst_weapon_jam_Off">
+        <text>Off</text>
     </string>
-    <string id="ui_mcm_talker_base_dialogue_chance">
-        <text>Base dialogue chance for unimportant events (important events such as the player speaking always generate dialogue)</text>
+    <string id="ui_mcm_lst_weapon_jam_Silent">
+        <text>Silent</text>
     </string>
-    <string id="ui_mcm_talker_witness_distance">
-        <text>NPCs within this distance count as witnesses of an event (meters)</text>
+    <!-- DEBUG -->
+    <string id="ui_mcm_talker_debug_title">
+        <text>Debug</text>
     </string>
-    <string id="ui_mcm_talker_npc_speak_distance">
-        <text>NPCs within this distance can speak to the player (meters)</text>
+    <string id="ui_mcm_talker_debug_logging">
+        <text>Set level of debug logging.</text>
     </string>
-    <string id="ui_mcm_talker_action_descriptions">
-        <text>Allow the AI to use action descriptions (e.g., *chuckles* or (sighs) etc.).</text>
+    <string id="ui_mcm_lst_logging_Off">
+        <text>Off</text>
+    </string>
+    <string id="ui_mcm_lst_logging_ConsoleOnly">
+        <text>Console only</text>
+    </string>
+    <string id="ui_mcm_lst_logging_FileOnly">
+        <text>File only</text>
+    </string>
+    <string id="ui_mcm_lst_logging_Both">
+        <text>Console and file</text>
     </string>
 </string_table>
