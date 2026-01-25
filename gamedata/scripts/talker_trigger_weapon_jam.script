@@ -3,6 +3,7 @@ local game = require("infra.game_adapter")
 local trigger = require("interface.trigger")
 local log = require("framework.logger")
 local mcm = talker_mcm
+local mode_weapon_jam = tonumber(mcm.get("enable_trigger_weapon_jam") or "0")
 
 
 --------------------------------------------------------------------------------------------
@@ -10,13 +11,19 @@ local mcm = talker_mcm
 --------------------------------------------------------------------------------------------
 
 function actor_on_weapon_jammed()
-    if not mcm.get("enable_trigger_weapon_jam") then return end
+    if mode_weapon_jam == 1 then return end
     
-    local unformatted_description = "%s (%s %s, %s rep)'s %s jammed!"
+
     local player = game.get_player_character()
+    local player_fmt, player_vals = queries.get_character_event_info(player)
     local witnesses = game.get_characters_near_player()
     local weapon_name = player.weapon or "weapon"
-    trigger.talker_game_event(unformatted_description, {player.name, player.experience, player.faction, player.reputation, weapon_name}, witnesses, true, { is_weapon_jam = true })
+    local is_silent = (mode_weapon_jam == 2)
+    local unformatted_description = player_fmt .. "'s " .. weapon_name .. " jammed!"
+    trigger.talker_game_event(unformatted_description, player_vals, witnesses, true, { is_weapon_jam = true, is_silent = is_silent })
+    if is_silent == true then
+        log.info("TALKER: Weapon jam event registered (silent)")
+    end
 end
 
 --------------------------------------------------------------------------------------------
