@@ -5,12 +5,13 @@ local trigger = require("interface.trigger")
 local mcm = talker_mcm
 
 local script_name = "TALKER Trigger Sleep"
+local mode_sleep = tonumber(mcm.get("enable_trigger_sleep") or "0")
 
 -- Callback when player initiates sleep
 function actor_on_sleep(hours)
-    if not mcm.get("enable_trigger_sleep") then return end
+    if mode_sleep == 1 then return end
 
-    logger.warn("%s: actor_on_sleep called with hours: %s", script_name, tostring(hours))
+    logger.debug("%s: actor_on_sleep called with hours: %s", script_name, tostring(hours))
     if not hours or hours <= 0 then return end
     
     -- Delay the event by 3 seconds (real time) to allow for the black screen / time skip to complete.
@@ -19,6 +20,7 @@ end
 
 function fire_wake_up_event(hours)
     local player = game.get_player_character()
+    local player_fmt, player_vals = queries.get_character_event_info(player)
     local characters_near = game.get_characters_near_player()
     if not player or #characters_near == 0 then return true end
     
@@ -30,8 +32,8 @@ function fire_wake_up_event(hours)
     if #companions > 0 then 
         local names_list = {}
         for _, companion in ipairs(companions) do
-            table.insert(names_list, companion.name)
-            table.insert(witnesses, companion)
+            names_list[#names_list+1] = companion.name
+            witnesses[#witnesses+1] = companion
         end
         
         local companion_names = ""
@@ -42,23 +44,27 @@ function fire_wake_up_event(hours)
             companion_names = table.concat(names_list, ", ") .. " and " .. last_name
         end
         
-        description = string.format("%s (%s %s, %s rep) and their travelling companions %s woke up after sleeping for %d hours.", player.name, player.experience, player.faction, player.reputation, companion_names, sleeping_hours)
+        description = player_fmt .. " and their travelling companions " .. companion_names .. " woke up after sleeping for " .. sleeping_hours .. " hours."
     else
-        description = string.format("%s (%s %s, %s rep) woke up after sleeping for %d hours.", player.name, player.experience, player.faction, player.reputation, sleeping_hours)
+        description = player_fmt .. " woke up after sleeping for " .. sleeping_hours .. " hours."
     end
     
-    table.insert(witnesses, player)
+    witnesses[#witnesses+1] = player
     local witness_ids = {}
     for _, w in ipairs(witnesses) do witness_ids[w.game_id] = true end
     
     for _, char in ipairs(characters_near) do
         if not witness_ids[char.game_id] then
-            table.insert(witnesses, char)
+            witnesses[#witnesses+1] = char
         end
     end
     
-    logger.warn("%s: Firing event: %s", script_name, description)
-    trigger.talker_game_event(description, {}, witnesses, true, { is_sleep = true })
+    logger.info("%s: Firing event: %s", script_name, description)
+    local is_silent = (mode_sleep == 2)
+    trigger.talker_game_event(description, player_vals, witnesses, true, { is_sleep = true, is_silent = is_silent })
+    if is_silent == true then
+        logger.info("TALKER: Sleep event registered (silent)")
+    end
     
     return true -- IMPORTANT: Return true to unregister the Time Event
 end
