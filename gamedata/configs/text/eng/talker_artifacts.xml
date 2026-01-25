@@ -2,236 +2,294 @@
 <string_table>
     <!-- Regular Artifacts -->
     <string id="talker_af_ah_f1">
-        <text>Talking Stone (A unique artifact with remarkable properties. It boosts the wearer's stamina and provides significant protections while seemingly having no negative properties or drawbacks.)</text>
+        <text>an artifact called Talking Stone (A unique artifact with remarkable properties. It boosts the wearer's stamina and provides significant protections while seemingly having no negative properties or drawbacks.)</text>
     </string>
     <string id="talker_af_ah_s1">
-        <text>Artificial Artifact 'Aroth-8' (An unstable artifact that was artificially created in an experiment. It boosts the wearer's health regeneration, but periodically releases strong bursts of radiation.)</text>
+        <text>an artifact called Artificial Artifact 'Aroth-8' (An unstable artifact that was artificially created in an experiment. It boosts the wearer's health regeneration, but periodically releases strong bursts of radiation.)</text>
     </string>
     <string id="talker_af_black">
-        <text>Black Stone (An artifact with unknown properties that seems to slowly kills its wearer. It is rumoured to be a shard of the Monolith.)</text>
+        <text>an artifact called Black Stone (An artifact with unknown properties that seems to slowly kills its wearer. It is rumoured to be a shard of the Monolith.)</text>
     </string>
     <string id="talker_af_black_spray">
-        <text>Black Spray (A rare sapphire-like artifact, with an unusual property of delaying transmission of light that enters it. While heavily radioactive, it grants its wearer significant psy protection.)</text>
+        <text>an artifact called Black Spray (A rare sapphire-like artifact, with an unusual property of delaying transmission of light that enters it. While heavily radioactive, it grants its wearer significant psy protection.)</text>
     </string>
     <string id="talker_af_baloon">
-        <text>Bubble (A compound of several hollow organic formations, this artifact emits a gaseous substance that can neutralize chemical or toxic particles inside the body, while reducing the wearer's psy protection. It is also among the most radioactive artifacts in the Zone.)</text>
+        <text>an artifact called Bubble (A compound of several hollow organic formations, this artifact emits a gaseous substance that can neutralize chemical or toxic particles inside the body, while reducing the wearer's psy protection. It is also among the most radioactive artifacts in the Zone.)</text>
     </string>
     <string id="talker_af_blood">
-        <text>Stone Blood (One of the most common artifacts, it looks like a reddish formation of compressed, fossilized plants, soil and animal debris. It grants small physical protection when worn and is lightly radioactive.)</text>
+        <text>an artifact called Stone Blood (One of the most common artifacts, it looks like a reddish formation of compressed, fossilized plants, soil and animal debris. It grants small physical protection when worn and is lightly radioactive.)</text>
     </string>
     <string id="talker_af_bracelet">
-        <text>Bracelet (Formed from common species of bryophytes under exposure to radioactive and chemical anomalies. It is moderately radioactive, while granting its wearer minor protection against chemical and psy damage.)</text>
+        <text>an artifact called Bracelet (Formed from common species of bryophytes under exposure to radioactive and chemical anomalies. It is moderately radioactive, while granting its wearer minor protection against chemical and psy damage.)</text>
     </string>
     <string id="talker_af_compass">
-        <text>Compass (A very rare artifact - it's been several years since the last confirmed discovery of one. It is said to have many strange properties, including being able to detect gaps in anomaly fields. However, it's extremely high radiation output makes it dangerous to handle.)</text>
+        <text>an artifact called Compass (A very rare artifact - it's been several years since the last confirmed discovery of one. It is said to have many strange properties, including being able to detect gaps in anomaly fields. However, it's extremely high radiation output makes it dangerous to handle.)</text>
     </string>
     <string id="talker_af_cristall">
-        <text>Crystal (This artifact is formed in anomalous zones with intense thermal activity. It grants small protection against electrical and thermal damage when worn, while weakening physical defenses and outputting moderate radiation.)</text>
+        <text>an artifact called Crystal (This artifact is formed in anomalous zones with intense thermal activity. It grants small protection against electrical and thermal damage when worn, while weakening physical defenses and outputting moderate radiation.)</text>
     </string>
     <string id="talker_af_cristall_flower">
-        <text>Stone Flower (This artifact resembles melted cheese interspersed with sapphire-like stones. It is one of the least radioactive artifacts in the Zone, but while granting small protection while worn it is one of the least useful artifacts for stalkers. It is predominantly sold for profit, as the sapphire-like stones can be extracted and made into jewelry.)</text>
+        <text>an artifact called Stone Flower (This artifact resembles melted cheese interspersed with sapphire-like stones. It is one of the least radioactive artifacts in the Zone, but while granting small protection while worn it is one of the least useful artifacts for stalkers. It is predominantly sold for profit, as the sapphire-like stones can be extracted and made into jewelry.)</text>
     </string>
     <string id="talker_af_dummy_battery">
-        <text>Battery (This artifact is comprised of electrostatic elements. It is mildly radioactive, while boosting the stamina of its wearer.)</text>
+        <text>an artifact called Battery (This artifact is comprised of electrostatic elements. It is mildly radioactive, while boosting the stamina of its wearer.)</text>
     </string>
     <string id="talker_af_death_lamp">
-        <text>Death Lamp (This large red artifact is sometimes called the 'Seed of Satan', and many stalkers believe it to be cursed. Campfire rumours say those who interact with it will end up dead within days. It has no known positive properties, it *significantly* reduces its wearers psy protection and it is the most radioactive known artifact in the Zone.)</text>
+        <text>an artifact called Death Lamp (This large red artifact is sometimes called the 'Seed of Satan', and many stalkers believe it to be cursed. Campfire rumours say those who interact with it will end up dead within days. It has no known positive properties, it *significantly* reduces its wearers psy protection and it is the most radioactive known artifact in the Zone.)</text>
     </string>
     <string id="talker_af_dummy_dummy">
-        <text>Shell (Shell is composed of two disks of bluish color connected by a semi-transparent material of unknown nature. It is moderately radioactive, while boosting the wearer's stamina and granting small psy protection.)</text>
+        <text>an artifact called Shell (Shell is composed of two disks of bluish color connected by a semi-transparent material of unknown nature. It is moderately radioactive, while boosting the wearer's stamina and granting small psy protection.)</text>
     </string>
     <string id="talker_af_dummy_glassbeads">
-        <text>Mama's Beads (Shaped like a DNA helix, Mama's Beads are uncommon artifacts created in the Burner anomalies. It is lightly radioactive while passively closing open wounds on the wearer, making them stop bleeding a bit faster.)</text>
+        <text>an artifact called Mama's Beads (Shaped like a DNA helix, Mama's Beads are uncommon artifacts created in the Burner anomalies. It is lightly radioactive while passively closing open wounds on the wearer, making them stop bleeding a bit faster.)</text>
     </string>
     <string id="talker_af_electra_flash">
-        <text>Flash (This artifact is very similar in appearance to Moonlight and it resembles a plasma globe or a plasma lamp. It grants significant protection against electrical damage, although the heavy radiation it emits makes it dangerous to handle.)</text>
+        <text>an artifact called Flash (This artifact is very similar in appearance to Moonlight and it resembles a plasma globe or a plasma lamp. It grants significant protection against electrical damage, although the heavy radiation it emits makes it dangerous to handle.)</text>
     </string>
     <string id="talker_af_electra_moonlight">
-        <text>Moonlight (This rare electrostatic artifact can resonate under the influence of psi-waves. It grants significant psy protection, while only outputting moderate radiation.)</text>
+        <text>an artifact called Moonlight (This rare electrostatic artifact can resonate under the influence of psi-waves. It grants significant psy protection, while only outputting moderate radiation.)</text>
     </string>
     <string id="talker_af_electra_sparkler">
-        <text>Sparkler (This very common artifact has the appearance of translucent spider webs. It grants a small resistance to electricity when worn while outputting minor radiation.)</text>
+        <text>an artifact called Sparkler (This very common artifact has the appearance of translucent spider webs. It grants a small resistance to electricity when worn while outputting minor radiation.)</text>
     </string>
     <string id="talker_af_eye">
-        <text>Eye (This artifact, which resembles the human eye, considerably increases the metabolism of the body, helping wounds heal quicker. It is moderately radioactive.)</text>
+        <text>an artifact called Eye (This artifact, which resembles the human eye, considerably increases the metabolism of the body, helping wounds heal quicker. It is moderately radioactive.)</text>
     </string>
     <string id="talker_empty">
-        <text>Empty (Two disks of organic formation separated by empty space. Due to an anomalous gravitational field, the disks are impossible to either pull apart further or push closer together. It is moderately radioactive, but boosts the wearer's kinetic damage resistances.)</text>
+        <text>an artifact called Empty (Two disks of organic formation separated by empty space. Due to an anomalous gravitational field, the disks are impossible to either pull apart further or push closer together. It is moderately radioactive, but boosts the wearer's kinetic damage resistances.)</text>
     </string>
     <string id="talker_af_fire">
-        <text>Flame (This artifact forms in areas of high thermal activity. Produces powerful infrared emissions which intensify metabolic processes, healing wounds significantly faster. It is both heavily radioactive and has numerous negative properties, however, making it dangerous to use.)</text>
+        <text>an artifact called Flame (This artifact forms in areas of high thermal activity. Produces powerful infrared emissions which intensify metabolic processes, healing wounds significantly faster. It is both heavily radioactive and has numerous negative properties, however, making it dangerous to use.)</text>
     </string>
     <string id="talker_af_fireball">
-        <text>Fireball (It is a spherical artifact made of red-colored crystals, created in a Burner anomaly. It grants some protection against fire, although it is highly radioactive.)</text>
+        <text>an artifact called Fireball (It is a spherical artifact made of red-colored crystals, created in a Burner anomaly. It grants some protection against fire, although it is highly radioactive.)</text>
     </string>
     <string id="talker_af_full_empty">
-        <text>Full Empty (Similar to the 'Empty' artifact but more powerful, Full Empty is made of two disks of organic formation separated by empty space. Due to an anomalous gravitational field, the disks are impossible to either pull apart further or push closer together. It is highly radioactive, but significantly boosts the wearer's kinetic damage resistances.)</text>
+        <text>an artifact called Full Empty (Similar to the 'Empty' artifact but more powerful, Full Empty is made of two disks of organic formation separated by empty space. Due to an anomalous gravitational field, the disks are impossible to either pull apart further or push closer together. It is highly radioactive, but significantly boosts the wearer's kinetic damage resistances.)</text>
     </string>
     <string id="talker_af_itcher">
-        <text>Itcher (Formed in thermal anomalies, this artifact looks like a scarred sphere of metamorphic rock. It grants minor protection against fire and explosions while worn, and outputs minor radiation.)</text>
+        <text>an artifact called Itcher (Formed in thermal anomalies, this artifact looks like a scarred sphere of metamorphic rock. It grants minor protection against fire and explosions while worn, and outputs minor radiation.)</text>
     </string>
     <string id="talker_af_fuzz_kolobok">
-        <text>Kolobok (A relatively rare artifact that forms in chemical areas, Kolobok is highly valued for its ability to heal most kinds of wounds. It is moderately radioactive.)</text>
+        <text>an artifact called Kolobok (A relatively rare artifact that forms in chemical areas, Kolobok is highly valued for its ability to heal most kinds of wounds. It is moderately radioactive.)</text>
     </string>
     <string id="talker_af_glass">
-        <text>Firefly (Firefly interacts with fields unknown to science, considerably speeding up the regeneration of tissue and organs in living beings. It is moderately radioactive and reduces its wearer's stamina.)</text>
+        <text>an artifact called Firefly (Firefly interacts with fields unknown to science, considerably speeding up the regeneration of tissue and organs in living beings. It is moderately radioactive and reduces its wearer's stamina.)</text>
     </string>
     <string id="talker_af_gold_fish">
-        <text>Goldfish (A superior version of the Gravi artifact. Goldfish is highly radioactive, but still sought after due to its ability to let its wearer carry a significantly heavier load in their backpack.)</text>
+        <text>an artifact called Goldfish (A superior version of the Gravi artifact. Goldfish is highly radioactive, but still sought after due to its ability to let its wearer carry a significantly heavier load in their backpack.)</text>
     </string>
     <string id="talker_af_gravi">
-        <text>Gravi (Gravi is formed from metallic substances exposed to prolonged gravitation. It is moderately radioactive, but its anti-gravity properties allow its wearer to carry a heavier load in their backpack, making it valuable.)</text>
+        <text>an artifact called Gravi (Gravi is formed from metallic substances exposed to prolonged gravitation. It is moderately radioactive, but its anti-gravity properties allow its wearer to carry a heavier load in their backpack, making it valuable.)</text>
     </string>
     <string id="talker_af_ice">
-        <text>Snowflake (At first glance, this artifact resembles a white Kolobok. Although heavily radioactive, it is still valuable due to its ability boost its wearer's stamina significantly.)</text>
+        <text>an artifact called Snowflake (At first glance, this artifact resembles a white Kolobok. Although heavily radioactive, it is still valuable due to its ability boost its wearer's stamina significantly.)</text>
     </string>
     <string id="talker_af_kogot">
-        <text>Claw (A beautiful glass-like artifact occasionally fished out of electrostatic anomalies. It boosts the wearer's melee damage and absorbs blood, boosting the wearer's health regeneration after landing a melee hit.)</text>
+        <text>an artifact called Claw (A beautiful glass-like artifact occasionally fished out of electrostatic anomalies. It boosts the wearer's melee damage and absorbs blood, boosting the wearer's health regeneration after landing a melee hit.)</text>
     </string>
     <string id="talker_af_lobster_eyes">
-        <text>Lobster Eyes (Shaped like two black-and-red eyes fused together. It is moderately radioactive but grants its wearer a moderate boost to psy protection.)</text>
+        <text>an artifact called Lobster Eyes (Shaped like two black-and-red eyes fused together. It is moderately radioactive but grants its wearer a moderate boost to psy protection.)</text>
     </string>
     <string id="talker_af_medusa">
-        <text>Jellyfish (A very common artifact, offering minor damage resistances when worn at the cost of slightly reduced psy resistance. It is very lightly radioactive. )</text>
+        <text>an artifact called Jellyfish (A very common artifact, offering minor damage resistances when worn at the cost of slightly reduced psy resistance. It is very lightly radioactive. )</text>
     </string>
     <string id="talker_af_misery_bread">
-        <text>Anomalous Bread (This artifact looks like a dark loaf of bread. It is highly radioactive and has no known positive properties.)</text>
+        <text>an artifact called Anomalous Bread (This artifact looks like a dark loaf of bread. It is highly radioactive and has no known positive properties.)</text>
     </string>
     <string id="talker_af_mincer_meat">
-        <text>Meat Chunk (This artifact has a soft, porous, skin-like texture. It is moderately radioactive while granting minor bonuses while worn, meaning most stalkers will sell it for a profit instead of using it.)</text>
+        <text>an artifact called Meat Chunk (This artifact has a soft, porous, skin-like texture. It is moderately radioactive while granting minor bonuses while worn, meaning most stalkers will sell it for a profit instead of using it.)</text>
     </string>
     <string id="talker_af_monolith">
-        <text>Volat Emerald (The origins of this emerald-like artifact are unknown. It grants the wearer moderate protection against anomalies and psy damage, while reducing their resistance against physical and kinetic damage. Unlike most artifacts it is not radioactive whatsoever.)</text>
+        <text>an artifact called Volat Emerald (The origins of this emerald-like artifact are unknown. It grants the wearer moderate protection against anomalies and psy damage, while reducing their resistance against physical and kinetic damage. Unlike most artifacts it is not radioactive whatsoever.)</text>
     </string>
     <string id="talker_af_night_star">
-        <text>Nightstar (This glowing artifact can generate a locally directed gravity field which increases its mass. It is very lightly radioactive while increasing its wearers capacity to carry a heavy load in their backpack, making it popular among stalkers.)</text>
+        <text>an artifact called Nightstar (This glowing artifact can generate a locally directed gravity field which increases its mass. It is very lightly radioactive while increasing its wearers capacity to carry a heavy load in their backpack, making it popular among stalkers.)</text>
     </string>
     <string id="talker_af_oasis_heart">
-        <text>Heart of the Oasis (This unique and miraculous artifact was found at the center of the legendary Oasis. While heavily radioactive it both boosts its wearers stamina, stops their bleeding faster and heals their injuries over time.)</text>
+        <text>an artifact called Heart of the Oasis (This unique and miraculous artifact was found at the center of the legendary Oasis. While heavily radioactive it both boosts its wearers stamina, stops their bleeding faster and heals their injuries over time.)</text>
     </string>
     <string id="talker_af_pin">
-        <text>Pin (A small artifact formed in thermal anomalies that looks like an organ of a vascular plant. It is moderately radioactive while granting minor fire resistance and psy protection while worn.)</text>
+        <text>an artifact called Pin (A small artifact formed in thermal anomalies that looks like an organ of a vascular plant. It is moderately radioactive while granting minor fire resistance and psy protection while worn.)</text>
     </string>
     <string id="talker_af_prometheus">
-        <text>Prometheus (A unqiue artifact, granting the wearer immense resistance to heat and healing their wounds while having no negative properties and emitting zero radiation.)</text>
+        <text>an artifact called Prometheus (A unqiue artifact, granting the wearer immense resistance to heat and healing their wounds while having no negative properties and emitting zero radiation.)</text>
     </string>
     <string id="talker_af_ring">
-        <text>Ring (A very small artifact of electric nature consisting of two ring-shapes of organic material fused together. It is moderately radioactive, but grants its wearer increased electrical resistance and a stamina boost.)</text>
+        <text>an artifact called Ring (A very small artifact of electric nature consisting of two ring-shapes of organic material fused together. It is moderately radioactive, but grants its wearer increased electrical resistance and a stamina boost.)</text>
     </string>
     <string id="talker_af_soul">
-        <text>Soul (An organic artifact resembling a sphere covered in goo. It slightly heals the wounds of it wearer and grants some psy protection, while outputting a very small amount of radiation and weighing very little. Its very minor drawbacks make it valuable and popular.)</text>
+        <text>an artifact called Soul (An organic artifact resembling a sphere covered in goo. It slightly heals the wounds of it wearer and grants some psy protection, while outputting a very small amount of radiation and weighing very little. Its very minor drawbacks make it valuable and popular.)</text>
     </string>
     <string id="talker_af_sponge">
-        <text>Sponge (A small organic artifact that seems to move on its own, making it difficult to put in a container. It is moderately radioactive while granting its wearer some protection against electrical damage.)</text>
+        <text>an artifact called Sponge (A small organic artifact that seems to move on its own, making it difficult to put in a container. It is moderately radioactive while granting its wearer some protection against electrical damage.)</text>
     </string>
     <string id="talker_af_tif_lost_soul">
-        <text>Lost Soul (Blue-white sphere resembling a 'Soul' artifact, but significantly more powerful. It regenerates the wearer's health and grants massive psy protection while boasting no negative properties or drawbacks and emitting zero radiation.)</text>
+        <text>an artifact called Lost Soul (Blue-white sphere resembling a 'Soul' artifact, but significantly more powerful. It regenerates the wearer's health and grants massive psy protection while boasting no negative properties or drawbacks and emitting zero radiation.)</text>
     </string>
     <string id="talker_af_vyvert">
-        <text>Wrenched (This bizarrely-shaped artifact appears in places with increased gravitational activity. It is moderately radioactive, but boosts its wearers defenses against kinetic damage.)</text>
+        <text>an artifact called Wrenched (This bizarrely-shaped artifact appears in places with increased gravitational activity. It is moderately radioactive, but boosts its wearers defenses against kinetic damage.)</text>
     </string>
     <string id="talker_monolith_shard">
-        <text>Shard of the Monolith (A legendary object said to be split from the Wish Granter itself. Nobody knows its exact properties, but it may have unknown insidious powers.)</text>
+        <text>an artifact called Shard of the Monolith (A legendary object said to be split from the Wish Granter itself. Nobody knows its exact properties, but it may have unknown insidious powers.)</text>
     </string>
     <!-- Perk-Based Artifacts -->
     <string id="talker_af_atom">
-        <text>Atom (A rare and unusual non-radioactive artifact that resembles the old Bohr model of an atom. It slowly reduces built-up radiation in its wearer and converts it to a stamina boost.)</text>
+        <text>an artifact called Atom (A rare and unusual non-radioactive artifact that resembles the old Bohr model of an atom. It slowly reduces built-up radiation in its wearer and converts it to a stamina boost.)</text>
     </string>
     <string id="talker_af_ball">
-        <text>Ball (Despite appearing as a mottled ball of dirt and rock, this non-radioactive artifact is unusually light and bouncy, hence its name. It empowers the legs of its wearer, allowing them to cause significant damage by kicking.)</text>
+        <text>an artifact called Ball (Despite appearing as a mottled ball of dirt and rock, this non-radioactive artifact is unusually light and bouncy, hence its name. It empowers the legs of its wearer, allowing them to cause significant damage by kicking.)</text>
     </string>
     <string id="talker_af_bat">
-        <text>Bat (A rare and beautiful non-radioactive artifact, consisting of two irregularly-shaped "wings" protecting a lustrous spherical core. When pressed onto another artifact the two will fuse and mutate into a new artifact, sometimes creating a more powerful artifact.)</text>
+        <text>an artifact called Bat (A rare and beautiful non-radioactive artifact, consisting of two irregularly-shaped "wings" protecting a lustrous spherical core. When pressed onto another artifact the two will fuse and mutate into a new artifact, sometimes creating a more powerful artifact.)</text>
     </string>
     <string id="talker_af_black_angel">
-        <text>Black Angel (A non-radioactive artifact of anomalous minerals that has been twisted into an ominous semi-symmetrical formation. When worn, it emits a force field that protects the wearer by sometimes stopping bullets and reflecting them back at their shooter.)</text>
+        <text>an artifact called Black Angel (A non-radioactive artifact of anomalous minerals that has been twisted into an ominous semi-symmetrical formation. When worn, it emits a force field that protects the wearer by sometimes stopping bullets and reflecting them back at their shooter.)</text>
     </string>
     <string id="talker_af_cell">
-        <text>Cell (A non-radioactive artifact formed in gravitational anomalies, likely due to intense localized magnetic fields. It emits a force field that disintegrates incoming bullets, converting their kinetic energy into radiation. When thrown at the ground it explodes, causing a temporary localized field where this effect is even stronger.)</text>
+        <text>an artifact called Cell (A non-radioactive artifact formed in gravitational anomalies, likely due to intense localized magnetic fields. It emits a force field that disintegrates incoming bullets, converting their kinetic energy into radiation. When thrown at the ground it explodes, causing a temporary localized field where this effect is even stronger.)</text>
     </string>
     <string id="talker_af_chelust">
-        <text>Chain (An unusual circular non-radioactive artifact resembling a gold-link chain. It grants the wearer minor stamina and health regeneration. Members of the Sin faction resonate with this artifact and gain quadruple the effect - making it sought after by them.)</text>
+        <text>an artifact called Chain (An unusual circular non-radioactive artifact resembling a gold-link chain. It grants the wearer minor stamina and health regeneration. Members of the Sin faction resonate with this artifact and gain quadruple the effect - making it sought after by them.)</text>
     </string>
     <string id="talker_af_cocoon">
-        <text>Cocoon (A small, irregularly-shaped non-radioactive artifact formed in gravitational anomalies. When worn it grants protection from melee attacks. Each time its wearer gets hit the protection increases while their movement slows, eventually leading to complete immobilization.)</text>
+        <text>an artifact called Cocoon (A small, irregularly-shaped non-radioactive artifact formed in gravitational anomalies. When worn it grants protection from melee attacks. Each time its wearer gets hit the protection increases while their movement slows, eventually leading to complete immobilization.)</text>
     </string>
     <string id="talker_af_dragon_eye">
-        <text>Dragon's eye (This non-radioactive artifact is sometimes formed in thermal anomalies and has the appearance of a reptile's eye. While worn it sometimes makes bullets fired by the wearer explode on impact. It can also be used as an explosive by throwing it, consuming it in the process.)</text>
+        <text>an artifact called Dragon's eye (This non-radioactive artifact is sometimes formed in thermal anomalies and has the appearance of a reptile's eye. While worn it sometimes makes bullets fired by the wearer explode on impact. It can also be used as an explosive by throwing it, consuming it in the process.)</text>
     </string>
     <string id="talker_af_ear">
-        <text>Heart (A bizarrely-shaped non-radioactive artifact, whose crystalline core resembles a miniature human circulatory system. It grants no benefit to users that are of full health, but while worn it grants the wearer increased health regeneration the more injured they are.)</text>
+        <text>an artifact called Heart (A bizarrely-shaped non-radioactive artifact, whose crystalline core resembles a miniature human circulatory system. It grants no benefit to users that are of full health, but while worn it grants the wearer increased health regeneration the more injured they are.)</text>
     </string>
     <string id="talker_af_elektron">
-        <text>Electron (This unusual non-radioactive artifact is a product of electrical anomalies. It is extremely heavy despite its small size. While worn it absorbs electricity, gaining charge and reducing damage taken whenever the user steps into an electical anomaly. If charged, it randomly recharges batteries of the wearers devices, while also empowering the wearer with renewed energy. )</text>
+        <text>an artifact called Electron (This unusual non-radioactive artifact is a product of electrical anomalies. It is extremely heavy despite its small size. While worn it absorbs electricity, gaining charge and reducing damage taken whenever the user steps into an electical anomaly. If charged, it randomly recharges batteries of the wearers devices, while also empowering the wearer with renewed energy. )</text>
     </string>
     <string id="talker_af_fire_loop">
-        <text>Knot (This non-radioactive artifact is occasionally formed in the extreme heat of thermal anomalies. It is rumored to have mysterious and dangerous properties, with some stalkers believing that merely equipping it is akin to signing a deal with the Devil.)</text>
+        <text>an artifact called Knot (This non-radioactive artifact is occasionally formed in the extreme heat of thermal anomalies. It is rumored to have mysterious and dangerous properties, with some stalkers believing that merely equipping it is akin to signing a deal with the Devil.)</text>
     </string>
     <string id="talker_af_fonar">
-        <text>Lamp (This light, glassy non-radioactive artifact emits a modest amount of near-ultraviolet light. It resonates with RF Emitters, making them glow in the dark and letting its user find hidden stashes while exploring at night.)</text>
+        <text>an artifact called Lamp (This light, glassy non-radioactive artifact emits a modest amount of near-ultraviolet light. It resonates with RF Emitters, making them glow in the dark and letting its user find hidden stashes while exploring at night.)</text>
     </string>
     <string id="talker_af_fountain">
-        <text>Fountain (A common non-radioactive artifact formed in gravitational anomalies. Its bizarre shape makes very valued by collectors. It emits a compelling aura that gives its wearer slightly better prices when buying goods.)</text>
+        <text>an artifact called Fountain (A common non-radioactive artifact formed in gravitational anomalies. Its bizarre shape makes very valued by collectors. It emits a compelling aura that gives its wearer slightly better prices when buying goods.)</text>
     </string>
     <string id="talker_af_geliy">
-        <text>Helium (A bright (literally) non-radioactive representative of the family of electrostatic artifacts)</text>
+        <text>an artifact called Helium (A bright (literally) non-radioactive representative of the family of electrostatic artifacts)</text>
     </string>
     <string id="talker_af_generator">
-        <text>Generator (This anomalous disk is not radioactive, but generates a strong, small electromagnetic field. It converts some of the kinetic energy generated by its wearer when sprinting into electricity, slowly recharging the batteries of equiped devices while sprinting.)</text>
+        <text>an artifact called Generator (This anomalous disk is not radioactive, but generates a strong, small electromagnetic field. It converts some of the kinetic energy generated by its wearer when sprinting into electricity, slowly recharging the batteries of equiped devices while sprinting.)</text>
     </string>
     <string id="talker_af_gimlet">
-        <text>Gimlet (The bowl-shaped petals of this non-radioactive artifact can release a powerful stimulant vapor which can alter the balance of human hormones. Of little use to stalkers, it is very much sought after for medical research.)</text>
+        <text>an artifact called Gimlet (The bowl-shaped petals of this non-radioactive artifact can release a powerful stimulant vapor which can alter the balance of human hormones. Of little use to stalkers, it is very much sought after for medical research.)</text>
     </string>
     <string id="talker_af_grapes">
-        <text>Grapes (A heavy non-radioactive artifact sometimes found in gravitational anomalies, it resembles drops of green-tinted amber twisted together. When worn it improves the wearer's digestion process, allowing them to heal injuries faster by consuming food.)</text>
+        <text>an artifact called Grapes (A heavy non-radioactive artifact sometimes found in gravitational anomalies, it resembles drops of green-tinted amber twisted together. When worn it improves the wearer's digestion process, allowing them to heal injuries faster by consuming food.)</text>
     </string>
     <string id="talker_af_kislushka">
-        <text>Sourpuss (A hollow spherical non-radioactive artifact resembling a transparent parchment of some sorts. When worn it increases metabolism while injured, allowing for faster healing at the cost of needing more calories.)</text>
+        <text>an artifact called Sourpuss (A hollow spherical non-radioactive artifact resembling a transparent parchment of some sorts. When worn it increases metabolism while injured, allowing for faster healing at the cost of needing more calories.)</text>
     </string>
     <string id="talker_af_lighthouse">
-        <text>Beacon (A clotted mass of superdense ferrous metals. It is one of the most mysterious artifacts in the Zone as its inner workings still baffle the greatest scientists. While worn, it teleports the user to the spot anyone they kill was standing at when they died. It can also be used to perform a single directed teleportation to a chosen location in sight, although this consumes the artifact in the process. It is not radioactive.)</text>
+        <text>an artifact called Beacon (A clotted mass of superdense ferrous metals. It is one of the most mysterious artifacts in the Zone as its inner workings still baffle the greatest scientists. While worn, it teleports the user to the spot anyone they kill was standing at when they died. It can also be used to perform a single directed teleportation to a chosen location in sight, although this consumes the artifact in the process. It is not radioactive.)</text>
     </string>
     <string id="talker_af_medallion">
-        <text>Medal (A hoop embedded with four triangular shapes, with a small central sphere suspended in the middle. It can be used as a powerful throwing weapon, capable of seeking out nearby foes to deal lacerating damage and then returning to the wielder. It is not radioactive.)</text>
+        <text>an artifact called Medal (A hoop embedded with four triangular shapes, with a small central sphere suspended in the middle. It can be used as a powerful throwing weapon, capable of seeking out nearby foes to deal lacerating damage and then returning to the wielder. It is not radioactive.)</text>
     </string>
     <string id="talker_af_moh">
-        <text>Moss (A non-radioactive artifact formed in electric anomalies. It has a sharp, jagged appearance but is actually quite soft and pleasing to the touch. While worn it allows the wearers digestive system to process raw mutated meat, granting various bonuses to the wearer depending on which mutant they consume the uncooked and raw flesh of. While powerful, many stalkers balk at the idea of consuming raw mutant meat.)</text>
+        <text>an artifact called Moss (A non-radioactive artifact formed in electric anomalies. It has a sharp, jagged appearance but is actually quite soft and pleasing to the touch. While worn it allows the wearers digestive system to process raw mutated meat, granting various bonuses to the wearer depending on which mutant they consume the uncooked and raw flesh of. While powerful, many stalkers balk at the idea of consuming raw mutant meat.)</text>
     </string>
     <string id="talker_af_peas">
-        <text>Moon (A non-radioactive artifact shaped like a lunar crescent. The exterior shell continuously generates a very dim light that seems to be stimulating the user. It boosts its wearers capabilities during night time - including reducing sleepiness and boosting their night vision - but makes the wearer more sleepy during daytime.)</text>
+        <text>an artifact called Moon (A non-radioactive artifact shaped like a lunar crescent. The exterior shell continuously generates a very dim light that seems to be stimulating the user. It boosts its wearers capabilities during night time - including reducing sleepiness and boosting their night vision - but makes the wearer more sleepy during daytime.)</text>
     </string>
      <string id="talker_af_repei">
-        <text>Thistle (A common non-radioactive artifact spawned in gravitational anomalies. Despite their prickly appearances, Thistles seem incapable of penetrating flesh or damaging it. While worn, it reduces the kinetic energy of bullets fired by the wearer's weapon but in exchange grants those bullets the ability to cause severe bleeding, to the point of occasionally inducing panic in struck enemies.)</text>
+        <text>an artifact called Thistle (A common non-radioactive artifact spawned in gravitational anomalies. Despite their prickly appearances, Thistles seem incapable of penetrating flesh or damaging it. While worn, it reduces the kinetic energy of bullets fired by the wearer's weapon but in exchange grants those bullets the ability to cause severe bleeding, to the point of occasionally inducing panic in struck enemies.)</text>
     </string>
     <string id="talker_af_sandstone">
-        <text>Sandstone (A non-radioactive artifact sometimes formed in extreme temperature anomalies. When worn, the wearer can charge it by stepping into an anomaly. While charged, it causes the wearer's next bullet fired to be infused with the properties of the anomaly that charged it.)</text>
+        <text>an artifact called Sandstone (A non-radioactive artifact sometimes formed in extreme temperature anomalies. When worn, the wearer can charge it by stepping into an anomaly. While charged, it causes the wearer's next bullet fired to be infused with the properties of the anomaly that charged it.)</text>
     </string>
      <string id="talker_af_serofim">
-        <text>Seraphim (Seraphim was for the longest time considered to be nothing but a pretty bauble to be sold. Rumours are it carries the power to raise its wearer from the dead, but no stalker or scientist has been brave enough to test it. It is not radioactive.)</text>
+        <text>an artifact called Seraphim (Seraphim was for the longest time considered to be nothing but a pretty bauble to be sold. Rumours are it carries the power to raise its wearer from the dead, but no stalker or scientist has been brave enough to test it. It is not radioactive.)</text>
     </string>
     <string id="talker_af_signet">
-        <text>Signet (A non-radioactive artifact that appears to be a warped metal nut. Occasionally also called an 'Amulet'. Popular among stalkers, the Signet boosts its wearer's health regeneration and heals psy damage while sitting near a campfire.)</text>
+        <text>an artifact called Signet (A non-radioactive artifact that appears to be a warped metal nut. Occasionally also called an 'Amulet'. Popular among stalkers, the Signet boosts its wearer's health regeneration and heals psy damage while sitting near a campfire.)</text>
     </string>
     <string id="talker_af_skull_miser">
-        <text>Miser's Skull (A light and fragile non-radioactive artifact consisting of interlinked strands of anomalous plant fibers. Popular among bandits and criminals, the Miser's Skull creates an eruption of money seemingly out of thin air when killing a person by shooting them in the head.)</text>
+        <text>an artifact called Miser's Skull (A light and fragile non-radioactive artifact consisting of interlinked strands of anomalous plant fibers. Popular among bandits and criminals, the Miser's Skull creates an eruption of money seemingly out of thin air when killing a person by shooting them in the head.)</text>
     </string>
     <string id="talker_af_spaika">
-        <text>Spike (A common non-radioactive artifact formed in gravitational anomalies, that resembles petrified wood or bone. It seemingly resonates with the bloodlust in the wearer, granting their bullets extra kinetic damage increasing with each consecutive shot they land, but causing a damaging backlash when a shot is missed.)</text>
+        <text>an artifact called Spike (A common non-radioactive artifact formed in gravitational anomalies, that resembles petrified wood or bone. It seemingly resonates with the bloodlust in the wearer, granting their bullets extra kinetic damage increasing with each consecutive shot they land, but causing a damaging backlash when a shot is missed.)</text>
     </string>
     <string id="talker_af_star_phantom">
-        <text>Phantom Star (This non-radioactive artifact appears to be a plasma-like substance suspended within a striated transparent shell. Wearing it turns the user invisible, although it prevents them from drawing a weapon, talking or interacting with anything.)</text>
+        <text>an artifact called Phantom Star (This non-radioactive artifact appears to be a plasma-like substance suspended within a striated transparent shell. Wearing it turns the user invisible, although it prevents them from drawing a weapon, talking or interacting with anything.)</text>
     </string>
     <string id="talker_af_sun">
-        <text>Sun (A rare non-radioactive artifact that is very much appreciated by collectors. Its exterior shell is unremarkable, but if cracked like a geode, reveals a swirling luminous core that emits a constant source of warm yellow light. It boosts the wearer's stamina during clear weather at daytime, but penalizes it in other weathers and at night.)</text>
+        <text>an artifact called Sun (A rare non-radioactive artifact that is very much appreciated by collectors. Its exterior shell is unremarkable, but if cracked like a geode, reveals a swirling luminous core that emits a constant source of warm yellow light. It boosts the wearer's stamina during clear weather at daytime, but penalizes it in other weathers and at night.)</text>
     </string>
     <string id="talker_af_tapeworm">
-        <text>Tapeworm (This non-radioactive artifact is pure silicon dioxide, twisted into an unusual shape and color by gravitational anomalies. It can be activated, which causes it to stun the nearest mutant within a short range for a short duration.)</text>
+        <text>an artifact called Tapeworm (This non-radioactive artifact is pure silicon dioxide, twisted into an unusual shape and color by gravitational anomalies. It can be activated, which causes it to stun the nearest mutant within a short range for a short duration.)</text>
     </string>
     <string id="talker_af_vaselisk">
-        <text>Basilisk (One of the few artifacts in the Zone which copes well with all kinds of physical influences on its owner. It is not radioactive.)</text>
+        <text>an artifact called Basilisk (One of the few artifacts in the Zone which copes well with all kinds of physical influences on its owner. It is not radioactive.)</text>
     </string>
     <string id="talker_af_zhelch">
-        <text>Scar (An unusual non-radioactive artifact, it provides significant psy protection and slowly heals psy damage when at full health. When injured, it deals psy damage to the wearer but regenerates their health. While powerful, its mind-altering properties sometimes drives its users insane and campfire stories about crazed Scar-users are popular with experienced stalkers.)</text>
+        <text>an artifact called Scar (An unusual non-radioactive artifact, it provides significant psy protection and slowly heals psy damage when at full health. When injured, it deals psy damage to the wearer but regenerates their health. While powerful, its mind-altering properties sometimes drives its users insane and campfire stories about crazed Scar-users are popular with experienced stalkers.)</text>
     </string>
-
+<!-- Non-artifact -->
+    <string id="talker_af_fanny_pack">
+        <text>a Fanny Pack (a Zone-made bag that attaches to your belt, letting you carry a small amount of extra items.)</text>
+    </string>
+    <string id="talker_af_fanny_pack_adidas">
+        <text>an Adidas branded Fanny Pack (a bag that attaches to your belt, letting you carry a small amount of extra items.)</text>
+    </string>
+    <string id="talker_af_fanny_pack_suckpreme">
+        <text>an Supreme Fanny Pack (a bright red bag that attaches to your belt, letting you carry a small amount of extra items. Many stalkers avoid using them due to the color making them an easier target.)</text>
+    </string>
+    <string id="talker_af_camelbak">
+        <text>a Camelbak (a device attached to your backpack that stores water, with a tube and mouthpiece allowing you to drink from it hands-free. Wearing one helps keep you hydrated.)</text>
+    </string>
+    <string id="talker_af_camelbak_up">
+        <text>an upgraded Camelbak (a device attached to your backpack that stores water, with a tube and mouthpiece allowing you to drink from it hands-free. Wearing one helps keep you hydrated.)</text>
+    </string>
+    <string id="talker_af_frames">
+        <text>Aluminum Frames (A set of lightweight frames that attach to your backpack and helps distribute weight, letting you carry a heavier load.)</text>
+    </string>
+    <string id="talker_af_frames_up">
+        <text>Improved Aluminum Frames (A set of lightweight frames that attach to your backpack and helps distribute weight, letting you carry a heavier load. This more rare and expensive version lets you carry even more weight.)</text>
+    </string>
+    <string id="talker_af_grid">
+        <text>a Titanium Grid (A high-quality set of lightweight frames that attach to your backpack and helps distribute weight, letting you carry a heavier load. The titanium version is superior to the more commong aluminum frames.)</text>
+    </string>
+    <string id="talker_af_grid_up">
+        <text>an Improved Titanium Grid (A high-quality set of lightweight frames that attach to your backpack and helps distribute weight, letting you carry a heavier load. The improved titanium grid is the best backpack frames available in the Zone.)</text>
+    </string>
+    <string id="talker_af_surge">
+        <text>a Surge Protector (A small disposable device that protects against electrical anomalies. It's cheap, but its fuses burn out quick.)</text>
+    </string>
+    <string id="talker_af_surge_up">
+        <text>an Improved Surge Protector (An improved version of the Surge Protector, granting better protection against electrical anomalies and lasting longer. It can also generate a small muscle relaxing current, helping its wearer recover stamina.)</text>
+    </string>
+    <!-- Armor inserts -->
+    <string id="talker_af_ceramic">
+        <text>a Ceramic Ballistic Insert (a hard but fragile armor insert, granting high ballistic protection but breaking quickly under repeat fire.)</text>
+    </string>
+    <string id="talker_af_ceramic_up">
+        <text>an Steel-Reinforced Ceramic Insert (an improved version of the Ceramic Ballistic Insert, granting better ballistic protection and lasting longer.)</text>
+    </string>
+    <string id="talker_af_kevlar">
+        <text>Kevlar Inserts (a durable and lightweight armor insert. Kevlar is widely used for its weight and flexibility, but is easily defeated by rifle caliber rounds.)</text>
+    </string>
+    <string id="talker_af_kevlar_up">
+        <text>Kevlar-aramid armor inserts (A stronger plate version of kevlar inserts, they are popular for their strength-to-weight ratio, but are still easily defeated by rifle caliber rounds.)</text>
+    </string>
+    <string id="talker_af_plates">
+        <text>a Steel Armor Plate (A heavy armor plate that grants excellent ballistic protection at the expense of weight and mobility.)</text>
+    </string>
+    <string id="talker_af_plates_up">
+        <text>Carbon Steel Armor Plates (An improved version of the Steel Armor Plate, granting even better ballistic protection. It is even heavier, however, leading most stalkers to shy away from its use.)</text>
+    </string>
+    <string id="talker_af_polymer">
+        <text>a UHMWPE ballistic insert (this Ultra-High Molecular Weight Polyethylene insert provides incredible protection for its low weight, combined with great multi-hit protection. It struggles to stop rifle caliber rounds, but is still expensive due to its positive properties.)</text>
+    </string>
+    <string id="talker_af_polymer_up">
+        <text>a UHMWPE/Ceramic ballistic insert (this combination of Ultra-High Molecular Weight Polyethylene with a ceramic plate is one of the latest advances in personal armor. It's both lightweight and protects against a wide range of threats, but too expensive to have seen wide adoption.)</text>
+    </string>
 </string_table>
