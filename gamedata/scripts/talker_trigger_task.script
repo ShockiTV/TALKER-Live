@@ -30,51 +30,102 @@ local faction_map = {
 }
 
 local LAST_TASK_TIME = 0
-local TASK_COOLDOWN_CD = mcm.get("task_cooldown") * 1000 -- default 15 seconds cooldown to prevent spam
+local LAST_TASK_SPAM = 0
+local TASK_COOLDOWN_CD = mcm.get("task_cooldown") * 1000 -- default 40 seconds cooldown
+local ANTI_SPAM_CD = mcm.get("anti_spam_cd") * 1000
+local mode_task = tonumber(mcm.get("enable_trigger_task") or "0")
 
-function is_valid_event()
-    local is_cd_over = (queries.get_game_time_ms() - LAST_TASK_TIME) > TASK_COOLDOWN_CD
-    local witnesses = game_adapter.get_characters_near_player()
-    local is_valid = is_cd_over and (#witnesses > 0)
-    -- reset cooldown if valid
-    if is_valid then LAST_TASK_TIME = queries.get_game_time_ms() end
-    return is_valid
+-- Helper to determine if a task event should be silent
+-- Mode: 0 = On, 1 = Off, 2 = Silent
+local function get_silence_status(mode)
+    local current_time = queries.get_game_time_ms()
+    
+    -- 1. Anti-spam check
+    if (current_time - LAST_TASK_SPAM) < ANTI_SPAM_CD then
+        log.info("TALKER: Task event aborted (anti-spam)")
+        return nil -- Abort, too soon
+    end
+
+    -- Update anti-spam timer
+    LAST_TASK_SPAM = current_time
+
+    -- 2. Dialogue Cooldown check
+    local dialogue_ready = (current_time - LAST_TASK_TIME) >= TASK_COOLDOWN_CD
+
+    if mode == 0 then -- Mode: On
+        if dialogue_ready then
+            LAST_TASK_TIME = current_time
+            return false -- Dialogue requested
+        else
+            return true -- Silent event
+        end
+    elseif mode == 2 then -- Mode: Silent
+        return true
+    end
+
+    return nil
 end
 
 function on_game_start()
     -- Hook the task_callback function to intercept task completion
+    -- We must capture task info BEFORE the original callback runs, because some mods/tasks 
+    -- delete the task info immediately upon completion (race condition).
     if task_manager and task_manager.task_callback then
         original_task_callback = task_manager.task_callback
         task_manager.task_callback = function(tsk, stage)
-            -- Call original first
+            
+            -- 1. Pre-capture task info
+            local cached_info = nil
+            local success, err = pcall(function() 
+                local task_id = tsk:get_id()
+                local tm = task_manager.get_task_manager()
+                if tm and tm.task_info and tm.task_info[task_id] then
+                     cached_info = tm.task_info[task_id]
+                end
+            end)
+            if not success then
+                log.error("%s: Error capturing task info: %s", script_name, err)
+            end
+
+            -- 2. Call original callback
             original_task_callback(tsk, stage)
-            -- Then trigger our event if task was completed
+            
+            -- 3. Trigger our event if task was completed, using cached info
             if stage == task.completed then
-                on_task_completed_event(tsk)
+                on_task_completed_event(tsk, cached_info)
             end
         end
-        log.info("%s: Hooked task_manager.task_callback", script_name)
+        log.info("%s: Hooked task_manager.task_callback with pre-capture", script_name)
     else
         log.error("%s: Could not hook task_manager.task_callback - function not found", script_name)
     end
 end
 
-function on_task_completed_event(tsk)
-    if not mcm.get("enable_trigger_task") then return end
-
-    if not is_valid_event() then return end
+function on_task_completed_event(tsk, cached_info)
+    if mode_task == 1 then return end
     if not tsk then return end
+    
     local task_id = tsk:get_id()
-    local tm = task_manager.get_task_manager()
-    if not tm or not tm.task_info or not tm.task_info[task_id] then
+    local task_info = cached_info
+    
+    -- Fallback to live info if cache failed/missing (unlikely if hook works, but safe)
+    if not task_info then
+        local tm = task_manager.get_task_manager()
+        if tm and tm.task_info and tm.task_info[task_id] then
+            task_info = tm.task_info[task_id]
+        end
+    end
+
+    if not task_info then
         log.info("%s: Cannot access task info for task %s", script_name, task_id)
         return
     end
     
-    local task_info = tm.task_info[task_id]
     local task_giver_id = task_info.task_giver_id
     
     if not task_giver_id then 
+        -- Some auto-tasks have no giver (nil), we might want to support them later, 
+        -- but for "someone completed a task FOR someone", we need a giver.
         return 
     end
     
@@ -85,19 +136,37 @@ function on_task_completed_event(tsk)
         return
     end
 
-    -- Proceed with event if task giver is unique, 10% chance for generic characters
+    -- Proceed with event: determine if it's silent based on cooldown and chance
+    local is_silent = get_silence_status(mode_task)
+    if is_silent == nil then return end
+    
     local is_unique = queries.is_unique_character_by_id(task_giver_id)
-    if not is_unique then
+    if not is_unique and mode_task == 0 and not is_silent then
         if math.random() > mcm.get("task_notice_chance") then
-            return
+            is_silent = true
         end
     end
     
-    -- Manually create character info from server object (works for both online/offline)
+    -- Reputation Fetching
+    -- Try to get online object first as it has reliable reputation methods
+    local rep_val = 0
+    local client_obj = level.object_by_id(task_giver_id)
+    if client_obj and client_obj.character_reputation then
+        rep_val = client_obj:character_reputation()
+    elseif server_entity.reputation then
+        -- This property availability on server objects varies by engine version/mod
+        -- but usually cse_alife_trader_abstract has it.
+        rep_val = server_entity.reputation
+    end
+    
+    local rep_tier = queries.get_reputation_tier(rep_val)
+
+    -- Manually create character info
     local task_giver_character = {
         name = server_entity:character_name(),
         experience = server_entity:rank(), -- Returns number
-        faction = tostring(server_entity:community())
+        faction = tostring(server_entity:community()),
+        reputation = rep_tier
     }
     
     -- Try to get text rank name
@@ -123,16 +192,38 @@ function on_task_completed_event(tsk)
         else
              task_title = game.translate_string(task_id)
         end
+    else
+        -- Smart translation fallback:
+        -- If the title looks like a technical key (has underscore, no spaces), try to translate it
+        -- This handles cases where get_title() returns the key instead of the text due to engine quirks
+        if string.find(task_title, "_") and not string.find(task_title, " ") then
+            local translated = game.translate_string(task_title)
+            if translated ~= task_title then
+                task_title = translated
+            end
+        end
     end
 
     local witnesses = game_adapter.get_characters_near_player()
     local player = game_adapter.get_player_character()
+    local player_fmt, player_vals = queries.get_character_event_info(player)
     local companions = game_adapter.get_companions() or {}
+    
+    -- Format Description
+    -- Format: "Name (Rank Faction, Reputation rep)"
+    -- e.g. "Wolf (Experienced Loner, Excellent rep)"
+    local giver_desc_str = string.format("%s (%s %s, %s rep)", 
+        task_giver_character.name, 
+        task_giver_character.experience, 
+        task_giver_character.faction, 
+        task_giver_character.reputation
+    )
+
     if #companions > 0 then 
         local names_list = {}
         for _, companion in ipairs(companions) do
-            table.insert(names_list, companion.name)
-            table.insert(witnesses, companion)
+            names_list[#names_list+1] = companion.name
+            witnesses[#witnesses+1] = companion
         end
         
         local companion_names = ""
@@ -143,20 +234,21 @@ function on_task_completed_event(tsk)
             companion_names = table.concat(names_list, ", ") .. " and " .. last_name
         end
         -- Format and send the event
-        local description = string.format("%s (%s %s, %s rep) and their travelling companions %s completed the task '%s' for %s (%s %s, %s rep)!", player.name, player.experience, player.faction, player.reputation, companion_names, task_title, task_giver_character.name, task_giver_character.experience, task_giver_character.faction, task_giver_character.reputation)
-        trigger.talker_game_event(description, {}, witnesses, true, { is_task = true })
+        local description = player_fmt .. " and their travelling companions " .. companion_names .. " completed the task '" .. task_title .. "' for " .. giver_desc_str .. "!"
+        trigger.talker_game_event(description, player_vals, witnesses, true, { is_task = true, is_silent = is_silent })
      
-else
-        local description = string.format("%s (%s %s, %s rep) completed the task '%s' for %s (%s %s, %s rep)!", player.name, player.experience, player.faction, player.reputation, task_title, task_giver_character.name, task_giver_character.experience, task_giver_character.faction, task_giver_character.reputation)
-        trigger.talker_game_event(description, {}, witnesses, true, { is_task = true })
-end
-    LAST_TASK_TIME = queries.get_game_time_ms()
+    else
+        local description = player_fmt .. " completed the task '" .. task_title .. "' for " .. giver_desc_str .. "!"
+        trigger.talker_game_event(description, player_vals, witnesses, true, { is_task = true, is_silent = is_silent })
+        
+    end
+    
+    if is_silent == true then
+        log.info("TALKER: Task event registered (silent)")
+    end
 end
 
 -- Module loaded check
 function is_loaded()
     return true
 end
-
-
-
