@@ -1,0 +1,469 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<string_table>
+    <!-- GENERAL OPTIONS -->
+    <string id="ui_mcm_talker_title">
+        <text>Настройки - T.A.L.K.E.R. Expanded</text>
+    </string>
+    <string id="ui_mcm_menu_talker">
+        <text>T.A.L.K.E.R. Expanded</text>
+    </string>
+    <string id="ui_mcm_talker_gpt_version">
+        <text>Модель GPT для диалогов</text>
+    </string>
+    <string id="ui_mcm_talker_ai_model_method">
+        <text>Какой метод/сайт использовать для моделей</text>
+    </string>
+    <string id="ui_mcm_talker_custom_ai_model">
+        <text>Модель для диалогов</text>
+    </string>
+    <string id="ui_mcm_talker_custom_ai_model_fast">
+        <text>Быстрая модель для не-диалогов</text>
+    </string>
+    <string id="ui_mcm_talker_reasoning_level">
+        <text>(Прокси) Уровень размышлений (Лучше Авто или Нет)</text>
+    </string>
+    <string id="ui_mcm_talker_voice_provider">
+        <text>Провайдер распознавания голоса</text>
+    </string>
+    <!-- MODEL MODE SLECTION -->
+    <string id="ui_mcm_lst_open-ai">
+        <text>OpenAI</text>
+    </string>
+    <string id="ui_mcm_lst_open-router-ai">
+        <text>OpenRouter AI</text>
+    </string>
+    <string id="ui_mcm_lst_local-deepseek">
+        <text>Локальный</text>
+    </string>
+    <string id="ui_mcm_lst_proxy">
+        <text>Прокси</text>
+    </string>
+    <!-- REASONING LEVEL -->
+    <string id="ui_mcm_lst_Auto">
+        <text>Авто</text>
+    </string>
+    <string id="ui_mcm_lst_None">
+        <text>Нет</text>
+    </string>
+    <string id="ui_mcm_lst_Low">
+        <text>Низкий</text>
+    </string>
+    <string id="ui_mcm_lst_Medium">
+        <text>Средний</text>
+    </string>
+    <string id="ui_mcm_lst_High">
+        <text>Высокий</text>
+    </string>
+    <!-- VOICE PROVIDER -->
+    <string id="ui_mcm_lst_local-whisper">
+        <text>Локальный Whisper</text>
+    </string>
+    <string id="ui_mcm_lst_openai-whisper">
+        <text>OpenAI Whisper</text>
+    </string>
+    <string id="ui_mcm_lst_gemini-proxy">
+        <text>Gemini Proxy</text>
+    </string>
+    <!-- LANGUAGE SELECTION -->
+    <string id="ui_mcm_talker_language">
+        <text>Язык диалога</text>
+    </string>
+    <string id="ui_mcm_lst_Any">
+        <text>Любой</text>
+    </string>
+    <string id="ui_mcm_lst_English">
+        <text>Английский</text>
+    </string>
+    <string id="ui_mcm_lst_Ukrainian">
+        <text>Украинский</text>
+    </string>
+    <string id="ui_mcm_lst_Russian">
+        <text>Русский</text>
+    </string>
+    <!-- GPT MODELS -->
+    <string id="ui_mcm_lst_gpt-4o">
+        <text>GPT-4o</text>
+    </string>
+    <string id="ui_mcm_lst_gpt-4o-mini">
+        <text>GPT-4o mini</text>
+    </string>
+    <string id="ui_mcm_lst_gpt-4-turbo">
+        <text>GPT 4 turbo</text>
+    </string>
+    <!-- SPEAK KEY CONFIGURATION -->
+    <string id="ui_mcm_talker_speak_key_title">
+        <text>Настройка клавиши разговора</text>
+    </string>
+    <string id="ui_mcm_talker_speak_key_description">
+        <text>Настройте клавишу, используемую для начала разговора.</text>
+    </string>
+    <string id="ui_mcm_talker_speak_key">
+        <text>Клавиша ввода с микрофона.</text>
+    </string>
+		    <!-- WHISPER MODIFIER KEY CONFIGURATION -->
+    <string id="ui_mcm_talker_whisper_modifier_title">
+        <text>Настройка клавиши Whisper</text>
+    </string>
+    <string id="ui_mcm_talker_whisper_modifier_description">
+        <text>Если удерживать эту кнопку во время разговора или отправки сообщения, его услышат только ваши собеседники.</text>
+    </string>
+    <string id="ui_mcm_talker_whisper_modifier">
+        <text>Клавиша модификатора шепота</text>
+    </string>
+	    <string id="ui_mcm_lst_Shift">
+        <text>Shift (Шифт)</text>
+    </string>
+    <string id="ui_mcm_lst_Alt">
+        <text>Alt (Альт)</text>
+    </string>
+	    <string id="ui_mcm_lst_Ctrl">
+        <text>Ctrl (Контрол)</text>
+    </string>
+			    <!-- PERSONALITY RESETTING -->
+    <string id="ui_mcm_talker_reset_personality_title">
+        <text>Сбросить личности</text>
+    </string>
+    <string id="ui_mcm_talker_reset_personality">
+        <text>Установите этот флажок, чтобы сбросить личности при загрузке сохранения. </text>
+    </string>
+			    <!-- BACKSTORY RESETTING -->
+    <string id="ui_mcm_talker_reset_backstory_title">
+        <text>Сбросить предысторию</text>
+    </string>
+    <string id="ui_mcm_talker_reset_backstory">
+        <text>Установите этот флажок, чтобы сбросить предысторию при загрузке сохранения. </text>
+    </string>
+        <!-- GENERAL CONFIGURATION -->
+<string id="ui_mcm_talker_general_configuration_title">
+	<text>Общая конфигурация</text>
+</string>
+<string id="ui_mcm_talker_action_descriptions">
+	<text>Разрешить ИИ использовать описания действий (например, *усмехается* или (вздыхает) и т.д.).</text>
+</string>
+<string id="ui_mcm_talker_female_gender">
+	<text>Женский пол игрока (поддержка LASS): Отметьте, если играете за женского персонажа, чтобы ИИ обращался к вам в женском роде.</text>
+</string>
+<string id="ui_mcm_talker_anti_spam_cd">
+	<text>Задержка анти-спама (секунды). Используется для триггеров аномалий, артефактов и заданий. Если задержка не прошла, триггер прервется. Если задержка готова, но не прошла задержка самого события, оно будет записано в память беззвучно.</text>
+</string>
+<string id="ui_mcm_talker_time_gap">
+	<text>Порог временного разрыва (часы). Если между двумя событиями прошло столько времени, вставляется событие «временной разрыв», чтобы помочь ИИ понять течение времени.</text>
+</string>
+<string id="ui_mcm_talker_base_dialogue_chance">
+	<text>Базовый шанс диалога для неважных событий (важные события, такие как речь игрока, всегда вызывают диалог)</text>
+</string>
+<string id="ui_mcm_talker_witness_distance">
+	<text>NPC в пределах этой дистанции считаются свидетелями события (метры)</text>
+</string>
+<string id="ui_mcm_talker_npc_speak_distance">
+	<text>NPC в пределах этой дистанции могут заговорить с игроком (метры)</text>
+</string>
+    <!-- TRIGGERS -->
+<string id="ui_mcm_talker_instructions_title">
+	<text>Инструкции</text>
+</string>
+<string id="ui_mcm_talker_instructions_text">
+	<text>«Выкл» полностью предотвращает срабатывание триггера (запись не добавится в историю событий, NPC не узнают о событии). «Без звука» регистрирует событие в памяти, но НЕ вызывает немедленный диалог. Ближайшие NPC запомнят это и смогут упомянуть в будущих разговорах.</text>
+</string>
+<string id="ui_mcm_talker_triggers_title">
+	<text>Конфигурация триггеров диалогов</text>
+</string>
+<string id="ui_mcm_talker_trigger_anomalies_title">
+	<text>Аномалии</text>
+</string>
+<string id="ui_mcm_talker_enable_trigger_proximity_anomalies">
+	<text>Обработка события приближения к аномалии</text>
+</string>
+<string id="ui_mcm_lst_anomaly_proximity_On">
+	<text>Вкл</text>
+</string>
+<string id="ui_mcm_lst_anomaly_proximity_Off">
+	<text>Выкл</text>
+</string>
+<string id="ui_mcm_lst_anomaly_proximity_Silent">
+	<text>Без звука</text>
+</string>
+<string id="ui_mcm_talker_max_rank_for_warning">
+	<text>Ранг, выше которого NPC ИГНОРИРУЮТ ваше приближение к аномалиям (0 = новичок, 7 = легенда).</text>
+</string>
+<string id="ui_mcm_talker_anomaly_proximity_comment_cd">
+	<text>Задержка триггера приближения к аномалии (секунды)</text>
+</string>
+<string id="ui_mcm_talker_enable_trigger_damage_anomalies">
+	<text>Обработка события получения урона от аномалии</text>
+</string>
+<string id="ui_mcm_lst_anomaly_damage_On">
+	<text>Вкл</text>
+</string>
+<string id="ui_mcm_lst_anomaly_damage_Off">
+	<text>Выкл</text>
+</string>
+<string id="ui_mcm_lst_anomaly_damage_Silent">
+	<text>Без звука</text>
+</string>
+<string id="ui_mcm_talker_anomaly_damage_comment_cd">
+	<text>Задержка триггера урона от аномалии (секунды)</text>
+</string>
+<string id="ui_mcm_talker_trigger_artifacts_title">
+	<text>Артефакты</text>
+</string>
+<string id="ui_mcm_talker_enable_trigger_artifact_pickup">
+	<text>Обработка события поднятия артефакта</text>
+</string>
+<string id="ui_mcm_lst_artifact_pickup_On">
+	<text>Вкл</text>
+</string>
+<string id="ui_mcm_lst_artifact_pickup_Off">
+	<text>Выкл</text>
+</string>
+<string id="ui_mcm_lst_artifact_pickup_Silent">
+	<text>Без звука</text>
+</string>
+<string id="ui_mcm_talker_artifact_pickup_comment_cd">
+	<text>Задержка триггера поднятия артефакта (секунды)</text>
+</string>
+<string id="ui_mcm_talker_enable_trigger_artifact_use">
+	<text>Обработка события использования артефакта</text>
+</string>
+<string id="ui_mcm_lst_artifact_use_On">
+	<text>Вкл</text>
+</string>
+<string id="ui_mcm_lst_artifact_use_Off">
+	<text>Выкл</text>
+</string>
+<string id="ui_mcm_lst_artifact_use_Silent">
+	<text>Без звука</text>
+</string>
+<string id="ui_mcm_talker_artifact_use_comment_cd">
+	<text>Задержка триггера использования артефакта (секунды)</text>
+</string>
+<string id="ui_mcm_talker_enable_trigger_artifact_equip">
+	<text>Обработка события экипировки артефакта</text>
+</string>
+<string id="ui_mcm_lst_artifact_equip_On">
+	<text>Вкл</text>
+</string>
+<string id="ui_mcm_lst_artifact_equip_Off">
+	<text>Выкл</text>
+</string>
+<string id="ui_mcm_lst_artifact_equip_Silent">
+	<text>Без звука</text>
+</string>
+<string id="ui_mcm_talker_artifact_equip_comment_cd">
+	<text>Задержка между комментариями об экипировке артефактов (секунды).</text>
+</string>
+<string id="ui_mcm_talker_trigger_callout_title">
+	<text>Обнаружение врагов</text>
+</string>
+<string id="ui_mcm_talker_enable_trigger_callout">
+	<text>Включить триггер диалога при обнаружении врага</text>
+</string>
+<string id="ui_mcm_talker_callout_cooldown">
+	<text>Задержка триггера обнаружения (секунды)</text>
+</string>
+<string id="ui_mcm_talker_repeated_callout_cooldown">
+	<text>Задержка для повторных выкриков о врагах с тем же именем (секунды)</text>
+</string>
+<string id="ui_mcm_talker_max_callout_distance">
+	<text>Максимальная дистанция обнаружения (метры)</text>
+</string>
+<string id="ui_mcm_talker_trigger_death_title">
+	<text>Смерти</text>
+</string>
+<string id="ui_mcm_talker_trigger_death_desc">
+	<text>Режим «Без звука» записывает смерти, но не вызывает диалог (свидетели запомнят их и смогут обсудить позже). Режим «Вкл» запрашивает диалог, когда прошла задержка, иначе записывает смерти беззвучно. В обоих режимах ни одна смерть не будет проигнорирована.</text>
+</string>
+<string id="ui_mcm_talker_enable_trigger_death_player">
+	<text>Обработка события убийств, совершенных игроком</text>
+</string>
+<string id="ui_mcm_lst_death_player_On">
+	<text>Вкл</text>
+</string>
+<string id="ui_mcm_lst_death_player_Off">
+	<text>Выкл</text>
+</string>
+<string id="ui_mcm_lst_death_player_Silent">
+	<text>Без звука</text>
+</string>
+<string id="ui_mcm_talker_death_cooldown_player">
+	<text>Задержка для убийств игрока (секунды)</text>
+</string>
+<string id="ui_mcm_talker_enable_trigger_death_npc">
+	<text>Обработка события убийств, совершенных NPC</text>
+</string>
+<string id="ui_mcm_lst_death_npc_On">
+	<text>Вкл</text>
+</string>
+<string id="ui_mcm_lst_death_npc_Off">
+	<text>Выкл</text>
+</string>
+<string id="ui_mcm_lst_death_npc_Silent">
+	<text>Без звука</text>
+</string>
+<string id="ui_mcm_talker_death_cooldown_npc">
+	<text>Задержка для убийств NPC (секунды)</text>
+</string>
+<string id="ui_mcm_talker_trigger_emission_title">
+	<text>Выбросы</text>
+</string>
+<string id="ui_mcm_talker_enable_trigger_emission">
+	<text>Обработка события выбросов/пси-штормов.</text>
+</string>
+<string id="ui_mcm_lst_emission_On">
+	<text>Вкл</text>
+</string>
+<string id="ui_mcm_lst_emission_Off">
+	<text>Выкл</text>
+</string>
+<string id="ui_mcm_lst_emission_Silent">
+	<text>Без звука</text>
+</string>
+<string id="ui_mcm_talker_trigger_idle_title">
+	<text>Фоновые разговоры</text>
+</string>
+<string id="ui_mcm_talker_enable_trigger_idle">
+	<text>Включить фоновые разговоры.</text>
+</string>
+<string id="ui_mcm_talker_idle_conversation_cooldown">
+	<text>Минимальное время между фоновыми разговорами (секунды)</text>
+</string>
+<string id="ui_mcm_talker_recent_speech_threshold">
+	<text>Минимальное окно тишины (с момента последнего высказывания) перед попыткой фонового разговора (секунды)</text>
+</string>
+<string id="ui_mcm_talker_idle_question_chance">
+	<text>Процентный шанс задать игроку вопрос вместо начала фонового разговора</text>
+</string>
+<string id="ui_mcm_talker_trigger_injury_title">
+	<text>Ранения</text>
+</string>
+<string id="ui_mcm_talker_enable_trigger_injury">
+	<text>Обработка события критического ранения игрока.</text>
+</string>
+<string id="ui_mcm_talker_injury_threshold">
+	<text>Процент здоровья, при котором ранение считается критическим</text>
+</string>
+<string id="ui_mcm_lst_injury_On">
+	<text>Вкл</text>
+</string>
+<string id="ui_mcm_lst_injury_Off">
+	<text>Выкл</text>
+</string>
+<string id="ui_mcm_lst_injury_Silent">
+	<text>Без звука</text>
+</string>
+<string id="ui_mcm_talker_injury_cooldown">
+	<text>Задержка комментариев о ранении (секунды)</text>
+</string>
+<string id="ui_mcm_talker_trigger_map_transition_title">
+	<text>Переход между локациями</text>
+</string>
+<string id="ui_mcm_talker_enable_trigger_map_transition">
+	<text>Обработка события перемещения между зонами.</text>
+</string>
+<string id="ui_mcm_lst_map_transition_On">
+	<text>Вкл</text>
+</string>
+<string id="ui_mcm_lst_map_transition_Off">
+	<text>Выкл</text>
+</string>
+<string id="ui_mcm_lst_map_transition_Silent">
+	<text>Без звука</text>
+</string>
+<string id="ui_mcm_talker_trigger_reload_title">
+	<text>Перезарядка</text>
+</string>
+<string id="ui_mcm_talker_enable_trigger_reload">
+	<text>Обработка события перезарядки оружия игроком.</text>
+</string>
+<string id="ui_mcm_lst_reload_On">
+	<text>Вкл</text>
+</string>
+<string id="ui_mcm_lst_reload_Off">
+	<text>Выкл</text>
+</string>
+<string id="ui_mcm_lst_reload_Silent">
+	<text>Без звука</text>
+</string>
+<string id="ui_mcm_talker_reload_notice_chance">
+	<text>Шанс заметить перезарядку игрока (держите значение НИЗКИМ, иначе будет слишком много спама!)</text>
+</string>
+<string id="ui_mcm_talker_trigger_sleep_title">
+	<text>Сон</text>
+</string>
+<string id="ui_mcm_talker_enable_trigger_sleep">
+	<text>Обработка события пробуждения игрока ото сна.</text>
+</string>
+<string id="ui_mcm_lst_sleep_On">
+	<text>Вкл</text>
+</string>
+<string id="ui_mcm_lst_sleep_Off">
+	<text>Выкл</text>
+</string>
+<string id="ui_mcm_lst_sleep_Silent">
+	<text>Без звука</text>
+</string>
+<string id="ui_mcm_talker_trigger_task_title">
+	<text>Задания</text>
+</string>
+<string id="ui_mcm_talker_enable_trigger_task">
+	<text>Обработка события выполнения игроком задания.</text>
+</string>
+<string id="ui_mcm_lst_task_On">
+	<text>Вкл</text>
+</string>
+<string id="ui_mcm_lst_task_Off">
+	<text>Выкл</text>
+</string>
+<string id="ui_mcm_lst_task_Silent">
+	<text>Без звука</text>
+</string>
+<string id="ui_mcm_talker_task_cooldown">
+	<text>Задержка комментариев о выполнении задания (секунды)</text>
+</string>
+<string id="ui_mcm_talker_task_notice_chance">
+	<text>Шанс срабатывания для заданий от случайных NPC (уникальные задания всегда вызывают событие независимо от этого значения).</text>
+</string>
+<string id="ui_mcm_talker_trigger_taunt_title">
+	<text>Насмешки</text>
+</string>
+<string id="ui_mcm_talker_enable_trigger_taunt">
+	<text>Включить насмешки NPC над врагами.</text>
+</string>
+<string id="ui_mcm_talker_taunt_cooldown">
+	<text>Задержка насмешек NPC (секунды)</text>
+</string>
+<string id="ui_mcm_talker_trigger_weapon_jam_title">
+	<text>Заклинивание оружия</text>
+</string>
+<string id="ui_mcm_talker_enable_trigger_weapon_jam">
+	<text>Обработка события заклинивания оружия игрока.</text>
+</string>
+<string id="ui_mcm_lst_weapon_jam_On">
+	<text>Вкл</text>
+</string>
+<string id="ui_mcm_lst_weapon_jam_Off">
+	<text>Выкл</text>
+</string>
+<string id="ui_mcm_lst_weapon_jam_Silent">
+	<text>Без звука</text>
+</string>
+    <!-- DEBUG -->
+<string id="ui_mcm_talker_debug_title">
+	<text>Отладка</text>
+</string>
+<string id="ui_mcm_talker_debug_logging">
+	<text>Установить уровень логирования отладки.</text>
+</string>
+<string id="ui_mcm_lst_logging_Off">
+	<text>Выкл</text>
+</string>
+<string id="ui_mcm_lst_logging_ConsoleOnly">
+	<text>Только консоль</text>
+</string>
+<string id="ui_mcm_lst_logging_FileOnly">
+	<text>Только файл</text>
+</string>
+<string id="ui_mcm_lst_logging_Both">
+	<text>Консоль и файл</text>
+</string>
+</string_table>
