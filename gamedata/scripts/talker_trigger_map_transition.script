@@ -6,17 +6,21 @@
 package.path = package.path .. ";./bin/lua/?.lua;"
 local trigger = require("interface.trigger")
 local locations = require("infra.STALKER.locations")
+local logger = require("framework.logger")
 local game = require("infra.game_adapter")
 local mcm = talker_mcm
+local queries = talker_game_queries
 -- Saved variable to track the number of visits to each map
 local level_visit_count = {}
 local commented_already = false
+
+local mode_map_transition = tonumber(mcm.get("enable_trigger_map_transition") or "0")
 
 -- Function to handle map change event
 -- @param previous_map String name of the previous map
 -- @param current_map String name of the current map
 function on_map_change_event(previous_map, current_map)
-    if not mcm.get("enable_trigger_map_transition") then return end
+    if mode_map_transition == 1 then return end
     
     if not current_map or not previous_map then return end
 
@@ -27,6 +31,7 @@ function on_map_change_event(previous_map, current_map)
     local visit_count = level_visit_count[current_map]
 
     local player = game.get_player_character()
+    local player_fmt, player_vals = queries.get_character_event_info(player)
     local companions = game.get_companions() or {}
     local description = ""
     local witnesses = {}
@@ -38,8 +43,8 @@ function on_map_change_event(previous_map, current_map)
     if #companions > 0 then 
         local names_list = {}
         for _, companion in ipairs(companions) do
-            table.insert(names_list, companion.name)
-            table.insert(witnesses, companion)
+            names_list[#names_list+1] = companion.name
+            witnesses[#witnesses+1] = companion
         end
         
         local companion_names = ""
@@ -49,13 +54,17 @@ function on_map_change_event(previous_map, current_map)
             local last_name = table.remove(names_list)
             companion_names = table.concat(names_list, ", ") .. " and " .. last_name
         end
-        description = string.format("%s (%s %s, %s rep) and their travelling companions %s traveled from %s to %s %s. %s", player.name, player.experience, player.faction, player.reputation, companion_names, previous_map_name, current_map_name, visit_amount, current_map_description)
+        description = player_fmt .. " and their travelling companions " .. companion_names .. " traveled from " .. previous_map_name .. " to " .. current_map_name .. " " .. visit_amount .. ". " .. current_map_description
     else
-        description = string.format("%s (%s %s, %s rep) traveled from %s to %s %s. %s", player.name, player.experience, player.faction, player.reputation, previous_map_name, current_map_name, visit_amount, current_map_description)
+        description = player_fmt .. " traveled from " .. previous_map_name .. " to " .. current_map_name .. " " .. visit_amount .. ". " .. current_map_description
     end
 
-    table.insert(witnesses, player)
-    trigger.talker_game_event(description, {}, witnesses, true, { is_map_transition = true })
+    witnesses[#witnesses+1] = player
+    local is_silent = (mode_map_transition == 2)
+    trigger.talker_game_event(description, player_vals, witnesses, true, { is_map_transition = true, is_silent = is_silent })
+    if is_silent == true then
+        logger.info("TALKER: Map transition event registered (silent)")
+    end
 end
 
 local previous_map
@@ -74,7 +83,7 @@ end
 function on_loading_screen_dismissed_safe()
     local status, err = pcall(on_loading_screen_dismissed)
     if not status then
-        print("Error in on_loading_screen_dismissed_safe: " .. err)
+        logger.error("Error in on_loading_screen_dismissed_safe: " .. err)
     end
 end
 
