@@ -1,5 +1,9 @@
 function get_base_path()
-    return getFS():update_path("$fs_root$","")
+    local path = getFS():update_path("$fs_root$", "")
+    if string.sub(path, -1) ~= "\\" and string.sub(path, -1) ~= "/" then
+        path = path .. "\\"
+    end
+    return path
 end
 
 function is_loaded()
