@@ -8,22 +8,27 @@ local mcm = talker_mcm
 
 local script_name = "TALKER Trigger Injury"
 local LAST_INJURY_TIME = 0
-local INJURY_COOLDOWN_CD = mcm.get("injury_cooldown") * 1000 -- default 90 seconds cooldown to prevent spam
+local INJURY_COOLDOWN_CD = mcm.get("injury_cooldown") * 1000 -- default 20 seconds cooldown to prevent spam
 
-function is_valid_event()
-    local is_cd_over = (queries.get_game_time_ms() - LAST_INJURY_TIME) > INJURY_COOLDOWN_CD
-    local witnesses = game.get_characters_near_player()
-    local is_valid = is_cd_over and (#witnesses > 0)
-    -- reset cooldown if valid
-    if is_valid then LAST_INJURY_TIME = queries.get_game_time_ms() end
-    return is_valid
+local mode_injury = tonumber(mcm.get("enable_trigger_injury") or "0")
+
+-- Helper to determine if an injury event should be silent
+-- Mode: 0 = On, 1 = Off, 2 = Silent
+local function get_silence_status(mode)
+    local current_time = queries.get_game_time_ms()
+    if (current_time - LAST_INJURY_TIME) < INJURY_COOLDOWN_CD then
+        return -- On cooldown, abort
+    end
+    
+    -- Reset the cooldown timer
+    LAST_INJURY_TIME = current_time
+    if mode == 2 then return true end -- Silent mode registers the event but doesn't request dialogue
+    return false
 end
 
 function actor_on_hit_callback(obj, amount, local_direction, who, bone_index)
-    if not mcm.get("enable_trigger_injury") then return end
-
-    if not is_valid_event() then return end
-    if db.actor.health >= 0.4 then return end
+    if mode_injury == 1 then return end
+    if db.actor.health >= mcm.get("injury_threshold") then return end
 
     local player = game.get_player_character()
     local attacker = game.create_character(who)
@@ -35,9 +40,12 @@ function actor_on_hit_callback(obj, amount, local_direction, who, bone_index)
     local values = queries.join_tables(player_vals, attacker_vals)
     
     logger.info("%s: %s", script_name, unformatted_description)
-    trigger.talker_game_event(unformatted_description, values, witnesses, true, { is_injury = true })
     
-    LAST_INJURY_TIME = queries.get_game_time_ms()
+    local is_silent = get_silence_status(mode_injury)
+    trigger.talker_game_event(unformatted_description, values, witnesses, true, { is_injury = true, is_silent = is_silent })
+    if is_silent == true then
+        logger.info("TALKER: Injury event registered (silent)")
+    end
 end
 
 function on_game_start()
