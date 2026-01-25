@@ -13,6 +13,7 @@ local config = require("interface.config")
 local backstories = require("domain.repo.backstories")
 local personalities = require("domain.repo.personalities")
 local factions = require("infra.STALKER.factions")
+local world_state = require("infra.STALKER.world_state")
 
 -- Game interfaces
 local query = talker_game_queries
@@ -42,11 +43,11 @@ end
 --------------------------------------------------------------------------------
 function prompt_builder.create_pick_speaker_prompt(recent_events, witnesses)
 	if not witnesses or #witnesses == 0 then
-		logger.warn("No witnesses in the last event.")
+		logger.debug("No witnesses in the last event.")
 		return error("No witnesses in last event")
 	end
 	if #recent_events == 0 then
-		logger.warn("No recent events passed in.")
+		logger.debug("No recent events passed in.")
 		return error("No recent events")
 	end
 
@@ -89,7 +90,7 @@ function prompt_builder.create_pick_speaker_prompt(recent_events, witnesses)
 			"# CORE DIRECTIVE: SPEAKER ID SELECTION ENGINE\n\n"
 				.. "You are a Speaker ID Selection Engine. Your task is to identify the next speaker based on events and the conversation flow."
 				.. "\n\n## INSTRUCTIONS:\n"
-				.. "1. Analyze the <CANDIDATES> and <EVENTS> to see who was addressed or who would logically react based on their traits.\n"
+				.. "1. Analyze the `CANDIDATES` and `EVENTS` sections to see who was addressed or who would logically react based on their traits.\n"
 				.. "2. Return ONLY a valid JSON object with the 'id' of the selected speaker.\n\n\nExample Output: { \"id\": 123 }\n"
 				.. "3. Do not include markdown formatting (like ```json)."
 		),
@@ -110,6 +111,12 @@ function prompt_builder.create_pick_speaker_prompt(recent_events, witnesses)
 	end
 
 	table.insert(messages, system_message("</EVENTS>"))
+	table.insert(
+		messages,
+		system_message(
+			"## FINAL INSTRUCTION: Return ONLY the JSON object containing the speaker ID of the most likely next speaker. Do not provide **ANY** analysis, reasoning, or explanation."
+		)
+	)
 
 	logger.debug("Finished building pick_speaker_prompt with %d messages", #messages)
 	return messages
@@ -119,8 +126,10 @@ end
 -- create_update_narrative_prompt: Merges new events into the existing narrative
 --------------------------------------------------------------------------------
 function prompt_builder.create_update_narrative_prompt(speaker, current_narrative, new_events)
-	-- sort oldest to newest
+	local is_bootstrap = #new_events > 1
 	local player = game.get_player_character()
+	local player_name = player and player.name or "the user"
+	-- sort oldest to newest
 	table.sort(new_events, function(a, b)
 		return a.game_time_ms < b.game_time_ms
 	end)
@@ -152,100 +161,229 @@ function prompt_builder.create_update_narrative_prompt(speaker, current_narrativ
 			.. "'\n"
 	end
 
-	local messages = {
-		system_message(
-			"# CORE DIRECTIVE: MEMORY CONSOLIDATION ENGINE\n\n"
-				.. "You are the Memory System for "
-				.. speaker.name
-				.. ". Your task is to update "
-				.. speaker.name
-				.. "'s long-term memory by editing and revising the <CURRENT_MEMORY> and integrating events from <NEW_EVENTS> into it.\n\n"
-				.. identity_intro
-				.. "\n</CHARACTER_INFORMATION>"
-		),
-	}
+	local messages = {}
+	local core_directive = ""
+	if is_bootstrap or current_narrative == "" or not current_narrative then
+		core_directive = "You are the Memory System for "
+			.. speaker.name
+			.. ". Your task is summarize a list of events in the `NEW_EVENTS` section into a single, seamless narrative description of "
+			.. speaker.name
+			.. "'s total memories. "
+			.. "\n\n**ABSOLUTE SYSTEM REQUIREMENT: THE FINAL OUTPUT MUST BE UNDER 6000 CHARACTERS.**\n\n"
+			.. identity_intro
+			.. "\n</CHARACTER_INFORMATION>"
+	else
+		core_directive = "You are the Memory System for "
+			.. speaker.name
+			.. ". Your task is to update "
+			.. speaker.name
+			.. "'s long-term memory by editing and revising the `CURRENT_MEMORY` section and integrating events from the `NEW_EVENTS` section into it.\n\n"
+			.. "**ABSOLUTE SYSTEM REQUIREMENT: THE FINAL OUTPUT MUST BE UNDER 6000 CHARACTERS.**\n\n"
+			.. identity_intro
+			.. "\n</CHARACTER_INFORMATION>"
+	end
+	table.insert(messages, system_message("# CORE DIRECTIVE: MEMORY CONSOLIDATION ENGINE\n\n" .. core_directive))
 
-	table.insert(
-		messages,
-		system_message(
-			"## CRITICAL OUTPUT FORMAT:\n"
-				.. "1. CONSOLIDATION PROCESS (CRITICAL): \n"
-				.. " - DO NOT simply append new text to the bottom. You **MUST READ** both the <CURRENT_MEMORY> and <NEW_EVENTS> and rewrite them into a single, seamless narrative.\n"
-				.. " - OVERLAP DETECTION: Often, the end of the <CURRENT_MEMORY> and the start of <NEW_EVENTS> describe the same exact moment or scene. You **MUST DETECT** this overlap and MERGE the descriptions into a single definitive version. NEVER describe the same specific event twice.\n"
-				.. "2. LENGTH MANAGEMENT (CONDITIONAL): \n"
-				.. " - Target Length: Keep the total text under 7000 characters.\n"
-				.. " - IF the combined text is SHORT (< 6000 chars): Maintain full detail for both old and new events.\n"
-				.. " - IF the combined text is LONG (> 7000 chars): You must EDIT, CONDENSE and SUMMARIZE the text according to the rules below to fit the target length. \n"
-				.. "3. NO CONCLUSIONS:\n"
-				.. " - NEVER add a conclusion or any summary sentences after the final recorded event (e.g. NEVER add 'Thus, "
-				.. speaker.name
-				.. " continues their journey...', 'the moral of this story is...', '"
-				.. speaker.name
-				.. " reloaded their weapon and looked to the horizon...', or ANY similar sentences).\n"
-				.. " - The text must end immediately after the last recorded event, WITHOUT final conclusions, summaries, or ANY OTHER CONCLUDING TEXT.\n"
-				.. "5. Output Format (CRITICAL): Output ONLY the updated long-term memory text. Do not include any titles, headers, explanations, lists, or framing text."
-		)
-	)
+	local length_management = "1. OUTPUT LENGTH LIMITATION: The total output text **MUST** be under 6400 characters.\n"
+		.. "2. IF the FINAL OUTPUT text is LONG (> 6400 chars): You must **RE-EXAMINE** the text and AGGRESSIVELY EDIT, CONDENSE and SUMMARIZE the text to fit the 6400 character target.\n"
+	if current_narrative and current_narrative ~= "" then
+		length_management = "0. INPUT LENGTH MANAGEMENT: IF the `CURRENT_MEMORY` text is **ABOVE** 5500 characters, you must FIRST EDIT, CONDENSE and SUMMARIZE the text to fit the target length.\n"
+			.. " - THIS EDITING MUST BE DONE **BEFORE** THE CONSOLIDATION PROCESS OF THE `NEW_EVENTS` BEGINS.\n"
+			.. length_management
+	end
+	table.insert(messages, system_message("## LENGTH MANAGEMENT (CRITICAL)\n\n" .. length_management))
+
+	local critical_output_format = "1. **NO CONCLUSIONS:** NEVER add a conclusion or any summary sentences after the final recorded event (e.g. NEVER add 'Thus, "
+		.. speaker.name
+		.. " continues their journey...', 'the moral of this story is...', '"
+		.. speaker.name
+		.. " reloaded their weapon and looked to the horizon...', or ANY similar sentences).\n"
+		.. "2. The text must end immediately after the last recorded event, WITHOUT final conclusions, summaries, or ANY OTHER CONCLUDING TEXT.\n"
+		.. "3. Output Format (CRITICAL): Output ONLY the updated long-term memory text. Do not include any titles, headers, explanations, lists, or framing text."
+		.. " - DON'T USE bullet points, numbered lists, line breaks, or carriage returns. DON'T use newline formatting like '\n'. The output must be **one fluid block of text**."
+	if current_narrative and current_narrative ~= "" then
+		critical_output_format = "0. CONSOLIDATION PROCESS (CRITICAL): \n"
+			.. " - DO NOT simply append new text to the bottom. You **MUST READ** both the `CURRENT_MEMORY` and `NEW_EVENTS` sections and rewrite them into a single, seamless narrative.\n"
+			.. " - OVERLAP DETECTION: Often, the end of the `CURRENT_MEMORY` section and the start of the `NEW_EVENTS` section describe the same exact moment or scene. You **MUST DETECT** this overlap and MERGE the descriptions into a single definitive version. NEVER describe the same specific event twice.\n"
+			.. critical_output_format
+	end
+
+	table.insert(messages, system_message("## CRITICAL OUTPUT FORMAT:\n" .. critical_output_format))
 
 	table.insert(
 		messages,
 		system_message(
 			"## CONSTRAINTS:\n"
-				.. "1. TIMEFRAME (CRITICAL): the events taking place over the course of both <CURRENT_MEMORY> and <NEW_EVENTS> are happening over a SHORT timeframe (days to weeks).\n"
+				.. "1. TIMEFRAME (CRITICAL): the events taking place over the course of the ENTIRE INPUT are happening over a SHORT timeframe (days to weeks). **MAKE SURE** your output is consistent with this timeframe.\n"
 				.. "2. TONE & STYLE (IMPORTANT): Write in a concise, matter-of-fact style like a dry biography or history textbook. DO NOT use flowery language, metaphors, or elaborate descriptions. The memory must be written exclusively in the THIRD PERSON, and refer to the character by their name ('"
 				.. speaker.name
 				.. "'). Use neutral pronouns for any character whose gender is inconclusive, including "
 				.. speaker.name
 				.. ". \n "
-				.. "3. FACTUALITY (ABSOLUTE): ALWAYS remain COMPLETELY FACTUAL. NEVER hallucinate events or details that are not present in the <NEW_EVENTS>, or in the <CURRENT_MEMORY>. If the amount of new information is short, make your output short. NEVER make up events or details to fill out the text.\n"
+				.. "3. FACTUALITY (ABSOLUTE): ALWAYS remain COMPLETELY FACTUAL. NEVER hallucinate events or details that are not present in the `NEW_EVENTS` or `CURRENT_MEMORY` sections. If the amount of new information is short, make your output short. NEVER make up events or details to fill out the text.\n"
 				.. "4. CHRONOLOGY (ABSOLUTE): ALWAYS preserve the EXACT chronological order of events. You may remove or condense events as needed in the middle of the timeline if they are irrelevant, but DO NOT alter the order of events FOR ANY REASON.\n"
 		)
 	)
 
-	table.insert(
-		messages,
-		system_message(
-			"## INSTRUCTIONS:\n"
-				.. "### NOISE CANCELLATION & GROUPING (CRITICAL):\n"
-				.. " - The input may contain high-frequency Game Events that are irrelevant to the narrative. You **MUST** filter out this noise.\n"
-				.. " - Ignore and/or remove events that are trivial, repetitive, or do not directly relate to "
-				.. speaker.name
-				.. "'s personal goals, relationships, or the core evolving narrative involving "
-				.. speaker.name
-				.. ". \n"
-				.. "### EVENT FILTERING GUIDELINES:\n"
-				.. " - ARTIFACTS: NEVER list specific artifact names (like 'Sponge', 'Lamp', 'Spike'). Instead, write 'collected artifacts', 'found valuable artifacts' etc.\n"
-				.. " - ANOMALIES: IGNORE lines about 'getting close to' anomalies. These are **NOT** events. Only mention anomalies if someone is critically injured by one.\n"
-				.. " - REMOVE routine and unimportant actions like minor mutant kills, weapons jamming, reloading weapons, taunts, and characters spotting something.\n"
-				.. " - REMOVE references to the weapon a character is wielding UNLESS it directly relates to their character development, backstory or relationships (e.g., if the user gifted them the weapon and they had a conversation about it.).\n"
-				.. "### SUMMARIZATION & SIMPLIFICATION:\n"
-				.. " - Combine sequential, similar events into a single, concise summary.\n"
-				.. " - COMBAT LOGS: Do not list every kill. Group them. Instead of 'Hip killed a dog. Daniel killed a flesh. Sidor killed a zombie.', write: 'The group cleared the area of mutants.'\n"
-				.. " - Summarize trivial, recurring travel between the same locations into one event.\n"
-				.. "### REVISION, EDITING & DELETION:\n"
-				.. " - You **ARE ALLOWED TO** revise or edit the **ENTIRE** <CURRENT_MEMORY> text if it is present. You **ARE ALLOWED TO** re-write, remove, or condense all or parts of the existing memory text as necessary in light of the new events.\n"
-				.. " - If the memory is too long and events in the <NEW_EVENTS> seem more relevant than older events, you **ARE ALLOWED TO** delete less relevant older events to make space for the new events.\n"
-				.. "### COHESION (IMPORTANT):\n"
-				.. " - ALWAYS retain some older core memories involving "
-				.. player.name
-				.. " (the user) to ensure future dialogues can reference earlier context.\n"
-				.. "### UPDATING EXISTING INFORMATION:\n"
-				.. " - Characters evolve and change over time. If a character mentioned in the <NEW_EVENTS> has a different RANK, REPUTATION or FACTION than they do in the existing memory text, ASSUME THEY ARE THE SAME CHARACTER and treat the new information as more recent and correct.\n"
-				.. " - ALWAYS update the existing memory text to reflect the new information. Use chronological descriptors to denote how these attributes changed over time.\n"
-				.. "EXAMPLES:\n"
-				.. " - If a character who isn't a rookie in the <NEW_EVENTS> is described as a rookie in the <CURRENT_MEMORY>, change previous entries to 'then a rookie', '(a rookie then)', ' - a rookie at the time - 'etc.\n"
-				.. " - Do the same for faction and reputation."
+	-- INJECT MEMORY WITH XML TAGS FOR BETTER PARSING
+	if current_narrative and current_narrative ~= "" then
+		table.insert(
+			messages,
+			system_message(
+				"### CURRENT MEMORY: \nBelow is the existing memory text. Treat this as a **DRAFT** that must be updated according to the `NEW_EVENTS` section below."
+			)
 		)
-	)
+		table.insert(messages, user_message("<CURRENT_MEMORY>\n" .. current_narrative .. "\n</CURRENT_MEMORY>"))
+	end
+
+	-- INJECT NEW EVENTS
+	-- We concatenate them into one block to ensure the LLM sees them as a sequence
+	local new_events_text = ""
+	local has_disguise = false
+	for _, event in ipairs(new_events) do
+		local flags = event.flags
+		local is_junk = flags
+			and (
+				flags.is_artifact
+				or flags.is_anomaly
+				or flags.is_reload
+				or flags.is_weapon_jam
+				or flags.is_callout
+				or flags.is_taunt
+			)
+
+		if not is_junk then
+			local content = event.content or Event.describe_short(event)
+			new_events_text = new_events_text .. "- " .. content .. "\n"
+			if content:find("%[disguised as", 1, true) then
+				has_disguise = true
+			end
+		end
+	end
+
+	if new_events_text ~= "" then
+		if current_narrative and current_narrative ~= "" then
+			table.insert(
+				messages,
+				system_message(
+					"### NEW EVENTS: \nBelow are the new events to merge. Check for overlaps with the end of the `CURRENT_MEMORY` section."
+				)
+			)
+		else
+			table.insert(messages, system_message("### NEW EVENTS:\n"))
+		end
+		table.insert(messages, user_message("<NEW_EVENTS>\n" .. new_events_text .. "\n</NEW_EVENTS>"))
+	end
+
+	local instructions = "## INSTRUCTIONS:\n"
+
+	if is_bootstrap then
+		instructions = instructions
+			.. " - The input contains a list of RAW event data. You must evaluate, filter, and consolidate these events into a single, cohesive narrative history.\n"
+			.. "### FOCUS:\n"
+			.. " - Focus on the core evolving narrative involving "
+			.. speaker.name
+			.. ", as well as their personal goals, relationships and character development.\n"
+			.. " - Use the `CHARACTER_INFORMATION` section to inform you of what events are most relevant to "
+			.. speaker.name
+			.. ".\n"
+			.. "### NOISE CANCELLATION & GROUPING (CRITICAL):\n"
+			.. " - The input contains high-frequency Game Events that are irrelevant to the narrative. You **MUST** filter out this noise.\n"
+			.. " - Ignore and/or remove events that are trivial, repetitive, or do not directly relate to "
+			.. speaker.name
+			.. "'s personal goals, relationships, or the core evolving narrative involving "
+			.. speaker.name
+			.. ". \n"
+			.. " - **TIMELINE:** Use any 'TIME GAP' events to help establish a timeline (e.g., 'later they...', 'the next day...' etc.). DO NOT include the 'TIME GAP' phrase itself in the final output.\n"
+			.. "### EVENT FILTERING GUIDELINES:\n"
+			.. " - ARTIFACTS: **IGNORE** lines about artifacts - they are not relevant to the story.\n"
+			.. " - ANOMALIES: **IGNORE** lines about anomalies. They are **NOT** events.\n"
+			.. " - WEAPONS: **IGNORE** lines about weapons UNLESS it directly relates to a person's character development, backstory or relationships (e.g. if "
+			.. player_name
+			.. " (the user) gave a weapon to another character and they had a conversation about it).\n"
+			.. " - REMOVE routine and unimportant actions like minor mutant kills, taunts, and characters spotting something.\n"
+			.. " - **REMOVE each character's current reputation data - it is not relevant to the story.**\n"
+			.. "### SUMMARIZATION & SIMPLIFICATION:\n"
+			.. " - Combine sequential, similar events into a single, concise summary.\n"
+			.. " - COMBAT LOGS: Do not list every kill. Group them. Instead of 'Hip killed a dog. Daniel killed a flesh. Sidor killed a zombie.', write: 'The group cleared the area of mutants.'\n"
+			.. " - KILLED PEOPLE NAME HANDLING: If a character is killed and their names isn't uttered in dialogue, REMOVE the name and refer to them as 'a bandit', 'a survivor', 'a soldier', etc. - grouping them with other similar kills if relevant.\n"
+			.. " - Summarize trivial, recurring travel between the same locations into one event.\n"
+	else
+		instructions = instructions
+			.. " - The input contains a single paragraph of text representing a consolidated chunk of memory.\n"
+			.. " - Your task is to evaluate this paragraph, then **UPDATE** the `CURRENT_MEMORY` section.\n"
+			.. " - You must seamlessly **INTEGRATE** important events and details from `NEW_EVENTS` into the `CURRENT_MEMORY` section.\n"
+			.. " - You **MAY** revise and edit the `CURRENT_MEMORY` in light of the `NEW_EVENTS` section.\n"
+			.. "### FOCUS:\n"
+			.. " - Focus on the core evolving narrative involving "
+			.. speaker.name
+			.. ", as well as their personal goals, relationships and character development.\n"
+			.. " - Use the `CHARACTER_INFORMATION` section to inform you of what events are most relevant to "
+			.. speaker.name
+			.. ".\n"
+			.. "### EVENT FILTERING:\n"
+			.. " - IGNORE talk about artifacts and anomalies.\n"
+			.. " - IGNORE routine and unimportant actions like minor mutant kills, weapons jamming, reloading weapons, taunts, and characters spotting something.\n"
+			.. " - IGNORE references to the weapon a character is wielding UNLESS it directly relates to their character development, backstory or relationships.\n"
+			.. "### SUMMARIZATION & SIMPLIFICATION:\n"
+			.. " - Combine sequential, similar events into a single, concise summary.\n"
+			.. " - COMBAT LOGS: Do not list every kill. Group them. Instead of 'Hip killed a dog. Daniel killed a flesh. Sidor killed a zombie.', write: 'The group cleared the area of mutants.'\n"
+			.. " - Summarize trivial, recurring travel between the same locations into one event.\n"
+	end
+
+	-- Shared Revision instructions
+	if current_narrative and current_narrative ~= "" then
+		instructions = instructions
+			.. "### REVISION, EDITING & DELETION:\n"
+			.. " - You **ARE ALLOWED TO** revise or edit the **ENTIRE** `CURRENT_MEMORY` text if it is present. You **ARE ALLOWED TO** re-write, remove, or condense all or parts of the existing memory text as necessary in light of the new events.\n"
+			.. " - If the memory is too long and events in the `NEW_EVENTS` section seem more relevant than older events, you **ARE ALLOWED TO** delete less relevant older events to make space for the new events.\n"
+			.. "### COHESION (IMPORTANT):\n"
+			.. " - ALWAYS retain some older core memories involving "
+			.. player_name
+			.. " (the user) to ensure future dialogues can reference earlier context.\n"
+			.. "### UPDATING EXISTING INFORMATION:\n"
+			.. " - Characters evolve and change over time. If a character mentioned in the `NEW_EVENTS` section has a different RANK or FACTION than they do in the existing memory text, ASSUME THEY ARE THE SAME CHARACTER and treat the new information as more recent and correct.\n"
+			.. " - ALWAYS update the existing memory text to reflect the new information. Use chronological descriptors to denote how these attributes changed over time.\n"
+			.. "EXAMPLES:\n"
+			.. " - If a character who isn't a rookie in the `NEW_EVENTS` is described as a rookie in the `CURRENT_MEMORY`, change previous entries to 'then a rookie', '(a rookie then)', ' - a rookie at the time - 'etc.\n"
+			.. " - If "
+			.. speaker.name
+			.. " was described as Duty in `CURRENT_MEMORY` and is described as Mercenary in `NEW_EVENTS`, update the memory text to reflect this change (e.g., 'then of the Duty faction', 'a Duty member then', 'Duty at the time' etc.)\n"
+	end
+	-- Disguise Awareness instruction if relevant
+	if has_disguise then
+		local speaker_obj = query.get_obj_by_id(speaker.game_id)
+		local is_companion = speaker_obj and query.is_companion(speaker_obj)
+
+		if is_companion then
+			instructions = instructions
+				.. "### DISGUISE AWARENESS (COMPANION):\n"
+				.. " - If an event mentions someone '[disguised as X]', "
+				.. speaker.name
+				.. " (as their companion) was aware of the disguise at the time. You may refer to it explicitly (e.g., '"
+				.. player_name
+				.. " was disguised as Duty when we spoke to the guards').\n"
+		else
+			instructions = instructions
+				.. "### DISGUISE NOTATION:\n"
+				.. " - If an event mentions someone '[disguised as X]', preserve this information but phrase it from "
+				.. speaker.name
+				.. "'s perspective at the time (e.g., 'appeared to be a Duty member', 'was dressed as Duty', 'presented themselves as Duty' etc.) rather than stating "
+				.. speaker.name
+				.. " knew it was a disguise.\n"
+		end
+	end
+
+	table.insert(messages, system_message(instructions))
 	local priorities = "## MEMORY RETENTION PRIORITIES\n"
 		.. "(In order of importance, highest first):\n "
-		.. " 1. MAP CONTEXT: ALWAYS retain BRIEF and CONCISE information about the last recorded map transition event (e.g., string involving 'moved from'). Include both the name of the current map and the previous map so future dialogues can reference the most recent travel event.\n"
+		.. " 1. MAP CONTEXT: ALWAYS retain BRIEF and CONCISE information about the last recorded map transition event. Include both the name of the current area and the previous area so future dialogues can reference the most recent travel event.\n"
 		.. " 2. RELATIONSHIP CHANGES WITH USER (CRITICAL): Retain detailed information on relationship changes between "
 		.. speaker.name
 		.. " and "
-		.. player.name
+		.. player_name
 		.. ", including specifics on the nature of the relationship change and the exact cause-and-effect of the relationship-changing event (e.g., '"
-		.. player.name
+		.. player_name
 		.. " and "
 		.. speaker.name
 		.. " shared an intimate moment while sheltering from an emission, causing their bond to deepen', 'John brought Lisa the scoped rifle he promised her, proving he could keep his promises' etc.).\n"
@@ -255,11 +393,11 @@ function prompt_builder.create_update_narrative_prompt(speaker, current_narrativ
 		.. speaker.name
 		.. " used to be cold and distant, but became more open and affectionate after spending time with Jane.')\n"
 		.. " 4. TRAVELLING COMPANIONS (IMPORTANT): Prioritize retaining memories of past and present travelling companions of "
-		.. player.name
+		.. player_name
 		.. " (the user). If past or present travelling companions are mentioned in the memory text, ALWAYS preserve BOTH their names and brief description of their relationship with "
-		.. player.name
+		.. player_name
 		.. " (the user). This is CRITICAL for future dialogues, but can be condensed if space is needed (e.g., '"
-		.. player.name
+		.. player_name
 		.. " used to travel with Borya and Yaremka').\n"
 		.. " 5. RELATIONSHIP CHANGES WITH OTHERS: Try to retain information about relationship changes between "
 		.. speaker.name
@@ -271,52 +409,29 @@ function prompt_builder.create_update_narrative_prompt(speaker, current_narrativ
 		.. " 6. RECURRING CHARACTERS: Prioritize retaining memories of characters that have many shared interactions with "
 		.. speaker.name
 		.. " or with "
-		.. player.name
-		.. " (the user) already present in the 'CURRENT LONG-TERM MEMORY' context.\n"
+		.. player_name
+		.. " (the user) already present in the `CURRENT_MEMORY` section.\n"
 		.. "### IMPORTANT CHARACTERS\n"
 		.. " - The following characters are important to the story: 'Sidorovich', 'Wolf', 'Fanatic', 'Hip', 'Doctor', 'Cold', 'Major Hernandez', 'Butcher', 'Major Kuznetsov', 'Sultan', 'Barkeep', 'Arnie', 'General Voronin', 'Colonel Petrenko', 'Professor Sakharov', 'Lukash', 'Dushman', 'Forester', 'Chernobog', 'Trapper', 'Loki', 'Professor Hermann', 'Nimble', 'Beard', 'Charon', 'Eidolon', 'Yar', 'Rogue', 'Stitch', 'Strelok'.\n"
 		.. " - If space allows it AFTER following 'RETENTION PRIORITIES' rules 1-6, prioritize retaining memories of events involving these characters."
 	table.insert(messages, system_message(priorities))
 
-	-- INJECT MEMORY WITH XML TAGS FOR BETTER PARSING
+	local memory_task = "\n\n## TASK\n"
+		.. "Output a text containing the fully integrated, consolidated memory for "
+		.. speaker.name
+		.. ", as taking place over the course of a short period of time (days/weeks).\n"
+	local final_memory_instructions = "### FINAL INSTRUCTIONS\n"
+		.. "REMEMBER: NO CONCLUSIONS OR SUMMARIES. End the memory text with the description of the last recorded event. NEVER add any additional text such as 'The last thing recorded was...', 'Thus their story continues...', etc."
 	if current_narrative and current_narrative ~= "" then
-		table.insert(
-			messages,
-			system_message(
-				"### CURRENT MEMORY: \nBelow is the existing memory text. Treat this as a **DRAFT** that must be updated."
-			)
-		)
-		table.insert(messages, user_message("<CURRENT_MEMORY>\n" .. current_narrative .. "\n</CURRENT_MEMORY>"))
+		final_memory_instructions = "\nREMEMBER: If the end of the `CURRENT_MEMORY` section and the start of the `NEW_EVENTS` section are the same scene, write it ONLY ONCE.\n"
+			.. final_memory_instructions
 	end
-
-	-- INJECT NEW EVENTS
-	-- We concatenate them into one block to ensure the LLM sees them as a sequence
-	local new_events_text = ""
-	for _, event in ipairs(new_events) do
-		local content = event.content or Event.describe_short(event)
-		new_events_text = new_events_text .. "- " .. content .. "\n"
-	end
-
-	if new_events_text ~= "" then
-		table.insert(
-			messages,
-			system_message(
-				"### NEW EVENTS: \nBelow are the new events to merge. Check for overlaps with the end of the CURRENT_MEMORY."
-			)
-		)
-		table.insert(messages, user_message("<NEW_EVENTS>\n" .. new_events_text .. "\n</NEW_EVENTS>"))
-	end
-
 	table.insert(
 		messages,
 		system_message(
-			"## TASK\n"
-				.. "Output the fully integrated, consolidated memory for "
-				.. speaker.name
-				.. ", as taking place over the course of a short period of time (days/weeks). \n"
-				.. "### FINAL INSTRUCTIONS\n"
-				.. "REMEMBER: If the end of <CURRENT_MEMORY> and the start of <NEW_EVENTS> are the same scene, write it ONLY ONCE.\n"
-				.. "REMEMBER: NO CONCLUSIONS OR SUMMARIES. End the memory text after the last recorded event."
+			memory_task
+				.. final_memory_instructions
+				.. "\n\n## ABSOLUTE OUTPUT RESTRICTION:\n**THE FINAL OUTPUT MUST BE UNDER 6400 CHARACTERS. EXCEEDING THIS LIMIT WILL CAUSE SYSTEM FAILURE.**\n"
 		)
 	)
 
@@ -352,35 +467,19 @@ function prompt_builder.create_compress_memories_prompt(raw_events, speaker)
 		)
 	)
 
-	table.insert(
-		messages,
-		system_message(
-			"## INSTRUCTIONS\n"
-				.. "1. FOCUS & RETENTION: Focus on key actions, locations, dialogue, and character interactions.\n"
-				.. "2. RELATIONSHIP CHANGES: Retain detailed relationship changes between characters, including the names of the characters involved, the nature of the relationship change and the detailed cause-and-effect of the relationship changing event (e.g., 'John vouched for "
-				.. speaker_name
-				.. " when introducing them to his friends, earning "
-				.. speaker_name
-				.. "'s respect').\n"
-				.. "3. SUMMARIZATION & SIMPLIFICATION: Simplify multiple irrelevant character/mutant names into short descriptions (e.g., instead of 'they fought snorks, tarakans and boars' use 'they fought multiple mutants'. Instead of '"
-				.. speaker_name
-				.. " killed Sargeant Major Paulsen, Lieutenant Frank and Senior Private Johnson' use '"
-				.. speaker_name
-				.. " killed several Army soldiers').\n"
-				.. "4. CONSOLIDATION: Combine sequential or similar actions (e.g., fighting multiple enemies, or a long journey through several areas, etc.) into concise, merged sentences.\n"
-				.. "5. TIMELINE: Use any 'TIME GAP' event to establish a timeline and signal transitions between events, rather than including the literal 'TIME GAP' phrase.\n"
-				.. "### FILTERING (IMPORTANT):\n"
-				.. " - REMOVE people's current reputation.\n"
-				.. " - REMOVE information about whatever weapon a character is using."
-		)
-	)
-
 	table.insert(messages, system_message("## EVENTS TO SUMMARIZE\n\n <EVENTS>"))
 
 	for _, event in ipairs(raw_events) do
 		local flags = event.flags
 		local is_junk = flags
-			and (flags.is_artifact or flags.is_anomaly or flags.is_reload or flags.is_weapon_jam or flags.is_callout)
+			and (
+				flags.is_artifact
+				or flags.is_anomaly
+				or flags.is_reload
+				or flags.is_weapon_jam
+				or flags.is_callout
+				or flags.is_taunt
+			)
 
 		-- Skip junk events to preserve summary conciseness
 		if not is_junk then
@@ -389,6 +488,63 @@ function prompt_builder.create_compress_memories_prompt(raw_events, speaker)
 		end
 	end
 	table.insert(messages, system_message("\n</EVENTS>"))
+
+	-- Check if any events contain disguise information
+	local has_disguise = false
+	for _, event in ipairs(raw_events) do
+		local content = event.content or Event.describe_short(event)
+		if content:find("%[disguised as", 1, true) then
+			has_disguise = true
+			break
+		end
+	end
+
+	local instructions = "## INSTRUCTIONS\n"
+		.. "1. FOCUS & RETENTION: Focus on key actions, locations, dialogue, and character interactions.\n"
+		.. "2. RELATIONSHIP CHANGES: Retain detailed relationship changes between characters, including the names of the characters involved, the nature of the relationship change and the detailed cause-and-effect of the relationship changing event (e.g., 'John vouched for "
+		.. speaker_name
+		.. " when introducing them to his friends, earning "
+		.. speaker_name
+		.. "'s respect').\n"
+		.. "3. SUMMARIZATION & SIMPLIFICATION: Simplify multiple irrelevant character/mutant names into short descriptions (e.g., instead of 'they fought snorks, tarakans and boars' use 'they fought multiple mutants'. Instead of '"
+		.. speaker_name
+		.. " killed Sargeant Major Paulsen, Lieutenant Frank and Senior Private Johnson' use '"
+		.. speaker_name
+		.. " killed several Army soldiers').\n"
+		.. "4. CONSOLIDATION: Combine sequential or similar actions (e.g., fighting multiple enemies, or a long journey through several areas, etc.) into concise, merged sentences.\n"
+		.. "5. TIMELINE: Use any 'TIME GAP' event to establish a timeline and signal transitions between events, rather than including the literal 'TIME GAP' phrase.\n"
+
+	-- Add disguise-specific instruction if disguises are present
+	if has_disguise then
+		-- Check if speaker is a companion
+		local speaker_obj = query.get_obj_by_id(speaker.game_id)
+		local is_companion = speaker_obj and query.is_companion(speaker_obj)
+		local player = game.get_player_character()
+
+		if is_companion then
+			instructions = instructions
+				.. "6. DISGUISE AWARENESS (COMPANION): If an event mentions someone '[disguised as X]', "
+				.. speaker.name
+				.. " (as their companion) was aware of the disguise at the time. You may refer to it explicitly (e.g., '"
+				.. player.name
+				.. " was disguised as Duty when we spoke to the guards').\n"
+		else
+			instructions = instructions
+				.. "6. DISGUISE NOTATION: If an event mentions someone '[disguised as X]', preserve this information but phrase it from "
+				.. speaker.name
+				.. "'s perspective at the time (e.g., 'appeared to be a Duty member', 'was dressed as Duty', 'presented themselves as Duty' etc.) rather than stating "
+				.. speaker.name
+				.. " knew it was a disguise.\n"
+		end
+	end
+
+	instructions = instructions
+		.. "### FILTERING (IMPORTANT):\n"
+		.. " - REMOVE people's current reputation.\n"
+		.. " - REMOVE information about whatever weapon a character is using."
+
+	table.insert(messages, system_message(instructions))
+
 	return messages
 end
 
@@ -465,7 +621,7 @@ function prompt_builder.create_dialogue_request_prompt(speaker, memory_context)
 	table.insert(
 		messages,
 		system_message(
-			"## ZONE GEOGRAPHICAL CONTEXT / DANGER SCALE \n\n"
+			"## ZONE GEOGRAPHICAL CONTEXT / DANGER SCALE\n\n"
 				.. " - The Zone has a clear North-South axis of danger. Danger increases SIGNIFICANTLY as one travels North.\n"
 				.. " - Southern/Periphery Areas (Safer): Cordon, Garbage, Great Swamps, Agroprom, Dark Valley, Darkscape, Meadow.\n"
 				.. " - Settlement (Safest): Rostok, despite being north of Garbage, is the safest place in the Zone thanks to the heavy Duty faction prescence guarding it.\n"
@@ -474,6 +630,7 @@ function prompt_builder.create_dialogue_request_prompt(speaker, memory_context)
 				.. " - Deep North/Heart of the Zone (Extreme Danger): Radar, Limansk, Pripyat Outskirts, Pripyat, Chernobyl NPP, Generators. Travel here is extremely rare and only for the most experienced and well-equipped stalkers.\n"
 		)
 	)
+
 	table.insert(
 		messages,
 		system_message(
@@ -614,10 +771,10 @@ function prompt_builder.create_dialogue_request_prompt(speaker, memory_context)
 			faction_text = "unknown."
 		end
 		if speaker.backstory and speaker.backstory ~= "" then
-			speaker_story = " \n### DEFINING CHARACTER TRAIT/BACKGROUND: " .. speaker.backstory
+			speaker_story = " \n### DEFINING CHARACTER TRAIT/BACKSTORY: " .. speaker.backstory
 		else
 			-- Hydrate backstory if missing (likely because speaker object is a raw event witness)
-			speaker_story = " \n### DEFINING CHARACTER TRAIT/BACKGROUND: " .. (backstories.get_backstory(speaker) or "")
+			speaker_story = " \n### DEFINING CHARACTER TRAIT/BACKSTORY: " .. (backstories.get_backstory(speaker) or "")
 		end
 		if speaker.personality and speaker.personality ~= "" then
 			speaking_style = " \n### PERSONALITY: You are " .. speaker.personality .. "."
@@ -643,13 +800,13 @@ function prompt_builder.create_dialogue_request_prompt(speaker, memory_context)
 			.. reputation_text
 			.. weapon_info
 
-		local character_anchor = "1. **SUBTLETY:** The 'DEFINING CHARACTER TRAIT' should inform your characterisation subtly. Do not explicitly reference it in every response (e.g., if your backstory says you are in debt to the mob, be generally more focused on making money rather than say 'I'm in debt to the mob')."
-			.. "2. **PRIORITY:** Your individual personality always takes precedence over general faction traits."
-			.. "3. AVOID talking about your weapon unless directly asked about it, or you have a **GOOD** reason to do so (e.g., your personality includes 'gun-nut' or <CONTEXT> indicates active combat)."
+		local character_anchor = "1. **SUBTLETY:** The 'DEFINING CHARACTER TRAIT/BACKSTORY' should inform your characterisation subtly. Do not explicitly reference it in every response (e.g., if your backstory says you are in debt to the mob, be generally more focused on making money rather than say 'I'm in debt to the mob').\n"
+			.. "2. **PRIORITY:** Your individual personality always takes precedence over general faction traits.\n"
+			.. "3. AVOID talking about your weapon unless directly asked about it, or you have a **GOOD** reason to do so (e.g., your personality includes 'gun-nut' or the `CONTEXT` section indicates active combat)."
 			.. "\n\n### CHARACTER DETAILS:\n"
-			.. "\n\n<CHARACTER>\n"
+			.. "<CHARACTER>\n"
 			.. speaker_info
-			.. "\n</CHARACTER>\n\n"
+			.. "\n</CHARACTER>"
 
 		if not mcm.get("action_descriptions") then
 			character_anchor = "0. **INTERNAL MONOLOGUE VS EXTERNAL ACTION:** Your traits (e.g., folding paper figures, cleaning a gun, drinking vodka) define your **MINDSET**. They do **NOT** require you to narrate the action. If you are folding a paper crane, simply speak the line you would say while doing it. **Do NOT describe the folding in asterisks.**\n"
@@ -665,14 +822,13 @@ function prompt_builder.create_dialogue_request_prompt(speaker, memory_context)
 		)
 	end
 
-	local agression_rules = "## INTERACTION RULES: COMBAT AND AGGRESSION\n"
-		.. "1. The Zone is a dangerous place: assume every person is carrying a firearm for self-defence (even scientists and members of the Ecolog faction etc.). There are no 'unarmed civilians' in the Zone.\n"
-		.. "2. Do not be overly hostile or aggressive unless provoked, or if you have a reason to be (from your faction, reputation, backstory, personality, <CONTEXT> etc.)."
+	local agression_rules = "1. The Zone is a dangerous place: assume every person is carrying a firearm for self-defence (even scientists and members of the Ecolog faction etc.). There are no 'unarmed civilians' in the Zone.\n"
+		.. "2. Do not be overly hostile or aggressive unless provoked, or if you have a reason to be (from your faction, reputation, backstory, personality, the 'CONTEXT' tag etc.)."
 	if speaker_obj and query.is_companion(speaker_obj) then
-		agression_rules = "\n0. **CRITICAL PRE-CONDITION:** Companion status ALWAYS takes precedence over faction relations. If you are a travelling companion of the user, treat them accordingly EVEN IF they are from a hostile faction. Assume you are on PERSONAL friendly terms with the user if they are your companion, **EVEN IF** their faction is otherwise hostile to you. You may modify your response and attitude to the user in accordance with your faction, but **DO NOT** respond in a manner that suggests engaging in open aggression or combat with the user (e.g., NEVER say 'I fire my AK-74 at you', or 'I will slit your throat, here I come' etc.)\n"
+		agression_rules = "0. **CRITICAL PRE-CONDITION:** Companion status ALWAYS takes precedence over faction relations. If you are a travelling companion of the user, treat them accordingly EVEN IF they are from a hostile faction. Assume you are on PERSONAL friendly terms with the user if they are your companion, **EVEN IF** their faction is otherwise hostile to you. You may modify your response and attitude to the user in accordance with your faction, but **DO NOT** respond in a manner that suggests engaging in open aggression or combat with the user (e.g., NEVER say 'I fire my AK-74 at you', or 'I will slit your throat, here I come' etc.)\n"
 			.. agression_rules
 	end
-	table.insert(messages, system_message(agression_rules))
+	table.insert(messages, system_message("## INTERACTION RULES: COMBAT AND AGGRESSION\n\n" .. agression_rules))
 
 	table.insert(
 		messages,
@@ -687,8 +843,8 @@ function prompt_builder.create_dialogue_request_prompt(speaker, memory_context)
 	)
 
 	local social_dynamics = "1. You are not obligated to help or be agreeable. If the situation, your mood, or your character's traits dictate it, you MAY rebuff, deny, or tell the other person to get lost.\n"
-		.. "2. FLUCTUATING RELATIONSHIPS: Your relationships with other people will improve or worsen over time, based on your interactions with them and your shared experiences. Use <CONTEXT> to keep track of these relationships and how they change.\n"
-		.. "3. GENERAL AFFILIATIONS: You are MORE friendly toward other people (not only the user) with whom you have many SHARED FRIENDLY MEMORIES in the <CONTEXT>. These strong affiliations affect your conversational tone.\n"
+		.. "2. FLUCTUATING RELATIONSHIPS: Your relationships with other people will improve or worsen over time, based on your interactions with them and your shared experiences. Use the `CONTEXT` section to keep track of these relationships and how they change.\n"
+		.. "3. GENERAL AFFILIATIONS: You are MORE friendly toward other people (not only the user) with whom you have many SHARED FRIENDLY MEMORIES in the `CONTEXT` section. These strong affiliations affect your conversational tone.\n"
 		.. "4. Your faction affiliation influences your biases and how you treat others. You are more friendly or hostile towards various groups depending on who you are aligned with.\n"
 		.. "5. Your reputation influences how you treat others. Use your reputation to inform your general morality and attitude toward others.\n"
 		.. "6. Your rank influences your behaviour: higher rank = more confident, more capable, more desensitized.\n"
@@ -704,7 +860,7 @@ function prompt_builder.create_dialogue_request_prompt(speaker, memory_context)
 		system_message(
 			"## CONVERSATION FLOW\n"
 				.. "1. You are an independent person with your own goals, concerns and desires. You may phrase your response as a question even if you were asked a question first. You may change the subject if it suits your character's mood or goals.\n"
-				.. "2. You have an interest in other people's lives, stories, and opinions. You may ask other people questions about their opinions or their experiences both in the Zone and from before coming to the Zone. You have a particular interest in getting to know your travelling companions better, as well as people you have many shared friendly memories with in the <CONTEXT>.\n"
+				.. "2. You have an interest in other people's lives, stories, and opinions. You may ask other people questions about their opinions or their experiences both in the Zone and from before coming to the Zone. You have a particular interest in getting to know your travelling companions better, as well as people you have many shared friendly memories with in the `CONTEXT` section.\n"
 				.. "3. Be willing to talk and share. Offer colorful details and opinions. If asked for a story or joke, tell one. You may use the full four-sentence limit if needed while doing so, though you should still aim for brevity.\n"
 				.. "4. **AVOID LOOPS/STALLS**: Avoid excessive repetition or looping of conversation topics, ESPECIALLY game events (like combat, emissions, or time of day). Mention an event briefly, then return to your own thoughts. Change the subject if the conversation stalls.\n"
 				.. "5. **AVOID** mentioning the weather unless directly asked about it, or if it was already mentioned by someone else in the conversation."
@@ -743,19 +899,30 @@ function prompt_builder.create_dialogue_request_prompt(speaker, memory_context)
 			end
 		end
 	end
-	table.insert(messages, system_message("\n\n</EVENTS>\n"))
+	table.insert(messages, system_message("</EVENTS>\n\n"))
 
+	-- Inject Dynamic World State
+	local ws_context = world_state.get_world_state_context(new_events)
+	if ws_context and ws_context ~= "" and ws_context ~= "Normal." then
+		table.insert(
+			messages,
+			system_message(
+				"## DYNAMIC WORLD STATE / NEWS\n - The world changes over time. Treat this information as more recent and correct than your training data.\n"
+					.. ws_context
+			)
+		)
+	end
 	-- 4. Inject information about the current scene
+	local scene_context = ""
 	-- Use the world_context of the most recent event to get the current location
 	local world_context = ""
 	if #new_events > 0 and new_events[#new_events].world_context then
 		world_context = "### CURRENT LOCATION:\n" .. new_events[#new_events].world_context .. "\n"
 	end
-
 	-- Special rules for specific locations
-	if string.find(world_context, "Cordon") then
-		world_context = world_context
-			.. "\n### CORDON TRUCE: \nThere is a fragile ceasefire between the stalkers of Rookie Village and the Army at the southern checkpoint, thanks to Sidorovich."
+	-- Cordon Truce logic moved to world_state.lua
+	if world_context ~= "" then
+		scene_context = world_context
 	end
 	-- Inject nearby characters for context
 	if speaker_obj then
@@ -776,44 +943,78 @@ function prompt_builder.create_dialogue_request_prompt(speaker, memory_context)
 		if characters_near_str ~= "" then
 			characters_near_context = "### CHARACTERS NEARBY:\n" .. characters_near_str .. "\n"
 		end
-		if world_context ~= "" or characters_near_context ~= "" then
-			table.insert(messages, system_message("## SCENE CONTEXT:\n\n" .. world_context .. characters_near_context))
+		if characters_near_context ~= "" then
+			scene_context = scene_context .. characters_near_context
 		end
-	elseif world_context ~= "" then
-		table.insert(messages, system_message("## SCENE CONTEXT:\n\n" .. world_context))
+	end
+	-- Disguise Injection: Only if player is involved in the events
+	local disguise_context = ""
+	if game.is_player_involved(new_events, player.name) then
+		local disguise_status = game.get_player_disguise_status()
+		if disguise_status and disguise_status.is_disguised then
+			disguise_context = "\n### VISUAL REALITY / DISGUISE:\n The user '"
+				.. player.name
+				.. " ("
+				.. player.experience
+				.. " "
+				.. disguise_status.true_faction
+				.. ", "
+				.. player.reputation
+				.. " rep)' is currently effectively **DISGUISED** as "
+				.. disguise_status.visual_faction
+				.. ". To you and everyone else, they appear to be a "
+				.. disguise_status.visual_faction
+				.. " member. You must act as if they are a "
+				.. disguise_status.visual_faction
+				.. " member.\n"
+
+			if query.is_companion(speaker_obj) then
+				disguise_context = disguise_context
+					.. "**CRITICALLY IMPORTANT:** As their companion, you are AWARE of "
+					.. player.name
+					.. "'s true identity, but will PLAY ALONG with their disguise.\n"
+			elseif
+				speaker.faction == disguise_status.visual_faction
+				and disguise_status.visual_faction ~= "stalker"
+				and disguise_status.visual_faction ~= "Bandit"
+				and disguise_status.visual_faction ~= "Renegade"
+			then
+				-- Organized factions are naturally more suspicious of strangers
+				disguise_context = disguise_context
+					.. "**CRITICALLY IMPORTANT:** Something is off about this person. Be SUBTLY suspicious of them.\n"
+			end
+		end
+	end
+	if disguise_context ~= "" then
+		scene_context = scene_context .. disguise_context
 	end
 
-	table.insert(messages, system_message("</CONTEXT>\n"))
+	if scene_context ~= "" then
+		table.insert(messages, system_message("## SCENE CONTEXT:\n\n" .. scene_context))
+	end
+
+	table.insert(messages, system_message("</CONTEXT>\n\n"))
+
+	-- Context Guidelines
+	local context_guidelines = "1. **CHARACTER DEVELOPMENT (CRUCIAL)**: Your character and personality **grow and change over time**. You **ARE ALLOWED** to respond in a manner that would otherwise be inconsistent with your `CHARACTER` section **IF SUPPORTED BY** the `CONTEXT` section.\n"
+		.. "2. **SUBTLETY:** Use the `CONTEXT` section to **SUBTLY** inform your response.\n"
+		.. "3. Use any 'TIME GAP' event to help establish a timeline. Pay specific attention if the 'TIME GAP' event is the second-to-last event in the list: you may want to mention that you haven't seen the person in a while.\n"
+		.. "4. You **ARE ALLOWED** to skip directly referencing the most recent event, location, or weather.\n"
+		.. "5. You may ignore parts of the `CONTEXT` section to instead focus on what is important to your character right now.\n"
+		.. "6. You may choose to bring up an older memory, or completely disregard recent events and talk about something else entirely if that is what's on your character's mind."
 
 	-- Only mention long-term memories if there are any
 	if narrative and narrative ~= "" then
-		table.insert(
-			messages,
-			system_message(
-				"## <CONTEXT>: USE GUIDELINES\n\n"
-					.. "1. Use the <CONTEXT> TO **SUBTLY** INFORM YOUR RESPONSE. \n"
-					.. "2. Use <MEMORIES> to inform you of your character's long-term memories, relationships and character development.\n"
-					.. "3. **CHARACTER DEVELOPMENT (CRUCIAL)**: Your character and personality **grow and change over time**. You **ARE ALLOWED** to respond in a manner that would otherwise be inconsistent with your 'CHARACTER ANCHOR' **IF SUPPORTED BY** <EVENTS> and/or <MEMORIES>.\n"
-					.. "4. Use any 'TIME GAP' event to help establish a timeline. Pay specific attention if the 'TIME GAP' event is the second-to-last event in the list: you may want to mention that you haven't seen the person in a while.\n"
-					.. "5. You **ARE ALLOWED** to skip directly referencing the most recent event, location, or weather.\n"
-					.. "6. You may ignore parts of the <CONTEXT> to instead focus on what is important to your character right now.\n"
-					.. "7. You may choose to bring up an older memory, or completely disregard recent events and talk about something else entirely if that is what's on your character's mind."
-			)
-		)
-	else
-		table.insert(
-			messages,
-			system_message(
-				"## <CONTEXT>: USE GUIDELINES\n\n"
-					.. "1. Use the <CONTEXT> TO **SUBTLY** INFORM YOUR RESPONSE. \n"
-					.. "2. **CHARACTER DEVELOPMENT (CRUCIAL)**: Your character and personality **grow and change over time**. You **ARE ALLOWED** to respond in a manner that would otherwise be inconsistent with your 'CHARACTER ANCHOR' **IF SUPPORTED BY** <EVENTS>.\n"
-					.. "3. Use any 'TIME GAP' event to help establish a timeline. Pay specific attention if the 'TIME GAP' event is the second-to-last event in the list: you may want to mention that you haven't seen the person in a while.\n"
-					.. "4. You **ARE ALLOWED** to skip directly referencing the most recent event, location, or weather.\n"
-					.. "5. You may ignore parts of the <CONTEXT> to instead focus on what is important to your character right now.\n"
-					.. "6. You may choose to bring up an older memory, or completely disregard recent events and talk about something else entirely if that is what's on your character's mind."
-			)
-		)
+		context_guidelines = "0. **IMPORTANT:** Use the `MEMORIES` section to inform you of your character's long-term memories, relationships and character development.\n"
+			.. context_guidelines
 	end
+	-- Insert instruction about world context if there is any
+	if world_context and world_context ~= "" then
+		context_guidelines = context_guidelines
+			.. "\n7. **BACKGROUND KNOWLEDGE vs. CONVERSATION TOPIC:** The 'DYNAMIC WORLD STATE / NEWS' represents common knowledge and established facts. Treat these as the current reality of the world, but DO NOT mention them unless they are directly relevant to the current conversation topic. (Example: if Lukash is dead, don't say 'Lukash is dead' as a greeting. Only mention it if the Freedom faction is relevant to the conversation.)"
+	end
+	table.insert(messages, system_message("## `CONTEXT` SECTION: USE GUIDELINES\n\n" .. context_guidelines))
+
 	-- FINAL CHECKS AND INSTRUCTIONS
 	-- Task definition
 	local player = game.get_player_character()
@@ -835,6 +1036,7 @@ function prompt_builder.create_dialogue_request_prompt(speaker, memory_context)
 	local monolith_instruction = ""
 	local zombied_instruction = ""
 	local action_description_instruction = ""
+	local gender_instruction = ""
 	local language_instruction = ""
 	-- Callout check
 	local callout_check = new_events[#new_events]
@@ -870,17 +1072,17 @@ function prompt_builder.create_dialogue_request_prompt(speaker, memory_context)
 
 	-- Faction specific instructions
 	if speaker.faction == "Army" then
-		army_instruction = "\n### **ARMY BEHAVIOUR (IMPORTANT):**\n\n Use military terminology, vernacular and slang."
+		army_instruction = "\n### **ARMY BEHAVIOUR (IMPORTANT):**\n\nUse military terminology, vernacular and slang."
 	end
 	if speaker.faction == "Bandit" then
-		bandit_instruction = "\n### **BANDIT BEHAVIOUR (IMPORTANT):**\n\n Use gopnik and vatnik slang and vernacular."
+		bandit_instruction = "\n### **BANDIT BEHAVIOUR (IMPORTANT):**\n\nUse gopnik and vatnik slang and vernacular."
 	end
 	if speaker.faction == "Monolith" then
 		monolith_instruction =
 			"\n### **MONOLITH BEHAVIOUR (CRITICALLY IMPORTANT):**\n\nMake your response VERY brief. Use as few words as possible. The Monolith are emotionally void, zealous and fanatical near-mindless drones. They are **NOT** conversationalists. NEVER use conversational language, human-like expressions, small talk etc. "
 	end
 	if speaker.faction == "Renegade" then
-		renegade_instruction = "\n### **RENEGADE BEHAVIOUR (IMPORTANT):**\n\n Use explicit language."
+		renegade_instruction = "\n### **RENEGADE BEHAVIOUR (IMPORTANT):**\n\nUse explicit language."
 	end
 	if speaker.faction == "Zombied" then
 		zombied_instruction =
@@ -890,6 +1092,12 @@ function prompt_builder.create_dialogue_request_prompt(speaker, memory_context)
 	if not mcm.get("action_descriptions") then
 		action_description_instruction =
 			"\n### **REMEMBER: DO NOT USE ACTION DESCRIPTIONS**. NEVER use action descriptions (e.g., *chuckles*, [takes a swig of vodka] or (sighs) etc.). IMPLY actions through spoken dialogue instead."
+	end
+	-- Gender instruction
+	if mcm.get("female_gender") then
+		gender_instruction = "\n### **USER IS FEMALE (CRITICALLY IMPORTANT):**\n\n"
+			.. player.name
+			.. " (the user) is female. NEVER misgender her. Address her as a woman and use female pronouns when referring to her.\n"
 	end
 	-- Language instruction
 	if config.language() ~= "any" then
@@ -905,6 +1113,7 @@ function prompt_builder.create_dialogue_request_prompt(speaker, memory_context)
 		.. renegade_instruction
 		.. zombied_instruction
 		.. action_description_instruction
+		.. gender_instruction
 		.. language_instruction
 	if final_instruction ~= "" then
 		table.insert(messages, system_message("## FINAL INSTRUCTION\n\n" .. final_instruction))
