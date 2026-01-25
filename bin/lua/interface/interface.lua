@@ -3,6 +3,7 @@ local log = require("framework.logger")
 local talker = require("app.talker")
 local game_adapter = require("infra.game_adapter")
 local AI_request = require("infra.AI.requests")
+local queries = talker_game_queries
 
 -- game interfaces
 local query = talker_game_queries
@@ -20,6 +21,21 @@ end
 function m.register_game_event_near_player(unformatted_description, involved_objects, important)
 	local witnesses = game_adapter.get_characters_near_player()
 	return m.register_game_event(unformatted_description, involved_objects, witnesses, important, nil)
+end
+
+-- Register a silent event near the player (event goes to store but doesn't trigger dialogue)
+function m.register_silent_event_near_player(unformatted_description, involved_objects)
+	local witnesses = game_adapter.get_characters_near_player()
+	local flags = { is_silent = true }
+	return m.register_game_event(unformatted_description, involved_objects, witnesses, false, flags)
+end
+
+-- Register a silent event with custom witnesses (event goes to store but doesn't trigger dialogue)
+function m.register_silent_event(unformatted_description, event_objects, witnesses, flags)
+	-- Merge user flags with is_silent flag
+	local merged_flags = flags or {}
+	merged_flags.is_silent = true
+	return m.register_game_event(unformatted_description, event_objects, witnesses, false, merged_flags)
 end
 
 local function register_game_event(unformatted_description, event_objects, witnesses, important, flags)
@@ -61,12 +77,10 @@ end
 function m.player_character_speaks(dialogue)
 	log.info("Registering player speak event. Player said: " .. dialogue)
 	local player = game_adapter.get_player_character()
-	-- register new event
-	m.register_game_event_near_player(
-		"%s (%s %s, %s rep) said: %s",
-		{ player.name, player.experience, player.faction, player.reputation, dialogue },
-		true
-	)
+	local player_fmt, player_vals = queries.get_character_event_info(player)
+	local values = queries.join_tables(player_vals, { dialogue })
+	-- register new events
+	m.register_game_event_near_player(player_fmt .. " said: %s", values, true)
 	-- show dialogue in game UI
 	game_adapter.display_dialogue(player.game_id, dialogue)
 end
