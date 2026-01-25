@@ -76,12 +76,21 @@ local function send(messages, cb, opts)
 		if resp and resp.error then
 			err = resp.error
 		end
-		if err or (resp and resp.error) then
-			log.error("PROXY error: error:" .. json.encode(err or "no-err") .. " body:" .. json.encode(resp))
-			error("PROXY error: error:" .. json.encode(err or "no-err") .. " body:" .. json.encode(resp))
+
+		if err then
+			log.error("PROXY error: " .. tostring(err) .. " Body: " .. json.encode(resp))
+			cb(nil)
+			return
 		end
-		local answer = resp.choices and resp.choices[1] and resp.choices[1].message
-		log.debug("PROXY response: %s", answer and answer.content)
+
+		if not resp or not resp.choices then
+			log.error("PROXY invalid response (no choices): " .. json.encode(resp))
+			cb(nil)
+			return
+		end
+
+		local answer = resp.choices[1] and resp.choices[1].message
+		log.debug("PROXY response: %s", answer and answer.content or "empty")
 		cb(answer and answer.content)
 	end)
 end
