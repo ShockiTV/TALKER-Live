@@ -48,7 +48,7 @@ local function get_random_personalities(amountOfPersonalities, xml_key)
 	end
 
 	if #loadedPersonalities < amountOfPersonalities then
-		log.warn(
+		log.info(
 			"Requested "
 				.. amountOfPersonalities
 				.. " unique personalities but only obtained "
@@ -99,9 +99,9 @@ local function set_random_personality(character)
 		local tech_name = queries.get_technical_name_by_id(character.game_id)
 		local personality = unique_characters[tech_name]
 		if not personality then
-			log.warn("No personality found for unique character: " .. tech_name)
+			log.info("No personality found for unique character: " .. tech_name)
 			personality = get_random_personalities(2)
-			log.warn("Assigning random personality instead: " .. personality)
+			log.info("Assigning random personality instead: " .. personality)
 			character_personalities[character.game_id] = personality
 			return
 		end
@@ -126,7 +126,7 @@ function M.get_personality(character)
 		set_random_personality(character)
 		personality = character_personalities[character.game_id]
 		if not personality then
-			log.warn("No personality found after assignment: " .. character.game_id)
+			log.info("No personality found after assignment: " .. character.game_id)
 		end
 	end
 	return personality or ""
@@ -151,7 +151,7 @@ function M.load_save_data(saved_character_personalities)
 			log.debug("TALKER personality reset is disabled. Loading saved personalities.")
 			character_personalities = saved_character_personalities
 		else
-			log.warn("No saved personalities provided to load_save_data; keeping current cache.")
+			log.info("No saved personalities provided to load_save_data; keeping current cache.")
 		end
 	end
 end
