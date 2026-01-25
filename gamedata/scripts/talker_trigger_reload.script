@@ -11,6 +11,7 @@ local mcm = talker_mcm
 -- Constants
 ----------------------------------------------------------------------------------------------------
 local NOTICE_CHANCE = mcm.get("reload_notice_chance")
+local mode_reload = tonumber(mcm.get("enable_trigger_reload") or "0")
 
 ----------------------------------------------------------------------------------------------------
 -- Function
@@ -18,25 +19,30 @@ local NOTICE_CHANCE = mcm.get("reload_notice_chance")
 
 -- Player reload event handler
 function on_player_reloads_weapon()
-    if not mcm.get("enable_trigger_reload") then return end
+    if mode_reload == 1 then return end
 
-    log.debug("Player is reloading weapon")
-    local unformatted_description = "%s (%s %s, %s rep) is reloading their %s!"
-
-    -- Logic: If random > chance, we ignore it.
+    -- Logic: If random > chance, we ignore it to prevent event store bloat
     if math.random() > NOTICE_CHANCE then
-        log.debug("Ignoring reload event")
+        log.info("TALKER: Ignoring reload event (failed chance check)")
         return
     end
 
+    log.info("TALKER: Player is reloading weapon")
+
     -- Create event objects
     local player = game.get_player_character()
-    local player_weapon = player.weapon or "weapon"
     local witnesses = game.get_characters_near_player()
+    
+    local player_fmt, player_vals = queries.get_character_event_info(player)
+    local player_weapon = player.weapon or "weapon"
+    local unformatted_description = player_fmt .. " is reloading their " .. player_weapon .. "!"
 
-    trigger.talker_game_event(unformatted_description, {player.name, player.experience, player.faction, player.reputation, player_weapon}, witnesses, true, { is_reload = true })
-
-    log.info("Reload event registered")
+    -- Determine if this should be silent
+    local is_silent = (mode_reload == 2)
+    trigger.talker_game_event(unformatted_description, player_vals, witnesses, true, { is_reload = true, is_silent = is_silent })
+    if is_silent == true then
+        log.info("TALKER: Reload event registered (silent)")
+    end
 end
 
 ----------------------------------------------------------------------------------------------------
