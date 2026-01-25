@@ -79,7 +79,7 @@ function get_faction_description(natural_name)
 			return faction.description
 		end
 	end
-	logger.warn("No faction found with name: " .. tostring(natural_name))
+	logger.debug("No faction found with name: " .. tostring(natural_name))
 	return nil
 end
 
