@@ -9,7 +9,7 @@ local unique_characters = {
 	["esc_2_12_stalker_fanat"] = "well-meaning and mentor-like but determined and zealous", -- Fanatic
 	["esc_2_12_stalker_trader"] = "gruff, impatient and skeptical", -- Sidorovich
 	["esc_smart_terrain_5_7_loner_mechanic_stalker"] = "is practical, quiet and reliable", -- Xenotech
-	["devushka"] = "a young woman and who is loyal but defiant and jaded, is witty and uses dry humor and is subtly flirty", -- Hip
+	["devushka"] = "a young woman that is loyal but defiant and jaded, is witty and uses dry humor and is subtly flirty", -- Hip
 	["esc_main_base_trader_mlr"] = "laid-back, sleepy and deadpan", -- Loris
 	["esc_3_16_military_trader"] = "stern, formal and efficient", -- Major Zhurov
 	["army_south_mechan_mlr"] = "crude, irreverent and loyal", -- Seryoga
@@ -99,9 +99,9 @@ local unique_characters = {
 	["sar_greh_sabaoth"] = "obsessive, unstable and ideologically consumed", -- Chernobog (Sarcophagus variant)
 
 	--[[ JUPITER ]]
-	["jup_b220_trapper"] = "gruff, weary and emotionally hardened", -- Trapper
+	["jup_b220_trapper"] = "grizzled, weary and emotionally hardened", -- Trapper
 	["jup_a6_stalker_barmen"] = "chill, humorous and emotionally resilient", -- Hawaiian
-	["guid_jup_stalker_garik"] = "maintaining an act of being curious, upbeat and naive", -- Garry
+	["guid_jup_stalker_garik"] = "experienced and competent, but maintaining an act of being curious, upbeat and naive", -- Garry
 	["jup_a6_stalker_medik"] = "compassionate, calm and emotionally grounded", -- Bonesetter
 	["zat_a2_stalker_mechanic"] = "sarcastic and emotionally unstable", -- Cardan
 	["jup_b217_stalker_tech"] = "competent and friendly but scatterbrained", -- Nitro
@@ -117,7 +117,7 @@ local unique_characters = {
 
 	--[[ ZATON ]]
 
-	["zat_stancia_mech_merc"] = "a young woman and who is excitable, bubbly and emotionally warm", -- Kolin
+	["zat_stancia_mech_merc"] = "a young woman that is excitable, bubbly and emotionally warm", -- Kolin
 	["zat_stancia_trader_merc"] = "impatient, blunt and rude", -- Vector
 	["zat_a2_stalker_nimble"] = "resourceful, well-connected, fast-talking and lucky", -- Nimble
 	["zat_b30_owl_stalker_trader"] = "secretive, transactional and emotionally distant", -- Owl
@@ -137,11 +137,11 @@ local unique_characters = {
 	["zat_b7_stalker_victim_1"] = "heroic, resilient and emotionally intense", -- Spartacus
 
 	--[[ OUTSKIRTS ]]
-	["stalker_western_goods_trader"] = "secretive, businesslike and guarded", -- Williams 'Ashes' Heades, Wester Goods trader
+	["stalker_western_goods_trader"] = "secretive, businesslike and guarded", -- Williams 'Ashes' Heades, Western Goods trader
 	["pri_monolith_monolith_trader_stalker"] = "ritualistic, emotionally void and doctrinal", -- Krolik
 	["lider_monolith_haron"] = "commanding, fanatical and spiritually fractured", -- Charon
 	["pri_monolith_monolith_mechanic_stalker"] = "methodical, silent and ideologically rigid", -- Cleric
-	["monolith_eidolon"] = "a young woman and who is cryptic, devoted and metaphysically obsessed", -- Eidolon
+	["monolith_eidolon"] = "a young woman that is cryptic, devoted and metaphysically obsessed", -- Eidolon
 	["guid_pri_a15_mlr"] = "blunt, casual and flippant", -- Tourist
 	["trader_pri_a15_mlr"] = "cheerful, erratic and emotionally unstable", -- Cashier
 	["pri_medic_stalker"] = "experienced, quiet and sharp", -- Yar
