@@ -4,6 +4,8 @@ local game = require("infra.game_adapter")
 local trigger = require("interface.trigger")
 local mcm = talker_mcm
 
+local mode_emission = tonumber(mcm.get("enable_trigger_emission") or "0")
+
 ----------------------------------------------------------------------------------------------------
 -- Constants
 ----------------------------------------------------------------------------------------------------
@@ -21,15 +23,19 @@ function create_emission_event(typ, status)
         return
     end
     
+    local is_silent = (mode_emission == 2)
     local unformatted_description = "An %s is %s!"
     log.info(unformatted_description, typ, status)
     local witnesses = game.get_characters_near_player(200)
-    trigger.talker_game_event(unformatted_description, {typ, status}, witnesses, true, { is_emission = true })
+    trigger.talker_game_event(unformatted_description, {typ, status}, witnesses, true, { is_emission = true, is_silent = is_silent })
+    if is_silent == true then
+        log.info("TALKER: Emission event registered (silent)")
+    end
 end
 
 -- Technically this is triggered by more than just emissions, but our name filter takes care of that
 function on_emission(name)
-    if not mcm.get("enable_trigger_emission") then return end
+    if mode_emission == 1 then return end
 
     -- PSY STORMS
     if name == "psi_storm_start" then
