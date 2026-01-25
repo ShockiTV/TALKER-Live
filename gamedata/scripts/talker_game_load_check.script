@@ -1,3 +1,5 @@
+package.path = package.path .. ";./bin/lua/?.lua;./bin/lua/?/init.lua"
+
 local game = require("infra.game_adapter")
 local log = require("framework.logger")
 
@@ -26,26 +28,112 @@ local modules = {
 	talker_trigger_task = "Talker Trigger Task",
     talker_trigger_taunt = "Talker Trigger Taunt",
     talker_listener_player_speaks = "Talker Listener Player Speaks"
-    
+}
+
+-- Core Lua dependencies to check if a module fails.
+-- These are referenced by the game scripts, and if they crash, the script crashes.
+local core_libs = {
+    "framework.logger",
+    "framework.inspect",
+    "interface.config",
+    "infra.HTTP.json",
+    "infra.file_io",
+    "infra.language",
+    "infra.AI.message_normalizer",
+    "infra.AI.dialogue_cleaner",
+    "infra.AI.prompt_builder",
+    "domain.model.item",
+    "domain.model.character",
+    "domain.model.event",
+    "infra.STALKER.factions",
+    "infra.STALKER.locations",
+    "infra.STALKER.unique_backstories",
+    "infra.STALKER.unique_personalities",
+    "infra.game_adapter",
+    "infra.AI.transformations",
+    "domain.repo.event_store",
+    "domain.repo.memory_store",
+    "domain.repo.backstories",
+    "domain.repo.personalities",
+    "infra.AI.GPT",
+    "infra.AI.OpenRouterAI",
+    "infra.AI.local_ollama",
+    "infra.AI.proxy",
+    "infra.AI.requests",
+    "interface.trigger",
+    "interface.interface",
+    "app.talker",
 }
 
 -- intentionally duplicated
-local function display_hud_message(input)
+local function display_hud_message(input, duration)
     log.info("displaying: " .. input)
-    actor_menu.set_msg(1, input, 3)
+    actor_menu.set_msg(1, input, duration or 3)
+end
+
+local function check_core_dependencies()
+    for _, lib in ipairs(core_libs) do
+        -- We force a reload/check by clearing package.loaded (optional, but safer to catch verify errors)
+        -- Actually, if it failed once, package.loaded[lib] might be nil or false.
+        -- We simply pcall require.
+        local status, result = pcall(require, lib)
+        if not status then
+            local err_msg = tostring(result)
+            display_hud_message("ROOT CAUSE: " .. lib .. " failed: " .. err_msg, 10)
+            log.error("TALKER DEPENDENCY ERROR: %s failed to load. Error: %s", lib, err_msg)
+            return false -- Found a root cause, no need to spam more
+        end
+    end
+    return true
 end
 
 function check_loaded_modules()
     local all_loaded = true
+    local dependency_check_needed = false
+
     for key, name in pairs(modules) do
-        local status, result = pcall(function()
-            return _G[key] and _G[key].is_loaded()
+        -- Try to access the module safely via global first
+        local status, module_obj = pcall(function()
+            return _G[key]
         end)
-        if not status or not result then
+
+        if not status then 
+            -- Accessing _G[key] caused a crash (unlikely but possible during engine init)
+             all_loaded = false
+             dependency_check_needed = true
+             local err_msg = tostring(module_obj)
+             display_hud_message("TALKER CRASH accessing " .. name .. ": " .. err_msg, 8)
+             log.error("TALKER LOAD CRASH: %s. Error: %s", key, err_msg)
+        
+        elseif not module_obj then
+            -- Module is nil. It failed to load or hasn't been required yet.
             all_loaded = false
-            display_hud_message("TALKER module " .. name .. " not loaded")
+            dependency_check_needed = true
+            display_hud_message("TALKER Error: " .. name .. " not loaded (is nil)", 5)
+            log.error("TALKER LOAD ERROR: %s is nil in _G", key)
+            
+        elseif type(module_obj) == "table" then
+            -- Module table exists. Check if it finished loading (has is_loaded function)
+            if not module_obj.is_loaded then
+                 -- Table exists but is_loaded is missing -> Partial load / Crash during execution!
+                 all_loaded = false
+                 dependency_check_needed = true
+                 display_hud_message("TALKER Error: " .. name .. " crashed during load! (Partial Load)", 8)
+                 log.error("TALKER PARTIAL LOAD: %s table exists but unfinished.", key)
+            
+            elseif not module_obj.is_loaded() then
+                -- Explicitly returned false
+                all_loaded = false
+                display_hud_message("TALKER Warning: " .. name .. " reported as not loaded (is_loaded()=false)", 5)
+            end
         end
     end
+
+    -- If any module failed, check core dependencies to find the root syntax error
+    if dependency_check_needed then
+        check_core_dependencies()
+    end
+
     if game.is_mock() then
         display_hud_message('Looks like a testing module is loaded, not normal in game. Tell Dan.')
     end
