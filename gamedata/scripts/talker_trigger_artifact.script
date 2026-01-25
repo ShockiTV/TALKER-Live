@@ -17,6 +17,11 @@ local ARTIFACT_PICKUP_COMMENT_CD = mcm.get("artifact_pickup_comment_cd") * 1000
 local ARTIFACT_USE_COMMENT_CD = mcm.get("artifact_use_comment_cd") * 1000
 local ARTIFACT_EQUIP_COMMENT_CD = mcm.get("artifact_equip_comment_cd") * 1000
 
+local mode_pickup = tonumber(mcm.get("enable_trigger_artifact_pickup") or "0")
+local mode_use = tonumber(mcm.get("enable_trigger_artifact_use") or "0")
+local mode_equip = tonumber(mcm.get("enable_trigger_artifact_equip") or "0")
+local ANTI_SPAM_CD = mcm.get("anti_spam_cd") * 1000
+
 local LOAD_SAFE = false
 ----------------------------------------------------------------------------------------------------
 -- Conditions
@@ -31,36 +36,56 @@ local function is_excluded_artifact(name)
 end
 
 local LAST_ARTIFACT_PICKUP_COMMENT = 0
-function is_valid_pickup(artifact_name)
-    if is_excluded_artifact(artifact_name) then return false end   
-    if not game.is_cooldown_over(LAST_ARTIFACT_PICKUP_COMMENT, ARTIFACT_PICKUP_COMMENT_CD) then 
-        return false 
-    end
-
-    LAST_ARTIFACT_PICKUP_COMMENT = queries.get_game_time_ms()
-    return true
-end
-
 local LAST_ARTIFACT_USE_COMMENT = 0
-function is_valid_use(artifact_name)
-    if is_excluded_artifact(artifact_name) then return false end   
-    if not game.is_cooldown_over(LAST_ARTIFACT_USE_COMMENT, ARTIFACT_USE_COMMENT_CD) then 
-        return false 
-    end
-
-    LAST_ARTIFACT_USE_COMMENT = queries.get_game_time_ms()
-    return true
-end
-
 local LAST_ARTIFACT_EQUIP_COMMENT = 0
-function is_valid_equip(artifact_name)
-    if is_excluded_artifact(artifact_name) then return false end   
-    if not game.is_cooldown_over(LAST_ARTIFACT_EQUIP_COMMENT, ARTIFACT_EQUIP_COMMENT_CD) then 
-        return false 
+
+local LAST_ARTIFACT_PICKUP_SPAM = 0
+local LAST_ARTIFACT_USE_SPAM = 0
+local LAST_ARTIFACT_EQUIP_SPAM = 0
+
+-- Helper to determine if an artifact event should be silent
+-- Mode: 0 = On, 1 = Off, 2 = Silent
+-- Trigger types: 1 = pickup, 2 = use, 3 = equip
+local function get_silence_status(mode, trigger_type)
+    local current_time = queries.get_game_time_ms()
+    local cooldown, last_time, last_spam
+    
+    if trigger_type == 1 then
+        cooldown, last_time, last_spam = ARTIFACT_PICKUP_COMMENT_CD, LAST_ARTIFACT_PICKUP_COMMENT, LAST_ARTIFACT_PICKUP_SPAM
+    elseif trigger_type == 2 then
+        cooldown, last_time, last_spam = ARTIFACT_USE_COMMENT_CD, LAST_ARTIFACT_USE_COMMENT, LAST_ARTIFACT_USE_SPAM
+    else
+        cooldown, last_time, last_spam = ARTIFACT_EQUIP_COMMENT_CD, LAST_ARTIFACT_EQUIP_COMMENT, LAST_ARTIFACT_EQUIP_SPAM
+    end
+    
+    -- 1. Anti-spam check
+    if (current_time - last_spam) < ANTI_SPAM_CD then
+        return nil -- Abort, too soon even for a silent event
     end
 
-    LAST_ARTIFACT_EQUIP_COMMENT = queries.get_game_time_ms()
-    return true
+    -- Update anti-spam timer
+    if trigger_type == 1 then LAST_ARTIFACT_PICKUP_SPAM = current_time 
+    elseif trigger_type == 2 then LAST_ARTIFACT_USE_SPAM = current_time 
+    else LAST_ARTIFACT_EQUIP_SPAM = current_time end
+
+    -- 2. Dialogue Cooldown check
+    local dialogue_ready = (current_time - last_time) >= cooldown
+
+    if mode == 0 then -- Mode: On
+        if dialogue_ready then
+            -- Reset the dialogue cooldown timer
+            if trigger_type == 1 then LAST_ARTIFACT_PICKUP_COMMENT = current_time 
+            elseif trigger_type == 2 then LAST_ARTIFACT_USE_COMMENT = current_time 
+            else LAST_ARTIFACT_EQUIP_COMMENT = current_time end
+            return false -- Dialogue requested
+        else
+            return true -- Silent event
+        end
+    elseif mode == 2 then -- Mode: Silent
+        return true
+    end
+
+    return nil
 end
 
 ----------------------------------------------------------------------------------------------------
@@ -69,7 +94,7 @@ end
 
 
 local function actor_on_item_use(obj, str)
-    if not (LOAD_SAFE and mcm.get("enable_trigger_artifact_use")) then return end
+    if not LOAD_SAFE or mode_use == 1 then return end
     if not queries.is_artifact(obj) then return end
     
     local section = obj:section()
@@ -78,16 +103,25 @@ local function actor_on_item_use(obj, str)
         artifact_description = queries.get_item_name(obj)
     end
 
-    if not is_valid_use(artifact_description) then return end
+    if is_excluded_artifact(artifact_description) then return end
+
+    local is_silent = get_silence_status(mode_use, 2)
+    if is_silent == nil then return end
 
     local player = game.get_player_character()
     local witnesses = game.get_characters_near_player()
-    local unformatted_description = "%s (%s %s, %s rep) used an artifact called %s"
-    trigger.talker_game_event(unformatted_description, {player.name, player.experience, player.faction, player.reputation, artifact_description}, witnesses, true, { is_artifact = true })
+    
+    local player_fmt, player_vals = queries.get_character_event_info(player)
+    local unformatted_description = player_fmt .. " used " .. artifact_description
+    
+    trigger.talker_game_event(unformatted_description, player_vals, witnesses, true, { is_artifact = true, is_silent = is_silent })
+    if is_silent == true then
+        logger.info("TALKER: Artifact event registered (silent)")
+    end
 end
 
 local function actor_item_to_belt(obj)
-    if not (LOAD_SAFE and mcm.get("enable_trigger_artifact_equip")) then return end
+    if not LOAD_SAFE or mode_equip == 1 then return end
     if not queries.is_artifact(obj) then return end
     
     local section = obj:section()
@@ -96,16 +130,25 @@ local function actor_item_to_belt(obj)
         artifact_description = queries.get_item_name(obj)
     end
 
-    if not is_valid_equip(artifact_description) then return end
+    if is_excluded_artifact(artifact_description) then return end
+
+    local is_silent = get_silence_status(mode_equip, 3)
+    if is_silent == nil then return end
 
     local player = game.get_player_character()
     local witnesses = game.get_characters_near_player()
-    local unformatted_description = "%s (%s %s, %s rep) equipped an artifact called %s"
-    trigger.talker_game_event(unformatted_description, {player.name, player.experience, player.faction, player.reputation, artifact_description}, witnesses, true, { is_artifact = true })
+    
+    local player_fmt, player_vals = queries.get_character_event_info(player)
+    local unformatted_description = player_fmt .. " equipped " .. artifact_description
+    
+    trigger.talker_game_event(unformatted_description, player_vals, witnesses, true, { is_artifact = true, is_silent = is_silent })
+    if is_silent == true then
+        logger.info("TALKER: Artifact event registered (silent)")
+    end
 end
 
 local function actor_on_item_to_slot(obj)
-    if not (LOAD_SAFE and mcm.get("enable_trigger_artifact_equip")) then return end
+    if not LOAD_SAFE or mode_equip == 1 then return end
     if not queries.is_artifact(obj) then return end
     
     local section = obj:section()
@@ -114,16 +157,25 @@ local function actor_on_item_to_slot(obj)
         artifact_description = queries.get_item_name(obj)
     end
 
-    if not is_valid_equip(artifact_description) then return end
+    if is_excluded_artifact(artifact_description) then return end
+
+    local is_silent = get_silence_status(mode_equip, 3)
+    if is_silent == nil then return end
 
     local player = game.get_player_character()
     local witnesses = game.get_characters_near_player()
-    local unformatted_description = "%s (%s %s, %s rep) equipped an artifact called %s"
-    trigger.talker_game_event(unformatted_description, {player.name, player.experience, player.faction, player.reputation, artifact_description}, witnesses, true, { is_artifact = true })
+    
+    local player_fmt, player_vals = queries.get_character_event_info(player)
+    local unformatted_description = player_fmt .. " equipped " .. artifact_description
+    
+    trigger.talker_game_event(unformatted_description, player_vals, witnesses, true, { is_artifact = true, is_silent = is_silent })
+    if is_silent == true then
+        logger.info("TALKER: Artifact event registered (silent)")
+    end
 end
 
 local function actor_on_item_before_pickup(obj)
-    if not (LOAD_SAFE and mcm.get("enable_trigger_artifact_pickup")) then return end
+    if not LOAD_SAFE or mode_pickup == 1 then return end
     if not queries.is_artifact(obj) then return end
 
     local section = obj:section()
@@ -134,12 +186,21 @@ local function actor_on_item_before_pickup(obj)
         artifact_description = queries.get_item_name(obj)
     end
     
-    if not is_valid_pickup(artifact_description) then return end
+    if is_excluded_artifact(artifact_description) then return end
+
+    local is_silent = get_silence_status(mode_pickup, 1)
+    if is_silent == nil then return end
 
     local player = game.get_player_character()
     local witnesses = game.get_characters_near_player()
-    local unformatted_description = "%s (%s %s, %s rep) picked up an artifact called %s"
-    trigger.talker_game_event(unformatted_description, {player.name, player.experience, player.faction, player.reputation, artifact_description}, witnesses, true, { is_artifact = true })
+    
+    local player_fmt, player_vals = queries.get_character_event_info(player)
+    local unformatted_description = player_fmt .. " picked up " .. artifact_description
+    
+    trigger.talker_game_event(unformatted_description, player_vals, witnesses, true, { is_artifact = true, is_silent = is_silent })
+    if is_silent == true then
+        logger.info("TALKER: Artifact event registered (silent)")
+    end
 end
 
 
