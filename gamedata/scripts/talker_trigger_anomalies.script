@@ -19,11 +19,60 @@ local ANOMALY_PROXIMITY_COMMENT_CD = mcm.get("anomaly_proximity_comment_cd") * 1
 local ANOMALY_DAMAGE_COMMENT_CD = mcm.get("anomaly_damage_comment_cd") * 1000
 local MAX_RANK_FOR_WARNING = mcm.get("max_rank_for_warning")
 
+local mode_proximity = tonumber(mcm.get("enable_trigger_proximity_anomalies") or "0")
+local mode_damage = tonumber(mcm.get("enable_trigger_damage_anomalies") or "0")
+local ANTI_SPAM_CD = mcm.get("anti_spam_cd") * 1000
+
 ----------------------------------------------------------------------------------------------------
 -- Conditions
 ----------------------------------------------------------------------------------------------------
 local LAST_ANOMALY_PROXIMITY_COMMENT = 0
 local LAST_ANOMALY_DAMAGE_COMMENT = 0
+local LAST_ANOMALY_PROXIMITY_SPAM = 0
+local LAST_ANOMALY_DAMAGE_SPAM = 0
+
+-- Helper to determine if an anomaly event should be silent
+-- Mode: 0 = On, 1 = Off, 2 = Silent
+local function get_silence_status(mode, is_damage)
+    
+    local current_time = queries.get_game_time_ms()
+    local cooldown = is_damage and ANOMALY_DAMAGE_COMMENT_CD or ANOMALY_PROXIMITY_COMMENT_CD
+    local last_time = is_damage and LAST_ANOMALY_DAMAGE_COMMENT or LAST_ANOMALY_PROXIMITY_COMMENT
+    local last_spam = is_damage and LAST_ANOMALY_DAMAGE_SPAM or LAST_ANOMALY_PROXIMITY_SPAM
+    
+    -- 1. Anti-spam check (prevents any event registration if too frequent)
+    if (current_time - last_spam) < ANTI_SPAM_CD then
+        return nil -- Abort, too soon even for a silent event
+    end
+
+    -- Update anti-spam timer now that we know we're registering SOMETHING
+    if is_damage then 
+        LAST_ANOMALY_DAMAGE_SPAM = current_time 
+    else 
+        LAST_ANOMALY_PROXIMITY_SPAM = current_time 
+    end
+
+    -- 2. Dialogue Cooldown check
+    local dialogue_ready = (current_time - last_time) >= cooldown
+
+    if mode == 0 then -- Mode: On
+        if dialogue_ready then
+            -- Reset the dialogue cooldown timer
+            if is_damage then 
+                LAST_ANOMALY_DAMAGE_COMMENT = current_time 
+            else 
+                LAST_ANOMALY_PROXIMITY_COMMENT = current_time 
+            end
+            return false -- Dialogue requested
+        else
+            return true -- Silent event (anti-spam passed, but dialogue CD not ready)
+        end
+    elseif mode == 2 then -- Mode: Silent
+        return true -- Always silent if anti-spam passed
+    end
+
+    return nil -- Should not reach here if logic is sound (Mode: Off handled at call sites)
+end
 
 function is_valid_proximity_event(anomaly)
     local player = queries.get_player()
@@ -31,42 +80,33 @@ function is_valid_proximity_event(anomaly)
     -- Rank Check: Only warn inexperienced players
     local player_rank_name = queries.get_rank(player)
     local player_rank_val = queries.get_rank_value(player_rank_name)
-    
 
-    if player_rank_val > mcm.get("max_rank_for_warning") then
+    if player_rank_val > MAX_RANK_FOR_WARNING then
         return false
     end
 
-
-    local is_valid =
-        game.is_cooldown_over(LAST_ANOMALY_PROXIMITY_COMMENT, ANOMALY_PROXIMITY_COMMENT_CD) and
-        queries.distance_between(player, anomaly) > INTERACTION_DISTANCE
-    
-    -- reset cooldown
-    if is_valid then LAST_ANOMALY_PROXIMITY_COMMENT = queries.get_game_time_ms() end
-    return is_valid
-end
-
-function is_valid_damage_event()
-    -- Damage events always trigger if cooldown is over, regardless of rank
-    local is_valid = game.is_cooldown_over(LAST_ANOMALY_DAMAGE_COMMENT, ANOMALY_DAMAGE_COMMENT_CD)
-    if is_valid then LAST_ANOMALY_DAMAGE_COMMENT = queries.get_game_time_ms() end
-    return is_valid
+    return queries.distance_between(player, anomaly) > INTERACTION_DISTANCE
 end
 
 ----------------------------------------------------------------------------------------------------
 -- Function
 ----------------------------------------------------------------------------------------------------
 
-function create_anomaly_interaction_event(anomaly_name, is_damage)
-    local unformatted_description
+function create_anomaly_interaction_event(anomaly_name, is_damage, is_silent)
     local player = game.get_player_character()
+    local player_fmt, player_vals = queries.get_character_event_info(player)
+    local flags = { is_anomaly = true, is_silent = is_silent }
+    
+    local unformatted_description
     if is_damage then
-        unformatted_description = "%s (%s %s, %s rep) was hurt by %s"
-    trigger.talker_game_event_near_player(unformatted_description, {player.name, player.experience, player.faction, player.reputation, anomaly_name}, true, { is_anomaly = true })
+        unformatted_description = player_fmt .. " was hurt by " .. anomaly_name
     else
-        unformatted_description = "%s (%s %s, %s rep) almost got close to a %s"
-        trigger.talker_game_event_near_player(unformatted_description, {player.name, player.experience, player.faction, player.reputation, anomaly_name}, false, { is_anomaly = true })
+        unformatted_description = player_fmt .. " almost got close to a " .. anomaly_name
+    end
+    
+    trigger.talker_game_event_near_player(unformatted_description, player_vals, is_damage, flags)
+    if is_silent == true then
+        log.info("TALKER: Anomaly event registered (silent)")
     end
 end
 
@@ -76,7 +116,7 @@ end
 
 -- Anomaly interaction (Proximity)
 function actor_on_feeling_anomaly(anomaly)
-    if not mcm.get("enable_trigger_proximity_anomalies") then return end
+    if mode_proximity == 1 then return end
 
     local section = anomaly:section()
     if string.find(section, "radioactive") or string.find(section, "radiation") then
@@ -88,14 +128,16 @@ function actor_on_feeling_anomaly(anomaly)
 
     -- Skip if the anomaly is not close enough OR if player rank is too high
     if is_valid_proximity_event(anomaly) then
-        log.debug("Proximity event triggered for: %s", anomaly_name)
-        create_anomaly_interaction_event(anomaly_name, false)
+        local is_silent = get_silence_status(mode_proximity, false)
+        if is_silent ~= nil then
+            create_anomaly_interaction_event(anomaly_name, false, is_silent)
+        end
     end
 end
 
 -- Anomaly hit (Damage)
 function actor_on_hit_callback(obj, amount, local_direction, who, bone_index)
-    if not mcm.get("enable_trigger_damage_anomalies") then return end
+    if mode_damage == 1 then return end
     if not who then return end
     
     -- Check if the source of damage is an anomaly we recognize
@@ -109,9 +151,9 @@ function actor_on_hit_callback(obj, amount, local_direction, who, bone_index)
         return
     end
 
-    if is_valid_damage_event() then
-        log.debug("Damage event triggered for: %s", anomaly_name)
-        create_anomaly_interaction_event(anomaly_name, true)
+    local is_silent = get_silence_status(mode_damage, true)
+    if is_silent ~= nil then
+        create_anomaly_interaction_event(anomaly_name, true, is_silent)
     end
 end
 
