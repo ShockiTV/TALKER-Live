@@ -12,7 +12,7 @@ end
 function try(func, ...)
     local status, result = pcall(func, ...)
     if not status then
-        log.warn("Error: " .. tostring(result))
+        log.debug("Error in try: " .. tostring(result))
         return nil
     end
     return result
@@ -22,12 +22,12 @@ function join_tables(table1, table2)
     local result = {}
     if table1 then
         for _, value in ipairs(table1) do
-            table.insert(result, value)
+            result[#result+1] = value
         end
     end
     if table2 then
         for _, value in ipairs(table2) do
-            table.insert(result, value)
+            result[#result+1] = value
         end
     end
     return result
@@ -45,7 +45,12 @@ function get_character_event_info(char)
     if char.faction == "Monster" or char.faction == "Zombied" then
         return "%s (%s)", {char.name, char.faction}
     else
-        return "%s (%s %s, %s rep)", {char.name, char.experience, char.faction, char.reputation}
+        -- Check for disguise (visual_faction)
+        if char.visual_faction then
+             return "%s (%s %s, %s rep) [disguised as %s]", {char.name, char.experience, char.faction, char.reputation, char.visual_faction}
+        else
+            return "%s (%s %s, %s rep)", {char.name, char.experience, char.faction, char.reputation}
+        end
     end
 end
 
@@ -461,7 +466,7 @@ function get_nearby_characters(center_object, distance, max, exclusion_list)
     local count = 0
     local function on_each_object(obj)
         if is_living_character(obj) then
-            table.insert(characters, obj)
+            characters[#characters+1] = obj
 
             count = count + 1
             if max and count >= max then
@@ -484,7 +489,7 @@ function get_companions(exclude_npc_id)
     for _, npc_id in ipairs(companion_table) do
         local npc_obj = get_obj_by_id(npc_id)
         if npc_obj and npc_obj:alive() and npc_id ~= exclude_npc_id then
-            table.insert(filtered_companion_table, npc_obj)
+            filtered_companion_table[#filtered_companion_table+1] = npc_obj
         end
     end
 
@@ -517,7 +522,7 @@ function is_same_obj(obj1, obj2)
     if not obj1 or not obj2 then return false end
     -- Check if both objects have the 'id' method
     if type(obj1.id) ~= "function" or type(obj2.id) ~= "function" then
-        log.errors("One or both objects do not have an 'id' method", 4)
+        log.error("One or both objects do not have an 'id' method")
         return false
     end
     -- Compare the ids of the objects
@@ -527,7 +532,7 @@ end
 function get_distance_between(obj1, obj2)
     -- Check if either object is nil
     if not obj1 or not obj2 then
-        log.errors("get_distance_between called with nil object, defaulting to far away")
+        log.error("get_distance_between called with nil object, defaulting to far away")
         return 100000
     end
 
@@ -542,7 +547,7 @@ function get_distance_between(obj1, obj2)
     -- Check for errors in the pcall
     if not status then
         -- Log the error
-        log.errors("Error in distance_between_actually_safe: ", result)
+        log.error("Error in distance_between_actually_safe: " .. tostring(result))
 
         -- Return a large number to indicate error
         return 1000000
@@ -574,7 +579,7 @@ function load_xml(input)
         -- Try without prefix as a fallback
         result = game.translate_string(input)
         if result == input then
-            log.warn("Translation not found for " .. input)
+            log.debug("Translation not found for " .. input)
             return ""
         end
     end
@@ -592,7 +597,7 @@ function load_random_xml(input)
         local key = baseKey .. "_" .. i
         local translation = game.translate_string(key)
         if translation == key then break end
-        table.insert(translations, translation)
+        translations[#translations+1] = translation
         i = i + 1
     end
 
@@ -600,14 +605,14 @@ function load_random_xml(input)
     if #translations == 0 then
         local t = game.translate_string(baseKey)
         if t ~= baseKey then
-            table.insert(translations, t)
+            translations[#translations+1] = t
         end
     end
 
     if #translations > 0 then
         return translations[math.random(1, #translations)]
     else
-        log.warn("no xml found for " .. input)
+        log.debug("no xml found for " .. input)
     end
 end
 
