@@ -92,13 +92,30 @@ end
 
 function m.create_character(game_object_person)
 	if not game_object_person then
-		log.warn("create_character called with nil object")
+		log.debug("create_character called with nil object")
 		return nil
 	end
 	local game_id = get_id(game_object_person)
 	local name = query.get_name(game_object_person)
 	local experience = query.get_rank(game_object_person)
 	local raw_faction = query.get_faction(game_object_person) -- Returns "Trader" for traders, or technical faction name
+
+	-- DISGUISE LOGIC: If this is the player, check for disguise and use TRUE faction
+	local visual_faction = nil
+	if m.is_player(game_id) then
+		local disguise_status = m.get_player_disguise_status()
+		if disguise_status and disguise_status.is_disguised then
+			log.info(
+				"Player is disguised. Using TRUE faction for event logging: "
+					.. disguise_status.true_faction
+					.. " instead of visual: "
+					.. disguise_status.visual_faction
+			)
+			raw_faction = disguise_status.true_faction
+			visual_faction = disguise_status.visual_faction
+		end
+	end
+
 	local faction = get_faction_name(raw_faction) or raw_faction or "unknown" -- Map to display name, or use raw if no mapping exists
 	local raw_reputation = nil
 	if game_object_person.character_reputation then
@@ -122,7 +139,7 @@ function m.create_character(game_object_person)
 			.. ", reputation: "
 			.. reputation_tier
 	)
-	return Character.new(game_id, name, experience, faction, reputation_tier, weapon_description)
+	return Character.new(game_id, name, experience, faction, reputation_tier, weapon_description, visual_faction)
 end
 
 function m.get_player_weapon()
@@ -145,7 +162,7 @@ function m.create_dialogue_event(speaker_id, dialogue, source_event)
 
 	-- If speaker character creation failed, abort
 	if not speaker_char then
-		log.warn("Failed to create speaker character for dialogue event")
+		log.info("Failed to create speaker character for dialogue event")
 		return nil
 	end
 
@@ -387,6 +404,68 @@ function m.is_player_involved(events, player_name)
 	return false
 end
 
+-- Context-aware character mention detection
+-- Returns a set (table with character IDs as keys) of notable characters that are contextually relevant
+-- based on three checks: name in events, area in events, or current location match
+function m.get_mentioned_characters(events, current_location, notable_characters)
+	local mentioned = {}
+
+	-- Helper: Check if a name appears in any event
+	local function is_name_in_events(name)
+		for _, event in ipairs(events) do
+			local content = event.content or Event.describe_short(event)
+			-- Case-insensitive search for character name
+			if content:lower():find(name:lower(), 1, true) then
+				return true
+			end
+		end
+		return false
+	end
+
+	-- Helper: Check if an area is mentioned in any event
+	local function is_area_in_events(area)
+		for _, event in ipairs(events) do
+			local content = event.content or Event.describe_short(event)
+			-- Case-insensitive search for area name
+			if content:lower():find(area:lower(), 1, true) then
+				return true
+			end
+		end
+		return false
+	end
+
+	-- Check each notable character against our three criteria
+	for _, char in ipairs(notable_characters) do
+		local char_id = char.id or (char.ids and char.ids[1])
+
+		-- Check 1: Character name mentioned in events
+		local names_to_check = char.names or { char.name }
+		local name_found = false
+		for _, name in ipairs(names_to_check) do
+			if name and is_name_in_events(name) then
+				name_found = true
+				break
+			end
+		end
+
+		if name_found then
+			mentioned[char_id] = true
+		end
+
+		-- Check 2: Character's area mentioned in events
+		if not mentioned[char_id] and char.area and is_area_in_events(char.area) then
+			mentioned[char_id] = true
+		end
+
+		-- Check 3: Current location matches character's area
+		if not mentioned[char_id] and char.area and char.area == current_location then
+			mentioned[char_id] = true
+		end
+	end
+
+	return mentioned
+end
+
 ------------------------------------------------------------
 --- OTHER
 ------------------------------------------------------------
@@ -440,6 +519,35 @@ local game_files = talker_game_files or require("tests.mocks.mock_game_queries")
 -- FILES
 function m.get_base_path()
 	return game_files.get_base_path()
+end
+
+function m.get_player_disguise_status()
+	-- Check if gameplay_disguise script is available
+	if not gameplay_disguise then
+		return nil
+	end
+
+	-- Check if player is disguised
+	if not gameplay_disguise.is_actor_disguised() then
+		return { is_disguised = false }
+	end
+
+	-- Retrieve disguise details
+	-- default_comm is the player's TRUE faction (e.g., "stalker")
+	local raw_true_faction = gameplay_disguise.get_default_comm()
+	-- current community is the VISUAL faction (e.g., "dolg")
+	local player = query.get_player()
+	local raw_visual_faction = query.get_faction(player)
+
+	-- Map technical names to display names using our factions module
+	local true_faction_display = get_faction_name(raw_true_faction) or raw_true_faction
+	local visual_faction_display = get_faction_name(raw_visual_faction) or raw_visual_faction
+
+	return {
+		is_disguised = true,
+		true_faction = true_faction_display,
+		visual_faction = visual_faction_display,
+	}
 end
 
 local is_test_env, mock_game_adapter = pcall(require, "tests.mocks.mock_game_adapter")
