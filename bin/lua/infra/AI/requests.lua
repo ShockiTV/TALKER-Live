@@ -18,6 +18,7 @@ local memory_store = require("domain.repo.memory_store")
 local event_store = require("domain.repo.event_store")
 local config = require("interface.config")
 local dialogue_cleaner = require("infra.AI.dialogue_cleaner")
+local normalizer = require("infra.AI.message_normalizer")
 
 local gpt_model = require("infra.AI.GPT")
 local openrouter = require("infra.AI.OpenRouterAI")
@@ -105,14 +106,14 @@ local function check_if_id_in_recent_events(recent_events, picked_speaker_id)
 			return true
 		end
 	end
-	logger.warn("AI picked invalid speaker: " .. tostring(picked_speaker_id) .. ". Valid IDs were: " .. witness_ids)
+	logger.info("AI picked invalid speaker: " .. tostring(picked_speaker_id) .. ". Valid IDs were: " .. witness_ids)
 	return false
 end
 
 local function is_valid_speaker(recent_events, picked_speaker_id)
 	-- check if speaker id was in recent events
 	if not check_if_id_in_recent_events(recent_events, picked_speaker_id) then
-		logger.warn("AI did not pick a valid speaker: " .. picked_speaker_id)
+		logger.info("AI did not pick a valid speaker: " .. picked_speaker_id)
 		return false
 	end
 
@@ -121,7 +122,7 @@ local function is_valid_speaker(recent_events, picked_speaker_id)
 
 	-- check if speaker is on cooldown
 	if is_speaker_on_cooldown(picked_speaker_id, current_game_time) then
-		logger.warn("AI picked speaker on cooldown: " .. picked_speaker_id)
+		logger.info("AI picked speaker on cooldown: " .. picked_speaker_id)
 		return false
 	end
 
@@ -140,7 +141,7 @@ function AI_request.pick_speaker(recent_events, compress_memories)
 	local speakers = transformations.pick_potential_speakers(recent_events)
 
 	if not speakers then -- only player
-		logger.warn("No viable speaker found close enough to player")
+		logger.info("No viable speaker found close enough to player")
 		return nil
 	end
 
@@ -151,7 +152,7 @@ function AI_request.pick_speaker(recent_events, compress_memories)
 	local available_speakers = filter_speakers_by_cooldown(speakers, current_game_time)
 
 	if #available_speakers == 0 then
-		logger.warn("All potential speakers are on cooldown")
+		logger.info("All potential speakers are on cooldown")
 		return nil
 	end
 
@@ -224,23 +225,42 @@ function AI_request.pick_speaker(recent_events, compress_memories)
 
 	local messages =
 		prompt_builder.create_pick_speaker_prompt(combined_events_list, available_speakers, mid_term_memory)
+
+	-- Normalizing messages for Gemini in the Pick Speaker function to minimize chances of malformed output.
+	if config.is_gemini() then
+		messages = normalizer.normalize(messages)
+	end
+
 	-- call the model to pick the next speaker
 	return model().pick_speaker(messages, function(response)
 		local picked_speaker_id = nil
 
-		-- Try to parse as JSON first
-		local status, decoded = pcall(json.decode, response)
+		-- 1. Try to parse as JSON first (Ideal case)
+		local status, decoded = pcall(json.decode, response or "")
 		if status and type(decoded) == "table" and decoded.id then
 			picked_speaker_id = decoded.id
 			logger.debug("Parsed speaker ID from JSON: " .. tostring(picked_speaker_id))
 		else
-			-- Fallback to raw text parsing (legacy/safeguard)
-			local clean_response = response:match("^%s*(%d+)%s*$") -- extract integers only, ignoring whitespace
-			if clean_response then
-				picked_speaker_id = tonumber(clean_response)
-				logger.debug("Parsed speaker ID from raw text: " .. tostring(picked_speaker_id))
+			-- 2. Fallback: Robust extracting of ID from malformed output (specifically for Gemini/lazy models)
+			-- This regex looks for digits possibly inside [ID: 1234] or ID: 1234 or just 1234
+			local pattern_with_label = "ID:%s*(%d+)"
+			local id_match = response:match(pattern_with_label)
+
+			if not id_match then
+				-- Just look for the first sequence of digits in the response
+				id_match = response:match("(%d+)")
+			end
+
+			if id_match then
+				picked_speaker_id = tonumber(id_match)
+				logger.info(
+					"Extracted speaker ID via fallback cleaner: "
+						.. tostring(picked_speaker_id)
+						.. " from response: "
+						.. tostring(response)
+				)
 			else
-				logger.warn("Could not parse speaker ID from response: " .. tostring(response))
+				logger.warn("Could not extract any numeric speaker ID from response: " .. tostring(response))
 			end
 		end
 
@@ -293,7 +313,7 @@ function AI_request.update_narrative(speaker_id, request_dialogue)
 
 	-- LOCK CHECK
 	if AI_request.active_updates[speaker_id] then
-		logger.warn("Memory update already in progress for " .. speaker_id .. ". Skipping duplicate request.")
+		logger.debug("Memory update already in progress for " .. speaker_id .. ". Skipping duplicate request.")
 		-- We still request dialogue because the previous update will eventually finish,
 		if request_dialogue then
 			request_dialogue(speaker_id)
@@ -322,16 +342,84 @@ function AI_request.update_narrative(speaker_id, request_dialogue)
 		table.remove(new_events)
 	end
 
-	-- Bootstrapping: If Long-Term Memory is empty, generate it from scratch using all available events
+	-- SAFETY TRAP: If narrative is stuck at a very long length (likely due to LLM failure), we force a reset.
+	if current_narrative and string.len(current_narrative) > 8500 then
+		logger.warn(
+			"Narrative length ("
+				.. string.len(current_narrative)
+				.. ") exceeds safety limit (8500). Forcing bootstrap reset."
+		)
+
+		current_narrative = nil
+		context.narrative = nil -- Clear local ref so bootstrapping logic below picks it up
+
+		-- Refetch ALL events to ensure we rebuild history from scratch (true bootstrapping)
+		-- Otherwise we'd only have the tiny delta of 'new_events', resulting in amnesia.
+		new_events = memory_store:get_memories(speaker_id)
+		if not new_events then
+			new_events = {}
+		end
+		context.new_events = new_events
+	end
+
+	-- Bootstrapping: If Long-Term Memory is empty, check if this is truly a migration scenario
 	if not current_narrative or current_narrative == "" then
-		logger.info("Long-Term Memory is empty. Bootstrapping Long-Term Memory from raw events.")
-		-- Use the Narrative Update prompt to generate the initial history
+		-- Get total event count to distinguish new characters from migration scenarios
+		local total_events = memory_store:get_memories(speaker_id)
+		local total_event_count = total_events and #total_events or 0
+
+		-- If total events <≈ COMPRESSION_THRESHOLD (x2 for safety), this is a NEW character (just hit threshold)
+		-- Use compression instead of bootstrapping to maintain filtering hierarchy
+		if total_event_count <= (transformations.COMPRESSION_THRESHOLD * 2) then
+			logger.info(
+				"Long-Term Memory is empty with "
+					.. total_event_count
+					.. " total events. This appears to be a new character. Using compression instead of bootstrapping."
+			)
+			-- Use compression prompt to filter events, then directly promote to LTM
+			local messages = prompt_builder.create_compress_memories_prompt(new_events, speaker)
+
+			model().summarize_story(messages, function(summary_text)
+				if not summary_text then
+					logger.error("Failed to generate initial compression for new character.")
+					clear_lock()
+					if request_dialogue then
+						request_dialogue(speaker_id)
+					end
+					return
+				end
+
+				logger.info("Initial compression complete. Promoting directly to Long-Term Memory.")
+				local newest_event_time = new_events[#new_events].game_time_ms
+
+				-- Directly promote filtered summary to LTM (no second LLM call needed)
+				memory_store:update_narrative(speaker_id, summary_text, newest_event_time)
+
+				clear_lock()
+				if request_dialogue then
+					request_dialogue(speaker_id)
+				end
+			end)
+			return
+		end
+
+		-- Otherwise: High event count indicates migration/legacy scenario OR "safety trap" memory reset - use bootstrapping
+		logger.info(
+			"Long-Term Memory is empty with "
+				.. total_event_count
+				.. " total events. This appears to be a migration scenario. Bootstrapping Long-Term Memory."
+		)
 		local messages = prompt_builder.create_update_narrative_prompt(speaker, "", new_events)
+
+		-- Not normalizing messages for Gemini - it actually makes it worse.
+		--if config.is_gemini() then
+		--	messages = normalizer.normalize(messages)
+		--end
 
 		model().summarize_story(messages, function(updated_narrative)
 			if not updated_narrative then
 				logger.error("Failed to generate bootstrapped narrative.")
-				clear_lock() -- RELEASE LOCK
+				clear_lock()
 				if request_dialogue then
 					request_dialogue(speaker_id)
 				end
@@ -351,7 +439,24 @@ function AI_request.update_narrative(speaker_id, request_dialogue)
 		return
 	end
 
-	-- PHASE 1: Promote Compressed Memory to Long-Term Memory (if applicable)
+	-- SPECIAL CASE: Mid-term memory exists but LTM is empty. This will be the case for new characters reaching their SECOND compression cycle.
+	-- We directly promote the mid-term memory to LTM without an LLM call to save tokens and time (the content was already filtered during initial compression
+	-- and an empty LTM means we don't need to consider an old narrative or character count.).
+	-- Then we compress remaining raw events into a new mid-term memory.
+	local oldest_event = new_events[1]
+	if oldest_event and oldest_event.flags and oldest_event.flags.is_compressed and not current_narrative then
+		logger.info("Mid-term memory exists but LTM is empty. Promoting mid-term directly to LTM.")
+		memory_store:update_narrative(speaker_id, oldest_event.content, oldest_event.game_time_ms)
+		table.remove(new_events, 1) -- Remove promoted mid-term
+		context.narrative = oldest_event.content -- Update local ref
+
+		-- Now compress remaining raw events
+		AI_request.phase_2_compression(speaker_id, context.narrative, new_events, request_dialogue, clear_lock)
+		return
+	end
+
+	-- PHASE 1: Promote Compressed Memory to Long-Term Memory. This will happen starting with the THIRD compression cycle for a character.
+	-- Thereafter, this will be standard procedure.
 	local oldest_event = new_events[1]
 	if oldest_event and oldest_event.flags and oldest_event.flags.is_compressed then
 		logger.info("Phase 1: Oldest event is compressed. Integrating into LTM.")
@@ -366,6 +471,11 @@ function AI_request.update_narrative(speaker_id, request_dialogue)
 		logger.info("Long-Term Memory exists. Using LLM to integrate compressed memory.")
 		-- We pass ONLY the compressed event for integration
 		local messages = prompt_builder.create_update_narrative_prompt(speaker, current_narrative, { oldest_event })
+
+		-- Normalizing messages for Gemini disabled, for now. Monitoring results.
+		-- if config.is_gemini() then
+		-- 	messages = normalizer.normalize(messages)
+		-- end
 
 		model().summarize_story(messages, function(updated_narrative)
 			if not updated_narrative then
@@ -408,6 +518,11 @@ function AI_request.phase_2_compression(speaker_id, current_narrative, raw_event
 	local speaker = AI_request.get_character_by_id(speaker_id, raw_events)
 	local messages = prompt_builder.create_compress_memories_prompt(raw_events, speaker)
 
+	-- Normalizing messages for Gemini disabled, for now. Monitoring results.
+	-- if config.is_gemini() then
+	-- 	messages = normalizer.normalize(messages)
+	-- end
+
 	model().summarize_story(messages, function(summary_text) -- Using summarize_story as it is standard for compression
 		if not summary_text then
 			logger.error("Failed to generate compression summary.")
@@ -442,7 +557,6 @@ function AI_request.phase_2_compression(speaker_id, current_narrative, raw_event
 
 		-- We store the event, setting only THIS speaker as witness.
 		event_store:store_event(compressed_event)
-
 		logger.info("Compressed memory injected. Time: " .. compressed_event.game_time_ms)
 
 		if request_dialogue then
@@ -457,6 +571,7 @@ end
 -- Backward compatibility alias if needed
 AI_request.compress_memories = AI_request.update_narrative
 
+-- Main function - uses memories and events for context to produce dialogue
 function AI_request.request_dialogue(speaker_id, callback)
 	logger.info("AI_request.request_dialogue")
 	logger.info("AI_request.request_dialogue")
@@ -491,12 +606,17 @@ function AI_request.request_dialogue(speaker_id, callback)
 
 	-- Safety check
 	if (not memory_context.new_events or #memory_context.new_events == 0) and not memory_context.narrative then
-		logger.warn("Requesting dialogue with absolutely no context (no narrative, no events).")
+		logger.info("Requesting dialogue with absolutely no context (no narrative, no events).")
 	end
 
 	local speaker_character = AI_request.get_character_by_id(speaker_id, memory_context.new_events)
 	local messages, timestamp_to_delete =
 		prompt_builder.create_dialogue_request_prompt(speaker_character, memory_context)
+
+	-- Normalizing messages for Gemini disabled, for now. Monitoring results.
+	-- if config.is_gemini() then
+	-- 	messages = normalizer.normalize(messages)
+	-- end
 
 	-- call the model to generate the dialogue
 	return model().generate_dialogue(messages, function(generated_dialogue)
@@ -514,10 +634,9 @@ end
 ------------------------------------------------------------------------------------------
 -- Utility functions
 ------------------------------------------------------------------------------------------
-
-AI_request.witnesses = {}
 -- Utility function to extract witness names using saved IDs.
 -- Can optionally search a provided list of events instead of the global witness list (thread-safe).
+AI_request.witnesses = {}
 function AI_request.get_character_by_id(speaker_id, search_events)
 	logger.info("Getting character name for ID: " .. speaker_id)
 
