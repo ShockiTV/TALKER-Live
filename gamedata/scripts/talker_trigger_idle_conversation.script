@@ -89,7 +89,7 @@ function on_every_10_seconds()
     for _, npc in ipairs(all_candidates) do
         local npc_obj = queries.get_obj_by_id(npc.game_id)
         if npc_obj and not queries.is_player(npc_obj) and not queries.is_in_combat(npc_obj) then
-            table.insert(valid_candidates, npc_obj)
+            valid_candidates[#valid_candidates+1] = npc_obj
         end
     end
 
