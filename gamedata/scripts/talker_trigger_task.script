@@ -156,7 +156,11 @@ function on_task_completed_event(tsk, cached_info)
     elseif server_entity.reputation then
         -- This property availability on server objects varies by engine version/mod
         -- but usually cse_alife_trader_abstract has it.
-        rep_val = server_entity.reputation
+        if type(server_entity.reputation) == "function" then
+            rep_val = server_entity:reputation()
+        else
+            rep_val = server_entity.reputation
+        end
     end
     
     local rep_tier = queries.get_reputation_tier(rep_val)
