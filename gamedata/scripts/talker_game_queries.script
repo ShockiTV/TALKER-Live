@@ -325,6 +325,10 @@ function get_reputation_tier(reputation_value)
     if not reputation_value then
         return "Neutral"
     end
+    if type(reputation_value) ~= "number" then
+         log.error("get_reputation_tier: expected number, got " .. type(reputation_value))
+         return "unknown"
+    end
     if reputation_value >= 2000 then
         return "Excellent"
     elseif reputation_value >= 1500 then
