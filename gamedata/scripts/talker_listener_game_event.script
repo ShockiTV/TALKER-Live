@@ -2,23 +2,10 @@ package.path = package.path .. ";./bin/lua/?.lua;"
 local logger = require("framework.logger")
 local interface = require("interface.interface")
 
-AddScriptCallback("talker_game_event")
 AddScriptCallback("talker_event")
 AddScriptCallback("talker_event_near_player")
 
--- Legacy listener: string-based events
-function talker_on_game_event(unformatted_description, event_objects, witnesses, important, flags)
-    interface.register_game_event(unformatted_description, event_objects, witnesses, important, flags)
-end
-
-function talker_safely_on_game_event(unformatted_description, event_objects, witnesses, important, flags)
-    local success, err = pcall(talker_on_game_event, unformatted_description, event_objects, witnesses, important, flags)
-    if not success then
-        logger.error("Error: " .. err)
-    end
-end
-
--- NEW: Typed event listener (with explicit witnesses)
+-- Typed event listener (with explicit witnesses)
 function talker_on_typed_event(event_type, context, witnesses, important, flags)
     interface.register_typed_event(event_type, context, witnesses, important, flags)
 end
@@ -43,7 +30,6 @@ function talker_safely_on_typed_event_near_player(event_type, context, important
 end
 
 function on_game_start()
-    RegisterScriptCallback("talker_game_event", talker_safely_on_game_event)
     RegisterScriptCallback("talker_event", talker_safely_on_typed_event)
     RegisterScriptCallback("talker_event_near_player", talker_safely_on_typed_event_near_player)
 end
