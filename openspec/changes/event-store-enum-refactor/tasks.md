@@ -37,6 +37,23 @@
   - Migrated: death, artifact, anomaly, reload, weapon_jam, callout, taunt triggers
   - Legacy flags kept in `Event.is_junk_event()` for backward compatibility with old saves
 - [x] Migrate remaining legacy usages (player_speaks, player_whispers listeners)
-- [ ] Remove old `Event.create_event()` constructor (kept for backward compatibility)
-- [ ] Remove old `talker_game_event` interface (kept for backward compatibility)
-- [ ] Update tests to use typed events
+- [x] Update tests to use typed events
+  - All tests now use `Event.create()` with `EventType` enum
+  - Legacy `Event.create_event()` and `LEGACY_TYPE` removed
+- [x] Remove old `Event.create_event()` constructor
+- [x] Remove old `talker_game_event` interface from `trigger.lua`
+
+## Completion Status
+
+**REFACTOR FULLY COMPLETE** - All migration and cleanup tasks done.
+
+Removed legacy interfaces:
+- `Event.create_event()` - use `Event.create(type, context, ...)` instead
+- `Event.LEGACY_TYPE` - use `EventType` enum instead
+- `trigger.talker_game_event()` - use `trigger.talker_event()` instead
+- `trigger.talker_game_event_near_player()` - use `trigger.talker_event_near_player()` instead
+- `trigger.talker_character_instructions()` - removed
+- `trigger.talker_silent_event_near_player()` - removed
+- `trigger.talker_silent_event()` - removed
+
+Note: `Event.is_junk_event()` still supports legacy flag-based detection for backward compatibility with old save data.

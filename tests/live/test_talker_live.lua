@@ -24,9 +24,12 @@ talker.set_game_adapter(mock_game_adapter)
 ----------------------------------------------------------------------------------------------------------------
 local mock_characters = require('tests.mocks.mock_characters')
 local Event = require('domain.model.event')
+local EventType = require('domain.model.event_types')
 
 function create_mock_event(description, objects)
-    return Event.create_event(description, objects, 100, "Cordon", mock_characters)
+    -- Create typed ACTION event for test purposes
+    local context = { action_description = description, involved_objects = objects }
+    return Event.create(EventType.ACTION, context, 100, "Cordon", mock_characters)
 end
 
 ----------------------------------------------------------------------------------------------------------------

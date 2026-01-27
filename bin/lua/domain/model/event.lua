@@ -8,15 +8,6 @@ local Event = {}
 -- Expose EventType enum for external use
 Event.TYPE = EventType
 
--- Legacy type templates (deprecated, kept for compatibility)
-Event.LEGACY_TYPE = {
-	DIALOGUE = "%s: '%s'",
-	ACTION = "%s %s %s",
-	KILL = "%s killed %s",
-	SPOT = "%s spotted %s",
-	HEAR = "%s heard %s",
-}
-
 -- NEW: Typed event constructor
 function Event.create(type, context, game_time_ms, world_context, witnesses, flags)
 	return {
@@ -27,27 +18,6 @@ function Event.create(type, context, game_time_ms, world_context, witnesses, fla
 		witnesses = witnesses or {},
 		flags = flags or {},
 	}
-end
-
--- DEPRECATED: Old event constructor (keep for compatibility during migration)
-function Event.create_event(
-	unformatted_description_or_type,
-	involved_objects,
-	game_time_ms,
-	world_context,
-	witnesses,
-	flags,
-	source_event
-)
-	local event = {}
-	event.description = unformatted_description_or_type
-	event.involved_objects = involved_objects or {}
-	event.game_time_ms = game_time_ms
-	event.world_context = world_context
-	event.witnesses = witnesses or {}
-	event.flags = flags or {} -- Add flags to the event object
-	event.source_event = source_event
-	return event
 end
 
 function Event.was_conversation(event)
@@ -124,12 +94,14 @@ function Event.is_junk_event(event)
 	-- Fallback for legacy flag-based events
 	local flags = event.flags
 	if flags then
-		return flags.is_artifact
+		if flags.is_artifact
 			or flags.is_anomaly
 			or flags.is_reload
 			or flags.is_weapon_jam
 			or flags.is_callout
-			or flags.is_taunt
+			or flags.is_taunt then
+			return true
+		end
 	end
 
 	return false
@@ -304,7 +276,7 @@ function Event.describe(event)
 end
 
 function Event.describe_short(event)
-	return Event.describe_event(event) -- temporary
+	return Event.describe(event)
 end
 
 function Event.was_witnessed_by(event, character_id)
