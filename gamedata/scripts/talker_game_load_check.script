@@ -12,7 +12,6 @@ local modules = {
     talker_input_chatbox = "Talker Input Chatbox",
     talker_input_mic = "Talker Input Mic",
     talker_listener_game_event = "Talker Listener Game Event",
-    talker_listener_game_event_near_player = "Talker Listener Game Event Near Player",
     talker_listener_player_speaks = "Talker Listener Player Speaks",
     talker_trigger_reload = "Talker Trigger Reload",
     talker_trigger_anomalies = "Talker Trigger Anomalies",

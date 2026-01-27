@@ -8,7 +8,7 @@ local Event = {}
 -- Expose EventType enum for external use
 Event.TYPE = EventType
 
--- NEW: Typed event constructor
+-- Typed event constructor
 function Event.create(type, context, game_time_ms, world_context, witnesses, flags)
 	return {
 		type = type,

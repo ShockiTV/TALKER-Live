@@ -83,14 +83,6 @@ function gameObj_to_characters(gameObjs)
 	return characters
 end
 
-function m.create_game_event(unformatted_description, involved_objects, witnesses, flags)
-	local game_time = query.get_game_time_ms()
-	local world_context = query.describe_world()
-	local new_event =
-		Event.create_event(unformatted_description, involved_objects, game_time, world_context, witnesses, flags)
-	return new_event
-end
-
 function m.create_character(game_object_person)
 	if not game_object_person then
 		log.debug("create_character called with nil object")

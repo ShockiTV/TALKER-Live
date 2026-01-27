@@ -39,21 +39,31 @@
 - [x] Migrate remaining legacy usages (player_speaks, player_whispers listeners)
 - [x] Update tests to use typed events
   - All tests now use `Event.create()` with `EventType` enum
-  - Legacy `Event.create_event()` and `LEGACY_TYPE` removed
-- [x] Remove old `Event.create_event()` constructor
+  - Legacy `LEGACY_TYPE` removed from tests
 - [x] Remove old `talker_game_event` interface from `trigger.lua`
+- [x] Remove old `Event.create_event()` constructor
+- [x] Remove `interface.register_game_event()` and related legacy functions
+- [x] Remove `game_adapter.create_game_event()` 
+- [x] Delete `talker_listener_game_event_near_player.script`
 
 ## Completion Status
 
-**REFACTOR FULLY COMPLETE** - All migration and cleanup tasks done.
+**REFACTOR COMPLETE** - All triggers migrated to typed events.
 
-Removed legacy interfaces:
-- `Event.create_event()` - use `Event.create(type, context, ...)` instead
-- `Event.LEGACY_TYPE` - use `EventType` enum instead
-- `trigger.talker_game_event()` - use `trigger.talker_event()` instead
-- `trigger.talker_game_event_near_player()` - use `trigger.talker_event_near_player()` instead
+All legacy interfaces removed:
+- `Event.create_event()` - removed, use `Event.create()` instead
+- `Event.LEGACY_TYPE` - removed, use `EventType` enum instead
+- `interface.register_game_event()` - removed, use `interface.register_typed_event()` instead
+- `interface.register_game_event_near_player()` - removed, use `interface.register_typed_event_near_player()` instead
+- `interface.register_silent_event_near_player()` - removed, use flags `{ is_silent = true }`
+- `interface.register_silent_event()` - removed
+- `interface.register_character_instructions()` - removed
+- `game_adapter.create_game_event()` - removed
+- `trigger.talker_game_event()` - removed, use `trigger.talker_event()` instead
+- `trigger.talker_game_event_near_player()` - removed, use `trigger.talker_event_near_player()` instead
 - `trigger.talker_character_instructions()` - removed
 - `trigger.talker_silent_event_near_player()` - removed
 - `trigger.talker_silent_event()` - removed
+- `talker_listener_game_event_near_player.script` - deleted
 
 Note: `Event.is_junk_event()` still supports legacy flag-based detection for backward compatibility with old save data.
