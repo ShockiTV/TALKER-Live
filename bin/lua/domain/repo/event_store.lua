@@ -36,6 +36,21 @@ end
 -- Method for loading the event store data
 function EventStore:load_save_data(saved_events)
 	logger.info("Loading event store...")
+	
+	-- MIGRATION: Check if saved data uses old format (content string instead of typed events)
+	-- Old format events have a 'content' field with a string description
+	-- New format events have a 'type' field with an EventType enum value
+	if saved_events then
+		for _, event in pairs(saved_events) do
+			-- Check first event to detect format
+			if event.content and type(event.content) == "string" and not event.type then
+				logger.warn("Detected old event format (content-based). Wiping event store for clean migration.")
+				saved_events = {}
+			end
+			break -- Only need to check first event
+		end
+	end
+	
 	self.events = saved_events or {}
 
 	-- Rebuild sorted_keys and count
