@@ -10,6 +10,10 @@ local logger = require("framework.logger")
 local game = require("infra.game_adapter")
 local mcm = talker_mcm
 local queries = talker_game_queries
+
+-- EventType shorthand for cleaner code
+local EventType = trigger.EventType
+
 -- Saved variable to track the number of visits to each map
 local level_visit_count = {}
 local commented_already = false
@@ -31,38 +35,40 @@ function on_map_change_event(previous_map, current_map)
     local visit_count = level_visit_count[current_map]
 
     local player = game.get_player_character()
-    local player_fmt, player_vals = queries.get_character_event_info(player)
     local companions = game.get_companions() or {}
-    local description = ""
     local witnesses = {}
-    local visit_amount = visit_count > 3 and "again" or (visit_count > 1 and "for the " .. visit_count .. "th time" or "for the first time")
     local previous_map_name = locations.get_location_name(previous_map)
     local current_map_name = locations.get_location_name(current_map)
     local current_map_description = locations.describe_location_detailed(current_map)
     
-    if #companions > 0 then 
-        local names_list = {}
-        for _, companion in ipairs(companions) do
-            names_list[#names_list+1] = companion.name
-            witnesses[#witnesses+1] = companion
-        end
-        
-        local companion_names = ""
-        if #names_list == 1 then
-            companion_names = names_list[1]
-        else
-            local last_name = table.remove(names_list)
-            companion_names = table.concat(names_list, ", ") .. " and " .. last_name
-        end
-        description = player_fmt .. " and their travelling companions " .. companion_names .. " traveled from " .. previous_map_name .. " to " .. current_map_name .. " " .. visit_amount .. ". " .. current_map_description
-    else
-        description = player_fmt .. " traveled from " .. previous_map_name .. " to " .. current_map_name .. " " .. visit_amount .. ". " .. current_map_description
+    -- Build witness list
+    for _, companion in ipairs(companions) do
+        witnesses[#witnesses+1] = companion
     end
-
     witnesses[#witnesses+1] = player
+
+    -- Create typed event context
+    local context = {
+        actor = player,
+        source = previous_map_name,
+        destination = current_map_name,
+        visit_count = visit_count,
+        destination_description = current_map_description,
+        companions = companions
+    }
+
     local is_silent = (mode_map_transition == 2)
-    trigger.talker_game_event(description, player_vals, witnesses, true, { is_map_transition = true, is_silent = is_silent })
-    if is_silent == true then
+
+    -- Use new typed event system
+    trigger.talker_event(
+        EventType.MAP_TRANSITION,
+        context,
+        witnesses,
+        true, -- important
+        { is_silent = is_silent }
+    )
+
+    if is_silent then
         logger.info("TALKER: Map transition event registered (silent)")
     end
 end

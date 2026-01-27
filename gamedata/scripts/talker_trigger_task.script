@@ -7,6 +7,9 @@ local trigger = require("interface.trigger")
 local game_adapter = require("infra.game_adapter")
 local mcm = talker_mcm
 
+-- EventType shorthand for cleaner code
+local EventType = trigger.EventType
+
 local script_name = "TALKER Trigger Task"
 local original_task_callback = nil
 
@@ -210,18 +213,7 @@ function on_task_completed_event(tsk, cached_info)
 
     local witnesses = game_adapter.get_characters_near_player()
     local player = game_adapter.get_player_character()
-    local player_fmt, player_vals = queries.get_character_event_info(player)
     local companions = game_adapter.get_companions() or {}
-    
-    -- Format Description
-    -- Format: "Name (Rank Faction, Reputation rep)"
-    -- e.g. "Wolf (Experienced Loner, Excellent rep)"
-    local giver_desc_str = string.format("%s (%s %s, %s rep)", 
-        task_giver_character.name, 
-        task_giver_character.experience, 
-        task_giver_character.faction, 
-        task_giver_character.reputation
-    )
 
     if #companions > 0 then 
         local names_list = {}
@@ -229,25 +221,27 @@ function on_task_completed_event(tsk, cached_info)
             names_list[#names_list+1] = companion.name
             witnesses[#witnesses+1] = companion
         end
-        
-        local companion_names = ""
-        if #names_list == 1 then
-            companion_names = names_list[1]
-        else
-            local last_name = table.remove(names_list)
-            companion_names = table.concat(names_list, ", ") .. " and " .. last_name
-        end
-        -- Format and send the event
-        local description = player_fmt .. " and their travelling companions " .. companion_names .. " completed the task '" .. task_title .. "' for " .. giver_desc_str .. "!"
-        trigger.talker_game_event(description, player_vals, witnesses, true, { is_task = true, is_silent = is_silent })
-     
-    else
-        local description = player_fmt .. " completed the task '" .. task_title .. "' for " .. giver_desc_str .. "!"
-        trigger.talker_game_event(description, player_vals, witnesses, true, { is_task = true, is_silent = is_silent })
-        
     end
+
+    -- Create typed event context
+    local context = {
+        actor = player,
+        action = "completed",
+        task_name = task_title,
+        task_giver = task_giver_character,
+        companions = companions
+    }
+
+    -- Use new typed event system
+    trigger.talker_event(
+        EventType.TASK,
+        context,
+        witnesses,
+        true, -- important
+        { is_silent = is_silent }
+    )
     
-    if is_silent == true then
+    if is_silent then
         log.info("TALKER: Task event registered (silent)")
     end
 end

@@ -5,6 +5,7 @@ local prompt_builder = {}
 package.path = package.path .. ";./bin/lua/?.lua;"
 local logger = require("framework.logger")
 local Event = require("domain.model.event")
+local EventType = require("domain.model.event_types")
 local Character = require("domain.model.character")
 local event_store = require("domain.repo.event_store")
 local mcm = talker_mcm
@@ -106,7 +107,7 @@ function prompt_builder.create_pick_speaker_prompt(recent_events, witnesses)
 	-- insert events from oldest to newest
 	for i, evt in ipairs(last_events_window) do
 		logger.spam("Inserting event #%d into user messages: %s", i, evt)
-		local content = (evt == nil and "") or evt.content or Event.describe_short(evt)
+		local content = (evt == nil and "") or Event.describe(evt)
 		table.insert(messages, user_message(content))
 	end
 
@@ -241,19 +242,11 @@ function prompt_builder.create_update_narrative_prompt(speaker, current_narrativ
 	local new_events_text = ""
 	local has_disguise = false
 	for _, event in ipairs(new_events) do
-		local flags = event.flags
-		local is_junk = flags
-			and (
-				flags.is_artifact
-				or flags.is_anomaly
-				or flags.is_reload
-				or flags.is_weapon_jam
-				or flags.is_callout
-				or flags.is_taunt
-			)
+		-- Check if event is "junk" (low-value for narrative) using event.type or legacy flags
+		local is_junk = Event.is_junk_event(event)
 
 		if not is_junk then
-			local content = event.content or Event.describe_short(event)
+			local content = Event.describe(event)
 			new_events_text = new_events_text .. "- " .. content .. "\n"
 			if content:find("%[disguised as", 1, true) then
 				has_disguise = true
@@ -470,20 +463,12 @@ function prompt_builder.create_compress_memories_prompt(raw_events, speaker)
 	table.insert(messages, system_message("## EVENTS TO SUMMARIZE\n\n <EVENTS>"))
 
 	for _, event in ipairs(raw_events) do
-		local flags = event.flags
-		local is_junk = flags
-			and (
-				flags.is_artifact
-				or flags.is_anomaly
-				or flags.is_reload
-				or flags.is_weapon_jam
-				or flags.is_callout
-				or flags.is_taunt
-			)
+		-- Check if event is "junk" (low-value for narrative) using event.type or legacy flags
+		local is_junk = Event.is_junk_event(event)
 
 		-- Skip junk events to preserve summary conciseness
 		if not is_junk then
-			local content = event.content or Event.describe_short(event)
+			local content = Event.describe(event)
 			table.insert(messages, user_message(content))
 		end
 	end
@@ -492,7 +477,7 @@ function prompt_builder.create_compress_memories_prompt(raw_events, speaker)
 	-- Check if any events contain disguise information
 	local has_disguise = false
 	for _, event in ipairs(raw_events) do
-		local content = event.content or Event.describe_short(event)
+		local content = Event.describe(event)
 		if content:find("%[disguised as", 1, true) then
 			has_disguise = true
 			break
@@ -880,7 +865,7 @@ function prompt_builder.create_dialogue_request_prompt(speaker, memory_context)
 
 	-- If first event is synthetic (compressed memory), inject it first
 	if first_event and first_event.flags and first_event.flags.is_compressed then
-		local content = first_event.content or Event.describe_short(first_event)
+		local content = Event.describe(first_event)
 		table.insert(messages, system_message("### RECENT EVENTS\n (Since last long-term memory update)\n" .. content))
 		start_idx = 2
 	end
@@ -894,7 +879,7 @@ function prompt_builder.create_dialogue_request_prompt(speaker, memory_context)
 			table.insert(messages, system_message("### CURRENT EVENTS\n (from oldest to newest):\n"))
 			for i = start_idx, #new_events do
 				local memory = new_events[i]
-				local content = memory.content or Event.describe_short(memory)
+				local content = Event.describe(memory)
 				table.insert(messages, user_message(content))
 			end
 		end
@@ -1038,18 +1023,22 @@ function prompt_builder.create_dialogue_request_prompt(speaker, memory_context)
 	local action_description_instruction = ""
 	local gender_instruction = ""
 	local language_instruction = ""
-	-- Callout check
+	-- Callout check - use typed event system or legacy flag
 	local callout_check = new_events[#new_events]
-	if callout_check and callout_check.flags and callout_check.flags.is_callout then
+	local is_callout_event = callout_check
+		and (callout_check.type == EventType.CALLOUT or (callout_check.flags and callout_check.flags.is_callout))
+	if is_callout_event then
 		logger.info("Last event was a callout. Giving specific final instruction.")
 		callout_instruction = "\n### **CALLOUT INSTRUCTION:**\n"
 			.. " - Last event was your character spotting an enemy. Be minimal and concise in your response, like a military callout (e.g., 'Heads up, Bandit over there!', 'I see a Bloodsucker approaching!', 'Watch out, there are Army soldiers nearby!' etc.)."
 			.. " - Your response should adress your nearby allies, warning of the spotted threat. DO NOT directly adress the entitiy you spotted. "
 	end
 
-	-- Idle conversation check
+	-- Idle conversation check - use typed event system or legacy flag
 	local idle_check = new_events[#new_events]
-	if idle_check and idle_check.flags and idle_check.flags.is_idle then
+	local is_idle_event = idle_check
+		and (idle_check.type == EventType.IDLE or (idle_check.flags and idle_check.flags.is_idle))
+	if is_idle_event then
 		logger.info("Idle conversation flag detected, giving specific final instruction.")
 
 		-- Use MCM settings to determine chance of asking the player a question

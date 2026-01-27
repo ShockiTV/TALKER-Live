@@ -7,6 +7,9 @@ local log = require("framework.logger")
 -- Import game interface modules
 local queries = talker_game_queries
 local mcm = talker_mcm
+
+-- EventType shorthand for cleaner code
+local EventType = trigger.EventType
 ----------------------------------------------------------------------------------------------------
 -- INFO
 ----------------------------------------------------------------------------------------------------
@@ -108,14 +111,23 @@ function on_enemy_eval(npc_obj, target_obj)
 
     -- create callout event
     local witnesses = {spotter}
-    local spotter_fmt, spotter_vals = queries.get_character_event_info(spotter)
-    local enemy_fmt, enemy_vals = queries.get_character_event_info(enemy)
-    
-    local unformatted_description = spotter_fmt .. " spotted " .. enemy_fmt .. "!"
-    local values = queries.join_tables(spotter_vals, enemy_vals)
+
+    -- Create typed event context
+    local context = {
+        spotter = spotter,
+        target = enemy
+    }
     
     log.info(spotter.name .. " spotted " .. enemy.name)
-    trigger.talker_game_event(unformatted_description, values, witnesses, true, {is_callout = true})
+
+    -- Use new typed event system
+    trigger.talker_event(
+        EventType.CALLOUT,
+        context,
+        witnesses,
+        true, -- important
+        {}
+    )
 
     -- Update global timer
     last_callout_time_ms = queries.get_game_time_ms()

@@ -8,6 +8,9 @@ local mcm = talker_mcm
 
 -- Import game interface modules
 local queries = talker_game_queries
+
+-- EventType shorthand for cleaner code
+local EventType = trigger.EventType
 ----------------------------------------------------------------------------------------------------
 -- INFO
 ----------------------------------------------------------------------------------------------------
@@ -58,15 +61,23 @@ function on_enemy_eval(npc_obj, enemy_obj) -- could check for human enemy if we 
         return
     end
 
-    --- create callout event
+    -- create taunt event
     local witnesses = {taunter}
-    local taunter_fmt, taunter_vals = queries.get_character_event_info(taunter)
-    local enemy_fmt, enemy_vals = queries.get_character_event_info(enemy)
-    
-    local unformatted_description = taunter_fmt .. " decides to taunt " .. enemy_fmt .. "!"
-    local values = queries.join_tables(taunter_vals, enemy_vals)
-    
-    trigger.talker_game_event(unformatted_description, values, witnesses, true, { is_taunt = true })
+
+    -- Create typed event context
+    local context = {
+        taunter = taunter,
+        target = enemy
+    }
+
+    -- Use new typed event system
+    trigger.talker_event(
+        EventType.TAUNT,
+        context,
+        witnesses,
+        true, -- important
+        {}
+    )
 end
 
 --------------------------------------------------------------------------------------------

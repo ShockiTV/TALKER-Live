@@ -3,6 +3,7 @@ local logger = require("framework.logger")
 local game = require("infra.game_adapter")
 local Event = require("domain.model.event")
 local trigger = require("interface.trigger")
+local EventType = trigger.EventType
 local queries = talker_game_queries
 
 AddScriptCallback("talker_player_speaks")
@@ -11,11 +12,12 @@ function talker_on_player_speaks(dialogue)
     local player = game.get_player_character()
     game.display_dialogue(player.game_id, dialogue)
     
-    -- Using the detailed format string to include rank, reputation and faction
-    local player_fmt, player_vals = queries.get_character_event_info(player)
-    local unformatted_description = player_fmt .. " said: %s"
-    local combined_values = queries.join_tables(player_vals, {dialogue})
-    trigger.talker_game_event_near_player(unformatted_description, combined_values, true, {is_dialogue = true})
+    -- Create typed dialogue event for player speech
+    local context = {
+        speaker = player,
+        text = dialogue
+    }
+    trigger.talker_event_near_player(EventType.DIALOGUE, context, true, { is_dialogue = true })
 end
 
 function talker_safely_on_player_speaks(dialogue)

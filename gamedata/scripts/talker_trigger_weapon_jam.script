@@ -5,6 +5,8 @@ local log = require("framework.logger")
 local mcm = talker_mcm
 local mode_weapon_jam = tonumber(mcm.get("enable_trigger_weapon_jam") or "0")
 
+-- EventType shorthand for cleaner code
+local EventType = trigger.EventType
 
 --------------------------------------------------------------------------------------------
 -- CALLBACK
@@ -12,16 +14,24 @@ local mode_weapon_jam = tonumber(mcm.get("enable_trigger_weapon_jam") or "0")
 
 function actor_on_weapon_jammed()
     if mode_weapon_jam == 1 then return end
-    
 
     local player = game.get_player_character()
-    local player_fmt, player_vals = queries.get_character_event_info(player)
-    local witnesses = game.get_characters_near_player()
-    local weapon_name = player.weapon or "weapon"
     local is_silent = (mode_weapon_jam == 2)
-    local unformatted_description = player_fmt .. "'s " .. weapon_name .. " jammed!"
-    trigger.talker_game_event(unformatted_description, player_vals, witnesses, true, { is_weapon_jam = true, is_silent = is_silent })
-    if is_silent == true then
+
+    -- Create typed event context
+    local context = {
+        actor = player
+    }
+
+    -- Use new typed event system
+    trigger.talker_event_near_player(
+        EventType.WEAPON_JAM,
+        context,
+        true, -- important
+        { is_silent = is_silent }
+    )
+
+    if is_silent then
         log.info("TALKER: Weapon jam event registered (silent)")
     end
 end

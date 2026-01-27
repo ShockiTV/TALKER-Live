@@ -6,6 +6,9 @@ local game = require("infra.game_adapter")
 local queries = talker_game_queries
 local mcm = talker_mcm
 
+-- EventType shorthand for cleaner code
+local EventType = trigger.EventType
+
 local script_name = "TALKER Trigger Injury"
 local LAST_INJURY_TIME = 0
 local INJURY_COOLDOWN_CD = mcm.get("injury_cooldown") * 1000 -- default 20 seconds cooldown to prevent spam
@@ -31,19 +34,25 @@ function actor_on_hit_callback(obj, amount, local_direction, who, bone_index)
     if db.actor.health >= mcm.get("injury_threshold") then return end
 
     local player = game.get_player_character()
-    local attacker = game.create_character(who)
-    local witnesses = game.get_characters_near_player()
-    
-    local player_fmt, player_vals = queries.get_character_event_info(player)
-    local attacker_fmt, attacker_vals = queries.get_character_event_info(attacker)
-    local unformatted_description = player_fmt .. " was critically injured while fighting " .. attacker_fmt .. "!"
-    local values = queries.join_tables(player_vals, attacker_vals)
-    
-    logger.info("%s: %s", script_name, unformatted_description)
-    
     local is_silent = get_silence_status(mode_injury)
-    trigger.talker_game_event(unformatted_description, values, witnesses, true, { is_injury = true, is_silent = is_silent })
-    if is_silent == true then
+    if is_silent == nil then return end -- Cooldown active
+
+    -- Create typed event context
+    local context = {
+        actor = player
+    }
+
+    logger.info("%s: Player critically injured", script_name)
+
+    -- Use new typed event system
+    trigger.talker_event_near_player(
+        EventType.INJURY,
+        context,
+        true, -- important
+        { is_silent = is_silent }
+    )
+
+    if is_silent then
         logger.info("TALKER: Injury event registered (silent)")
     end
 end

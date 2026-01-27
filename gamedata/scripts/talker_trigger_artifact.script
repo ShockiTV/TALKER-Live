@@ -10,6 +10,10 @@ local logger = require("framework.logger")
 local queries = talker_game_queries
 local commands = talker_game_commands
 local mcm = talker_mcm
+
+-- EventType shorthand for cleaner code
+local EventType = trigger.EventType
+
 ----------------------------------------------------------------------------------------------------
 -- Constants
 ----------------------------------------------------------------------------------------------------
@@ -89,6 +93,33 @@ local function get_silence_status(mode, trigger_type)
 end
 
 ----------------------------------------------------------------------------------------------------
+-- Helper: Create artifact event with typed system
+----------------------------------------------------------------------------------------------------
+
+local function create_artifact_event(action, artifact_name, is_silent)
+    local player = game.get_player_character()
+
+    -- Create typed event context
+    local context = {
+        actor = player,
+        action = action,
+        item_name = artifact_name
+    }
+
+    -- Use new typed event system
+    trigger.talker_event_near_player(
+        EventType.ARTIFACT,
+        context,
+        true, -- important
+        { is_silent = is_silent }
+    )
+
+    if is_silent then
+        logger.info("TALKER: Artifact event registered (silent)")
+    end
+end
+
+----------------------------------------------------------------------------------------------------
 -- Handlers
 ----------------------------------------------------------------------------------------------------
 
@@ -108,16 +139,7 @@ local function actor_on_item_use(obj, str)
     local is_silent = get_silence_status(mode_use, 2)
     if is_silent == nil then return end
 
-    local player = game.get_player_character()
-    local witnesses = game.get_characters_near_player()
-    
-    local player_fmt, player_vals = queries.get_character_event_info(player)
-    local unformatted_description = player_fmt .. " used " .. artifact_description
-    
-    trigger.talker_game_event(unformatted_description, player_vals, witnesses, true, { is_artifact = true, is_silent = is_silent })
-    if is_silent == true then
-        logger.info("TALKER: Artifact event registered (silent)")
-    end
+    create_artifact_event("use", artifact_description, is_silent)
 end
 
 local function actor_item_to_belt(obj)
@@ -135,16 +157,7 @@ local function actor_item_to_belt(obj)
     local is_silent = get_silence_status(mode_equip, 3)
     if is_silent == nil then return end
 
-    local player = game.get_player_character()
-    local witnesses = game.get_characters_near_player()
-    
-    local player_fmt, player_vals = queries.get_character_event_info(player)
-    local unformatted_description = player_fmt .. " equipped " .. artifact_description
-    
-    trigger.talker_game_event(unformatted_description, player_vals, witnesses, true, { is_artifact = true, is_silent = is_silent })
-    if is_silent == true then
-        logger.info("TALKER: Artifact event registered (silent)")
-    end
+    create_artifact_event("equip", artifact_description, is_silent)
 end
 
 local function actor_on_item_to_slot(obj)
@@ -162,16 +175,7 @@ local function actor_on_item_to_slot(obj)
     local is_silent = get_silence_status(mode_equip, 3)
     if is_silent == nil then return end
 
-    local player = game.get_player_character()
-    local witnesses = game.get_characters_near_player()
-    
-    local player_fmt, player_vals = queries.get_character_event_info(player)
-    local unformatted_description = player_fmt .. " equipped " .. artifact_description
-    
-    trigger.talker_game_event(unformatted_description, player_vals, witnesses, true, { is_artifact = true, is_silent = is_silent })
-    if is_silent == true then
-        logger.info("TALKER: Artifact event registered (silent)")
-    end
+    create_artifact_event("equip", artifact_description, is_silent)
 end
 
 local function actor_on_item_before_pickup(obj)
@@ -191,16 +195,7 @@ local function actor_on_item_before_pickup(obj)
     local is_silent = get_silence_status(mode_pickup, 1)
     if is_silent == nil then return end
 
-    local player = game.get_player_character()
-    local witnesses = game.get_characters_near_player()
-    
-    local player_fmt, player_vals = queries.get_character_event_info(player)
-    local unformatted_description = player_fmt .. " picked up " .. artifact_description
-    
-    trigger.talker_game_event(unformatted_description, player_vals, witnesses, true, { is_artifact = true, is_silent = is_silent })
-    if is_silent == true then
-        logger.info("TALKER: Artifact event registered (silent)")
-    end
+    create_artifact_event("pickup", artifact_description, is_silent)
 end
 
 
