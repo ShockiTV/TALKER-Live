@@ -7,6 +7,10 @@ local log = require("framework.logger")
 local game = require("infra.game_adapter")
 local trigger = require("interface.trigger")
 local mcm = talker_mcm
+
+-- EventType shorthand for cleaner code
+local EventType = trigger.EventType
+
 ----------------------------------------------------------------------------------------------------
 -- Constants
 ----------------------------------------------------------------------------------------------------
@@ -29,18 +33,23 @@ function on_player_reloads_weapon()
 
     log.info("TALKER: Player is reloading weapon")
 
-    -- Create event objects
+    -- Create event context
     local player = game.get_player_character()
-    local witnesses = game.get_characters_near_player()
-    
-    local player_fmt, player_vals = queries.get_character_event_info(player)
-    local player_weapon = player.weapon or "weapon"
-    local unformatted_description = player_fmt .. " is reloading their " .. player_weapon .. "!"
-
-    -- Determine if this should be silent
     local is_silent = (mode_reload == 2)
-    trigger.talker_game_event(unformatted_description, player_vals, witnesses, true, { is_reload = true, is_silent = is_silent })
-    if is_silent == true then
+
+    local context = {
+        actor = player
+    }
+
+    -- Use new typed event system
+    trigger.talker_event_near_player(
+        EventType.RELOAD,
+        context,
+        true, -- important
+        { is_silent = is_silent }
+    )
+
+    if is_silent then
         log.info("TALKER: Reload event registered (silent)")
     end
 end

@@ -11,6 +11,10 @@ local trigger = require("interface.trigger")
 -- Import game interface modules
 local queries = talker_game_queries
 local mcm = talker_mcm
+
+-- EventType shorthand for cleaner code
+local EventType = trigger.EventType
+
 ----------------------------------------------------------------------------------------------------
 -- Constants
 ----------------------------------------------------------------------------------------------------
@@ -94,18 +98,22 @@ end
 
 function create_anomaly_interaction_event(anomaly_name, is_damage, is_silent)
     local player = game.get_player_character()
-    local player_fmt, player_vals = queries.get_character_event_info(player)
-    local flags = { is_anomaly = true, is_silent = is_silent }
-    
-    local unformatted_description
-    if is_damage then
-        unformatted_description = player_fmt .. " was hurt by " .. anomaly_name
-    else
-        unformatted_description = player_fmt .. " almost got close to a " .. anomaly_name
-    end
-    
-    trigger.talker_game_event_near_player(unformatted_description, player_vals, is_damage, flags)
-    if is_silent == true then
+
+    -- Create typed event context
+    local context = {
+        actor = player,
+        anomaly_type = anomaly_name
+    }
+
+    -- Use new typed event system
+    trigger.talker_event_near_player(
+        EventType.ANOMALY,
+        context,
+        is_damage, -- important only if damage
+        { is_silent = is_silent }
+    )
+
+    if is_silent then
         log.info("TALKER: Anomaly event registered (silent)")
     end
 end

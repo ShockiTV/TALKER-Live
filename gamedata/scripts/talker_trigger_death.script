@@ -6,6 +6,9 @@ local mcm = talker_mcm
 -- Game interfaces
 local queries = talker_game_queries
 
+-- EventType shorthand for cleaner code
+local EventType = trigger.EventType
+
 local mode_player = tonumber(mcm.get("enable_trigger_death_player") or "0")
 local mode_npc = tonumber(mcm.get("enable_trigger_death_npc") or "0")
 
@@ -85,24 +88,27 @@ function on_creature_death(victim_obj, killer_obj)
     if is_important_person(victim_obj, victim) then
         important_death = true
     end
-    local flags = { important_death = important_death, is_death = true }
+    local flags = { important_death = important_death }
     
     -- Determine if this should be a silent event based on mode and cooldown
     flags.is_silent = get_silence_status(mode, is_player)
-    
-    local victim_fmt, victim_vals = queries.get_character_event_info(victim)
 
-    if killer and killer.name ~= victim.name then   
-        local killer_fmt, killer_vals = queries.get_character_event_info(killer)
-        local unformatted_description = victim_fmt .. " was killed by " .. killer_fmt .. "!"
-        local values = queries.join_tables(victim_vals, killer_vals)
-        trigger.talker_game_event(unformatted_description, values, witnesses, important_event, flags)
-    else
-        -- Environmental death or suicide
-        local unformatted_description = victim_fmt .. " died!"
-        trigger.talker_game_event(unformatted_description, victim_vals, witnesses, important_event, flags)
-    end
-    if flags.is_silent == true then
+    -- Create typed event context
+    local context = {
+        victim = victim,
+        killer = killer -- may be nil for environmental deaths
+    }
+
+    -- Use new typed event system
+    trigger.talker_event(
+        EventType.DEATH,
+        context,
+        witnesses,
+        important_event,
+        flags
+    )
+
+    if flags.is_silent then
         log.info("TALKER: Death event registered (silent)")
     end
 end

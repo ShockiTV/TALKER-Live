@@ -4,6 +4,9 @@ local game = require("infra.game_adapter")
 local trigger = require("interface.trigger")
 local mcm = talker_mcm
 
+-- EventType shorthand for cleaner code
+local EventType = trigger.EventType
+
 local script_name = "TALKER Trigger Sleep"
 local mode_sleep = tonumber(mcm.get("enable_trigger_sleep") or "0")
 
@@ -20,36 +23,18 @@ end
 
 function fire_wake_up_event(hours)
     local player = game.get_player_character()
-    local player_fmt, player_vals = queries.get_character_event_info(player)
     local characters_near = game.get_characters_near_player()
     if not player or #characters_near == 0 then return true end
     
-    local sleeping_hours = hours
     local companions = game.get_companions() or {}
-    local description = ""
     local witnesses = {}
     
-    if #companions > 0 then 
-        local names_list = {}
-        for _, companion in ipairs(companions) do
-            names_list[#names_list+1] = companion.name
-            witnesses[#witnesses+1] = companion
-        end
-        
-        local companion_names = ""
-        if #names_list == 1 then
-            companion_names = names_list[1]
-        else
-            local last_name = table.remove(names_list)
-            companion_names = table.concat(names_list, ", ") .. " and " .. last_name
-        end
-        
-        description = player_fmt .. " and their travelling companions " .. companion_names .. " woke up after sleeping for " .. sleeping_hours .. " hours."
-    else
-        description = player_fmt .. " woke up after sleeping for " .. sleeping_hours .. " hours."
+    -- Build witness list
+    witnesses[#witnesses+1] = player
+    for _, companion in ipairs(companions) do
+        witnesses[#witnesses+1] = companion
     end
     
-    witnesses[#witnesses+1] = player
     local witness_ids = {}
     for _, w in ipairs(witnesses) do witness_ids[w.game_id] = true end
     
@@ -59,10 +44,26 @@ function fire_wake_up_event(hours)
         end
     end
     
-    logger.info("%s: Firing event: %s", script_name, description)
+    -- Create typed event context
+    local context = {
+        actor = player,
+        companions = companions,
+        hours = hours
+    }
+    
+    logger.info("%s: Firing sleep event for %d hours", script_name, hours)
     local is_silent = (mode_sleep == 2)
-    trigger.talker_game_event(description, player_vals, witnesses, true, { is_sleep = true, is_silent = is_silent })
-    if is_silent == true then
+
+    -- Use new typed event system
+    trigger.talker_event(
+        EventType.SLEEP,
+        context,
+        witnesses,
+        true, -- important
+        { is_silent = is_silent }
+    )
+
+    if is_silent then
         logger.info("TALKER: Sleep event registered (silent)")
     end
     

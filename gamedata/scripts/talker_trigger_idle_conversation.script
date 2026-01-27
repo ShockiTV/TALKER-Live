@@ -3,6 +3,7 @@ package.path = package.path .. ";./bin/lua/?.lua;"
 
 
 local trigger = require("interface.trigger")
+local EventType = trigger.EventType
 local AI_request = require("infra.AI.requests")
 local game = require("infra.game_adapter")
 local log = require("framework.logger")
@@ -103,13 +104,16 @@ function on_every_10_seconds()
     for _, npc_obj in ipairs(valid_candidates) do
 
         local speaker_name = queries.get_name(npc_obj)
-        local instruction = string.format("%s begins an idle conversation to pass the time. The next line of dialogue must be spoken by %s.", speaker_name, speaker_name)
         local speaker_character = game.create_character(npc_obj)
         
-        -- Create game event manually to isolate witnesses
+        -- Create typed idle conversation event
         -- CRITICAL: Only the speaker should witness this instruction event.
+        local context = {
+            speaker = speaker_character,
+            instruction = string.format("%s begins an idle conversation to pass the time.", speaker_name)
+        }
         local witnesses = { speaker_character }
-        trigger.talker_game_event(instruction, {speaker_character}, witnesses, false, { is_idle = true })
+        trigger.talker_event(EventType.IDLE, context, witnesses, false, { is_idle = true })
 
         -- We assume success if we sent the event
         if true then

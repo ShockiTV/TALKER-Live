@@ -3,7 +3,10 @@ local logger = require("framework.logger")
 local interface = require("interface.interface")
 
 AddScriptCallback("talker_game_event")
+AddScriptCallback("talker_event")
+AddScriptCallback("talker_event_near_player")
 
+-- Legacy listener: string-based events
 function talker_on_game_event(unformatted_description, event_objects, witnesses, important, flags)
     interface.register_game_event(unformatted_description, event_objects, witnesses, important, flags)
 end
@@ -15,8 +18,34 @@ function talker_safely_on_game_event(unformatted_description, event_objects, wit
     end
 end
 
+-- NEW: Typed event listener (with explicit witnesses)
+function talker_on_typed_event(event_type, context, witnesses, important, flags)
+    interface.register_typed_event(event_type, context, witnesses, important, flags)
+end
+
+function talker_safely_on_typed_event(event_type, context, witnesses, important, flags)
+    local success, err = pcall(talker_on_typed_event, event_type, context, witnesses, important, flags)
+    if not success then
+        logger.error("Error in typed event: " .. err)
+    end
+end
+
+-- NEW: Typed event listener (near player, auto-populates witnesses)
+function talker_on_typed_event_near_player(event_type, context, important, flags)
+    interface.register_typed_event_near_player(event_type, context, important, flags)
+end
+
+function talker_safely_on_typed_event_near_player(event_type, context, important, flags)
+    local success, err = pcall(talker_on_typed_event_near_player, event_type, context, important, flags)
+    if not success then
+        logger.error("Error in typed event near player: " .. err)
+    end
+end
+
 function on_game_start()
     RegisterScriptCallback("talker_game_event", talker_safely_on_game_event)
+    RegisterScriptCallback("talker_event", talker_safely_on_typed_event)
+    RegisterScriptCallback("talker_event_near_player", talker_safely_on_typed_event_near_player)
 end
 
 function is_loaded()

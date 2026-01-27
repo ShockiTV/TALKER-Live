@@ -1,6 +1,7 @@
 package.path = package.path .. ";./bin/lua/?.lua;"
 -- entities
 local Event = require("domain.model.event")
+local EventType = require("domain.model.event_types")
 local Character = require("domain.model.character")
 local Item = require("domain.model.item")
 local log = require("framework.logger")
@@ -166,39 +167,36 @@ function m.create_dialogue_event(speaker_id, dialogue, source_event)
 		return nil
 	end
 
-	-- Use get_character_event_info to get reduced event log clutter for zombied (and hypothetically monster) characters
-	local speaker_format, speaker_values = query.get_character_event_info(speaker_char)
-
 	-- Determine witnesses based on is_whisper flag
 	local witnesses
 	local flags = {}
+
+	-- Create typed dialogue event context
+	local context = {
+		speaker = speaker_char,
+		text = dialogue,
+	}
 
 	-- Propagate is_whisper flag from source event
 	if source_event and source_event.flags and source_event.flags.is_whisper then
 		-- Whisper mode: only companions can witness
 		witnesses = m.get_companions()
 		flags = { is_whisper = true, is_dialogue = true }
+		context.is_whisper = true
 		log.debug("Creating whisper dialogue event with companion-only witnesses")
-		local dialogue_event = m.create_game_event(
-			speaker_format .. " whispered to companions: %s",
-			query.join_tables(speaker_values, { dialogue }),
-			witnesses,
-			flags
-		)
-		return dialogue_event
 	else
 		-- Normal mode: nearby characters can witness
 		witnesses = m.get_characters_near(speaker_obj)
 		flags = { is_dialogue = true }
 		log.debug("Creating normal dialogue event with nearby witnesses")
-		local dialogue_event = m.create_game_event(
-			speaker_format .. " said: %s",
-			query.join_tables(speaker_values, { dialogue }),
-			witnesses,
-			flags
-		)
-		return dialogue_event
 	end
+
+	-- Create typed dialogue event
+	local game_time = query.get_game_time_ms()
+	local world_context = query.describe_world()
+	local dialogue_event = Event.create(EventType.DIALOGUE, context, game_time, world_context, witnesses, flags)
+
+	return dialogue_event
 end
 
 ------------------------------------------------------------

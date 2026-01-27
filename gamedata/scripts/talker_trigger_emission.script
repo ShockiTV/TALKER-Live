@@ -4,31 +4,46 @@ local game = require("infra.game_adapter")
 local trigger = require("interface.trigger")
 local mcm = talker_mcm
 
+-- EventType shorthand for cleaner code
+local EventType = trigger.EventType
+
 local mode_emission = tonumber(mcm.get("enable_trigger_emission") or "0")
 
 ----------------------------------------------------------------------------------------------------
 -- Constants
 ----------------------------------------------------------------------------------------------------
-PSY_STORM = "psy storm"
-EMISSION = "emissions"
-START = "starting"
-END = "ending"
+PSY_STORM = "psy_storm"
+EMISSION = "emission"
 
 ----------------------------------------------------------------------------------------------------
 -- Function
 ----------------------------------------------------------------------------------------------------
 
-function create_emission_event(typ, status)
+function create_emission_event(emission_type, status)
     if db.actor:has_info("actor_is_sleeping") then
         return
     end
     
     local is_silent = (mode_emission == 2)
-    local unformatted_description = "An %s is %s!"
-    log.info(unformatted_description, typ, status)
+    log.info("Emission event: %s is %s!", emission_type, status)
     local witnesses = game.get_characters_near_player(200)
-    trigger.talker_game_event(unformatted_description, {typ, status}, witnesses, true, { is_emission = true, is_silent = is_silent })
-    if is_silent == true then
+
+    -- Create typed event context
+    local context = {
+        emission_type = emission_type,
+        status = status
+    }
+
+    -- Use new typed event system
+    trigger.talker_event(
+        EventType.EMISSION,
+        context,
+        witnesses,
+        true, -- important
+        { is_silent = is_silent }
+    )
+
+    if is_silent then
         log.info("TALKER: Emission event registered (silent)")
     end
 end
@@ -39,14 +54,14 @@ function on_emission(name)
 
     -- PSY STORMS
     if name == "psi_storm_start" then
-        create_emission_event(PSY_STORM, START)
+        create_emission_event(PSY_STORM, "starting")
     elseif name == "psi_storm_end" then
-        create_emission_event(PSY_STORM, END)
+        create_emission_event(PSY_STORM, "ending")
     -- EMISSIONS
     elseif name == "emission_start" then
-        create_emission_event(EMISSION, START)
+        create_emission_event(EMISSION, "starting")
     elseif name == "emission_end" then
-        create_emission_event(EMISSION, END)
+        create_emission_event(EMISSION, "ending")
     end
 end
 
