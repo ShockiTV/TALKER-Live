@@ -1,5 +1,6 @@
 local nearby_characters = require('tests.mocks.mock_characters')
 local Event = require('domain.model.Event')
+local EventType = require('domain.model.event_types')
 
 -- The mocker module
 local mocker = {}
@@ -33,7 +34,9 @@ function mocker.create_game_event(description, objects, witnesses)
     print('mock creating game event')
     local game_time = os.time() * 1000
     local world_context = "Cordon"
-    local new_event = Event.create_event(description, objects, game_time, world_context, witnesses)
+    -- Create typed event for ACTION (generic event creation)
+    local context = { action_description = description, involved_objects = objects }
+    local new_event = Event.create(EventType.ACTION, context, game_time, world_context, witnesses)
     return new_event
 end
 

@@ -10,6 +10,7 @@ local AI_request = require('infra.AI.requests')
 -- Import mock utilities
 local mock_characters = require('tests.mocks.mock_characters')
 local Event = require('domain.model.event')
+local EventType = require('domain.model.event_types')
 local mock_game_adapter = require('tests.mocks.mock_game_adapter')
 local game_adapter_recorder = require('infra.game_adapter_recorder')
 
@@ -21,7 +22,9 @@ talker.set_game_adapter(mock_game_adapter)
 local time = 0
 function create_mock_event(description, objects)
     time = time + 1
-    return Event.create_event(description, objects, time, "Cordon", mock_characters)
+    -- Create typed ACTION event for test purposes
+    local context = { action_description = description, involved_objects = objects }
+    return Event.create(EventType.ACTION, context, time, "Cordon", mock_characters)
 end
 
 local events = {

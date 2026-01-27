@@ -27,17 +27,34 @@ The Lua codebase follows clean architecture with strict layer separation:
 
 ## Key Patterns & Conventions
 
-### 1. Event System (Core Workflow)
+### 1. Typed Event System (Core Workflow)
 
-Events flow: Game → Listener → `talker.register_event()` → Event Store → AI Speaker Selection → AI Dialogue Generation → Display
+Events flow: Game → Trigger → `trigger.talker_event_near_player()` → Listener → `talker.register_event()` → Event Store → AI Speaker Selection → AI Dialogue Generation → Display
 
+**Creating typed events** (preferred):
 ```lua
--- Example from talker_trigger_death.script
-local event = game.create_event("killed %s", {victim_character})
-trigger.register_near_player(event, true) -- true = important
+local EventType = require("domain.model.event_types")
+local trigger = require("interface.trigger")
+
+-- In a trigger script:
+local context = { actor = player_character, victim = target_character }
+trigger.talker_event_near_player(EventType.DEATH, context, true, { is_silent = false })
 ```
 
-Events have: `description`, `involved_objects`, `game_time_ms`, `world_context`, `witnesses`, `flags` (e.g., `is_silent`, `is_idle`)
+**Event structure** (typed):
+- `type` - EventType enum value (DEATH, DIALOGUE, ARTIFACT, etc.)
+- `context` - Table with event-specific fields (actor, victim, text, item_name, etc.)
+- `game_time_ms`, `world_context`, `witnesses`, `flags`
+
+**EventType enum** (see `bin/lua/domain/model/event_types.lua`):
+`DEATH`, `DIALOGUE`, `CALLOUT`, `TAUNT`, `ARTIFACT`, `ANOMALY`, `MAP_TRANSITION`, `EMISSION`, `INJURY`, `SLEEP`, `TASK`, `WEAPON_JAM`, `RELOAD`, `IDLE`, `ACTION`
+
+**Event templates** are defined in `bin/lua/domain/model/event.lua` TEMPLATES table - each EventType has a function that returns a format string and objects to interpolate.
+
+**Key functions**:
+- `Event.create(type, context, game_time_ms, world_context, witnesses, flags)` - Create typed event
+- `Event.describe(event)` - Convert any event (typed or legacy) to human-readable text
+- `Event.is_junk_event(event)` - Check if event is low-value for narrative (artifacts, anomalies, reloads, etc.)
 
 ### 2. Memory Architecture (Three-Tier System)
 
@@ -92,8 +109,10 @@ local cooldown = config.idle_conversation_cooldown() * 1000 -- ms
 
 ## Testing
 
-- Run tests: `lua tests/test_<module>.lua` (uses luaunit)
-- Test structure mirrors source: `tests/domain/`, `tests/infra/`, etc.
+- **Run tests**: `lua5.1.exe tests/<path>/test_<module>.lua` (uses LuaUnit)
+  - Note: Use `lua5.1.exe`, not `lua` (which may not be in PATH)
+  - Example: `lua5.1.exe tests/entities/test_event.lua`
+- Test structure mirrors source: `tests/domain/`, `tests/infra/`, `tests/entities/`, etc.
 - Use mocks from `tests/mocks/` (mock_characters, mock_game_adapter, mock_REST)
 - Live integration tests in `tests/live/` (require actual LLM API keys)
 
