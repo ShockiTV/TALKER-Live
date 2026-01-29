@@ -1,0 +1,19 @@
+Metadata-Version: 2.4
+Name: talker-service
+Version: 0.1.0
+Summary: Python service for TALKER Expanded - handles AI compute for NPC dialogue
+Author: TALKER Expanded Contributors
+License: MIT
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: pyzmq>=25.0.0
+Requires-Dist: fastapi>=0.100.0
+Requires-Dist: uvicorn>=0.23.0
+Requires-Dist: pydantic>=2.0.0
+Requires-Dist: pydantic-settings>=2.0.0
+Requires-Dist: loguru>=0.7.0
+Requires-Dist: python-dotenv>=1.0.0
+Requires-Dist: tornado>=6.1
+Provides-Extra: dev
+Requires-Dist: pytest>=7.0.0; extra == "dev"
+Requires-Dist: pytest-asyncio>=0.21.0; extra == "dev"

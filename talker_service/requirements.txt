@@ -1,0 +1,17 @@
+# Core
+pyzmq>=25.0.0
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+tornado>=6.1  # Required for pyzmq on Windows
+
+# HTTP/API
+fastapi>=0.100.0
+uvicorn>=0.23.0
+
+# Utilities
+loguru>=0.7.0
+python-dotenv>=1.0.0
+
+# Development
+pytest>=7.0.0
+pytest-asyncio>=0.21.0

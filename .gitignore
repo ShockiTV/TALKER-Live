@@ -47,3 +47,6 @@ openAi_API_KEY.key
 openai_api_key.txt
 talker.log
 *.key
+.env
+.venv/
+

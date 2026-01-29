@@ -8,8 +8,33 @@ local EventType = require("domain.model.event_types")
 
 -- game interfaces
 local query = talker_game_queries
+local zmq_integration = talker_zmq_integration -- May be nil if not loaded yet
 
 local m = {}
+
+----------------------------------------------------------------------------------------------------
+-- ZMQ PUBLISHING (Parallel to existing event flow)
+----------------------------------------------------------------------------------------------------
+
+-- Safely publish event to ZMQ if integration is available
+local function zmq_publish_event(event, important)
+	if zmq_integration and zmq_integration.publish_game_event then
+		local ok, err = pcall(zmq_integration.publish_game_event, event, important)
+		if not ok then
+			log.debug("ZMQ publish failed: " .. tostring(err))
+		end
+	end
+end
+
+-- Safely publish player dialogue to ZMQ
+local function zmq_publish_player_dialogue(text, context)
+	if zmq_integration and zmq_integration.publish_player_dialogue then
+		local ok, err = pcall(zmq_integration.publish_player_dialogue, text, context)
+		if not ok then
+			log.debug("ZMQ player dialogue publish failed: " .. tostring(err))
+		end
+	end
+end
 
 ----------------------------------------------------------------------------------------------------
 -- TYPED EVENT REGISTRATION
@@ -27,6 +52,10 @@ local function register_typed_event_internal(event_type, context, witnesses, imp
 	local new_event = Event.create(event_type, context, game_time, world_context, witnesses, flags)
 	log.debug("New typed event: %s", new_event)
 
+	-- PARALLEL: Publish to ZMQ (fire-and-forget, won't block)
+	zmq_publish_event(new_event, important)
+
+	-- Existing flow: register with talker (triggers AI dialogue generation)
 	talker.register_event(new_event, important)
 	return true
 end
@@ -55,6 +84,9 @@ end
 function m.player_character_speaks(dialogue)
 	log.info("Registering player speak event. Player said: " .. dialogue)
 	local player = game_adapter.get_player_character()
+
+	-- PARALLEL: Publish player dialogue to ZMQ
+	zmq_publish_player_dialogue(dialogue, { speaker = player })
 
 	-- Create typed DIALOGUE event
 	local context = {
