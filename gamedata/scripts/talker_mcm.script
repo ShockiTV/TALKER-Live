@@ -320,6 +320,54 @@ function on_mcm_load()
                     {"3", "logging_Both"},
                 },
             },
+            -- ZMQ / Python Service Configuration
+            {
+                id = "zmq_title",
+                type = "slide",
+                link = "ui_options_slider_player",
+                text = "ui_mcm_talker_zmq_title",
+                size = {512, 50},
+                spacing = 20
+            },
+            {
+                id = "zmq_enabled_title",
+                type = "desc",
+                clr = {200, 200, 255, 200},
+                text = "ui_mcm_talker_zmq_enabled_title"
+            },
+            {
+                id = "zmq_enabled_description",
+                type = "desc",
+                text = "ui_mcm_talker_zmq_enabled_description"
+            },
+            {
+                id = "zmq_enabled",
+                type = "check",
+                val = 1,
+                def = true,
+            },
+            {
+                id = "zmq_port_title",
+                type = "desc",
+                clr = {200, 200, 255, 200},
+                text = "ui_mcm_talker_zmq_port_title"
+            },
+            {
+                id = "zmq_port",
+                type = "input",
+                val = 2,
+                min = 1024,
+                max = 65535,
+                def = 5555,
+            },
+            {
+                id = "zmq_heartbeat_interval",
+                type = "input",
+                val = 2,
+                min = 1,
+                max = 60,
+                def = 5,
+            },
         }
     }
     return op
@@ -382,6 +430,9 @@ local defaults = {
     ["npc_speak_distance"] = 30,
     ["time_gap"] = 12,
     ["debug_logging"] = 2,
+    ["zmq_enabled"] = true,
+    ["zmq_port"] = 5555,
+    ["zmq_heartbeat_interval"] = 5,
 }
 
 -- Function to retrieve the configuration value

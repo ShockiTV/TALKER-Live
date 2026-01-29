@@ -1,0 +1,203 @@
+-- TALKER ZMQ Integration Script
+-- Handles ZMQ bridge lifecycle and event publishing
+
+package.path = package.path .. ";./bin/lua/?.lua;"
+local logger = require("framework.logger")
+local config = require("interface.config")
+
+-- Lazy-loaded modules (only load if ZMQ is enabled)
+local publisher = nil
+local is_zmq_initialized = false
+local heartbeat_timer_id = "talker_zmq_heartbeat"
+
+--------------------------------------------------------------------------------
+-- Helpers
+--------------------------------------------------------------------------------
+
+local function safe_require(module_name)
+    local ok, mod = pcall(require, module_name)
+    if ok then
+        return mod
+    else
+        logger.debug("Could not load module: " .. module_name .. " - " .. tostring(mod))
+        return nil
+    end
+end
+
+local function init_zmq()
+    if is_zmq_initialized then
+        return publisher ~= nil
+    end
+    
+    is_zmq_initialized = true
+    
+    if not config.zmq_enabled() then
+        logger.info("ZMQ publishing disabled in MCM")
+        return false
+    end
+    
+    publisher = safe_require("infra.zmq.publisher")
+    if not publisher then
+        logger.warn("ZMQ publisher module not available - Python service integration disabled")
+        return false
+    end
+    
+    local success = publisher.init({
+        endpoint = config.zmq_endpoint(),
+        enabled = true,
+    })
+    
+    if success then
+        logger.info("ZMQ publisher initialized successfully on " .. config.zmq_endpoint())
+        start_heartbeat()
+        return true
+    else
+        logger.warn("ZMQ publisher failed to initialize - check if libzmq.dll is in bin/pollnet/")
+        publisher = nil
+        return false
+    end
+end
+
+local function shutdown_zmq()
+    if publisher then
+        publisher.shutdown()
+        publisher = nil
+    end
+    is_zmq_initialized = false
+end
+
+--------------------------------------------------------------------------------
+-- Heartbeat
+--------------------------------------------------------------------------------
+
+local function send_heartbeat()
+    if publisher and publisher.is_connected() then
+        publisher.send_heartbeat()
+    end
+    return false -- Continue timer
+end
+
+function start_heartbeat()
+    if not publisher then return end
+    
+    local interval = config.zmq_heartbeat_interval()
+    logger.info("Starting ZMQ heartbeat timer with " .. interval .. "s interval")
+    
+    -- Use game's time event system for periodic heartbeat
+    CreateTimeEvent(heartbeat_timer_id, heartbeat_timer_id, interval, function()
+        send_heartbeat()
+        -- Reschedule
+        ResetTimeEvent(heartbeat_timer_id, heartbeat_timer_id, config.zmq_heartbeat_interval())
+        return false
+    end)
+end
+
+function stop_heartbeat()
+    RemoveTimeEvent(heartbeat_timer_id, heartbeat_timer_id)
+end
+
+--------------------------------------------------------------------------------
+-- Public API (for use by other scripts)
+--------------------------------------------------------------------------------
+
+function publish_game_event(event, is_important)
+    if not init_zmq() then return false end
+    return publisher.send_game_event(event, is_important)
+end
+
+function publish_player_dialogue(text, context)
+    if not init_zmq() then return false end
+    return publisher.send_player_dialogue(text, context)
+end
+
+function publish_player_whisper(text, target)
+    if not init_zmq() then return false end
+    return publisher.send_player_whisper(text, target)
+end
+
+function publish_config_update(key, value)
+    if not init_zmq() then return false end
+    return publisher.send_config_update(key, value)
+end
+
+function publish_config_sync()
+    if not init_zmq() then return false end
+    local all_config = config.get_all_config()
+    return publisher.send_config_sync(all_config)
+end
+
+function is_zmq_connected()
+    return publisher ~= nil and publisher.is_connected()
+end
+
+--------------------------------------------------------------------------------
+-- Game Callbacks
+--------------------------------------------------------------------------------
+
+-- Called when game loads
+local function on_game_load()
+    logger.info("ZMQ integration: on_game_load")
+    
+    -- Initialize ZMQ if enabled
+    if init_zmq() then
+        -- Send full config sync on load
+        CreateTimeEvent("zmq_config_sync", "initial_sync", 2, function()
+            publish_config_sync()
+            return true -- One-shot timer
+        end)
+    end
+end
+
+-- Called when game saves
+local function on_game_save()
+    -- Nothing to persist for ZMQ, but we could send a sync event
+    if publisher and publisher.is_connected() then
+        publisher.send_heartbeat()
+    end
+end
+
+-- Called when player exits game
+local function on_game_end()
+    logger.info("ZMQ integration: on_game_end")
+    stop_heartbeat()
+    shutdown_zmq()
+end
+
+-- Called when MCM settings change
+local function on_mcm_changed()
+    logger.debug("ZMQ integration: MCM settings changed")
+    
+    -- If ZMQ was just enabled, initialize it
+    if config.zmq_enabled() and not is_zmq_connected() then
+        init_zmq()
+    end
+    
+    -- If ZMQ was just disabled, shutdown
+    if not config.zmq_enabled() and is_zmq_connected() then
+        shutdown_zmq()
+    end
+    
+    -- Send config update to Python service
+    publish_config_sync()
+end
+
+--------------------------------------------------------------------------------
+-- Registration
+--------------------------------------------------------------------------------
+
+function on_game_start()
+    RegisterScriptCallback("on_game_load", on_game_load)
+    RegisterScriptCallback("save_state", on_game_save)
+    RegisterScriptCallback("actor_on_net_destroy", on_game_end)
+    
+    -- MCM callback (if available)
+    if ui_mcm and ui_mcm.register_callback then
+        ui_mcm.register_callback("talker", on_mcm_changed)
+    end
+    
+    logger.info("ZMQ integration script registered")
+end
+
+function is_loaded()
+    return true
+end

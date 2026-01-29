@@ -143,4 +143,56 @@ function c.is_gemini()
 	return false
 end
 
+-- ZMQ / Python Service configuration
+function c.zmq_enabled()
+	return cfg("zmq_enabled", false)
+end
+
+function c.zmq_port()
+	return tonumber(cfg("zmq_port", 5555))
+end
+
+function c.zmq_endpoint()
+	return "tcp://*:" .. c.zmq_port()
+end
+
+function c.zmq_heartbeat_interval()
+	return tonumber(cfg("zmq_heartbeat_interval", 5))
+end
+
+-- Get all MCM config values as a table for sync
+function c.get_all_config()
+	return {
+		-- Model settings
+		gpt_version = cfg("gpt_version", "gpt-4o"),
+		ai_model_method = tonumber(cfg("ai_model_method", 3)),
+		custom_ai_model = cfg("custom_ai_model", "gemini/gemini-2.5-flash"),
+		custom_ai_model_fast = cfg("custom_ai_model_fast", "gemini/gemini-2.5-flash-lite"),
+		reasoning_level = tonumber(cfg("reasoning_level", -1)),
+		voice_provider = tonumber(cfg("voice_provider", 2)),
+		language = cfg("language", "Any"),
+		
+		-- Input settings
+		input_option = cfg("input_option", "0"),
+		speak_key = cfg("speak_key", 0),
+		whisper_modifier = cfg("whisper_modifier", 0),
+		
+		-- General settings
+		action_descriptions = cfg("action_descriptions", false),
+		female_gender = cfg("female_gender", false),
+		base_dialogue_chance = cfg("base_dialogue_chance", 0.25),
+		witness_distance = cfg("witness_distance", 25),
+		npc_speak_distance = cfg("npc_speak_distance", 30),
+		time_gap = cfg("time_gap", 12),
+		
+		-- ZMQ settings
+		zmq_enabled = cfg("zmq_enabled", false),
+		zmq_port = tonumber(cfg("zmq_port", 5555)),
+		zmq_heartbeat_interval = tonumber(cfg("zmq_heartbeat_interval", 5)),
+		
+		-- Debug
+		debug_logging = tonumber(cfg("debug_logging", 2)),
+	}
+end
+
 return c

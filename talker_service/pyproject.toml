@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "talker-service"
+version = "0.1.0"
+description = "Python service for TALKER Expanded - handles AI compute for NPC dialogue"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+    {name = "TALKER Expanded Contributors"}
+]
+
+dependencies = [
+    "pyzmq>=25.0.0",
+    "fastapi>=0.100.0",
+    "uvicorn>=0.23.0",
+    "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
+    "loguru>=0.7.0",
+    "python-dotenv>=1.0.0",
+    "tornado>=6.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+]
+
+[project.scripts]
+talker-service = "talker_service.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
