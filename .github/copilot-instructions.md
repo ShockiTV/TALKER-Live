@@ -144,3 +144,69 @@ Located in `mic_python/python/`:
 - Communicates via temp files (`talker_mic_io_commands`, `talker_mic_io_transcription`)
 
 Launch via `launch_mic.bat`, not directly.
+
+## Python Service (ZMQ Integration)
+
+Located in `talker_service/`:
+- **Purpose**: Experimental Python service for offloading AI compute from Lua
+- **Communication**: ZeroMQ PUB/SUB pattern (Lua PUB → Python SUB)
+- **Status**: Phase 1 complete (event logging, config mirroring)
+
+### Architecture
+
+```
+talker_service/
+├── run.py                      # Entry point (Windows asyncio fix)
+├── src/talker_service/
+│   ├── __main__.py             # FastAPI app + ZMQ router lifecycle
+│   ├── config.py               # Service configuration (pydantic-settings)
+│   ├── models/
+│   │   ├── messages.py         # Pydantic schemas for ZMQ messages
+│   │   └── config.py           # MCM config mirror schema
+│   ├── transport/
+│   │   └── router.py           # ZMQRouter class (SUB socket, topic routing)
+│   └── handlers/
+│       ├── events.py           # Game event handler (logging)
+│       └── config.py           # ConfigMirror class
+└── tests/                      # pytest test suite
+```
+
+### Lua-Side Integration
+
+- **`bin/lua/infra/zmq/bridge.lua`** - LuaJIT FFI binding to libzmq.dll
+- **`bin/lua/infra/zmq/publisher.lua`** - High-level event publishing API
+- **`gamedata/scripts/talker_zmq_integration.script`** - Game callbacks (init, heartbeat, shutdown)
+
+### ZMQ Topics
+
+| Topic | Direction | Purpose |
+|-------|-----------|---------|
+| `game.event` | Lua → Python | Game events (death, dialogue, etc.) |
+| `player.dialogue` | Lua → Python | Player chatbox input |
+| `player.whisper` | Lua → Python | Player whisper input |
+| `config.update` | Lua → Python | MCM setting changed |
+| `config.sync` | Lua → Python | Full config on game load |
+| `system.heartbeat` | Lua → Python | Connection health check |
+
+### Message Format
+
+All messages use: `<topic> <json-payload>`
+
+Example: `game.event {"event": {"type": "DEATH", "context": {...}, "witnesses": [...], ...}, "is_important": true}`
+
+### Key Files
+
+- [talker_service/src/talker_service/__main__.py](../talker_service/src/talker_service/__main__.py) - FastAPI app
+- [bin/lua/infra/zmq/publisher.lua](../bin/lua/infra/zmq/publisher.lua) - Event publishing
+- [gamedata/scripts/talker_zmq_integration.script](../gamedata/scripts/talker_zmq_integration.script) - Game integration
+- [docs/Python_Service_Setup.md](../docs/Python_Service_Setup.md) - Setup guide
+
+### Running Tests
+
+```bash
+cd talker_service
+pip install -e ".[dev]"
+pytest tests/
+```
+
+Launch service via `launch_talker_service.bat`.
