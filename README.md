@@ -94,3 +94,38 @@ I took their basic code for reloading personalities from [issue#40](https://gith
 ### Dubious models for non-dialogue (not recommended)
 * **gemini/gemini-2.5-flash-lite:** Struggles with memory management. It is fast enough, and should be "usable" if you really want it to, but sometimes produces malformed output for long-term memory. There is no reason to use this for non-dialogue, in my opinion, even if you want to pay Google to use Gemini for dialogue (which you might, it still is a great model for that).
 * **nvidia_nim/moonshotai/kimi-k2-instruct:** It's fast enough, but its more elaborate and extravagant style does not lend itself to fact-based memory management. You *can* use it, but there is no reason to when Nvidia's Qwen-3 model mentioned above already works excellently for non-dialogue.
+
+---
+
+## Python Service (Experimental)
+
+TALKER Expanded includes an **experimental Python service** that enables offloading AI processing to a separate process. This is the foundation for future features like local LLM support and advanced memory management.
+
+### Quick Start
+
+1. **Start the Python service** before launching the game:
+   ```batch
+   launch_talker_service.bat
+   ```
+
+2. **Enable ZMQ in-game**: MCM → T.A.L.K.E.R. Expanded → Python Service → Enable ZMQ Publishing
+
+3. **Verify connection**: Open `http://localhost:8080/health` in a browser
+
+### Requirements
+
+- Python 3.10+
+- Windows 10/11
+
+### What it does (Phase 1)
+
+Currently the Python service:
+- Receives and logs game events in real-time
+- Mirrors MCM configuration from the game
+- Provides health check and debug endpoints
+
+The game continues to function normally without the service running - it's completely optional.
+
+### Documentation
+
+See [docs/Python_Service_Setup.md](docs/Python_Service_Setup.md) for detailed setup instructions and configuration options.

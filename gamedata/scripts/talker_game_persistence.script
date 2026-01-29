@@ -7,6 +7,16 @@ local personality_store = require("domain.repo.personalities")
 local backstories_store = require("domain.repo.backstories")
 local log = require("framework.logger")
 
+-- ZMQ integration reference (lazy-loaded)
+local zmq_integration = nil
+
+local function get_zmq_integration()
+    if zmq_integration == nil then
+        zmq_integration = talker_zmq_integration or false
+    end
+    return zmq_integration
+end
+
 -- Save the data
 function save_state(saved_data)
     log.info("Saving state...")
@@ -34,6 +44,16 @@ function load_state(saved_data)
     if (saved_data.backstories) then
         backstories_store.load_save_data(saved_data.backstories)
     end
+    
+    -- Trigger ZMQ config sync after a 2-second delay (allows MCM to fully initialize)
+    CreateTimeEvent("talker_persistence_zmq", "config_sync", 2, function()
+        local zmq = get_zmq_integration()
+        if zmq and zmq.publish_config_sync then
+            log.info("Persistence: Triggering ZMQ config sync after load")
+            zmq.publish_config_sync()
+        end
+        return true -- One-shot timer
+    end)
 end
 
 --------------------------------------------------------------------------------
