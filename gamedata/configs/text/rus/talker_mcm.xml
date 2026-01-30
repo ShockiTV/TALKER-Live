@@ -468,34 +468,16 @@
 </string>
     <!-- ZMQ / Python Service -->
     <string id="ui_mcm_talker_zmq_title">
-        <text>������ Python (���������������)</text>
-    </string>
-    <string id="ui_mcm_talker_zmq_enabled_title">
-        <text>�������� ������ Python</text>
-    </string>
-    <string id="ui_mcm_talker_zmq_enabled_description">
-        <text>�������� ���������� �������� � ������ Python ����� ZeroMQ. ��������� ����������� ������ Python. ���������������� �������.</text>
-    </string>
-    <string id="ui_mcm_talker_zmq_enabled">
-        <text>�������� ZMQ</text>
+        <text>Настройки Python сервиса</text>
     </string>
     <string id="ui_mcm_talker_zmq_port_title">
-        <text>���� ZMQ</text>
+        <text>Порт ZMQ</text>
     </string>
     <string id="ui_mcm_talker_zmq_port">
-        <text>���� ��� ZeroMQ (�� ���������: 5555)</text>
+        <text>Порт для ZeroMQ (по умолчанию: 5555)</text>
     </string>
     <string id="ui_mcm_talker_zmq_heartbeat_interval">
-        <text>�������� ������������ (�������)</text>
-    </string>
-    <string id="ui_mcm_talker_python_ai_enabled_title">
-        <text>�������� Python AI</text>
-    </string>
-    <string id="ui_mcm_talker_python_ai_enabled_description">
-        <text>����� ��������, ��������� �������� ��������������� �������� Python ������ Lua. ����������� ��� ������ � ���� 2+. ������ Python ������ ���� �������.</text>
-    </string>
-    <string id="ui_mcm_talker_python_ai_enabled">
-        <text>�������� ��������� AI ����� Python</text>
+        <text>Интервал сердцебиения (секунды)</text>
     </string>
     <string id="ui_mcm_talker_llm_timeout_title">
         <text>������� LLM</text>
@@ -508,5 +490,15 @@
     </string>
     <string id="ui_mcm_talker_state_query_timeout">
         <text>������������ ����� �������� ������� ��������� ���� (�� ���������: 30)</text>
+    </string>
+    <!-- HUD Notifications -->
+    <string id="ui_mcm_talker_service_disconnected">
+        <text>TALKER: Python ������ �� ��������. AI ������ ��������.</text>
+    </string>
+    <string id="ui_mcm_talker_service_reconnected">
+        <text>TALKER: Python ������ ������������. AI ������ ������������.</text>
+    </string>
+    <string id="ui_mcm_talker_service_offline">
+        <text>TALKER: ������ ��������. ��������� Python ������ ��� ��������� AI ��������.</text>
     </string>
 </string_table>

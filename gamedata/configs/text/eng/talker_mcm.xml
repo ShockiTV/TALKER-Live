@@ -484,16 +484,7 @@
     </string>
     <!-- ZMQ / Python Service -->
     <string id="ui_mcm_talker_zmq_title">
-        <text>Python Service (Experimental)</text>
-    </string>
-    <string id="ui_mcm_talker_zmq_enabled_title">
-        <text>Enable Python Service</text>
-    </string>
-    <string id="ui_mcm_talker_zmq_enabled_description">
-        <text>Enables parallel event publishing to Python service via ZeroMQ. Requires the Python service to be running. Experimental feature.</text>
-    </string>
-    <string id="ui_mcm_talker_zmq_enabled">
-        <text>Enable ZMQ Publishing</text>
+        <text>Python Service Settings</text>
     </string>
     <string id="ui_mcm_talker_zmq_port_title">
         <text>ZMQ Port</text>
@@ -503,15 +494,6 @@
     </string>
     <string id="ui_mcm_talker_zmq_heartbeat_interval">
         <text>Heartbeat interval (seconds)</text>
-    </string>
-    <string id="ui_mcm_talker_python_ai_enabled_title">
-        <text>Enable Python AI</text>
-    </string>
-    <string id="ui_mcm_talker_python_ai_enabled_description">
-        <text>When enabled, AI dialogue generation is handled by the Python service instead of Lua. REQUIRED for dialogue in Phase 2+. The Python service must be running.</text>
-    </string>
-    <string id="ui_mcm_talker_python_ai_enabled">
-        <text>Enable Python AI Processing</text>
     </string>
     <string id="ui_mcm_talker_llm_timeout_title">
         <text>LLM Timeout</text>
@@ -524,5 +506,15 @@
     </string>
     <string id="ui_mcm_talker_state_query_timeout">
         <text>Maximum seconds to wait for game state queries (default: 30)</text>
+    </string>
+    <!-- HUD Notifications -->
+    <string id="ui_mcm_talker_service_disconnected">
+        <text>TALKER: Python service not responding. AI dialogue disabled.</text>
+    </string>
+    <string id="ui_mcm_talker_service_reconnected">
+        <text>TALKER: Python service reconnected. AI dialogue restored.</text>
+    </string>
+    <string id="ui_mcm_talker_service_offline">
+        <text>TALKER: Service offline. Start Python service to enable AI dialogue.</text>
     </string>
 </string_table>

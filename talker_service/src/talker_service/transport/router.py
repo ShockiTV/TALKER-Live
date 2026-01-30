@@ -133,7 +133,10 @@ class ZMQRouter:
             # Extract payload (may be nested under "payload" key or direct)
             payload = data.get("payload", data)
             
-            logger.debug(f"Received message - topic: {topic}")
+            # Only log heartbeat messages if explicitly enabled (reduces noise)
+            from ..config import settings
+            if topic != "system.heartbeat" or settings.log_heartbeat:
+                logger.debug(f"Received message - topic: {topic}")
             
             # Route to handler
             handler = self.handlers.get(topic)
@@ -194,7 +197,10 @@ class ZMQRouter:
         try:
             message = f"{topic} {json.dumps(payload)}"
             await self.pub_socket.send_string(message)
-            logger.debug(f"Published to {topic}")
+            # Only log heartbeat ack if explicitly enabled (reduces noise)
+            from ..config import settings
+            if topic != "service.heartbeat.ack" or settings.log_heartbeat:
+                logger.debug(f"Published to {topic}")
             return True
         except Exception as e:
             logger.error(f"Publish error: {e}")

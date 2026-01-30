@@ -194,6 +194,21 @@ local function handle_config_request(topic, payload)
     end
 end
 
+--- Handler for service.heartbeat.ack command
+-- Python service acknowledges our heartbeat - marks service as alive
+local function handle_heartbeat_ack(topic, payload)
+    logger.debug("Received heartbeat acknowledgement from Python service")
+    
+    -- Get bridge module and mark service as alive
+    local bridge = nil
+    local ok, mod = pcall(require, "infra.zmq.bridge")
+    if ok then bridge = mod end
+    
+    if bridge and bridge.mark_service_alive then
+        bridge.mark_service_alive()
+    end
+end
+
 --------------------------------------------------------------------------------
 -- Registration
 --------------------------------------------------------------------------------
@@ -211,6 +226,7 @@ local function register_handlers()
     zmq.register_command_handler("memory.update", handle_memory_update)
     zmq.register_command_handler("event.store", handle_event_store)
     zmq.register_command_handler("config.request", handle_config_request)
+    zmq.register_command_handler("service.heartbeat.ack", handle_heartbeat_ack)
     
     logger.info("ZMQ command handlers registered successfully")
     return true

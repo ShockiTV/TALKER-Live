@@ -43,14 +43,12 @@ This will:
 2. Install all required dependencies
 3. Start the service
 
-### 3. Enable in Game
+### 3. Start the Game
 
 1. Launch STALKER Anomaly
-2. Open MCM (Mod Configuration Menu)
-3. Navigate to **T.A.L.K.E.R. Expanded** → **Python Service**
-4. Check **Enable ZMQ Publishing**
-5. Check **Enable Python AI**
-6. (Optional) Adjust the port if 5555 is already in use
+2. Load a save - dialogue will be generated via the Python service
+
+**Note:** The Python service is always enabled. No MCM toggle is needed.
 
 ## Usage
 
@@ -105,8 +103,6 @@ LOG_FILE=logs/talker_service.log
 
 | Setting | Description | Default |
 |---------|-------------|---------|
-| Enable ZMQ Publishing | Enables event publishing to Python service | Off |
-| Enable Python AI | Enables AI dialogue generation via Python | Off |
 | ZMQ Port | Port for ZeroMQ communication (Lua → Python) | 5555 |
 | ZMQ Command Port | Port for command channel (Python → Lua) | 5556 |
 | Heartbeat Interval | Seconds between heartbeat messages | 5 |
@@ -122,17 +118,15 @@ LOG_FILE=logs/talker_service.log
 ### Game Doesn't Connect
 
 1. Ensure service is running **before** loading a save
-2. Check ZMQ is enabled in MCM
-3. Check Python AI is enabled in MCM
-4. Verify ports match in MCM and `.env`
-5. Check `logs/talker_debug.log` for ZMQ errors
+2. Verify ports match in MCM and `.env`
+3. Check `logs/talker_debug.log` for ZMQ errors
+4. A HUD notification will appear if the service is disconnected
 
 ### No Dialogue Generated
 
 1. Verify Python service is running and connected (check /health endpoint)
-2. Check both "Enable ZMQ Publishing" AND "Enable Python AI" are checked in MCM
-3. Check service logs for LLM errors
-4. Verify your API keys are correctly configured
+2. Check service logs for LLM errors
+3. Verify your API keys are correctly configured
 
 ### Missing libzmq.dll (Game Side)
 
@@ -177,23 +171,11 @@ copy %VCPKG_ROOT%\installed\x64-windows\bin\libzmq*.dll bin\pollnet\libzmq.dll
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## Phase 1 Status (Current)
+## Service Status Notifications
 
-Phase 1 establishes the communication infrastructure:
+The game will show HUD notifications if the Python service becomes unavailable:
 
-- ✅ ZMQ bridge (Lua → Python)
-- ✅ Event publishing (parallel to existing flow)
-- ✅ Config sync
-- ✅ Heartbeat system
-- ✅ Health monitoring
+- **"TALKER: Python service not responding. AI dialogue disabled."** - Shown when the service hasn't responded for 15 seconds
+- **"TALKER: Python service reconnected. AI dialogue restored."** - Shown when connection is restored
 
-**Note**: In Phase 1, the Python service only logs events. AI dialogue generation still happens in Lua via HTTP. Phase 2 will move AI processing to Python.
-
-## Disabling the Service
-
-To disable the Python service:
-
-1. Uncheck "Enable ZMQ Publishing" in MCM
-2. Stop the Python service (Ctrl+C in the terminal)
-
-The game will continue to work normally using the existing Lua-based AI system.
+This helps you know if you forgot to start the service or if it crashed.

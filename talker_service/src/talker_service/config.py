@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     # Logging
     log_level: str = "INFO"
     log_file: Path = Path("logs/talker_service.log")
+    log_heartbeat: bool = False  # If True, log heartbeat messages (verbose)
     
     # LLM Settings
     default_llm_provider: str = "openai"  # openai, openrouter, ollama, proxy

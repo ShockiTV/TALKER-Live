@@ -25,3 +25,24 @@ The `DialogueGenerator` class MUST provide:
 - **WHEN** a dialogue request cannot be fulfilled due to service issues
 - **THEN** the request SHALL fail gracefully (no dialogue displayed)
 - **AND** there SHALL be no fallback to Lua-based generation
+
+### Requirement: Heartbeat Acknowledgement
+The Python service SHALL acknowledge heartbeat messages from Lua to enable connection status tracking.
+
+#### Scenario: Heartbeat received from Lua
+- **WHEN** Python receives a `system.heartbeat` message
+- **THEN** Python SHALL publish `service.heartbeat.ack` back to Lua
+- **AND** the ack payload SHALL include `status: "alive"` and `timestamp`
+
+### Requirement: LOG_HEARTBEAT Configuration
+The Python service SHALL support a `LOG_HEARTBEAT` environment variable to control heartbeat logging verbosity.
+
+#### Scenario: LOG_HEARTBEAT not set or false
+- **WHEN** `LOG_HEARTBEAT` is not set or set to `false`
+- **THEN** heartbeat messages SHALL NOT be logged (reduces log noise)
+- **AND** this applies to router receive/publish logs and event handler logs
+
+#### Scenario: LOG_HEARTBEAT set to true
+- **WHEN** `LOG_HEARTBEAT=true` is set in `.env`
+- **THEN** all heartbeat messages SHALL be logged at DEBUG level
+- **AND** this enables debugging of connection issues

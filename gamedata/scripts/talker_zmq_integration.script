@@ -11,6 +11,10 @@ local bridge = nil  -- For command polling
 local is_zmq_initialized = false
 local heartbeat_timer_id = "talker_zmq_heartbeat"
 local poll_timer_id = "talker_zmq_poll"
+local status_check_timer_id = "talker_zmq_status_check"
+
+-- Timeout for considering service disconnected (seconds since last message)
+local SERVICE_TIMEOUT_SECONDS = 15
 
 --------------------------------------------------------------------------------
 -- Helpers
@@ -33,10 +37,7 @@ local function init_zmq()
     
     is_zmq_initialized = true
     
-    if not config.zmq_enabled() then
-        logger.info("ZMQ publishing disabled in MCM")
-        return false
-    end
+    -- ZMQ is always enabled (Python service is mandatory)
     
     publisher = safe_require("infra.zmq.publisher")
     if not publisher then
@@ -57,6 +58,7 @@ local function init_zmq()
         logger.info("ZMQ publisher initialized successfully on " .. config.zmq_endpoint())
         start_heartbeat()
         start_command_polling()
+        start_status_check()
         return true
     else
         logger.warn("ZMQ publisher failed to initialize - check if libzmq.dll is in bin/pollnet/")
@@ -68,6 +70,7 @@ end
 
 local function shutdown_zmq()
     stop_command_polling()
+    stop_status_check()
     if publisher then
         publisher.shutdown()
         publisher = nil
@@ -105,6 +108,86 @@ end
 
 function stop_command_polling()
     RemoveTimeEvent(poll_timer_id, poll_timer_id)
+end
+
+--------------------------------------------------------------------------------
+-- Service Status Notifications
+--------------------------------------------------------------------------------
+
+local function show_service_disconnected_notification()
+    -- Show HUD message that Python service is not responding
+    if db and db.actor then
+        local msg = game.translate_string("ui_mcm_talker_service_disconnected")
+        if msg == "ui_mcm_talker_service_disconnected" then
+            -- Fallback if translation not found
+            msg = "TALKER: Python service not responding. AI dialogue disabled."
+        end
+        actor_menu.set_msg(1, msg, 7)
+        logger.warn("Python service disconnected - showed HUD notification")
+    end
+end
+
+local function show_service_reconnected_notification()
+    -- Show HUD message that Python service has reconnected
+    if db and db.actor then
+        local msg = game.translate_string("ui_mcm_talker_service_reconnected")
+        if msg == "ui_mcm_talker_service_reconnected" then
+            -- Fallback if translation not found
+            msg = "TALKER: Python service reconnected. AI dialogue restored."
+        end
+        actor_menu.set_msg(1, msg, 5)
+        logger.info("Python service reconnected - showed HUD notification")
+    end
+end
+
+local function check_service_status()
+    if not bridge then return end
+    
+    local status = bridge.get_connection_status()
+    local now = os.time()
+    
+    -- Determine the reference time: last message received, or initialization time if never received
+    local reference_time = status.last_successful_recv
+    if reference_time == 0 then
+        reference_time = status.initialization_time
+    end
+    
+    -- Check if enough time has passed without hearing from the service
+    if reference_time and reference_time > 0 then
+        local time_since_last = now - reference_time
+        
+        if time_since_last > SERVICE_TIMEOUT_SECONDS then
+            -- Mark as disconnected if we haven't heard from service
+            bridge.mark_service_disconnected()
+            
+            -- Show notification (only once per disconnect)
+            if bridge.should_notify_disconnect() then
+                show_service_disconnected_notification()
+            end
+        end
+    end
+    
+    -- Check if we should show reconnect notification
+    if bridge.should_notify_reconnect() then
+        show_service_reconnected_notification()
+    end
+end
+
+function start_status_check()
+    if not bridge then return end
+    
+    local interval = 5.0 -- Check every 5 seconds
+    logger.info("Starting ZMQ service status check timer")
+    
+    CreateTimeEvent(status_check_timer_id, status_check_timer_id, interval, function()
+        check_service_status()
+        ResetTimeEvent(status_check_timer_id, status_check_timer_id, interval)
+        return false
+    end)
+end
+
+function stop_status_check()
+    RemoveTimeEvent(status_check_timer_id, status_check_timer_id)
 end
 
 --------------------------------------------------------------------------------
@@ -166,21 +249,59 @@ function stop_heartbeat()
 end
 
 --------------------------------------------------------------------------------
+-- Offline Attempt Notification
+--------------------------------------------------------------------------------
+
+local function show_offline_attempt_notification()
+    -- Show HUD message that trying to use service while offline
+    if db and db.actor and bridge and bridge.should_notify_offline_attempt() then
+        local msg = game.translate_string("ui_mcm_talker_service_offline")
+        if msg == "ui_mcm_talker_service_offline" then
+            -- Fallback if translation not found
+            msg = "TALKER: Python service is offline. Start the service and wait for reconnect."
+        end
+        actor_menu.set_msg(1, msg, 5)
+        logger.debug("Showed offline attempt notification")
+    end
+end
+
+--------------------------------------------------------------------------------
 -- Public API (for use by other scripts)
 --------------------------------------------------------------------------------
 
 function publish_game_event(event, is_important)
     if not init_zmq() then return false end
+    
+    -- Check if service is available, show notification if attempting while offline
+    if bridge and not bridge.is_service_available() then
+        show_offline_attempt_notification()
+        return false
+    end
+    
     return publisher.send_game_event(event, is_important)
 end
 
 function publish_player_dialogue(text, context)
     if not init_zmq() then return false end
+    
+    -- Check if service is available, show notification if attempting while offline
+    if bridge and not bridge.is_service_available() then
+        show_offline_attempt_notification()
+        return false
+    end
+    
     return publisher.send_player_dialogue(text, context)
 end
 
 function publish_player_whisper(text, target)
     if not init_zmq() then return false end
+    
+    -- Check if service is available, show notification if attempting while offline
+    if bridge and not bridge.is_service_available() then
+        show_offline_attempt_notification()
+        return false
+    end
+    
     return publisher.send_player_whisper(text, target)
 end
 
@@ -236,16 +357,6 @@ end
 -- Called when MCM settings change
 local function on_mcm_changed()
     logger.debug("ZMQ integration: MCM settings changed")
-    
-    -- If ZMQ was just enabled, initialize it
-    if config.zmq_enabled() and not is_zmq_connected() then
-        init_zmq()
-    end
-    
-    -- If ZMQ was just disabled, shutdown
-    if not config.zmq_enabled() and is_zmq_connected() then
-        shutdown_zmq()
-    end
     
     -- Send config update to Python service
     publish_config_sync()
