@@ -2,20 +2,32 @@
 
 ## Overview
 
-Python orchestrator that handles the full dialogue generation flow: event reception → speaker selection → memory management → prompt building → LLM call → display command.
+Python orchestrator that handles the full dialogue generation flow: event reception → speaker selection → memory management → prompt building → LLM call → display command. The Python service is the SOLE dialogue generation path - there is no Lua fallback.
 
 ## Requirements
 
-### ADDED: Dialogue Generator Service
+### Dialogue Generator Service
 
-The system MUST provide `DialogueGenerator` class with:
+The system MUST provide `DialogueGenerator` class as the sole dialogue generation path. There SHALL be no alternative or fallback dialogue generation mechanism.
+
+The `DialogueGenerator` class MUST provide:
 - `async generate(event, is_important)` method as main entry point
 - Access to state query client for fetching Lua state
 - Access to LLM client for AI completions
 - Access to prompt builder for prompt construction
 - Publisher for sending display commands
 
-### ADDED: Speaker Selection Flow
+#### Scenario: All dialogue flows through Python service
+- **WHEN** any dialogue-triggering event occurs
+- **THEN** dialogue generation SHALL be handled exclusively by the Python DialogueGenerator
+- **AND** no Lua-side AI processing SHALL occur
+
+#### Scenario: Service unavailable during dialogue request
+- **WHEN** a dialogue request cannot be fulfilled due to service issues
+- **THEN** the request SHALL fail gracefully (no dialogue displayed)
+- **AND** there SHALL be no fallback to Lua-based generation
+
+### Speaker Selection Flow
 
 The system MUST implement speaker selection that:
 - Receives witnesses from event data
@@ -25,7 +37,7 @@ The system MUST implement speaker selection that:
 - Validates selected speaker ID against witness list
 - Sets speaker cooldown after selection
 
-### ADDED: Memory Context Fetching
+### Memory Context Fetching
 
 The system MUST fetch memory context by:
 - Sending `memories.get` query to Lua with character_id
@@ -33,7 +45,7 @@ The system MUST fetch memory context by:
 - Handling query timeout (30 second default)
 - Returning empty context on failure (graceful degradation)
 
-### ADDED: Memory Compression Trigger
+### Memory Compression Trigger
 
 The system MUST trigger memory compression when:
 - New events count exceeds COMPRESSION_THRESHOLD (12)
@@ -42,7 +54,7 @@ The system MUST trigger memory compression when:
 - Sends `memory.update` command to Lua with new narrative
 - Releases lock after completion
 
-### ADDED: Dialogue Request Flow
+### Dialogue Request Flow
 
 The system MUST request dialogue by:
 - Building dialogue prompt with speaker + memory context
@@ -50,7 +62,7 @@ The system MUST request dialogue by:
 - Cleaning/improving response text
 - Sending `dialogue.display` command to Lua
 
-### ADDED: Request-Response Correlation
+### Request-Response Correlation
 
 The system MUST use correlation IDs:
 - Generate unique request_id for each dialogue flow
@@ -58,13 +70,36 @@ The system MUST use correlation IDs:
 - Track in-flight requests for timeout handling
 - Log request_id for debugging
 
-### ADDED: Error Handling
+### Error Handling
 
 The system MUST handle errors by:
 - Catching LLM timeouts, returning no dialogue
 - Catching query timeouts, using empty context
 - Logging errors with request_id
 - Never crashing service on individual dialogue failure
+
+### Heartbeat Acknowledgement
+
+The Python service SHALL acknowledge heartbeat messages from Lua to enable connection status tracking.
+
+#### Scenario: Heartbeat received from Lua
+- **WHEN** Python receives a `system.heartbeat` message
+- **THEN** Python SHALL publish `service.heartbeat.ack` back to Lua
+- **AND** the ack payload SHALL include `status: "alive"` and `timestamp`
+
+### LOG_HEARTBEAT Configuration
+
+The Python service SHALL support a `LOG_HEARTBEAT` environment variable to control heartbeat logging verbosity.
+
+#### Scenario: LOG_HEARTBEAT not set or false
+- **WHEN** `LOG_HEARTBEAT` is not set or set to `false`
+- **THEN** heartbeat messages SHALL NOT be logged (reduces log noise)
+- **AND** this applies to router receive/publish logs and event handler logs
+
+#### Scenario: LOG_HEARTBEAT set to true
+- **WHEN** `LOG_HEARTBEAT=true` is set in `.env`
+- **THEN** all heartbeat messages SHALL be logged at DEBUG level
+- **AND** this enables debugging of connection issues
 
 ## Scenarios
 
