@@ -21,6 +21,16 @@ local zmq_sub_socket = nil   -- For receiving commands (SUB, connect :5556)
 local is_available = false
 local is_initialized = false
 
+-- Connection status tracking for user notifications
+local connection_status = {
+    connected = false,           -- Currently connected to Python service
+    last_successful_send = 0,    -- Timestamp of last successful send
+    last_successful_recv = 0,    -- Timestamp of last successful receive
+    initialization_time = 0,     -- When ZMQ was initialized (for timeout if no messages received)
+    has_notified_disconnect = false,  -- Already showed disconnect HUD message
+    has_notified_reconnect = false,   -- Shown reconnect message for current session
+}
+
 -- Command handlers table (topic -> function)
 local command_handlers = {}
 
@@ -226,6 +236,11 @@ function bridge.init(opts)
         logger.info("ZMQ bridge SUB connected to " .. config.sub_endpoint)
     end
     is_available = true
+    
+    -- Record initialization time for connection timeout tracking
+    connection_status.initialization_time = os.time()
+    connection_status.connected = true  -- Optimistic: assume connected until proven otherwise
+    
     return true
 end
 
@@ -349,6 +364,9 @@ function bridge.poll_commands()
                     end
                     
                     messages_processed = messages_processed + 1
+                    
+                    -- Mark service as alive when we receive messages
+                    bridge.mark_service_alive()
                 else
                     logger.warn("Failed to decode command JSON: " .. tostring(message))
                 end
@@ -418,6 +436,93 @@ function bridge.get_config()
         is_initialized = is_initialized,
         can_receive = zmq_sub_socket ~= nil,
     }
+end
+
+--------------------------------------------------------------------------------
+-- Connection Status API (for user notifications)
+--------------------------------------------------------------------------------
+
+--- Get the current connection status.
+-- @return Table with connection status details
+function bridge.get_connection_status()
+    return {
+        connected = connection_status.connected,
+        last_successful_send = connection_status.last_successful_send,
+        last_successful_recv = connection_status.last_successful_recv,
+        initialization_time = connection_status.initialization_time,
+        has_notified_disconnect = connection_status.has_notified_disconnect,
+    }
+end
+
+--- Mark that a successful message was received from Python service.
+-- This is called internally when poll_commands receives a message.
+function bridge.mark_service_alive()
+    local was_disconnected = not connection_status.connected
+    connection_status.connected = true
+    connection_status.last_successful_recv = os.time()
+    
+    -- If we were previously disconnected, mark for reconnect notification
+    if was_disconnected and connection_status.has_notified_disconnect then
+        connection_status.has_notified_reconnect = false  -- Allow reconnect notification
+        logger.info("Python service connection restored")
+    end
+end
+
+--- Mark that the Python service appears disconnected.
+-- Called when we detect communication failure.
+function bridge.mark_service_disconnected()
+    connection_status.connected = false
+end
+
+--- Check if we should show a disconnect notification.
+-- @return true if notification should be shown (first time only)
+function bridge.should_notify_disconnect()
+    if not connection_status.has_notified_disconnect and not connection_status.connected then
+        connection_status.has_notified_disconnect = true
+        return true
+    end
+    return false
+end
+
+--- Check if we should show a reconnect notification.
+-- @return true if notification should be shown
+function bridge.should_notify_reconnect()
+    if connection_status.connected and connection_status.has_notified_disconnect and not connection_status.has_notified_reconnect then
+        connection_status.has_notified_reconnect = true
+        return true
+    end
+    return false
+end
+
+--- Reset notification state (e.g., on new game load).
+function bridge.reset_notification_state()
+    connection_status.has_notified_disconnect = false
+    connection_status.has_notified_reconnect = false
+end
+
+--- Check if the Python service is currently available.
+-- @return true if connected and responding, false otherwise
+function bridge.is_service_available()
+    return connection_status.connected and is_available
+end
+
+--- Check if we should show an offline attempt notification.
+-- This is throttled to avoid spam (max once per 10 seconds).
+-- @return true if offline and notification should be shown
+local last_offline_attempt_notification = 0
+local OFFLINE_ATTEMPT_THROTTLE = 10  -- seconds
+
+function bridge.should_notify_offline_attempt()
+    if connection_status.connected then
+        return false  -- Service is connected, no need to notify
+    end
+    
+    local now = os.time()
+    if (now - last_offline_attempt_notification) >= OFFLINE_ATTEMPT_THROTTLE then
+        last_offline_attempt_notification = now
+        return true
+    end
+    return false
 end
 
 return bridge

@@ -32,7 +32,6 @@ class TestConfigMirror:
         
         mirror.update(sample_config_payload)
         
-        assert mirror.config.zmq_enabled is True
         assert mirror.config.zmq_port == 5555
         assert mirror.config.zmq_heartbeat_interval == 5
 
@@ -41,7 +40,6 @@ class TestConfigMirror:
         mirror = ConfigMirror()
         mirror.update(sample_config_payload)
         
-        assert mirror.get("zmq_enabled") is True
         assert mirror.get("zmq_port") == 5555
 
     def test_get_nonexistent_key_returns_default(self):
@@ -85,7 +83,7 @@ class TestConfigMirror:
             received_config = config
         
         mirror.on_change(my_callback)
-        mirror.update({"zmq_enabled": True, "zmq_port": 5555})
+        mirror.update({"zmq_port": 5555})
         
         assert callback_called is True
         assert received_config is not None

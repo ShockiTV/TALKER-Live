@@ -144,15 +144,7 @@ function c.is_gemini()
 end
 
 -- ZMQ / Python Service configuration
-function c.zmq_enabled()
-	return cfg("zmq_enabled", true)
-end
-
-function c.python_ai_enabled()
-	-- When enabled, AI dialogue generation is handled by the Python service
-	-- instead of Lua-based HTTP requests
-	return cfg("python_ai_enabled", true)
-end
+-- Note: ZMQ and Python AI are always enabled (no longer configurable)
 
 function c.zmq_port()
 	return tonumber(cfg("zmq_port", 5555))
@@ -210,8 +202,6 @@ function c.get_all_config()
 		time_gap = cfg("time_gap", 12),
 		
 		-- ZMQ settings
-		zmq_enabled = cfg("zmq_enabled", true),
-		python_ai_enabled = cfg("python_ai_enabled", true),
 		zmq_port = tonumber(cfg("zmq_port", 5555)),
 		zmq_heartbeat_interval = tonumber(cfg("zmq_heartbeat_interval", 5)),
 		llm_timeout = tonumber(cfg("llm_timeout", 60)),

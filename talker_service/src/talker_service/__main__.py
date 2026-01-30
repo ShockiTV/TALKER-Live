@@ -69,6 +69,7 @@ async def lifespan(app: FastAPI):
     
     # Inject generator into event handlers
     event_handlers.set_dialogue_generator(dialogue_generator)
+    event_handlers.set_publisher(zmq_router)  # For heartbeat acks
     
     # Register handlers
     zmq_router.on("game.event", event_handlers.handle_game_event)

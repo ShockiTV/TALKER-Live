@@ -74,7 +74,6 @@ def sample_config_payload():
         "fast_model_name": "gpt-3.5-turbo",
         "temperature": 0.7,
         "max_tokens": 150,
-        "zmq_enabled": True,
         "zmq_port": 5555,
         "zmq_heartbeat_interval": 5,
         "language": "English",

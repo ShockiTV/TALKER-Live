@@ -99,7 +99,7 @@ I took their basic code for reloading personalities from [issue#40](https://gith
 
 ## Python Service (REQUIRED)
 
-**Starting from Phase 2, TALKER Expanded requires the Python service to be running for AI dialogue generation.** This is a BREAKING change from previous versions.
+**TALKER Expanded requires the Python service to be running for AI dialogue generation.**
 
 ### Quick Start
 
@@ -108,7 +108,7 @@ I took their basic code for reloading personalities from [issue#40](https://gith
    ```batch
    launch_talker_service.bat
    ```
-3. **Enable in MCM**: T.A.L.K.E.R. Expanded → Python Service → Enable ZMQ Publishing AND Enable Python AI
+3. **Launch the game** and load a save
 4. **Verify connection**: Open `http://localhost:8080/health` in a browser
 
 ### Requirements
@@ -119,20 +119,19 @@ I took their basic code for reloading personalities from [issue#40](https://gith
 
 ### What it does
 
-The Python service now handles:
+The Python service handles:
 - **All AI dialogue generation** (LLM calls for NPC responses)
 - **Speaker selection** (choosing which NPC responds to events)
 - **Memory compression** (long-term memory management)
 - **Prompt building** (constructing context for LLM)
 
-The game will NOT generate any AI dialogue if the Python service is not running and enabled.
+The game will NOT generate any AI dialogue if the Python service is not running.
 
-### Fallback Mode
+### Service Status Notifications
 
-If you want to use the legacy Lua-based AI system (not recommended):
-1. Disable "Enable Python AI" in MCM
-2. The game will use the built-in HTTP-based AI system
-3. Note: This mode is deprecated and will be removed in future versions
+The game will show HUD notifications if the Python service becomes unavailable:
+- **"TALKER: Python service not responding. AI dialogue disabled."** - Shown when the service hasn't responded for 15 seconds
+- **"TALKER: Python service reconnected. AI dialogue restored."** - Shown when connection is restored
 
 ### Documentation
 

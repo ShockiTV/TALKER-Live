@@ -5,7 +5,6 @@ local file_io = require('infra.file_io')
 local event_store = require('domain.repo.event_store')
 local memory_store = require('domain.repo.memory_store')
 local json = require('infra.HTTP.json')
-local AI_request = require('infra.AI.requests')
 
 -- Import mock utilities
 local mock_characters = require('tests.mocks.mock_characters')
@@ -13,6 +12,10 @@ local Event = require('domain.model.event')
 local EventType = require('domain.model.event_types')
 local mock_game_adapter = require('tests.mocks.mock_game_adapter')
 local game_adapter_recorder = require('infra.game_adapter_recorder')
+
+-- NOTE: Memory compression is now handled by Python service.
+-- This test validates the Lua-side memory storage and event store.
+-- For full memory compression tests, see talker_service/tests/.
 
 -- Setup
 -- mock_game_adapter = game_adapter_recorder(mock_game_adapter)
@@ -78,55 +81,57 @@ local events = {
     create_mock_event("%s proposes deciphering the journal to uncover more about the artifact", {mock_characters[1]})
 }
 
-function TestGetCurrentMemories()
-    local current_test = 'TestGetCurrentMemories'
-    -- insert 10 events into the event store
+function TestGetMemoryContext()
+    local current_test = 'TestGetMemoryContext'
+    
+    -- Clear stores
+    event_store:clear()
+    memory_store:clear()
+    
+    -- Insert 10 events into the event store
     for i = 1, 10 do
         event_store:store_event(events[i])
     end
-    memory_store:store_compressed_memory(mock_characters[2].game_id, "Memory 1", 5)
-    memory_store:store_compressed_memory(mock_characters[2].game_id, "Memory 2", 6)
-    local output = memory_store:get_current_memories(mock_characters[2].game_id)
-    luaunit.assertEquals(#output, 5)
-    -- assert compressed one is first
-    luaunit.assertEquals(output[1].content, "Memory 2")
+    
+    -- Update narrative (simulating what Python service would do)
+    memory_store:update_narrative(mock_characters[2].game_id, "This is a test narrative memory.", 5)
+    
+    -- Get memory context
+    local output = memory_store:get_memory_context(mock_characters[2].game_id)
+    luaunit.assertNotNil(output.narrative, "Expected narrative to exist")
+    luaunit.assertTrue(#output.new_events > 0, "Expected new events since last update")
+    
     file_io.override("tests/live/output/" .. current_test ..'.json', json.encode(output))
 end
 
--- Mock compression test
-function Test_MemoryCompression()
-    local current_test = 'TestMemoryCompression'
+-- Mock compression test (Lua-side event storage only)
+-- Full memory compression is handled by Python service
+function Test_MemoryStorage()
+    local current_test = 'TestMemoryStorage'
 
-    -- For each event, store it and attempt to compress memories
-    -- each event will save it's current state to a file
+    -- Clear stores
+    event_store:clear()
+    memory_store:clear()
+
+    -- Store all events
     for i, event in ipairs(events) do
         event_store:store_event(event)
-        AI_request.compress_memories(mock_characters[2].game_id, function(speaker_id)
-            local all_memories = memory_store:get_current_memories(speaker_id)
-            local simpler_memories = {}
-            for _, memory in ipairs(all_memories) do
-                if memory.witnesses then
-                    table.insert(simpler_memories, {
-                        description = memory.description,
-                        type = 'fresh'
-                    })
-                else
-                    table.insert(simpler_memories, {
-                        description = memory.content,
-                        type = 'compressed'
-                    })
-                end
-        
-            end
-            file_io.override("tests/live/output/" .. current_test .. '/' .. i ..'.json', json.encode(simpler_memories) .. '\n')
-        end)
     end
 
-    -- assert last 3 events are intact in the all_memories
-    local all_memories = memory_store:get_all_memories(mock_characters[2].game_id)
-    luaunit.assertEquals(all_memories[#all_memories-2].description, events[#events-2].description)
-    luaunit.assertEquals(all_memories[#all_memories-1].description, events[#events-1].description)
-    luaunit.assertEquals(all_memories[#all_memories].description, events[#events].description)
+    -- Check events were stored
+    local all_events = event_store:get_events_since(0)
+    luaunit.assertEquals(#all_events, #events, "Expected all events to be stored")
+
+    -- Check memory context can be retrieved
+    local memory_ctx = memory_store:get_memory_context(mock_characters[2].game_id)
+    luaunit.assertNotNil(memory_ctx, "Expected memory context to be returned")
+    luaunit.assertTrue(#memory_ctx.new_events > 0, "Expected new events in memory context")
+    
+    file_io.override("tests/live/output/" .. current_test .. '.json', json.encode({
+        events_count = #all_events,
+        new_events_count = #memory_ctx.new_events,
+        has_narrative = memory_ctx.narrative ~= nil
+    }) .. '\n')
 end
 
 

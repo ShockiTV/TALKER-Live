@@ -19,6 +19,21 @@ The system SHALL require the Python service to be running for AI dialogue genera
 - **THEN** the system SHALL display a recovery HUD notification to the user
 - **AND** dialogue generation SHALL resume for new events
 
+#### Scenario: User attempts to trigger dialogue while offline
+- **WHEN** the user triggers an event that would generate dialogue but service is offline
+- **THEN** the system SHALL display an "offline" HUD notification (throttled to once per 10 seconds)
+- **AND** the notification SHALL inform the user to start the Python service
+
+### Requirement: Heartbeat acknowledgement for connection recovery
+The Python service SHALL acknowledge heartbeats from Lua to enable connection recovery after game pause.
+
+#### Scenario: Game unpauses after extended pause
+- **WHEN** the game was paused (e.g., in menu) for longer than the timeout period
+- **AND** the game resumes and sends a heartbeat
+- **THEN** Python service SHALL respond with `service.heartbeat.ack`
+- **AND** Lua SHALL restore connection status to connected
+- **AND** connection recovery SHALL occur within one heartbeat cycle (5 seconds)
+
 ### Requirement: No legacy Lua AI code exists
 The system SHALL NOT contain any Lua-based LLM client implementations or HTTP-based AI request code.
 

@@ -15,36 +15,44 @@ talker.set_game_adapter(mock_game_adapter)
 local event_store = require('domain.repo.event_store')
 
 
--- Mock the AI_request module
-local AI_request = require('infra.AI.requests')
-local dialogue_mock = "'Hello, world!'"
+-- Test Scenario: Event Registration
+-- In Phase 2+, talker.lua only stores events. AI dialogue is handled by Python service.
+function Test_EventRegistration()
+    print("Test_EventRegistration")
 
--- Mock the AI_request.generate_dialogue function
-AI_request.generate_dialogue = function(speaker_id, final_callback)
-    print("AI_request.generate_dialogue has been mocked!")
-    final_callback(dialogue_mock)
-end
-
--- Test Scenario: Kill Event
-function Test_ScenarioKill()
-    print("TestScenarioKill")
-    local expected_dialogue
-    talker.deliver_dialogue_to_game = function(dialogue)
-        print("talker.deliver_dialogue_to_game has been mocked!")
-        expected_dialogue = dialogue
-    end
+    -- Clear the event store
+    event_store:clear()
 
     -- Simulate the event where a character has been killed
     local events = mock_situation
     talker.register_event(events[1], true)
 
-    -- Small delay to simulate asynchronous behavior
-    os.execute("sleep 0.1")
+    -- Retrieve events and verify the event was stored
+    local result = event_store:get_events_since(0)
+    luaunit.assertEquals(#result, 1, "Expected 1 event to be stored")
+    assert_or_record('app', 'Test_EventRegistration', result)
+end
 
-    -- Retrieve events and perform assertions
-    local result = event_store:get_events_since(5)
-    luaunit.assertEquals(expected_dialogue, dialogue_mock)
-    assert_or_record('app', 'TestScenarioKill', result)
+-- Test Scenario: Silent Event
+function Test_SilentEvent()
+    print("Test_SilentEvent")
+
+    -- Clear the event store
+    event_store:clear()
+
+    -- Create a silent event
+    local silent_event = {
+        type = "TEST",
+        game_time_ms = 1000,
+        witnesses = {},
+        flags = { is_silent = true }
+    }
+
+    talker.register_event(silent_event, false)
+
+    -- Silent events should still be stored (for memory/history)
+    local result = event_store:get_events_since(0)
+    luaunit.assertEquals(#result, 1, "Expected silent event to be stored")
 end
 
 -- Run the tests

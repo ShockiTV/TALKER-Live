@@ -41,9 +41,9 @@ class MCMConfig(BaseModel):
     enable_trigger_anomalies: int = 0
     enable_trigger_idle_conversation: int = 0
     
-    # ZMQ settings (Phase 1)
-    zmq_enabled: bool = True
+    # ZMQ settings
     zmq_port: int = 5555
+    zmq_heartbeat_interval: int = 5
     
     # Timeout settings (Phase 2)
     llm_timeout: int = 60  # LLM request timeout in seconds

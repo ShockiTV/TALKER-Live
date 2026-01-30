@@ -3,7 +3,7 @@
 import asyncio
 import random
 from datetime import datetime
-from typing import Any, Optional, TYPE_CHECKING
+from typing import Any, Optional, Protocol, TYPE_CHECKING
 
 from loguru import logger
 
@@ -13,12 +13,20 @@ if TYPE_CHECKING:
     from ..dialogue import DialogueGenerator
 
 
+class PublisherProtocol(Protocol):
+    """Protocol for ZMQ publisher."""
+    async def publish(self, topic: str, payload: dict[str, Any]) -> bool: ...
+
+
 # Track last heartbeat for health check
 _last_heartbeat: Optional[datetime] = None
 _last_heartbeat_game_time: Optional[int] = None
 
 # Dialogue generator (injected by main)
 _dialogue_generator: Optional["DialogueGenerator"] = None
+
+# Publisher for sending heartbeat acks (injected by main)
+_publisher: Optional[PublisherProtocol] = None
 
 # Base probability for dialogue generation
 BASE_DIALOGUE_CHANCE = 0.25
@@ -29,6 +37,13 @@ def set_dialogue_generator(generator: "DialogueGenerator") -> None:
     global _dialogue_generator
     _dialogue_generator = generator
     logger.info("Dialogue generator injected into event handlers")
+
+
+def set_publisher(publisher: PublisherProtocol) -> None:
+    """Set the publisher instance for sending heartbeat acks."""
+    global _publisher
+    _publisher = publisher
+    logger.info("Publisher injected into event handlers")
 
 
 def get_last_heartbeat() -> Optional[str]:
@@ -240,7 +255,7 @@ async def handle_player_whisper(payload: dict[str, Any]) -> None:
 async def handle_heartbeat(payload: dict[str, Any]) -> None:
     """Handle heartbeat message from Lua.
     
-    Updates last_seen timestamp for health monitoring.
+    Updates last_seen timestamp for health monitoring and sends ack back.
     """
     global _last_heartbeat, _last_heartbeat_game_time
     
@@ -250,10 +265,20 @@ async def handle_heartbeat(payload: dict[str, Any]) -> None:
         _last_heartbeat = datetime.now()
         _last_heartbeat_game_time = msg.game_time_ms
         
-        logger.debug(
-            f"Heartbeat received: alive={msg.alive}, "
-            f"game_time={msg.game_time_ms}"
-        )
+        # Only log heartbeats if explicitly enabled (reduces log noise)
+        from ..config import settings
+        if settings.log_heartbeat:
+            logger.debug(
+                f"Heartbeat received: alive={msg.alive}, "
+                f"game_time={msg.game_time_ms}"
+            )
+        
+        # Send heartbeat acknowledgement back to Lua so it knows we're alive
+        if _publisher:
+            await _publisher.publish("service.heartbeat.ack", {
+                "status": "alive",
+                "timestamp": datetime.now().isoformat(),
+            })
         
     except Exception as e:
         logger.error(f"Error processing heartbeat: {e}")

@@ -16,7 +16,6 @@ The Lua codebase follows clean architecture with strict layer separation:
 - **`bin/lua/domain/`** - Core entities (`Character`, `Event`) and repositories (`memory_store`, `event_store`, `personalities`, `backstories`)
 - **`bin/lua/framework/`** - Utilities (logger, inspect) - no game dependencies
 - **`bin/lua/infra/`** - External integrations:
-  - `AI/` - Transformations and utilities (LLM clients REMOVED in Phase 2)
   - `HTTP/` - Network layer using pollnet FFI bindings
   - `zmq/` - ZeroMQ bridge for Python service communication
   - `STALKER/` - Game-specific data (factions, locations, world_state)
