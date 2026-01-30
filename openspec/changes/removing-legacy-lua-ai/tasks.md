@@ -69,7 +69,7 @@
 
 - [x] 9.1 Run Lua tests to verify no regressions: `lua5.1.exe tests/app/test_talker.lua`
 - [x] 9.2 Run Python tests to verify no regressions: `cd talker_service; .\.venv\Scripts\activate; python -m pytest tests/ -v`
-- [ ] 9.3 Test in-game with Python service running
-- [ ] 9.4 Test in-game HUD notification when Python service is not running
-- [ ] 9.5 Test in-game recovery notification when Python service reconnects
-- [ ] 9.6 Update version number and add BREAKING change to changelog
+- [x] 9.3 Test in-game with Python service running
+- [x] 9.4 Test in-game HUD notification when Python service is not running
+- [x] 9.5 Test in-game recovery notification when Python service reconnects
+- [x] 9.6 Update version number and add BREAKING change to changelog

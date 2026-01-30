@@ -28,7 +28,7 @@ async def lifespan(app: FastAPI):
     global zmq_router, dialogue_generator
     
     # Startup
-    logger.info("Starting TALKER Service v0.2.0 (Phase 2 - AI Processing)")
+    logger.info("Starting TALKER Service v0.3.0 (Phase 2 - AI Processing)")
     logger.info(f"Connecting to Lua PUB at {settings.lua_pub_endpoint}")
     logger.info(f"Binding PUB socket at {settings.service_pub_endpoint}")
     
@@ -110,7 +110,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="TALKER Service",
     description="Python compute service for TALKER Expanded mod",
-    version="0.1.0",
+    version="0.3.0",
     lifespan=lifespan,
 )
 
