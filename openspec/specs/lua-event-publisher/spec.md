@@ -1,48 +1,73 @@
-## ADDED Requirements
+# lua-event-publisher (MODIFIED)
 
-### Requirement: Game event publishing
-The publisher SHALL send game events to the Python service via ZMQ with topic `game.event`.
+## Overview
 
-#### Scenario: Publish typed event
-- **WHEN** `publisher.send_game_event(event)` is called with a typed Event object
-- **THEN** the publisher serializes the event and sends it with topic `game.event`
+Extends existing `bin/lua/infra/zmq/publisher.lua` to handle state query responses and integrate with new command handlers.
 
-#### Scenario: Event serialization
-- **WHEN** an event contains Character objects in witnesses
-- **THEN** the publisher serializes characters to plain tables with game_id, name, faction, experience, reputation, personality, backstory, weapon fields
+## Requirements
 
-### Requirement: Topic constants
-The publisher SHALL define standardized topic constants for all message types.
+### MODIFIED: Publisher Module
 
-#### Scenario: Access topic constants
-- **WHEN** code references `publisher.TOPICS.GAME_EVENT`
-- **THEN** the value is `"game.event"`
+The existing publisher module MUST be extended with:
+- `send_state_response(request_id, type, data)` function
+- `send_error_response(request_id, type, error)` function
+- Integration with state query handlers
 
-#### Scenario: All required topics defined
-- **WHEN** publisher module is loaded
-- **THEN** the following topics are defined: `GAME_EVENT`, `PLAYER_DIALOGUE`, `PLAYER_WHISPER`, `CONFIG_UPDATE`, `CONFIG_SYNC`, `HEARTBEAT`
+### ADDED: State Response Function
 
-### Requirement: Player dialogue publishing
-The publisher SHALL send player dialogue input to Python with topic `player.dialogue`.
+The system MUST provide `send_state_response(request_id, type, data)` that:
+- Publishes to `state.response` topic
+- Includes request_id for correlation
+- Sets success=true in payload
+- Serializes data appropriately
 
-#### Scenario: Publish player chat input
-- **WHEN** `publisher.send_player_dialogue(text, context)` is called
-- **THEN** the publisher sends `{text: "...", context: {...}}` with topic `player.dialogue`
+### ADDED: Error Response Function
 
-### Requirement: Heartbeat publishing
-The publisher SHALL provide a heartbeat function for connection monitoring.
+The system MUST provide `send_error_response(request_id, type, error_msg)` that:
+- Publishes to `state.response` topic
+- Includes request_id for correlation
+- Sets success=false in payload
+- Includes error message
 
-#### Scenario: Send heartbeat
-- **WHEN** `publisher.send_heartbeat()` is called
-- **THEN** the publisher sends `{alive: true, game_time_ms: <current_time>}` with topic `system.heartbeat`
+### ADDED: Query Response Topic Constant
 
-### Requirement: Fire-and-forget semantics
-The publisher SHALL never block the game loop waiting for delivery confirmation.
+The system MUST add topic constant:
+- `publisher.topics.STATE_RESPONSE = "state.response"`
 
-#### Scenario: Non-blocking publish
-- **WHEN** `publisher.send_game_event(event)` is called
-- **THEN** the function returns immediately without waiting for acknowledgment
+### MODIFIED: Serialization Helpers
 
-#### Scenario: Publish failure does not throw
-- **WHEN** ZMQ bridge is unavailable
-- **THEN** publish functions return `false` without raising errors
+The existing serialization helpers MUST be extended to handle:
+- Memory context (narrative + events)
+- Event lists with all fields
+- Character objects with visual_faction
+
+## Scenarios
+
+#### Send successful memory response
+
+WHEN Lua queries memory_store successfully
+THEN send_state_response is called with memory context
+AND message includes request_id
+AND success=true in payload
+AND Python receives correlated response
+
+#### Send error response
+
+WHEN character query fails (not found)
+THEN send_error_response is called
+AND message includes request_id
+AND success=false with error message
+AND Python QueryError is raised
+
+#### Serialize event list
+
+WHEN events.recent query returns 10 events
+THEN all events are serialized to JSON
+AND typed events preserve type + context fields
+AND legacy events include content field
+
+#### Response includes request_id
+
+WHEN any state response is sent
+THEN request_id from original query is included
+AND Python correlation matches correctly
