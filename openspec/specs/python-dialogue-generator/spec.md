@@ -1,6 +1,6 @@
 # python-dialogue-generator
 
-## Overview
+## Purpose
 
 Python orchestrator that handles the full dialogue generation flow: event reception → speaker selection → memory management → prompt building → LLM call → display command. The Python service is the SOLE dialogue generation path - there is no Lua fallback.
 
@@ -37,6 +37,16 @@ The system MUST implement speaker selection that:
 - Validates selected speaker ID against witness list
 - Sets speaker cooldown after selection
 
+#### Scenario: Single speaker selected directly
+- **WHEN** event has only one witness not on cooldown
+- **THEN** that speaker SHALL be selected without LLM call
+- **AND** speaker cooldown SHALL be set
+
+#### Scenario: Multiple speakers use LLM selection
+- **WHEN** event has multiple witnesses not on cooldown
+- **THEN** LLM SHALL be called with pick_speaker prompt
+- **AND** selected speaker ID SHALL be validated against witness list
+
 ### Memory Context Fetching
 
 The system MUST fetch memory context by:
@@ -44,6 +54,16 @@ The system MUST fetch memory context by:
 - Receiving narrative + new_events in response
 - Handling query timeout (30 second default)
 - Returning empty context on failure (graceful degradation)
+
+#### Scenario: Memory context fetched successfully
+- **WHEN** state query for memories succeeds
+- **THEN** narrative and new_events SHALL be returned
+- **AND** context SHALL be used for dialogue generation
+
+#### Scenario: Memory query times out
+- **WHEN** state query exceeds 30 second timeout
+- **THEN** empty context SHALL be returned
+- **AND** dialogue generation SHALL continue with degraded context
 
 ### Memory Compression Trigger
 
@@ -54,6 +74,12 @@ The system MUST trigger memory compression when:
 - Sends `memory.update` command to Lua with new narrative
 - Releases lock after completion
 
+#### Scenario: Memory compression triggered
+- **WHEN** new_events count >= 12 for a character
+- **THEN** compression lock SHALL be acquired
+- **AND** LLM SHALL generate compressed summary
+- **AND** memory.update command SHALL be sent to Lua
+
 ### Dialogue Request Flow
 
 The system MUST request dialogue by:
@@ -61,6 +87,11 @@ The system MUST request dialogue by:
 - Calling LLM for completion
 - Cleaning/improving response text
 - Sending `dialogue.display` command to Lua
+
+#### Scenario: Dialogue generated and displayed
+- **WHEN** dialogue prompt is sent to LLM
+- **THEN** response SHALL be cleaned and formatted
+- **AND** dialogue.display command SHALL be sent to Lua
 
 ### Request-Response Correlation
 
@@ -70,6 +101,12 @@ The system MUST use correlation IDs:
 - Track in-flight requests for timeout handling
 - Log request_id for debugging
 
+#### Scenario: Request tracked with correlation ID
+- **WHEN** a dialogue flow starts
+- **THEN** unique request_id SHALL be generated
+- **AND** request_id SHALL be included in all queries and commands
+- **AND** request_id SHALL be logged for debugging
+
 ### Error Handling
 
 The system MUST handle errors by:
@@ -77,6 +114,12 @@ The system MUST handle errors by:
 - Catching query timeouts, using empty context
 - Logging errors with request_id
 - Never crashing service on individual dialogue failure
+
+#### Scenario: LLM timeout handled gracefully
+- **WHEN** LLM call exceeds timeout
+- **THEN** error SHALL be caught
+- **AND** no dialogue.display command SHALL be sent
+- **AND** error SHALL be logged with request_id
 
 ### Heartbeat Acknowledgement
 

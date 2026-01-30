@@ -1,74 +1,51 @@
-# python-zmq-router (MODIFIED)
+# python-zmq-router
 
-## Overview
+## Purpose
 
-Extends existing `ZMQRouter` to add PUB socket for sending commands to Lua and request-response correlation for state queries.
+Python ZMQ router with PUB/SUB sockets for bidirectional communication with Lua game client.
 
 ## Requirements
 
-### MODIFIED: ZMQRouter Class
+### ZMQRouter Class
 
-The existing `ZMQRouter` class MUST be extended with:
-- PUB socket on port 5556 (in addition to existing SUB on 5555)
-- `publish(topic, payload)` method for sending to Lua
-- Response handler registration for `state.response` topic
-- Request tracking for correlation
+The ZMQRouter class MUST provide bidirectional communication with PUB and SUB sockets.
 
-### ADDED: PUB Socket Initialization
+#### Scenario: Initialize with both sockets
+- **WHEN** ZMQRouter starts
+- **THEN** SUB socket connects to port 5555
+- **AND** PUB socket binds to port 5556
 
-The system MUST initialize PUB socket by:
-- Binding to tcp://127.0.0.1:5556 on startup
-- Setting appropriate linger timeout on shutdown
-- Logging bind success/failure
+### PUB Socket Initialization
 
-### ADDED: Publish Method
+The system MUST initialize PUB socket on port 5556 for sending commands to Lua.
 
-The system MUST provide `publish(topic: str, payload: dict)` that:
-- Serializes payload to JSON
-- Sends message as `{topic} {json}` format
-- Returns success/failure boolean
-- Logs published messages at debug level
+#### Scenario: PUB socket binds
+- **WHEN** router starts
+- **THEN** PUB socket binds to tcp://127.0.0.1:5556
 
-### ADDED: Response Handler Integration
+### Publish Method
 
-The system MUST handle state.response messages by:
-- Registering internal handler for state.response topic
-- Forwarding to StateQueryClient for correlation
-- Not exposing raw responses to user handlers
+The system MUST provide `publish(topic: str, payload: dict)` for sending messages.
 
-### MODIFIED: Shutdown Sequence
+#### Scenario: Publish command to Lua
+- **WHEN** publish("dialogue.display", {...}) is called
+- **THEN** message is sent on PUB socket
+- **AND** Lua SUB receives the message
 
-The existing shutdown MUST be modified to:
-- Close PUB socket before SUB socket
-- Wait for pending publishes to flush
-- Log both socket closures
+### Response Handler Integration
 
-## Scenarios
+The system MUST handle state.response messages and forward to StateQueryClient.
 
-#### Initialize with both sockets
+#### Scenario: Handle state response
+- **WHEN** state.response message is received
+- **THEN** message is routed to StateQueryClient
+- **AND** correlation completes
 
-WHEN ZMQRouter starts
-THEN SUB socket connects to port 5555
-AND PUB socket binds to port 5556
-AND both connections are logged
+### Shutdown Sequence
 
-#### Publish command to Lua
+The shutdown MUST close both sockets and flush pending publishes.
 
-WHEN publish("dialogue.display", {...}) is called
-THEN message is sent on PUB socket
-AND Lua SUB receives the message
-
-#### Handle state response
-
-WHEN state.response message is received
-THEN message is routed to StateQueryClient
-AND user handlers for state.response are NOT called
-AND correlation completes
-
-#### Graceful shutdown
-
-WHEN shutdown() is called
-THEN pending publishes are flushed
-AND PUB socket is closed
-AND SUB socket is closed
-AND "stopped" is logged
+#### Scenario: Graceful shutdown
+- **WHEN** shutdown() is called
+- **THEN** pending publishes are flushed
+- **AND** both sockets are closed

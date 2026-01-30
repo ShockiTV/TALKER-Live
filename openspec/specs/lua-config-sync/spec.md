@@ -1,20 +1,29 @@
-## ADDED Requirements
+# lua-config-sync
 
-### Requirement: Full config collection
+## Purpose
+
+Lua module that collects MCM settings and publishes them to Python service for configuration synchronization.
+
+## Requirements
+
+### Full config collection
+
 The config sync module SHALL collect all MCM settings into a single table for transmission.
 
 #### Scenario: Collect all MCM settings
 - **WHEN** `config_sync.collect_config()` is called
 - **THEN** a table is returned containing all talker_mcm settings with their current values
 
-### Requirement: Config update publishing
+### Config update publishing
+
 The config sync module SHALL publish full config when any MCM setting changes.
 
 #### Scenario: Publish on setting change
 - **WHEN** any MCM setting is changed by the user
 - **THEN** the module collects all settings and publishes with topic `config.update`
 
-### Requirement: Config sync on game load
+### Config sync on game load
+
 The config sync module SHALL publish full config after game state is loaded.
 
 #### Scenario: Sync after load
@@ -25,7 +34,8 @@ The config sync module SHALL publish full config after game state is loaded.
 - **WHEN** game is loading
 - **THEN** config sync waits 1 second to ensure MCM values are fully initialized
 
-### Requirement: Config payload structure
+### Config payload structure
+
 The config sync module SHALL include all AI-relevant settings in the payload.
 
 #### Scenario: Payload contains model settings

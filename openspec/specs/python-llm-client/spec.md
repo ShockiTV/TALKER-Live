@@ -1,84 +1,64 @@
 # python-llm-client
 
-## Overview
+## Purpose
 
 Python module providing LLM API integration with provider-specific implementations for GPT, OpenRouter, Ollama, and proxy modes.
 
 ## Requirements
 
-### ADDED: LLM Client Protocol
+### LLM Client Protocol
 
-The system MUST define an abstract `LLMClient` protocol with:
-- `async complete(messages: list[Message], opts: LLMOptions) -> str` method
-- Support for temperature, max_tokens, and model selection via opts
-- Timeout handling (default 60 seconds, configurable via MCM)
+The system MUST define an abstract `LLMClient` protocol with async completion method.
 
-### ADDED: OpenAI Client Implementation
+#### Scenario: Complete dialogue request with GPT
+- **WHEN** the dialogue generator requests completion with GPT selected
+- **THEN** the OpenAI client sends a POST to chat/completions
+- **AND** returns the generated text from the response
 
-The system MUST implement `OpenAIClient` that:
-- Reads API key from `openai_api_key.txt` or environment variable
-- Sends requests to OpenAI chat completions API
-- Handles rate limiting with exponential backoff
-- Logs request/response for debugging
+### OpenAI Client Implementation
 
-### ADDED: OpenRouter Client Implementation
+The system MUST implement `OpenAIClient` that reads API key and sends requests to OpenAI.
 
-The system MUST implement `OpenRouterClient` that:
-- Reads API key from MCM config or environment variable
-- Sends requests to OpenRouter API endpoint
-- Supports model override from config
-- Handles provider-specific response format
+#### Scenario: Handle rate limiting
+- **WHEN** OpenAI returns 429 rate limit error
+- **THEN** the client waits and retries up to 3 times
 
-### ADDED: Ollama Client Implementation
+### OpenRouter Client Implementation
 
-The system MUST implement `OllamaClient` that:
-- Connects to local Ollama endpoint (default localhost:11434)
-- Supports custom endpoint configuration
-- Handles streaming responses (accumulate to final string)
-- Gracefully fails if Ollama not running
+The system MUST implement `OpenRouterClient` for OpenRouter API.
 
-### ADDED: Proxy Client Implementation
+#### Scenario: OpenRouter request
+- **WHEN** dialogue generation uses OpenRouter provider
+- **THEN** request is sent to OpenRouter endpoint with model override
 
-The system MUST implement `ProxyClient` that:
-- Sends requests to user-configured proxy endpoint
-- Passes through model/temperature settings
-- Supports OpenAI-compatible proxy APIs
+### Ollama Client Implementation
 
-### ADDED: Client Factory
+The system MUST implement `OllamaClient` for local Ollama.
 
-The system MUST provide `get_llm_client(provider: str) -> LLMClient` that:
-- Returns appropriate client based on MCM `modelmethod` setting
-- Values: 0=GPT, 1=OpenRouter, 2=Ollama, 3=Proxy
-- Caches client instances for reuse
+#### Scenario: Ollama not running
+- **WHEN** Ollama client attempts connection and Ollama is not running
+- **THEN** the client raises a connection error
 
-## Scenarios
+### Proxy Client Implementation
 
-#### Complete dialogue request with GPT
+The system MUST implement `ProxyClient` for user-configured proxy endpoint.
 
-WHEN the dialogue generator requests completion with GPT selected
-THEN the OpenAI client sends a POST to chat/completions
-AND returns the generated text from the response
+#### Scenario: Proxy request
+- **WHEN** proxy provider is selected
+- **THEN** request is sent to configured proxy endpoint
 
-#### Complete request with timeout
+### Client Factory
 
-WHEN an LLM request exceeds 60 seconds
-THEN the client raises a timeout error
-AND the caller handles gracefully (no dialogue generated)
+The system MUST provide `get_llm_client(provider: str) -> LLMClient` factory function.
 
-#### Handle rate limiting
+#### Scenario: Config-driven provider selection
+- **WHEN** MCM modelmethod changes from 0 to 1
+- **THEN** subsequent get_llm_client calls return OpenRouterClient
 
-WHEN OpenAI returns 429 rate limit error
-THEN the client waits and retries up to 3 times
-AND logs each retry attempt
+### Timeout Handling
 
-#### Ollama not running
+The system MUST handle LLM request timeouts gracefully.
 
-WHEN Ollama client attempts connection and Ollama is not running
-THEN the client raises a connection error
-AND the caller handles gracefully (no dialogue generated)
-
-#### Config-driven provider selection
-
-WHEN MCM modelmethod changes from 0 to 1
-THEN subsequent get_llm_client calls return OpenRouterClient
-AND the switch is seamless (no restart required)
+#### Scenario: Complete request with timeout
+- **WHEN** an LLM request exceeds 60 seconds
+- **THEN** the client raises a timeout error

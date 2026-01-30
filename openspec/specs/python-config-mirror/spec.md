@@ -1,6 +1,13 @@
-## ADDED Requirements
+# python-config-mirror
 
-### Requirement: Config storage
+## Purpose
+
+Python module that mirrors MCM configuration from Lua, providing typed access to settings for dialogue generation.
+
+## Requirements
+
+### Config storage
+
 The config mirror SHALL store the latest MCM configuration received from Lua.
 
 #### Scenario: Store config update
@@ -11,7 +18,8 @@ The config mirror SHALL store the latest MCM configuration received from Lua.
 - **WHEN** a `config.sync` message is received
 - **THEN** the mirror replaces its stored config with the new values
 
-### Requirement: Config access
+### Config access
+
 The config mirror SHALL provide typed access to configuration values.
 
 #### Scenario: Access model method
@@ -22,7 +30,8 @@ The config mirror SHALL provide typed access to configuration values.
 - **WHEN** `config_mirror.get("unknown_key", default=42)` is called
 - **THEN** the default value `42` is returned
 
-### Requirement: Config validation
+### Config validation
+
 The config mirror SHALL validate incoming config against expected schema.
 
 #### Scenario: Valid config accepted
@@ -33,7 +42,8 @@ The config mirror SHALL validate incoming config against expected schema.
 - **WHEN** config is missing an expected field
 - **THEN** a warning is logged but config is still stored
 
-### Requirement: Change notification
+### Change notification
+
 The config mirror SHALL notify dependent modules when config changes.
 
 #### Scenario: Notify on update
@@ -44,7 +54,8 @@ The config mirror SHALL notify dependent modules when config changes.
 - **WHEN** `config_mirror.on_change(callback)` is called
 - **THEN** the callback is registered for future config changes
 
-### Requirement: Initial state
+### Initial state
+
 The config mirror SHALL start with sensible defaults until first sync.
 
 #### Scenario: Default values available
@@ -55,7 +66,8 @@ The config mirror SHALL start with sensible defaults until first sync.
 - **WHEN** service starts
 - **THEN** the mirror logs "Waiting for config sync from game" at INFO level
 
-### Requirement: Config dump for debugging
+### Config dump for debugging
+
 The config mirror SHALL provide a way to dump current config state.
 
 #### Scenario: Dump config

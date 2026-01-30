@@ -1,6 +1,13 @@
-## MODIFIED Requirements
+# talker-mcm
 
-### Requirement: MCM change callback
+## Purpose
+
+MCM (Mod Configuration Menu) integration for TALKER Expanded, providing user-configurable settings.
+
+## Requirements
+
+### MCM change callback
+
 The talker_mcm module SHALL invoke a callback when any setting is changed by the user.
 
 #### Scenario: Setting changed triggers callback
@@ -13,11 +20,10 @@ The talker_mcm module SHALL invoke a callback when any setting is changed by the
 
 #### Scenario: Multiple changes batch
 - **WHEN** user changes multiple settings in quick succession
-- **THEN** each change triggers a separate config publish (no batching in Phase 1)
+- **THEN** each change triggers a separate config publish
 
-## ADDED Requirements
+### ZMQ port setting
 
-### Requirement: ZMQ port setting
 The MCM SHALL include a setting for the ZMQ communication port.
 
 #### Scenario: Default ZMQ port
@@ -27,14 +33,3 @@ The MCM SHALL include a setting for the ZMQ communication port.
 #### Scenario: Custom ZMQ port
 - **WHEN** user sets `zmq_port` to `5560`
 - **THEN** the ZMQ bridge uses port `5560` for binding
-
-### Requirement: ZMQ enable setting
-The MCM SHALL include a setting to enable/disable ZMQ communication.
-
-#### Scenario: ZMQ enabled by default
-- **WHEN** MCM is loaded without user customization
-- **THEN** `zmq_enabled` defaults to `true`
-
-#### Scenario: Disable ZMQ
-- **WHEN** user sets `zmq_enabled` to `false`
-- **THEN** the ZMQ bridge does not initialize and no messages are published
