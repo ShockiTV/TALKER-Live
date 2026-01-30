@@ -95,9 +95,9 @@ Lua (Game)                          Python (Service)
 
 ### Lua Stack
 - **Language**: Lua 5.1 (LuaJIT in STALKER Anomaly)
-- **HTTP Client**: pollnet FFI bindings
 - **Message Queue**: ZeroMQ via LuaJIT FFI to libzmq.dll
 - **Serialization**: Custom JSON library (`bin/lua/infra/HTTP/json.lua`)
+- **HTTP (Legacy)**: pollnet FFI bindings - only used in legacy Lua AI mode
 
 ### Python Stack
 - **Language**: Python 3.10+
@@ -119,8 +119,8 @@ Lua (Game)                          Python (Service)
 
 Events flow through the system:
 ```
-Game → Trigger → trigger.talker_event_near_player() → Listener → 
-talker.register_event() → Event Store → ZMQ → Python → AI Dialogue → 
+Game → Trigger → trigger.talker_event_near_player() → Listener →
+talker.register_event() → Event Store → ZMQ → Python → AI Dialogue →
 ZMQ → Lua → Display
 ```
 
@@ -233,6 +233,16 @@ asyncio.create_task(_handle_event_async(event))
 # WRONG (causes deadlock):
 await _handle_event_async(event)
 ```
+
+## Legacy Lua AI Mode (Deprecated)
+
+When Python service is disabled (not recommended), the mod falls back to legacy Lua-based AI:
+
+- Uses `bin/lua/infra/HTTP/HTTP.lua` with pollnet FFI for HTTP requests
+- Uses `bin/lua/infra/AI/requests.lua` (if exists) for LLM API calls
+- `dialogue_cleaner.lua` and `message_normalizer.lua` for response processing
+
+**Note**: This mode is deprecated and will be removed in future versions. The Python service is now required for full functionality.
 
 ## Testing
 
