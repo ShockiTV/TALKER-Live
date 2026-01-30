@@ -1,83 +1,74 @@
-## ADDED Requirements
+# python-zmq-router (MODIFIED)
 
-### Requirement: ZMQ subscriber initialization
-The router SHALL initialize a ZMQ SUB socket connected to the Lua PUB endpoint.
+## Overview
 
-#### Scenario: Connect to Lua publisher
-- **WHEN** router starts
-- **THEN** SUB socket connects to `tcp://127.0.0.1:5555`
-- **THEN** socket subscribes to all topics (empty string filter)
+Extends existing `ZMQRouter` to add PUB socket for sending commands to Lua and request-response correlation for state queries.
 
-#### Scenario: Configurable endpoint
-- **WHEN** `LUA_PUB_ENDPOINT` environment variable is set
-- **THEN** SUB socket connects to the specified endpoint instead of default
+## Requirements
 
-### Requirement: Topic-based handler registry
-The router SHALL maintain a registry mapping topics to async handler functions.
+### MODIFIED: ZMQRouter Class
 
-#### Scenario: Register handler
-- **WHEN** `router.on("game.event", handle_game_event)` is called
-- **THEN** messages with topic `game.event` are routed to `handle_game_event`
+The existing `ZMQRouter` class MUST be extended with:
+- PUB socket on port 5556 (in addition to existing SUB on 5555)
+- `publish(topic, payload)` method for sending to Lua
+- Response handler registration for `state.response` topic
+- Request tracking for correlation
 
-#### Scenario: Multiple handlers
-- **WHEN** handlers are registered for different topics
-- **THEN** each message is routed to the correct handler based on topic
+### ADDED: PUB Socket Initialization
 
-### Requirement: Async message processing
-The router SHALL process incoming messages asynchronously without blocking.
+The system MUST initialize PUB socket by:
+- Binding to tcp://127.0.0.1:5556 on startup
+- Setting appropriate linger timeout on shutdown
+- Logging bind success/failure
 
-#### Scenario: Process message
-- **WHEN** a message `game.event {"type":"DEATH"}` is received
-- **THEN** the router parses topic and JSON payload
-- **THEN** the router calls the registered handler with the payload
+### ADDED: Publish Method
 
-#### Scenario: Non-blocking loop
-- **WHEN** multiple messages arrive rapidly
-- **THEN** the router processes them concurrently using asyncio
+The system MUST provide `publish(topic: str, payload: dict)` that:
+- Serializes payload to JSON
+- Sends message as `{topic} {json}` format
+- Returns success/failure boolean
+- Logs published messages at debug level
 
-### Requirement: Message format parsing
-The router SHALL parse messages in the format `<topic> <json-payload>`.
+### ADDED: Response Handler Integration
 
-#### Scenario: Parse valid message
-- **WHEN** message `config.update {"model_method":0}` is received
-- **THEN** topic is extracted as `config.update`
-- **THEN** payload is parsed as `{"model_method": 0}`
+The system MUST handle state.response messages by:
+- Registering internal handler for state.response topic
+- Forwarding to StateQueryClient for correlation
+- Not exposing raw responses to user handlers
 
-#### Scenario: Handle malformed message
-- **WHEN** message cannot be parsed
-- **THEN** the router logs an error and continues processing
+### MODIFIED: Shutdown Sequence
 
-### Requirement: FastAPI integration
-The router SHALL run alongside FastAPI for HTTP health checks.
+The existing shutdown MUST be modified to:
+- Close PUB socket before SUB socket
+- Wait for pending publishes to flush
+- Log both socket closures
 
-#### Scenario: Health endpoint available
-- **WHEN** service is running
-- **THEN** `GET /health` returns `{"status": "ok", "zmq_connected": true}`
+## Scenarios
 
-#### Scenario: ZMQ runs in background
-- **WHEN** FastAPI starts
-- **THEN** ZMQ message loop runs as a background task
+#### Initialize with both sockets
 
-### Requirement: Graceful shutdown
-The router SHALL handle shutdown signals cleanly.
+WHEN ZMQRouter starts
+THEN SUB socket connects to port 5555
+AND PUB socket binds to port 5556
+AND both connections are logged
 
-#### Scenario: SIGINT shutdown
-- **WHEN** SIGINT (Ctrl+C) is received
-- **THEN** the router stops the message loop
-- **THEN** ZMQ sockets are closed
-- **THEN** the process exits cleanly
+#### Publish command to Lua
 
-#### Scenario: SIGTERM shutdown
-- **WHEN** SIGTERM is received
-- **THEN** the router performs the same clean shutdown as SIGINT
+WHEN publish("dialogue.display", {...}) is called
+THEN message is sent on PUB socket
+AND Lua SUB receives the message
 
-### Requirement: Logging
-The router SHALL log message receipt and processing for debugging.
+#### Handle state response
 
-#### Scenario: Log received messages
-- **WHEN** a message is received
-- **THEN** the router logs topic and timestamp at DEBUG level
+WHEN state.response message is received
+THEN message is routed to StateQueryClient
+AND user handlers for state.response are NOT called
+AND correlation completes
 
-#### Scenario: Log handler errors
-- **WHEN** a handler raises an exception
-- **THEN** the router logs the error at ERROR level and continues processing
+#### Graceful shutdown
+
+WHEN shutdown() is called
+THEN pending publishes are flushed
+AND PUB socket is closed
+AND SUB socket is closed
+AND "stopped" is logged
