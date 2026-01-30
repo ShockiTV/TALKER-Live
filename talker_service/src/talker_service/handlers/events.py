@@ -135,12 +135,19 @@ async def _handle_idle_event(event: GameEventMessage) -> None:
         logger.warning("Dialogue generator not available for idle event")
         return
     
-    # Get the speaker from context or involved objects
+    # Convert context to dict (EventContext is a Pydantic model)
+    context_dict = {}
+    if event.context:
+        if hasattr(event.context, "model_dump"):
+            context_dict = event.context.model_dump()
+        elif isinstance(event.context, dict):
+            context_dict = event.context
+    
+    # Get the speaker from context
     speaker_id = None
-    if event.context and "actor" in event.context:
-        actor = event.context["actor"]
-        if isinstance(actor, dict):
-            speaker_id = str(actor.get("game_id"))
+    actor = context_dict.get("actor")
+    if actor and isinstance(actor, dict):
+        speaker_id = str(actor.get("game_id"))
     
     if not speaker_id:
         logger.error("Idle event has no valid speaker")
@@ -151,7 +158,7 @@ async def _handle_idle_event(event: GameEventMessage) -> None:
     # Convert to dict format expected by generator
     event_dict = {
         "type": event.type,
-        "context": event.context,
+        "context": context_dict,
         "game_time_ms": event.game_time_ms,
         "world_context": event.world_context,
         "witnesses": [{"game_id": w.game_id, "name": w.name, "faction": w.faction} 
@@ -170,10 +177,18 @@ async def _handle_regular_event(event: GameEventMessage) -> None:
     
     logger.info(f"Triggering dialogue generation for event type={event.type}")
     
+    # Convert context to dict (EventContext is a Pydantic model)
+    context_dict = {}
+    if event.context:
+        if hasattr(event.context, "model_dump"):
+            context_dict = event.context.model_dump()
+        elif isinstance(event.context, dict):
+            context_dict = event.context
+    
     # Convert to dict format expected by generator
     event_dict = {
         "type": event.type,
-        "context": event.context,
+        "context": context_dict,
         "game_time_ms": event.game_time_ms,
         "world_context": event.world_context,
         "witnesses": [{"game_id": w.game_id, "name": w.name, "faction": w.faction,
