@@ -87,7 +87,7 @@ trigger.talker_event_near_player(EventType.DEATH, context, true, { is_silent = f
 - **Mid-Term Memory** (previous ~12 events): Auto-compressed summary
 - **Long-Term Memory** (persistent, max 7000 chars): Updated via LLM calls in `memory_store:update_narrative()`
 
-Memory compression triggers when event count exceeds `transformations.COMPRESSION_THRESHOLD`. See [bin/lua/infra/AI/transformations.lua](../bin/lua/infra/AI/transformations.lua) and [bin/lua/domain/repo/memory_store.lua](../bin/lua/domain/repo/memory_store.lua).
+Memory compression triggers when event count exceeds `COMPRESSION_THRESHOLD` (12 events). See [bin/lua/domain/repo/memory_store.lua](../bin/lua/domain/repo/memory_store.lua).
 
 ### 3. ZMQ Communication Pattern (Phase 2+)
 

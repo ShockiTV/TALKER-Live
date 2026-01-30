@@ -2,8 +2,10 @@ local Event = require("domain.model.event")
 -- memory_store:lua
 package.path = package.path .. ";./bin/lua/?.lua;"
 local event_store = require("domain.repo.event_store")
-local transformations = require("infra.AI.transformations")
 local logger = require("framework.logger")
+
+-- Memory compression threshold (events before narrative update is triggered)
+local COMPRESSION_THRESHOLD = 12
 
 local memory_store = {}
 -- Map<character_id, {narrative: string, last_update_time_ms: number}>
@@ -34,7 +36,7 @@ function memory_store:load_save_data(saved_data)
 			-- It's a list (or empty list), so it's the OLD format.
 			-- Migrate: Transform  all events into a new 'LONG-TERM MEMORY'.
 			-- Check if we have too many events for a single context
-			if #data >= transformations.COMPRESSION_THRESHOLD then
+			if #data >= COMPRESSION_THRESHOLD then
 				logger.info("Migrating memory: Count " .. #data .. " exceeds threshold. Triggering immediate update.")
 				-- We leave narrative empty and last_update_time at 0 (or undefined).
 				-- This will cause get_new_events to return ALL existing events, and update_narrative to trigger compression.

@@ -204,6 +204,16 @@ def _format_typed_event(event: Event) -> str:
             return f"{describe_character(actor)} {action_text}"
         return action_text
     
+    elif event_type == "GAP":
+        # Time gap event - return the message directly
+        message = ctx.get("message", "")
+        hours = ctx.get("hours", 0)
+        if message:
+            return message
+        elif hours:
+            return f"TIME GAP: Approximately {hours} hours have passed."
+        return "TIME GAP: Some time has passed."
+    
     # Fallback for unknown types
     return event.content or f"Event: {event_type}"
 
@@ -252,3 +262,90 @@ def was_witnessed_by(event: Event, character_id: str) -> bool:
         if str(witness.game_id) == str(character_id):
             return True
     return False
+
+
+# Default time gap threshold in milliseconds (12 in-game hours)
+DEFAULT_TIME_GAP_HOURS = 12
+MS_PER_HOUR = 60 * 60 * 1000
+
+
+def inject_time_gaps(
+    events: list[Event],
+    last_update_time_ms: int = 0,
+    time_gap_hours: int = DEFAULT_TIME_GAP_HOURS,
+) -> list[Event]:
+    """Inject synthetic TIME GAP events between events with significant time gaps.
+    
+    Similar to Lua's transformations.inject_time_gaps().
+    
+    Args:
+        events: List of events (should be sorted by game_time_ms)
+        last_update_time_ms: Timestamp of last memory update (0 if none)
+        time_gap_hours: Minimum hours to consider a "significant" gap
+        
+    Returns:
+        New list with GAP events injected where appropriate
+    """
+    if not events:
+        return []
+    
+    significant_gap_ms = time_gap_hours * MS_PER_HOUR
+    processed_events: list[Event] = []
+    
+    # Sort events by time just in case
+    sorted_events = sorted(events, key=lambda e: e.game_time_ms)
+    
+    # 1. Check gap before first event (since last memory update)
+    first_event_time = sorted_events[0].game_time_ms
+    if last_update_time_ms > 0:
+        delta = first_event_time - last_update_time_ms
+        if delta > significant_gap_ms:
+            hours = delta // MS_PER_HOUR
+            gap_event = _create_gap_event(
+                timestamp_ms=last_update_time_ms + 1,
+                hours=hours,
+            )
+            processed_events.append(gap_event)
+    
+    # 2. Process events and check internal gaps
+    for i, event in enumerate(sorted_events):
+        # Check gap between previous event and this one (for i > 0)
+        if i > 0:
+            prev_time = sorted_events[i - 1].game_time_ms
+            curr_time = event.game_time_ms
+            delta = curr_time - prev_time
+            
+            if delta > significant_gap_ms:
+                hours = delta // MS_PER_HOUR
+                gap_event = _create_gap_event(
+                    timestamp_ms=prev_time + 1,
+                    hours=hours,
+                )
+                processed_events.append(gap_event)
+        
+        processed_events.append(event)
+    
+    return processed_events
+
+
+def _create_gap_event(timestamp_ms: int, hours: int) -> Event:
+    """Create a GAP event to mark time passage.
+    
+    Args:
+        timestamp_ms: Timestamp for the gap event
+        hours: Number of hours in the gap
+        
+    Returns:
+        Event with type=GAP
+    """
+    message = f"TIME GAP: Approximately {hours} hours have passed since the last event."
+    
+    return Event(
+        game_time_ms=timestamp_ms,
+        type="GAP",
+        context={
+            "hours": hours,
+            "message": message,
+        },
+        flags={},
+    )
