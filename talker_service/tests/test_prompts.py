@@ -171,6 +171,19 @@ class TestDescribeEvent:
         )
         desc = describe_event(event)
         assert "Hip" in desc or "said" in desc.lower()
+
+    def test_describe_event_case_insensitive(self):
+        """Event types from Lua are lowercase - Python must handle both."""
+        speaker = Character(game_id="1", name="Wolf", faction="stalker", experience="Veteran", reputation="Good")
+        # Lua sends lowercase event types
+        event = Event(
+            type="dialogue",  # lowercase like Lua EventType.DIALOGUE = "dialogue"
+            context={"speaker": speaker.__dict__, "text": "Watch your back"},
+            game_time_ms=1000,
+        )
+        desc = describe_event(event)
+        assert "Wolf" in desc
+        assert "Watch your back" in desc
     
     def test_describe_legacy_event(self):
         event = Event(

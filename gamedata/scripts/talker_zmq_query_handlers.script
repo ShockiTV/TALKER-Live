@@ -12,6 +12,89 @@ local game_adapter = require("infra.game_adapter")
 local zmq_integration = nil
 
 --------------------------------------------------------------------------------
+-- Serialization Helpers (mirror publisher.lua)
+--------------------------------------------------------------------------------
+
+--- Convert a Character object to a serializable table.
+local function serialize_character(char)
+    if not char then return nil end
+    return {
+        game_id = tostring(char.game_id),
+        name = char.name,
+        faction = char.faction,
+        experience = char.experience,
+        reputation = char.reputation,
+        personality = char.personality,
+        backstory = char.backstory,
+        weapon = char.weapon,
+        visual_faction = char.visual_faction,
+    }
+end
+
+--- Serialize event context, converting any character objects within.
+local function serialize_context(context)
+    if not context then return {} end
+    
+    local result = {}
+    local character_keys = {"victim", "killer", "actor", "spotter", "target", "taunter", "speaker"}
+    
+    for k, v in pairs(context) do
+        -- Check if this is a character field
+        local is_char_key = false
+        for _, key in ipairs(character_keys) do
+            if k == key then is_char_key = true; break end
+        end
+        
+        if is_char_key and type(v) == "table" and v.game_id then
+            result[k] = serialize_character(v)
+        elseif k == "companions" and type(v) == "table" then
+            result[k] = {}
+            for _, char in ipairs(v) do
+                if char and char.game_id then
+                    table.insert(result[k], serialize_character(char))
+                end
+            end
+        else
+            result[k] = v
+        end
+    end
+    
+    return result
+end
+
+--- Convert an Event object to a serializable table.
+local function serialize_event(event)
+    if not event then return nil end
+    
+    local witnesses = {}
+    if event.witnesses then
+        for _, w in ipairs(event.witnesses) do
+            table.insert(witnesses, serialize_character(w))
+        end
+    end
+    
+    return {
+        type = event.type,
+        content = event.content,  -- For legacy events
+        context = serialize_context(event.context),
+        game_time_ms = event.game_time_ms,
+        world_context = event.world_context,
+        witnesses = witnesses,
+        flags = event.flags,
+    }
+end
+
+--- Serialize a list of events.
+local function serialize_events(events)
+    if not events then return {} end
+    local result = {}
+    for _, event in ipairs(events) do
+        table.insert(result, serialize_event(event))
+    end
+    return result
+end
+
+--------------------------------------------------------------------------------
 -- Response Publishing
 --------------------------------------------------------------------------------
 
@@ -99,7 +182,7 @@ local function handle_memories_get(topic, payload)
             character_id = character_id,
             narrative = result.narrative,
             last_update_time_ms = result.last_update_time_ms,
-            new_events = result.new_events,
+            new_events = serialize_events(result.new_events),
         })
     else
         publish_error(request_id, "memories.get", tostring(result))
@@ -131,7 +214,7 @@ local function handle_events_recent(topic, payload)
     
     if ok then
         publish_response(request_id, "events.recent", {
-            events = result,
+            events = serialize_events(result),
             count = #result,
         })
     else
@@ -159,7 +242,7 @@ local function handle_character_get(topic, payload)
     
     if ok and result then
         publish_response(request_id, "character.get", {
-            character = result,
+            character = serialize_character(result),
         })
     elseif ok and not result then
         publish_error(request_id, "character.get", "Character not found: " .. tostring(character_id))
@@ -199,9 +282,14 @@ local function handle_characters_nearby(topic, payload)
     end)
     
     if ok then
+        -- Serialize each character in the list
+        local serialized = {}
+        for _, char in ipairs(result or {}) do
+            table.insert(serialized, serialize_character(char))
+        end
         publish_response(request_id, "characters.nearby", {
-            characters = result,
-            count = #result,
+            characters = serialized,
+            count = #serialized,
         })
     else
         publish_error(request_id, "characters.nearby", tostring(result))

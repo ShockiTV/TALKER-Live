@@ -85,7 +85,14 @@ class ZMQRouter:
             while self.running:
                 try:
                     # Receive message (with timeout for shutdown checking)
-                    message = await self.sub_socket.recv_string()
+                    # Use recv() with manual decode to handle encoding errors gracefully
+                    raw_bytes = await self.sub_socket.recv()
+                    try:
+                        message = raw_bytes.decode("utf-8")
+                    except UnicodeDecodeError:
+                        # Try latin-1 as fallback (accepts any byte sequence)
+                        message = raw_bytes.decode("latin-1")
+                        logger.warning("Message contained non-UTF-8 bytes, decoded with latin-1")
                     await self._process_message(message)
                 except zmq.Again:
                     # Timeout - just continue loop to check self.running

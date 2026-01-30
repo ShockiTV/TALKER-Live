@@ -89,7 +89,8 @@ def describe_event(event: Event) -> str:
 def _format_typed_event(event: Event) -> str:
     """Format a typed event based on its type and context."""
     ctx = event.context
-    event_type = event.type
+    # Normalize to uppercase for case-insensitive matching (Lua uses lowercase)
+    event_type = event.type.upper() if event.type else None
     
     # Get actor description if present
     actor = None
