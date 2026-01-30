@@ -2,18 +2,23 @@
 
 ## Project Overview
 
-TALKER Expanded is a STALKER: Anomaly mod that enables AI-powered NPC dialogue using LLMs. It's a dual-codebase project: Lua (game integration) + Python (microphone input). The mod implements a hierarchical memory system where NPCs witness events, store memories, and generate contextual dialogue through AI models.
+TALKER Expanded is a STALKER: Anomaly mod that enables AI-powered NPC dialogue using LLMs. It's a dual-codebase project: Lua (game integration) + Python (AI processing & microphone input). The mod implements a hierarchical memory system where NPCs witness events, store memories, and generate contextual dialogue through AI models.
+
+**IMPORTANT (Phase 2+):** AI dialogue generation is handled by the Python service, NOT Lua. The game (Lua) stores events and sends them via ZeroMQ to Python, which handles LLM calls, speaker selection, and memory compression.
 
 ## Architecture (Clean Architecture Pattern)
 
+### Lua Codebase (Game Integration)
+
 The Lua codebase follows clean architecture with strict layer separation:
 
-- **`bin/lua/app/`** - Application layer (e.g., `talker.lua` orchestrates dialogue generation)
+- **`bin/lua/app/`** - Application layer (e.g., `talker.lua` orchestrates event registration)
 - **`bin/lua/domain/`** - Core entities (`Character`, `Event`) and repositories (`memory_store`, `event_store`, `personalities`, `backstories`)
 - **`bin/lua/framework/`** - Utilities (logger, inspect) - no game dependencies
 - **`bin/lua/infra/`** - External integrations:
-  - `AI/` - LLM providers (GPT, OpenRouter, Ollama, proxy)
+  - `AI/` - Transformations and utilities (LLM clients REMOVED in Phase 2)
   - `HTTP/` - Network layer using pollnet FFI bindings
+  - `zmq/` - ZeroMQ bridge for Python service communication
   - `STALKER/` - Game-specific data (factions, locations, world_state)
 - **`bin/lua/interface/`** - Bridge layer (`config.lua` reads MCM settings, `interface.lua` exposes public API)
 - **`gamedata/scripts/`** - Game callbacks (STALKER X-Ray engine integration):
@@ -21,15 +26,35 @@ The Lua codebase follows clean architecture with strict layer separation:
   - `talker_trigger_*.script` - Event triggers (death, injury, artifact, etc.)
   - `talker_listener_*.script` - Event listeners that register events with the talker system
   - `talker_input_*.script` - Player input handlers (chatbox, microphone)
+  - `talker_zmq_*.script` - ZMQ integration (query handlers, command handlers)
   - `talker_mcm.script` - MCM configuration UI
 
 **Critical Rule**: `bin/lua/` code must NEVER directly call STALKER game APIs - always go through `talker_game_*` adapters in `gamedata/scripts/`.
+
+### Python Service (AI Processing)
+
+Located in `talker_service/`:
+
+- **`src/talker_service/`** - Main package
+  - `llm/` - LLM client implementations (OpenAI, OpenRouter, Ollama, Proxy)
+  - `prompts/` - Prompt building for dialogue, speaker selection, memory compression
+  - `dialogue/` - Dialogue generator and speaker selector
+  - `state/` - State query client for fetching game data
+  - `transport/` - ZMQ router for bidirectional communication
+  - `handlers/` - Event and config handlers
+  - `models/` - Pydantic message schemas
+
+**Communication Flow:**
+```
+Lua → ZMQ PUB (5555) → Python SUB
+Python → ZMQ PUB (5556) → Lua SUB
+```
 
 ## Key Patterns & Conventions
 
 ### 1. Typed Event System (Core Workflow)
 
-Events flow: Game → Trigger → `trigger.talker_event_near_player()` → Listener → `talker.register_event()` → Event Store → AI Speaker Selection → AI Dialogue Generation → Display
+Events flow: Game → Trigger → `trigger.talker_event_near_player()` → Listener → `talker.register_event()` → Event Store → ZMQ → Python → AI Dialogue → ZMQ → Lua → Display
 
 **Creating typed events** (preferred):
 ```lua
@@ -64,18 +89,30 @@ trigger.talker_event_near_player(EventType.DEATH, context, true, { is_silent = f
 
 Memory compression triggers when event count exceeds `transformations.COMPRESSION_THRESHOLD`. See [bin/lua/infra/AI/transformations.lua](../bin/lua/infra/AI/transformations.lua) and [bin/lua/domain/repo/memory_store.lua](../bin/lua/domain/repo/memory_store.lua).
 
-### 3. Callback-Based Async Pattern
+### 3. ZMQ Communication Pattern (Phase 2+)
 
-All AI requests are asynchronous using callbacks (game loop integration):
+AI processing is now handled by the Python service. Lua publishes events and receives commands:
 
+**Lua → Python (Events):**
 ```lua
-AI_request.generate_dialogue(recent_events, function(speaker_id, dialogue, timestamp_to_delete)
-    game_adapter.display_dialogue(speaker_id, dialogue)
-    -- Update stores...
-end)
+-- In talker_zmq_integration.script
+publisher.send_game_event(event, is_important)
 ```
 
-Never use blocking operations. Use `talker_game_async.repeat_until_true()` for polling.
+**Python → Lua (Commands):**
+```lua
+-- In talker_zmq_command_handlers.script
+-- Handler for dialogue.display command
+local function handle_dialogue_display(payload)
+    game.display_dialogue(payload.speaker_id, payload.dialogue)
+end
+```
+
+**State Queries (Python → Lua → Python):**
+```lua
+-- Python publishes state.query, Lua responds with state.response
+-- See talker_zmq_query_handlers.script for handlers
+```
 
 ### 4. Error Handling
 
@@ -109,6 +146,8 @@ local cooldown = config.idle_conversation_cooldown() * 1000 -- ms
 
 ## Testing
 
+### Lua Tests
+
 - **Run tests**: `lua5.1.exe tests/<path>/test_<module>.lua` (uses LuaUnit)
   - Note: Use `lua5.1.exe`, not `lua` (which may not be in PATH)
   - Example: `lua5.1.exe tests/entities/test_event.lua`
@@ -116,24 +155,50 @@ local cooldown = config.idle_conversation_cooldown() * 1000 -- ms
 - Use mocks from `tests/mocks/` (mock_characters, mock_game_adapter, mock_REST)
 - Live integration tests in `tests/live/` (require actual LLM API keys)
 
+### Python Tests (talker_service)
+
+- **IMPORTANT**: Must use the virtual environment, not system Python
+- **Run all tests**:
+  ```powershell
+  cd talker_service
+  .\.venv\Scripts\activate
+  python -m pytest tests/ -v
+  ```
+- Or in one line: `cd talker_service; .\.venv\Scripts\activate; python -m pytest tests/ -v`
+- Test files: `tests/test_*.py` (pytest, ~130 tests)
+- Coverage includes: LLM clients, prompts, dialogue generation, ZMQ router, state client
+
 ## Critical Files to Reference
 
-- [bin/lua/app/talker.lua](../bin/lua/app/talker.lua) - Main dialogue orchestration logic
-- [bin/lua/domain/repo/memory_store.lua](../bin/lua/domain/repo/memory_store.lua) - Memory compression & retrieval
-- [bin/lua/infra/AI/requests.lua](../bin/lua/infra/AI/requests.lua) - All AI request functions (dialogue, speaker selection, memory compression)
-- [bin/lua/infra/AI/prompt_builder.lua](../bin/lua/infra/AI/prompt_builder.lua) - Prompt construction from game state
+### Lua (Game Integration)
+- [bin/lua/app/talker.lua](../bin/lua/app/talker.lua) - Event registration, bypasses AI when Python service enabled
+- [bin/lua/domain/repo/memory_store.lua](../bin/lua/domain/repo/memory_store.lua) - Memory storage (compression now in Python)
+- [bin/lua/interface/config.lua](../bin/lua/interface/config.lua) - MCM config getters, default settings
 - [gamedata/scripts/talker_game_queries.script](../gamedata/scripts/talker_game_queries.script) - Game state queries (locations, characters, items)
-- [gamedata/scripts/talker_game_persistence.script](../gamedata/scripts/talker_game_persistence.script) - Save/load system
+- [gamedata/scripts/talker_zmq_integration.script](../gamedata/scripts/talker_zmq_integration.script) - ZMQ lifecycle, event publishing
+- [gamedata/scripts/talker_zmq_command_handlers.script](../gamedata/scripts/talker_zmq_command_handlers.script) - Handles commands from Python
+
+### Python (AI Processing - Phase 2+)
+- [talker_service/src/talker_service/dialogue/generator.py](../talker_service/src/talker_service/dialogue/generator.py) - Main dialogue generation orchestrator
+- [talker_service/src/talker_service/prompts/dialogue.py](../talker_service/src/talker_service/prompts/dialogue.py) - Dialogue prompt building
+- [talker_service/src/talker_service/llm/factory.py](../talker_service/src/talker_service/llm/factory.py) - LLM client factory (OpenAI, OpenRouter, Ollama, Proxy)
+- [talker_service/src/talker_service/handlers/events.py](../talker_service/src/talker_service/handlers/events.py) - Game event handlers
 
 ## Common Tasks
 
 **Adding a new trigger**: Create `talker_trigger_<event>.script`, implement condition check, create event with `game.create_event()`, call `trigger.register_near_player()`. See [gamedata/scripts/talker_trigger_artifact.script](../gamedata/scripts/talker_trigger_artifact.script) for a simple example.
 
-**Adding AI provider**: Create module in `bin/lua/infra/AI/`, implement `send(messages, callback, opts)` interface, add to `requests.lua` model selection.
+**Adding AI provider (Phase 2+)**: Create module in `talker_service/src/talker_service/llm/`, implement `BaseLLMClient` interface with `complete(messages, **kwargs) -> str`. Register in `llm/factory.py`.
 
-**Debugging dialogue**: Check `logs/talker_debug.log` (not console - console only shows warnings/errors). Enable verbose logging in MCM.
+**Debugging dialogue**: 
+- Lua side: Check `logs/talker_debug.log` (not console - console only shows warnings/errors)
+- Python side: Check `talker_service/logs/talker_service.log`
+- Enable verbose logging in MCM
 
-**Modifying prompts**: Edit `bin/lua/infra/AI/prompt_builder.lua` - dialogue prompts in `build_dialogue_request()`, memory compression in `build_compression_request()`.
+**Modifying prompts (Phase 2+)**: Edit files in `talker_service/src/talker_service/prompts/`:
+- `dialogue.py` - Dialogue generation prompts
+- `speaker.py` - Speaker selection prompts  
+- `memory.py` - Memory compression prompts
 
 ## Python Microphone System
 
@@ -148,9 +213,9 @@ Launch via `launch_mic.bat`, not directly.
 ## Python Service (ZMQ Integration)
 
 Located in `talker_service/`:
-- **Purpose**: Experimental Python service for offloading AI compute from Lua
-- **Communication**: ZeroMQ PUB/SUB pattern (Lua PUB → Python SUB)
-- **Status**: Phase 1 complete (event logging, config mirroring)
+- **Purpose**: Python service that handles ALL AI dialogue generation (Phase 2+)
+- **Communication**: Bidirectional ZeroMQ PUB/SUB
+- **Status**: Phase 2 COMPLETE - full AI processing pipeline
 
 ### Architecture
 
@@ -162,13 +227,63 @@ talker_service/
 │   ├── config.py               # Service configuration (pydantic-settings)
 │   ├── models/
 │   │   ├── messages.py         # Pydantic schemas for ZMQ messages
-│   │   └── config.py           # MCM config mirror schema
+│   │   └── config.py           # MCM config mirror schema (field mappings!)
+│   ├── llm/                    # LLM client implementations
+│   │   ├── factory.py          # get_llm_client(model_method, ...)
+│   │   ├── openai.py           # OpenAI client (model_method=0)
+│   │   ├── openrouter.py       # OpenRouter client (model_method=1)
+│   │   ├── ollama.py           # Ollama client (model_method=2)
+│   │   └── proxy.py            # Gemini proxy client (model_method=3)
+│   ├── prompts/                # Prompt building
+│   │   ├── dialogue.py         # create_dialogue_request_prompt()
+│   │   ├── speaker.py          # create_pick_speaker_prompt()
+│   │   └── memory.py           # create_compress_memories_prompt()
+│   ├── dialogue/               # Dialogue generation
+│   │   ├── generator.py        # DialogueGenerator orchestrator
+│   │   └── speaker.py          # SpeakerSelector
+│   ├── state/                  # Game state queries
+│   │   └── client.py           # StateQueryClient (ZMQ request/response)
 │   ├── transport/
-│   │   └── router.py           # ZMQRouter class (SUB socket, topic routing)
+│   │   └── router.py           # ZMQRouter (bidirectional PUB/SUB)
 │   └── handlers/
-│       ├── events.py           # Game event handler (logging)
+│       ├── events.py           # Game event handlers (triggers dialogue)
 │       └── config.py           # ConfigMirror class
-└── tests/                      # pytest test suite
+└── tests/                      # pytest test suite (~130 tests)
+```
+
+### Important Implementation Notes
+
+**LLM Client API**: All LLM clients' `complete()` method returns a **string** directly, NOT an object with `.content`:
+```python
+# Correct:
+response = await llm_client.complete(messages)
+text = response  # response IS the string
+
+# WRONG (old pattern):
+text = response.content  # AttributeError!
+```
+
+**Config Field Mappings**: Lua MCM keys differ from Python model fields:
+| Lua (MCM) Key | Python Field |
+|---------------|-------------|
+| `ai_model_method` | `model_method` |
+| `custom_ai_model` | `model_name` |
+| `custom_ai_model_fast` | `model_name_fast` |
+
+**Async Event Handling**: Event handlers must NOT block the message loop. Use `asyncio.create_task()` for long-running operations:
+```python
+# Correct:
+asyncio.create_task(_handle_event_async(event))
+
+# WRONG (causes deadlock):
+await _handle_event_async(event)
+```
+
+**Prompt Message Conversion**: The prompt builders use their own `Message` class. Convert to LLM `Message` before calling:
+```python
+from talker_service.llm.models import Message
+prompt_messages, timestamp = create_dialogue_request_prompt(...)
+messages = [Message(role=m.role, content=m.content) for m in prompt_messages]
 ```
 
 ### Lua-Side Integration
@@ -203,10 +318,25 @@ Example: `game.event {"event": {"type": "DEATH", "context": {...}, "witnesses": 
 
 ### Running Tests
 
-```bash
+**IMPORTANT**: Always use the virtual environment for Python tests:
+
+```powershell
 cd talker_service
+.\.venv\Scripts\activate
+python -m pytest tests/ -v
+```
+
+Or as a one-liner:
+```powershell
+cd talker_service; .\.venv\Scripts\activate; python -m pytest tests/ -v --tb=short
+```
+
+**First-time setup** (if `.venv` doesn't exist):
+```powershell
+cd talker_service
+python -m venv .venv
+.\.venv\Scripts\activate
 pip install -e ".[dev]"
-pytest tests/
 ```
 
 Launch service via `launch_talker_service.bat`.

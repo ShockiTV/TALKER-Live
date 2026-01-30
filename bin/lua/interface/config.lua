@@ -145,7 +145,13 @@ end
 
 -- ZMQ / Python Service configuration
 function c.zmq_enabled()
-	return cfg("zmq_enabled", false)
+	return cfg("zmq_enabled", true)
+end
+
+function c.python_ai_enabled()
+	-- When enabled, AI dialogue generation is handled by the Python service
+	-- instead of Lua-based HTTP requests
+	return cfg("python_ai_enabled", true)
 end
 
 function c.zmq_port()
@@ -156,8 +162,26 @@ function c.zmq_endpoint()
 	return "tcp://*:" .. c.zmq_port()
 end
 
+function c.zmq_command_port()
+	return tonumber(cfg("zmq_command_port", 5556))
+end
+
+function c.zmq_command_endpoint()
+	return "tcp://127.0.0.1:" .. c.zmq_command_port()
+end
+
 function c.zmq_heartbeat_interval()
 	return tonumber(cfg("zmq_heartbeat_interval", 5))
+end
+
+function c.llm_timeout()
+	-- Maximum seconds to wait for LLM response (default 60s)
+	return tonumber(cfg("llm_timeout", 60))
+end
+
+function c.state_query_timeout()
+	-- Maximum seconds to wait for game state queries (default 30s)
+	return tonumber(cfg("state_query_timeout", 30))
 end
 
 -- Get all MCM config values as a table for sync
@@ -186,9 +210,12 @@ function c.get_all_config()
 		time_gap = cfg("time_gap", 12),
 		
 		-- ZMQ settings
-		zmq_enabled = cfg("zmq_enabled", false),
+		zmq_enabled = cfg("zmq_enabled", true),
+		python_ai_enabled = cfg("python_ai_enabled", true),
 		zmq_port = tonumber(cfg("zmq_port", 5555)),
 		zmq_heartbeat_interval = tonumber(cfg("zmq_heartbeat_interval", 5)),
+		llm_timeout = tonumber(cfg("llm_timeout", 60)),
+		state_query_timeout = tonumber(cfg("state_query_timeout", 30)),
 		
 		-- Debug
 		debug_logging = tonumber(cfg("debug_logging", 2)),

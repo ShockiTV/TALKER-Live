@@ -30,6 +30,9 @@ publisher.topics = {
     
     -- System
     HEARTBEAT = "system.heartbeat",
+    
+    -- State query responses (Lua -> Python)
+    STATE_RESPONSE = "state.response",
 }
 
 --------------------------------------------------------------------------------
@@ -246,6 +249,22 @@ function publisher.send_heartbeat()
     local success = bridge.publish(publisher.topics.HEARTBEAT, payload)
     if success then
         logger.debug("Sent heartbeat")
+    end
+    return success
+end
+
+--- Publish a state query response to the Python service.
+-- @param topic Response topic (typically "state.response")
+-- @param payload Response payload with request_id and data
+-- @return true if sent, false otherwise
+function publisher.publish_response(topic, payload)
+    if not bridge.is_connected() then
+        return false
+    end
+    
+    local success = bridge.publish(topic or publisher.topics.STATE_RESPONSE, payload)
+    if success then
+        logger.debug("Sent state response: %s", payload.response_type or "unknown")
     end
     return success
 end

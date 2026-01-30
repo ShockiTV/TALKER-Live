@@ -34,6 +34,16 @@ class ConfigMirror:
         logger.info("Config updated from game")
         logger.debug(f"Config values: {self._config.model_dump()}")
         
+        # Clear LLM client cache when model settings change
+        model_changed = (
+            old_config.model_method != self._config.model_method or
+            old_config.model_name != self._config.model_name
+        )
+        if model_changed:
+            from ..llm.factory import clear_client_cache
+            clear_client_cache()
+            logger.info(f"LLM config changed: method={old_config.model_method}->{self._config.model_method}, model={old_config.model_name}->{self._config.model_name}")
+        
         # Notify callbacks
         for callback in self._callbacks:
             try:

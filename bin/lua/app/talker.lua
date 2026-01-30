@@ -1,11 +1,26 @@
 package.path = package.path .. ";./bin/lua/?.lua;"
 local event_store = require("domain.repo.event_store")
 local logger = require("framework.logger")
-local AI_request = require("infra.AI.requests")
 local game_adapter = require("infra.game_adapter")
 local config = require("interface.config")
+
+-- Lazy-load AI_request only when needed (not loaded when using Python service)
+local AI_request = nil
+local function get_AI_request()
+	if AI_request == nil then
+		AI_request = require("infra.AI.requests")
+	end
+	return AI_request
+end
+
 local queries = talker_game_queries
 local talker = {}
+
+--- Check if Python service is handling AI processing.
+-- When enabled, Lua only stores events - Python generates dialogue via ZMQ.
+local function is_python_ai_enabled()
+	return config.zmq_enabled() and config.python_ai_enabled()
+end
 
 function talker.register_event(event, is_important)
 	logger.info("talker.register_event")
@@ -17,6 +32,14 @@ function talker.register_event(event, is_important)
 		return
 	end
 
+	-- If Python AI is enabled, skip Lua AI processing
+	-- Python service receives events via ZMQ and handles dialogue generation
+	if is_python_ai_enabled() then
+		logger.info("Python AI enabled - dialogue generation handled by Python service")
+		return
+	end
+
+	-- Legacy Lua AI path
 	-- If the event has the 'is_idle' flag, it's a direct instruction.
 	-- Bypass the 'should_someone_speak' and generic 'generate_dialogue' logic.
 	if event.flags and event.flags.is_idle then
@@ -39,7 +62,7 @@ function talker.generate_dialogue(event)
 	logger.debug("Getting all events since " .. event.game_time_ms - TEN_SECONDS_ms)
 	local recent_events = event_store:get_events_since(event.game_time_ms - TEN_SECONDS_ms)
 	-- begin a dialogue generation request, input is recent_events, output is speaker_id and dialogue
-	AI_request.generate_dialogue(recent_events, function(speaker_id, dialogue, timestamp_to_delete)
+	get_AI_request().generate_dialogue(recent_events, function(speaker_id, dialogue, timestamp_to_delete)
 		-- on response:
 		logger.info(
 			"talker.generate_dialogue: dialogue generated for speaker_id: " .. speaker_id .. ", dialogue: " .. dialogue
@@ -61,7 +84,7 @@ end
 
 function talker.generate_dialogue_from_instruction(speaker_name, event)
 	logger.debug("Generating dialogue from instruction for " .. speaker_name)
-	AI_request.generate_dialogue_from_instruction(
+	get_AI_request().generate_dialogue_from_instruction(
 		speaker_name,
 		event,
 		function(speaker_id, dialogue, timestamp_to_delete)
@@ -77,7 +100,7 @@ function talker.generate_dialogue_from_instruction(speaker_name, event)
 			-- If the speaker has spoken recently (e.g. while this slow request was processing), we abort.
 			-- This prevents rare occurances where the "Idle Conversation" event triggers just as another event generates dialogue,
 			-- leading to moments of double dialogue from the same character.
-			local last_spoke_time = AI_request.get_last_spoke_time(speaker_id)
+			local last_spoke_time = get_AI_request().get_last_spoke_time(speaker_id)
 			local current_time = queries.get_game_time_ms()
 			local threshold_ms = config.recent_speech_threshold() * 1000
 
@@ -97,7 +120,7 @@ function talker.generate_dialogue_from_instruction(speaker_name, event)
 
 			-- Check passed, proceed with dialogue
 			-- CRITICAL: We must now update the last spoke time so they don't speak AGAIN immediately after this.
-			AI_request.set_speaker_last_spoke(speaker_id, current_time)
+			get_AI_request().set_speaker_last_spoke(speaker_id, current_time)
 
 			game_adapter.display_dialogue(speaker_id, dialogue)
 			local dialogue_event = game_adapter.create_dialogue_event(speaker_id, dialogue, event)

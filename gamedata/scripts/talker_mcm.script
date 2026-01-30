@@ -368,6 +368,51 @@ function on_mcm_load()
                 max = 60,
                 def = 5,
             },
+            {
+                id = "python_ai_enabled_title",
+                type = "desc",
+                clr = {200, 200, 255, 200},
+                text = "ui_mcm_talker_python_ai_enabled_title"
+            },
+            {
+                id = "python_ai_enabled_description",
+                type = "desc",
+                text = "ui_mcm_talker_python_ai_enabled_description"
+            },
+            {
+                id = "python_ai_enabled",
+                type = "check",
+                val = 1,
+                def = true,
+            },
+            {
+                id = "llm_timeout_title",
+                type = "desc",
+                clr = {200, 200, 255, 200},
+                text = "ui_mcm_talker_llm_timeout_title"
+            },
+            {
+                id = "llm_timeout",
+                type = "input",
+                val = 2,
+                min = 10,
+                max = 300,
+                def = 60,
+            },
+            {
+                id = "state_query_timeout_title",
+                type = "desc",
+                clr = {200, 200, 255, 200},
+                text = "ui_mcm_talker_state_query_timeout_title"
+            },
+            {
+                id = "state_query_timeout",
+                type = "input",
+                val = 2,
+                min = 5,
+                max = 120,
+                def = 30,
+            },
         }
     }
     return op
@@ -433,6 +478,9 @@ local defaults = {
     ["zmq_enabled"] = true,
     ["zmq_port"] = 5555,
     ["zmq_heartbeat_interval"] = 5,
+    ["python_ai_enabled"] = true,
+    ["llm_timeout"] = 60,
+    ["state_query_timeout"] = 30,
 }
 
 -- Function to retrieve the configuration value

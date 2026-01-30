@@ -49,4 +49,5 @@ talker.log
 *.key
 .env
 .venv/
+**/__pycache__/
 

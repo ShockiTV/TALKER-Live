@@ -1,0 +1,238 @@
+-- TALKER ZMQ Command Handlers
+-- Handles commands from Python service via ZMQ
+-- Commands include dialogue display and memory updates
+
+package.path = package.path .. ";./bin/lua/?.lua;"
+local logger = require("framework.logger")
+local game_adapter = require("infra.game_adapter")
+local memory_store = require("domain.repo.memory_store")
+local event_store = require("domain.repo.event_store")
+local Event = require("domain.model.event")
+local EventType = require("domain.model.event_types")
+
+-- References to ZMQ integration (lazy-loaded)
+local zmq_integration = nil
+
+--------------------------------------------------------------------------------
+-- Helpers
+--------------------------------------------------------------------------------
+
+local function get_zmq_integration()
+    if zmq_integration == nil then
+        zmq_integration = talker_zmq_integration or false
+    end
+    return zmq_integration
+end
+
+local function get_queries()
+    return talker_game_queries
+end
+
+--------------------------------------------------------------------------------
+-- Command Handlers
+--------------------------------------------------------------------------------
+
+--- Handler for dialogue.display command
+-- Displays dialogue from a speaker to the player
+local function handle_dialogue_display(topic, payload)
+    local speaker_id = payload.speaker_id
+    local dialogue = payload.dialogue
+    local create_event = payload.create_event ~= false  -- Default true
+    local event_context = payload.event_context or {}
+    
+    logger.info("Handling dialogue.display for speaker: %s", speaker_id)
+    
+    if not speaker_id or not dialogue then
+        logger.error("dialogue.display requires speaker_id and dialogue")
+        return
+    end
+    
+    -- Display the dialogue
+    local ok, err = pcall(function()
+        game_adapter.display_dialogue(speaker_id, dialogue)
+    end)
+    
+    if not ok then
+        logger.error("Failed to display dialogue: %s", err)
+        return
+    end
+    
+    -- Create and store dialogue event if requested
+    if create_event then
+        local ok2, err2 = pcall(function()
+            local queries = get_queries()
+            local current_time = queries and queries.get_game_time_ms() or os.time() * 1000
+            
+            -- Get speaker character for witnesses
+            local speaker_char = game_adapter.get_character_by_id(speaker_id)
+            if not speaker_char then
+                logger.warn("Could not get speaker character for event creation")
+                return
+            end
+            
+            -- Get player character
+            local player = game_adapter.get_player_character()
+            
+            -- Build witnesses list
+            local witnesses = { speaker_char }
+            if player then
+                table.insert(witnesses, player)
+            end
+            
+            -- Create the dialogue event
+            local context = {
+                speaker = speaker_char,
+                text = dialogue,
+            }
+            
+            -- Merge any additional context
+            for k, v in pairs(event_context) do
+                context[k] = v
+            end
+            
+            local dialogue_event = Event.create(
+                EventType.DIALOGUE,
+                context,
+                current_time,
+                event_context.world_context or queries and queries.describe_world(speaker_char, player) or "",
+                witnesses,
+                { is_silent = true }  -- Don't trigger another dialogue from this
+            )
+            
+            -- Store the event
+            event_store:store_event(dialogue_event)
+            logger.debug("Created dialogue event for speaker %s", speaker_id)
+        end)
+        
+        if not ok2 then
+            logger.error("Failed to create dialogue event: %s", err2)
+        end
+    end
+end
+
+--- Handler for memory.update command
+-- Updates a character's narrative memory
+local function handle_memory_update(topic, payload)
+    local character_id = payload.character_id
+    local narrative = payload.narrative
+    local last_event_time_ms = payload.last_event_time_ms
+    
+    logger.info("Handling memory.update for character: %s", character_id)
+    
+    if not character_id then
+        logger.error("memory.update requires character_id")
+        return
+    end
+    
+    local ok, err = pcall(function()
+        if narrative ~= nil then
+            -- Full narrative update
+            memory_store:update_narrative(character_id, narrative, last_event_time_ms or 0)
+            logger.debug("Updated narrative for character %s, length: %d", 
+                character_id, 
+                narrative and #narrative or 0)
+        elseif last_event_time_ms then
+            -- Just update the timestamp (compressed memory injection)
+            memory_store:update_last_update_time(character_id, last_event_time_ms)
+            logger.debug("Updated last_update_time for character %s to %s", 
+                character_id, 
+                last_event_time_ms)
+        end
+    end)
+    
+    if not ok then
+        logger.error("Failed to update memory: %s", err)
+    end
+end
+
+--- Handler for event.store command
+-- Stores a compressed memory event (injected from Python)
+local function handle_event_store(topic, payload)
+    local event_data = payload.event
+    
+    logger.info("Handling event.store")
+    
+    if not event_data then
+        logger.error("event.store requires event data")
+        return
+    end
+    
+    local ok, err = pcall(function()
+        -- Reconstruct the event with proper structure
+        local event = {
+            type = event_data.type,
+            content = event_data.content,
+            context = event_data.context or {},
+            game_time_ms = event_data.game_time_ms,
+            world_context = event_data.world_context,
+            witnesses = event_data.witnesses or {},
+            involved_objects = event_data.involved_objects or {},
+            flags = event_data.flags or {},
+        }
+        
+        event_store:store_event(event)
+        logger.debug("Stored event, type: %s, time: %s", event.type or "legacy", event.game_time_ms)
+    end)
+    
+    if not ok then
+        logger.error("Failed to store event: %s", err)
+    end
+end
+
+--- Handler for config.request command
+-- Python service requests a config sync (e.g., after restart/recovery)
+local function handle_config_request(topic, payload)
+    local reason = payload and payload.reason or "unknown"
+    logger.info("Handling config.request from Python service (reason: %s)", reason)
+    
+    local zmq = get_zmq_integration()
+    if zmq and zmq.publish_config_sync then
+        zmq.publish_config_sync()
+        logger.info("Config sync sent in response to config.request")
+    else
+        logger.warn("Cannot send config sync - ZMQ integration not available")
+    end
+end
+
+--------------------------------------------------------------------------------
+-- Registration
+--------------------------------------------------------------------------------
+
+local function register_handlers()
+    local zmq = get_zmq_integration()
+    if not zmq or not zmq.register_command_handler then
+        logger.warn("ZMQ integration not available - command handlers not registered")
+        return false
+    end
+    
+    logger.info("Registering ZMQ command handlers...")
+    
+    zmq.register_command_handler("dialogue.display", handle_dialogue_display)
+    zmq.register_command_handler("memory.update", handle_memory_update)
+    zmq.register_command_handler("event.store", handle_event_store)
+    zmq.register_command_handler("config.request", handle_config_request)
+    
+    logger.info("ZMQ command handlers registered successfully")
+    return true
+end
+
+--------------------------------------------------------------------------------
+-- Game Callbacks
+--------------------------------------------------------------------------------
+
+local function on_game_load()
+    -- Delay registration to ensure ZMQ is initialized
+    CreateTimeEvent("talker_zmq_command_handlers", "register", 3.5, function()
+        register_handlers()
+        return true -- One-shot timer
+    end)
+end
+
+function on_game_start()
+    RegisterScriptCallback("on_game_load", on_game_load)
+    logger.info("ZMQ command handlers script loaded")
+end
+
+function is_loaded()
+    return true
+end

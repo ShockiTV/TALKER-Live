@@ -6,7 +6,6 @@
 package.path = package.path .. ";./bin/lua/?.lua"
 local logger = require("framework.logger")
 local game_adapter = require("infra.game_adapter")
-local prompt_builder = require("infra.AI.prompt_builder")
 local mic = require("infra.mic.microphone")
 local json = require("infra.HTTP.json")
 
@@ -22,6 +21,19 @@ local function get_names_of_nearby_characters()
 	return names
 end
 
+-- Create a simple prompt for whisper transcription
+local function create_transcription_prompt(names)
+	logger.info("Creating transcription prompt")
+	local prompt = "STALKER games setting, nearby characters are: "
+	for i, name in ipairs(names) do
+		prompt = prompt .. name
+		if i < #names then
+			prompt = prompt .. ", "
+		end
+	end
+	return prompt
+end
+
 -- function recorder.to record the player's dialogue
 function recorder.start(callback)
 	logger.info("Listening for player dialogue...")
@@ -29,7 +41,7 @@ function recorder.start(callback)
 	mic.clear_transcription()
 	-- Get names of nearby characters to enhance transcription accuracy
 	local names = get_names_of_nearby_characters()
-	local prompt = prompt_builder.create_transcription_prompt(names)
+	local prompt = create_transcription_prompt(names)
 
 	mic.start(prompt)
 
