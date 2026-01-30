@@ -4,11 +4,11 @@ package.path = package.path .. ";./bin/lua/?.lua;"
 
 local trigger = require("interface.trigger")
 local EventType = trigger.EventType
-local AI_request = require("infra.AI.requests")
 local game = require("infra.game_adapter")
 local log = require("framework.logger")
 local config = require("interface.config")
 local mcm = talker_mcm
+local event_store = require("domain.repo.event_store")
 
 -- Import game interface modules
 local queries = talker_game_queries
@@ -30,6 +30,28 @@ local function shuffle(tbl)
     end
 end
 
+-- Check if a character has spoken recently by looking at dialogue events in the event store.
+-- This replaces the AI_request.get_last_spoke_time() call, making it work with both
+-- Lua AI and Python AI modes.
+local function get_character_last_spoke_time(character_id)
+    local recent_events = event_store:get_all_events()
+    local latest_dialogue_time = nil
+    
+    for _, event in ipairs(recent_events) do
+        -- Check if this is a dialogue event from this character
+        if event.type == "DIALOGUE" and event.context and event.context.speaker then
+            local speaker = event.context.speaker
+            if tostring(speaker.game_id) == tostring(character_id) then
+                if not latest_dialogue_time or event.game_time_ms > latest_dialogue_time then
+                    latest_dialogue_time = event.game_time_ms
+                end
+            end
+        end
+    end
+    
+    return latest_dialogue_time
+end
+
 -- Checks if any NPC near the player has spoken within a given threshold.
 -- This is used to determine if there is a "moment of silence" suitable for an idle conversation.
 local function has_anyone_spoken_recently()
@@ -43,7 +65,7 @@ local function has_anyone_spoken_recently()
     local current_game_time = queries.get_game_time_ms()
 
     for _, character in ipairs(nearby_characters) do
-        local last_spoke_time = AI_request.get_last_spoke_time(character.game_id)
+        local last_spoke_time = get_character_last_spoke_time(character.game_id)
         if last_spoke_time then
             if current_game_time - last_spoke_time < RECENT_SPEECH_THRESHOLD_MS then
                 -- Found someone who spoke within the last 2 minutes.

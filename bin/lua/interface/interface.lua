@@ -2,7 +2,6 @@
 local log = require("framework.logger")
 local talker = require("app.talker")
 local game_adapter = require("infra.game_adapter")
-local AI_request = require("infra.AI.requests")
 local Event = require("domain.model.event")
 local EventType = require("domain.model.event_types")
 

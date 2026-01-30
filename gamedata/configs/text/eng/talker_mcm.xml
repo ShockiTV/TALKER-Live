@@ -504,4 +504,25 @@
     <string id="ui_mcm_talker_zmq_heartbeat_interval">
         <text>Heartbeat interval (seconds)</text>
     </string>
+    <string id="ui_mcm_talker_python_ai_enabled_title">
+        <text>Enable Python AI</text>
+    </string>
+    <string id="ui_mcm_talker_python_ai_enabled_description">
+        <text>When enabled, AI dialogue generation is handled by the Python service instead of Lua. REQUIRED for dialogue in Phase 2+. The Python service must be running.</text>
+    </string>
+    <string id="ui_mcm_talker_python_ai_enabled">
+        <text>Enable Python AI Processing</text>
+    </string>
+    <string id="ui_mcm_talker_llm_timeout_title">
+        <text>LLM Timeout</text>
+    </string>
+    <string id="ui_mcm_talker_llm_timeout">
+        <text>Maximum seconds to wait for LLM response (default: 60)</text>
+    </string>
+    <string id="ui_mcm_talker_state_query_timeout_title">
+        <text>State Query Timeout</text>
+    </string>
+    <string id="ui_mcm_talker_state_query_timeout">
+        <text>Maximum seconds to wait for game state queries (default: 30)</text>
+    </string>
 </string_table>

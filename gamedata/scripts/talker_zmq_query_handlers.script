@@ -1,0 +1,284 @@
+-- TALKER ZMQ Query Handlers
+-- Handles state queries from Python service via ZMQ
+-- Queries game state and publishes responses back
+
+package.path = package.path .. ";./bin/lua/?.lua;"
+local logger = require("framework.logger")
+local memory_store = require("domain.repo.memory_store")
+local event_store = require("domain.repo.event_store")
+local game_adapter = require("infra.game_adapter")
+
+-- References to ZMQ integration (lazy-loaded)
+local zmq_integration = nil
+
+--------------------------------------------------------------------------------
+-- Response Publishing
+--------------------------------------------------------------------------------
+
+local function get_zmq_integration()
+    if zmq_integration == nil then
+        zmq_integration = talker_zmq_integration or false
+    end
+    return zmq_integration
+end
+
+local function publish_response(request_id, response_type, data)
+    local zmq = get_zmq_integration()
+    if not zmq or not zmq.publish_game_event then
+        logger.warn("ZMQ integration not available for publishing response")
+        return false
+    end
+    
+    local response_event = {
+        type = "STATE_RESPONSE",
+        context = {
+            request_id = request_id,
+            response_type = response_type,
+            data = data,
+        },
+        game_time_ms = talker_game_queries and talker_game_queries.get_game_time_ms() or 0,
+        flags = { is_response = true },
+    }
+    
+    -- Use the publisher to send the response
+    local publisher = require("infra.zmq.publisher")
+    if publisher and publisher.is_connected() then
+        local payload = {
+            request_id = request_id,
+            response_type = response_type,
+            data = data,
+            timestamp = os.time() * 1000,
+        }
+        return publisher.publish_response and publisher.publish_response("state.response", payload)
+            or publisher.send_game_event and publisher.send_game_event(response_event, true)
+    end
+    return false
+end
+
+local function publish_error(request_id, response_type, error_msg)
+    logger.error("Query error for %s (request %s): %s", response_type, request_id or "unknown", error_msg)
+    
+    local publisher = require("infra.zmq.publisher")
+    if publisher and publisher.is_connected() then
+        local payload = {
+            request_id = request_id,
+            response_type = response_type,
+            error = error_msg,
+            timestamp = os.time() * 1000,
+        }
+        -- Use state.response topic for errors too
+        return publisher.publish_response and publisher.publish_response("state.response", payload)
+    end
+    return false
+end
+
+--------------------------------------------------------------------------------
+-- Query Handlers
+--------------------------------------------------------------------------------
+
+--- Handler for memories.get query
+-- Fetches memory context for a specific character
+local function handle_memories_get(topic, payload)
+    local request_id = payload.request_id
+    local character_id = payload.character_id
+    
+    logger.debug("Handling memories.get for character: %s", character_id)
+    
+    if not character_id then
+        publish_error(request_id, "memories.get", "character_id required")
+        return
+    end
+    
+    local ok, result = pcall(function()
+        local context = memory_store:get_memory_context(character_id)
+        return context
+    end)
+    
+    if ok then
+        publish_response(request_id, "memories.get", {
+            character_id = character_id,
+            narrative = result.narrative,
+            last_update_time_ms = result.last_update_time_ms,
+            new_events = result.new_events,
+        })
+    else
+        publish_error(request_id, "memories.get", tostring(result))
+    end
+end
+
+--- Handler for events.recent query
+-- Fetches recent events since a given timestamp
+local function handle_events_recent(topic, payload)
+    local request_id = payload.request_id
+    local since_ms = payload.since_ms or 0
+    local limit = payload.limit or 50
+    
+    logger.debug("Handling events.recent since: %s, limit: %s", since_ms, limit)
+    
+    local ok, result = pcall(function()
+        local events = event_store:get_events_since(since_ms)
+        -- Apply limit
+        if #events > limit then
+            local trimmed = {}
+            local start_idx = #events - limit + 1
+            for i = start_idx, #events do
+                table.insert(trimmed, events[i])
+            end
+            return trimmed
+        end
+        return events
+    end)
+    
+    if ok then
+        publish_response(request_id, "events.recent", {
+            events = result,
+            count = #result,
+        })
+    else
+        publish_error(request_id, "events.recent", tostring(result))
+    end
+end
+
+--- Handler for character.get query
+-- Fetches character information by ID
+local function handle_character_get(topic, payload)
+    local request_id = payload.request_id
+    local character_id = payload.character_id
+    
+    logger.debug("Handling character.get for: %s", character_id)
+    
+    if not character_id then
+        publish_error(request_id, "character.get", "character_id required")
+        return
+    end
+    
+    local ok, result = pcall(function()
+        local char = game_adapter.get_character_by_id(character_id)
+        return char
+    end)
+    
+    if ok and result then
+        publish_response(request_id, "character.get", {
+            character = result,
+        })
+    elseif ok and not result then
+        publish_error(request_id, "character.get", "Character not found: " .. tostring(character_id))
+    else
+        publish_error(request_id, "character.get", tostring(result))
+    end
+end
+
+--- Handler for characters.nearby query
+-- Fetches characters near a position or the player
+local function handle_characters_nearby(topic, payload)
+    local request_id = payload.request_id
+    local center_id = payload.center_id  -- Optional: character ID to center on (defaults to player)
+    local radius = payload.radius or 50
+    
+    logger.debug("Handling characters.nearby, radius: %s", radius)
+    
+    local ok, result = pcall(function()
+        local queries = talker_game_queries
+        if not queries then
+            error("talker_game_queries not available")
+        end
+        
+        local center_obj = nil
+        if center_id then
+            center_obj = queries.get_obj_by_id(center_id)
+        else
+            center_obj = queries.get_player()
+        end
+        
+        if not center_obj then
+            error("Could not find center object")
+        end
+        
+        local nearby = game_adapter.get_characters_near(center_obj, radius)
+        return nearby
+    end)
+    
+    if ok then
+        publish_response(request_id, "characters.nearby", {
+            characters = result,
+            count = #result,
+        })
+    else
+        publish_error(request_id, "characters.nearby", tostring(result))
+    end
+end
+
+--- Handler for world.context query
+-- Fetches current world context (location, time, weather)
+local function handle_world_context(topic, payload)
+    local request_id = payload.request_id
+    
+    logger.debug("Handling world.context query")
+    
+    local ok, result = pcall(function()
+        local queries = talker_game_queries
+        if not queries then
+            error("talker_game_queries not available")
+        end
+        
+        return {
+            location = queries.get_location_name(),
+            location_technical = queries.get_location_technical_name(),
+            nearby_smart_terrain = queries.get_nearby_smart_terrain_name(),
+            time_of_day = queries.describe_current_time(),
+            weather = queries.describe_weather(),
+            emission = queries.describe_emission(),
+            game_time_ms = queries.get_game_time_ms(),
+        }
+    end)
+    
+    if ok then
+        publish_response(request_id, "world.context", result)
+    else
+        publish_error(request_id, "world.context", tostring(result))
+    end
+end
+
+--------------------------------------------------------------------------------
+-- Registration
+--------------------------------------------------------------------------------
+
+local function register_handlers()
+    local zmq = get_zmq_integration()
+    if not zmq or not zmq.register_command_handler then
+        logger.warn("ZMQ integration not available - query handlers not registered")
+        return false
+    end
+    
+    logger.info("Registering ZMQ query handlers...")
+    
+    zmq.register_command_handler("state.query.memories", handle_memories_get)
+    zmq.register_command_handler("state.query.events", handle_events_recent)
+    zmq.register_command_handler("state.query.character", handle_character_get)
+    zmq.register_command_handler("state.query.characters_nearby", handle_characters_nearby)
+    zmq.register_command_handler("state.query.world", handle_world_context)
+    
+    logger.info("ZMQ query handlers registered successfully")
+    return true
+end
+
+--------------------------------------------------------------------------------
+-- Game Callbacks
+--------------------------------------------------------------------------------
+
+local function on_game_load()
+    -- Delay registration to ensure ZMQ is initialized
+    CreateTimeEvent("talker_zmq_query_handlers", "register", 3, function()
+        register_handlers()
+        return true -- One-shot timer
+    end)
+end
+
+function on_game_start()
+    RegisterScriptCallback("on_game_load", on_game_load)
+    logger.info("ZMQ query handlers script loaded")
+end
+
+function is_loaded()
+    return true
+end

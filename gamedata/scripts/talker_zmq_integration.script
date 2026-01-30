@@ -1,5 +1,5 @@
 -- TALKER ZMQ Integration Script
--- Handles ZMQ bridge lifecycle and event publishing
+-- Handles ZMQ bridge lifecycle, event publishing, and command receiving
 
 package.path = package.path .. ";./bin/lua/?.lua;"
 local logger = require("framework.logger")
@@ -7,8 +7,10 @@ local config = require("interface.config")
 
 -- Lazy-loaded modules (only load if ZMQ is enabled)
 local publisher = nil
+local bridge = nil  -- For command polling
 local is_zmq_initialized = false
 local heartbeat_timer_id = "talker_zmq_heartbeat"
+local poll_timer_id = "talker_zmq_poll"
 
 --------------------------------------------------------------------------------
 -- Helpers
@@ -42,28 +44,95 @@ local function init_zmq()
         return false
     end
     
+    -- Also load bridge for command polling
+    bridge = safe_require("infra.zmq.bridge")
+    
     local success = publisher.init({
         endpoint = config.zmq_endpoint(),
+        sub_endpoint = config.zmq_command_endpoint(),
         enabled = true,
     })
     
     if success then
         logger.info("ZMQ publisher initialized successfully on " .. config.zmq_endpoint())
         start_heartbeat()
+        start_command_polling()
         return true
     else
         logger.warn("ZMQ publisher failed to initialize - check if libzmq.dll is in bin/pollnet/")
         publisher = nil
+        bridge = nil
         return false
     end
 end
 
 local function shutdown_zmq()
+    stop_command_polling()
     if publisher then
         publisher.shutdown()
         publisher = nil
     end
+    bridge = nil
     is_zmq_initialized = false
+end
+
+--------------------------------------------------------------------------------
+-- Command Polling
+--------------------------------------------------------------------------------
+
+local function poll_commands()
+    if bridge and bridge.poll_commands then
+        local count = bridge.poll_commands()
+        if count > 0 then
+            logger.debug("Processed %d ZMQ commands", count)
+        end
+    end
+    return false -- Continue timer
+end
+
+function start_command_polling()
+    if not bridge then return end
+    
+    local interval = 0.1 -- Poll every 100ms for responsiveness
+    logger.info("Starting ZMQ command polling timer")
+    
+    CreateTimeEvent(poll_timer_id, poll_timer_id, interval, function()
+        poll_commands()
+        ResetTimeEvent(poll_timer_id, poll_timer_id, interval)
+        return false
+    end)
+end
+
+function stop_command_polling()
+    RemoveTimeEvent(poll_timer_id, poll_timer_id)
+end
+
+--------------------------------------------------------------------------------
+-- Command Handler Registration
+--------------------------------------------------------------------------------
+
+--- Register a handler for receiving commands from Python.
+-- @param topic Topic string (e.g., "dialogue.display", "state.query")
+-- @param handler Function to call with (topic, payload) arguments
+function register_command_handler(topic, handler)
+    if not init_zmq() then
+        logger.warn("Cannot register command handler - ZMQ not initialized")
+        return false
+    end
+    
+    if bridge and bridge.register_handler then
+        bridge.register_handler(topic, handler)
+        return true
+    end
+    return false
+end
+
+--- Unregister a command handler.
+-- @param topic Topic string
+function unregister_command_handler(topic)
+    if bridge and bridge.unregister_handler then
+        bridge.unregister_handler(topic)
+    end
 end
 
 --------------------------------------------------------------------------------
@@ -160,6 +229,7 @@ end
 local function on_game_end()
     logger.info("ZMQ integration: on_game_end")
     stop_heartbeat()
+    stop_command_polling()
     shutdown_zmq()
 end
 

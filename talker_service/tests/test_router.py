@@ -2,7 +2,7 @@
 
 import json
 import pytest
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 from talker_service.transport.router import ZMQRouter
 
@@ -11,14 +11,25 @@ class TestZMQRouter:
     """Tests for ZMQRouter class."""
 
     def test_router_initialization(self):
-        """Test router initializes with correct endpoint."""
-        endpoint = "tcp://127.0.0.1:5555"
-        router = ZMQRouter(endpoint)
+        """Test router initializes with correct endpoints."""
+        sub_endpoint = "tcp://127.0.0.1:5555"
+        router = ZMQRouter(sub_endpoint)
         
-        assert router.endpoint == endpoint
+        assert router.sub_endpoint == sub_endpoint
+        assert router.pub_endpoint is None
         assert router.handlers == {}
         assert router.running is False
         assert router.is_connected is False
+    
+    def test_router_initialization_with_pub(self):
+        """Test router initializes with both SUB and PUB endpoints."""
+        sub_endpoint = "tcp://127.0.0.1:5555"
+        pub_endpoint = "tcp://*:5556"
+        router = ZMQRouter(sub_endpoint, pub_endpoint)
+        
+        assert router.sub_endpoint == sub_endpoint
+        assert router.pub_endpoint == pub_endpoint
+        assert router.pub_socket is not None
 
     def test_handler_registration(self):
         """Test registering handlers for topics."""
@@ -175,10 +186,163 @@ class TestRouterLifecycle:
         router.is_connected = True
         
         # Mock the socket and context to avoid actual ZMQ operations
-        router.socket = MagicMock()
+        router.sub_socket = MagicMock()
         router.context = MagicMock()
         
         await router.shutdown()
         
         assert router.running is False
         assert router.is_connected is False
+    
+    @pytest.mark.asyncio
+    async def test_shutdown_with_pub_socket(self):
+        """Test that shutdown closes both sockets."""
+        router = ZMQRouter("tcp://127.0.0.1:5555", "tcp://*:5556")
+        router.running = True
+        router.is_connected = True
+        
+        # Mock sockets
+        router.sub_socket = MagicMock()
+        router.pub_socket = MagicMock()
+        router.context = MagicMock()
+        
+        await router.shutdown()
+        
+        assert router.running is False
+        router.sub_socket.close.assert_called_once()
+        router.pub_socket.close.assert_called_once()
+
+
+class TestPublishFunctionality:
+    """Tests for PUB socket functionality."""
+    
+    @pytest.mark.asyncio
+    async def test_publish_without_pub_socket(self):
+        """Test publish fails gracefully without PUB socket."""
+        router = ZMQRouter("tcp://127.0.0.1:5555")  # No pub_endpoint
+        
+        result = await router.publish("test.topic", {"data": "test"})
+        
+        assert result is False
+    
+    @pytest.mark.asyncio
+    async def test_publish_when_not_connected(self):
+        """Test publish fails gracefully when not connected."""
+        router = ZMQRouter("tcp://127.0.0.1:5555", "tcp://*:5556")
+        router.is_connected = False
+        
+        result = await router.publish("test.topic", {"data": "test"})
+        
+        assert result is False
+    
+    @pytest.mark.asyncio
+    async def test_publish_success(self):
+        """Test successful publish."""
+        router = ZMQRouter("tcp://127.0.0.1:5555", "tcp://*:5556")
+        router.is_connected = True
+        
+        # Mock the pub socket
+        mock_pub = AsyncMock()
+        router.pub_socket = mock_pub
+        
+        result = await router.publish("test.topic", {"key": "value"})
+        
+        assert result is True
+        mock_pub.send_string.assert_called_once()
+        call_arg = mock_pub.send_string.call_args[0][0]
+        assert call_arg.startswith("test.topic ")
+        assert '"key": "value"' in call_arg
+
+
+class TestRequestResponsePattern:
+    """Tests for request/response pattern with request_id correlation."""
+    
+    @pytest.fixture
+    def mock_router(self):
+        """Create a router with mocked ZMQ sockets."""
+        with patch('talker_service.transport.router.zmq.asyncio.Context') as mock_ctx_class:
+            mock_ctx = MagicMock()
+            mock_socket = MagicMock()
+            mock_ctx.socket.return_value = mock_socket
+            mock_ctx_class.return_value = mock_ctx
+            
+            router = ZMQRouter("tcp://127.0.0.1:5555")
+            yield router
+    
+    @pytest.mark.asyncio
+    async def test_create_request(self, mock_router):
+        """Test creating a pending request."""
+        import asyncio
+        router = mock_router
+        
+        future = router.create_request("req-123", timeout=0.1)  # Very short timeout for test
+        
+        assert "req-123" in router._pending_requests
+        assert isinstance(future, asyncio.Future)
+        
+        # Wait for timeout to clean up
+        await asyncio.sleep(0.15)
+    
+    @pytest.mark.asyncio
+    async def test_handle_state_response_success(self, mock_router):
+        """Test state response resolves pending future."""
+        router = mock_router
+        
+        future = router.create_request("req-456", timeout=5.0)
+        
+        # Simulate receiving response
+        response_payload = {
+            "request_id": "req-456",
+            "response_type": "memories.get",
+            "data": {"narrative": "test narrative"}
+        }
+        
+        await router._handle_state_response(response_payload)
+        
+        # Future should be resolved
+        assert future.done()
+        result = await future
+        assert result["data"]["narrative"] == "test narrative"
+    
+    @pytest.mark.asyncio
+    async def test_handle_state_response_error(self, mock_router):
+        """Test state response with error raises exception."""
+        router = mock_router
+        
+        future = router.create_request("req-789", timeout=5.0)
+        
+        # Simulate receiving error response
+        error_payload = {
+            "request_id": "req-789",
+            "response_type": "memories.get",
+            "error": "Character not found"
+        }
+        
+        await router._handle_state_response(error_payload)
+        
+        # Future should have exception
+        assert future.done()
+        with pytest.raises(Exception, match="Character not found"):
+            await future
+    
+    @pytest.mark.asyncio
+    async def test_handle_state_response_no_request_id(self, mock_router):
+        """Test state response without request_id is handled gracefully."""
+        router = mock_router
+        
+        # Should not raise
+        await router._handle_state_response({"data": "orphan"})
+    
+    @pytest.mark.asyncio
+    async def test_shutdown_cancels_pending_requests(self, mock_router):
+        """Test that shutdown cancels pending request futures."""
+        router = mock_router
+        router.running = True
+        router.is_connected = True
+        
+        future = router.create_request("req-cancel", timeout=0.1)  # Very short timeout
+        
+        await router.shutdown()
+        
+        assert future.cancelled() or future.done()
+        assert len(router._pending_requests) == 0

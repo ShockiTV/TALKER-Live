@@ -17,6 +17,7 @@ class MCMConfig(BaseModel):
     model_method: int = 0  # 0=GPT, 1=OpenRouter, 2=Ollama, 3=Proxy
     api_key: str = ""
     model_name: str = ""
+    model_name_fast: str = ""  # Fast model for speaker selection
     
     # Behavior settings
     witness_distance: int = 30
@@ -44,6 +45,10 @@ class MCMConfig(BaseModel):
     zmq_enabled: bool = True
     zmq_port: int = 5555
     
+    # Timeout settings (Phase 2)
+    llm_timeout: int = 60  # LLM request timeout in seconds
+    state_query_timeout: int = 30  # State query timeout in seconds
+    
     # Other common settings
     action_descriptions: bool = False
     female_gender: bool = False
@@ -52,13 +57,33 @@ class MCMConfig(BaseModel):
     
     @classmethod
     def from_lua_payload(cls, payload: dict[str, Any]) -> "MCMConfig":
-        """Create config from Lua payload, handling type coercion."""
-        # Lua may send booleans as 0/1 integers
+        """Create config from Lua payload, handling type coercion.
+        
+        Lua sends config as {config: {key: value, ...}} from get_all_config().
+        Field name mapping: ai_model_method -> model_method
+        """
+        # Extract from nested 'config' key if present
+        if "config" in payload and isinstance(payload["config"], dict):
+            raw_config = payload["config"]
+        else:
+            raw_config = payload
+        
+        # Map Lua field names to Python field names
+        field_mapping = {
+            "ai_model_method": "model_method",
+            "custom_ai_model": "model_name",
+            "custom_ai_model_fast": "model_name_fast",
+        }
+        
         processed = {}
-        for key, value in payload.items():
-            if key in ("zmq_enabled", "action_descriptions", "female_gender"):
-                # Convert 0/1 to bool
-                processed[key] = bool(value) if isinstance(value, int) else value
+        for key, value in raw_config.items():
+            # Apply field name mapping
+            mapped_key = field_mapping.get(key, key)
+            
+            # Convert 0/1 to bool for boolean fields
+            if mapped_key in ("zmq_enabled", "action_descriptions", "female_gender", "python_ai_enabled"):
+                processed[mapped_key] = bool(value) if isinstance(value, int) else value
             else:
-                processed[key] = value
+                processed[mapped_key] = value
+        
         return cls(**processed)

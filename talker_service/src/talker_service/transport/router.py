@@ -1,4 +1,6 @@
-"""ZeroMQ message router - subscribes to Lua PUB socket and routes messages to handlers."""
+"""ZeroMQ message router - subscribes to Lua PUB socket and routes messages to handlers.
+
+Also provides PUB socket for sending commands to Lua."""
 
 import asyncio
 import json
@@ -18,22 +20,34 @@ class ZMQRouter:
     
     Connects to Lua's PUB socket and subscribes to all topics.
     Messages are expected in format: "<topic> <json-payload>"
+    
+    Also binds a PUB socket for sending commands to Lua's SUB socket.
     """
     
-    def __init__(self, endpoint: str):
+    def __init__(self, sub_endpoint: str, pub_endpoint: str | None = None):
         """Initialize router.
         
         Args:
-            endpoint: ZMQ endpoint to connect to (e.g., "tcp://127.0.0.1:5555")
+            sub_endpoint: ZMQ endpoint to connect SUB socket to (e.g., "tcp://127.0.0.1:5555")
+            pub_endpoint: ZMQ endpoint to bind PUB socket to (e.g., "tcp://*:5556").
+                          If None, PUB socket is not created.
         """
-        self.endpoint = endpoint
+        self.sub_endpoint = sub_endpoint
+        self.pub_endpoint = pub_endpoint
         self.handlers: dict[str, MessageHandler] = {}
         self.running = False
         self.is_connected = False
         
-        # Initialize ZMQ context and socket
+        # Internal handlers for state responses (request_id -> future)
+        self._pending_requests: dict[str, asyncio.Future] = {}
+        
+        # Initialize ZMQ context and sockets
         self.context = zmq.asyncio.Context()
-        self.socket = self.context.socket(zmq.SUB)
+        self.sub_socket = self.context.socket(zmq.SUB)
+        self.pub_socket: zmq.asyncio.Socket | None = None
+        
+        if pub_endpoint:
+            self.pub_socket = self.context.socket(zmq.PUB)
         
     def on(self, topic: str, handler: MessageHandler) -> None:
         """Register a handler for a topic.
@@ -48,21 +62,30 @@ class ZMQRouter:
     async def run(self) -> None:
         """Start the message processing loop."""
         try:
-            # Connect to Lua's PUB socket
-            self.socket.connect(self.endpoint)
+            # Connect SUB socket to Lua's PUB socket
+            self.sub_socket.connect(self.sub_endpoint)
             # Subscribe to all topics (empty string = all)
-            self.socket.setsockopt_string(zmq.SUBSCRIBE, "")
+            self.sub_socket.setsockopt_string(zmq.SUBSCRIBE, "")
             # Set receive timeout for graceful shutdown checking
-            self.socket.setsockopt(zmq.RCVTIMEO, 100)  # 100ms timeout
+            self.sub_socket.setsockopt(zmq.RCVTIMEO, 100)  # 100ms timeout
+            
+            logger.info(f"ZMQ Router SUB connected to {self.sub_endpoint}")
+            
+            # Bind PUB socket if configured
+            if self.pub_socket and self.pub_endpoint:
+                self.pub_socket.bind(self.pub_endpoint)
+                logger.info(f"ZMQ Router PUB bound to {self.pub_endpoint}")
             
             self.is_connected = True
             self.running = True
-            logger.info(f"ZMQ Router connected to {self.endpoint}")
+            
+            # Register internal handler for state responses
+            self.handlers["state.response"] = self._handle_state_response
             
             while self.running:
                 try:
                     # Receive message (with timeout for shutdown checking)
-                    message = await self.socket.recv_string()
+                    message = await self.sub_socket.recv_string()
                     await self._process_message(message)
                 except zmq.Again:
                     # Timeout - just continue loop to check self.running
@@ -124,10 +147,91 @@ class ZMQRouter:
         self.running = False
         self.is_connected = False
         
+        # Cancel any pending requests
+        for request_id, future in self._pending_requests.items():
+            if not future.done():
+                future.cancel()
+        self._pending_requests.clear()
+        
         # Give time for loop to exit
         await asyncio.sleep(0.2)
         
-        # Close socket and context
-        self.socket.close()
+        # Close sockets with linger timeout
+        if self.pub_socket:
+            self.pub_socket.setsockopt(zmq.LINGER, 100)  # 100ms linger
+            self.pub_socket.close()
+        
+        self.sub_socket.setsockopt(zmq.LINGER, 100)
+        self.sub_socket.close()
         self.context.term()
         logger.info("ZMQ Router shutdown complete")
+    
+    async def publish(self, topic: str, payload: dict[str, Any]) -> bool:
+        """Publish a message to a topic.
+        
+        Args:
+            topic: Topic string (e.g., "dialogue.display")
+            payload: JSON-serializable payload dict
+            
+        Returns:
+            True if published successfully, False otherwise
+        """
+        if not self.pub_socket:
+            logger.error("PUB socket not configured - cannot publish")
+            return False
+        
+        if not self.is_connected:
+            logger.warning("Not connected - cannot publish")
+            return False
+        
+        try:
+            message = f"{topic} {json.dumps(payload)}"
+            await self.pub_socket.send_string(message)
+            logger.debug(f"Published to {topic}")
+            return True
+        except Exception as e:
+            logger.error(f"Publish error: {e}")
+            return False
+    
+    async def _handle_state_response(self, payload: dict[str, Any]) -> None:
+        """Internal handler for state.response messages.
+        
+        Routes responses to pending request futures based on request_id.
+        """
+        request_id = payload.get("request_id")
+        if not request_id:
+            logger.warning("state.response without request_id")
+            return
+        
+        future = self._pending_requests.pop(request_id, None)
+        if future and not future.done():
+            if "error" in payload:
+                future.set_exception(Exception(payload["error"]))
+            else:
+                future.set_result(payload)
+        else:
+            logger.warning(f"No pending request for id: {request_id}")
+    
+    def create_request(self, request_id: str, timeout: float = 30.0) -> asyncio.Future:
+        """Create a pending request and return a future.
+        
+        Args:
+            request_id: Unique request identifier
+            timeout: Timeout in seconds
+            
+        Returns:
+            Future that will be resolved when response arrives
+        """
+        future = asyncio.get_event_loop().create_future()
+        self._pending_requests[request_id] = future
+        
+        # Set up timeout
+        async def timeout_handler():
+            await asyncio.sleep(timeout)
+            if request_id in self._pending_requests:
+                future = self._pending_requests.pop(request_id)
+                if not future.done():
+                    future.set_exception(TimeoutError(f"Request {request_id} timed out"))
+        
+        asyncio.create_task(timeout_handler())
+        return future

@@ -97,34 +97,42 @@ I took their basic code for reloading personalities from [issue#40](https://gith
 
 ---
 
-## Python Service (Experimental)
+## Python Service (REQUIRED)
 
-TALKER Expanded includes an **experimental Python service** that enables offloading AI processing to a separate process. This is the foundation for future features like local LLM support and advanced memory management.
+**Starting from Phase 2, TALKER Expanded requires the Python service to be running for AI dialogue generation.** This is a BREAKING change from previous versions.
 
 ### Quick Start
 
-1. **Start the Python service** before launching the game:
+1. **Install Python 3.10+** if not already installed
+2. **Start the Python service** before launching the game:
    ```batch
    launch_talker_service.bat
    ```
-
-2. **Enable ZMQ in-game**: MCM → T.A.L.K.E.R. Expanded → Python Service → Enable ZMQ Publishing
-
-3. **Verify connection**: Open `http://localhost:8080/health` in a browser
+3. **Enable in MCM**: T.A.L.K.E.R. Expanded → Python Service → Enable ZMQ Publishing AND Enable Python AI
+4. **Verify connection**: Open `http://localhost:8080/health` in a browser
 
 ### Requirements
 
 - Python 3.10+
 - Windows 10/11
+- ~100MB disk space for Python dependencies
 
-### What it does (Phase 1)
+### What it does
 
-Currently the Python service:
-- Receives and logs game events in real-time
-- Mirrors MCM configuration from the game
-- Provides health check and debug endpoints
+The Python service now handles:
+- **All AI dialogue generation** (LLM calls for NPC responses)
+- **Speaker selection** (choosing which NPC responds to events)
+- **Memory compression** (long-term memory management)
+- **Prompt building** (constructing context for LLM)
 
-The game continues to function normally without the service running - it's completely optional.
+The game will NOT generate any AI dialogue if the Python service is not running and enabled.
+
+### Fallback Mode
+
+If you want to use the legacy Lua-based AI system (not recommended):
+1. Disable "Enable Python AI" in MCM
+2. The game will use the built-in HTTP-based AI system
+3. Note: This mode is deprecated and will be removed in future versions
 
 ### Documentation
 

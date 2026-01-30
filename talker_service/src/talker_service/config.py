@@ -14,8 +14,8 @@ class Settings(BaseSettings):
     )
     
     # ZMQ Settings
-    lua_pub_endpoint: str = "tcp://127.0.0.1:5555"
-    # service_pub_endpoint: str = "tcp://*:5556"  # Phase 2
+    lua_pub_endpoint: str = "tcp://127.0.0.1:5555"  # Lua PUB -> Python SUB
+    service_pub_endpoint: str = "tcp://*:5556"     # Python PUB -> Lua SUB
     
     # FastAPI Settings
     http_host: str = "127.0.0.1"
@@ -24,6 +24,17 @@ class Settings(BaseSettings):
     # Logging
     log_level: str = "INFO"
     log_file: Path = Path("logs/talker_service.log")
+    
+    # LLM Settings
+    default_llm_provider: str = "openai"  # openai, openrouter, ollama, proxy
+    llm_timeout: float = 60.0  # seconds
+    
+    # Proxy settings (for model_method = 3)
+    proxy_endpoint: str = "http://127.0.0.1:8000/v1/chat/completions"
+    proxy_api_key: str = "VerysecretKey"
+    
+    # State Query Settings
+    state_query_timeout: float = 30.0  # seconds
 
 
 # Global settings instance
