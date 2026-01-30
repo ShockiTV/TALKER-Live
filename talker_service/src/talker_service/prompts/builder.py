@@ -10,7 +10,7 @@ from typing import Optional
 from loguru import logger
 
 from .models import Character, Event, MemoryContext
-from .helpers import describe_character, describe_character_with_id, describe_event, is_junk_event
+from .helpers import describe_character, describe_character_with_id, describe_event, is_junk_event, inject_time_gaps
 from .factions import get_faction_description, get_faction_relations_text
 
 
@@ -183,6 +183,14 @@ def create_dialogue_request_prompt(
     
     narrative = memory_context.narrative
     new_events = memory_context.new_events or []
+    last_update_time_ms = memory_context.last_update_time_ms or 0
+    
+    # Inject time gaps between events with significant time differences
+    if new_events:
+        new_events = inject_time_gaps(
+            new_events,
+            last_update_time_ms=last_update_time_ms,
+        )
     
     trigger_event_timestamp_to_delete = None
     
@@ -346,13 +354,15 @@ def create_dialogue_request_prompt(
 
 def create_compress_memories_prompt(
     raw_events: list[Event],
-    speaker: Optional[Character] = None
+    speaker: Optional[Character] = None,
+    last_update_time_ms: int = 0
 ) -> list[Message]:
     """Create prompt for compressing raw events into mid-term memory.
     
     Args:
         raw_events: List of events to compress
         speaker: Optional speaker character for context
+        last_update_time_ms: Timestamp of last memory update (for time gap calculation)
         
     Returns:
         List of messages for LLM
@@ -360,6 +370,9 @@ def create_compress_memories_prompt(
     speaker_name = speaker.name if speaker else "a game character"
     
     logger.debug(f"Creating compress_memories_prompt with {len(raw_events)} events for {speaker_name}")
+    
+    # Inject time gaps between events
+    processed_events = inject_time_gaps(raw_events, last_update_time_ms=last_update_time_ms)
     
     messages = [
         Message.system(
@@ -380,7 +393,7 @@ def create_compress_memories_prompt(
     messages.append(Message.system("## EVENTS TO SUMMARIZE\n\n<EVENTS>"))
     
     # Add events, filtering out junk
-    for event in raw_events:
+    for event in processed_events:
         if not is_junk_event(event):
             content = describe_event(event)
             messages.append(Message.user(content))
@@ -413,7 +426,8 @@ def create_update_narrative_prompt(
     speaker: Character,
     current_narrative: Optional[str],
     new_events: list[Event],
-    player_name: str = "the user"
+    player_name: str = "the user",
+    last_update_time_ms: int = 0
 ) -> list[Message]:
     """Create prompt for updating long-term narrative memory.
     
@@ -422,6 +436,7 @@ def create_update_narrative_prompt(
         current_narrative: Existing narrative or None for bootstrapping
         new_events: New events to integrate
         player_name: Name of the player character
+        last_update_time_ms: Timestamp of last memory update (for time gap calculation)
         
     Returns:
         List of messages for LLM
@@ -430,8 +445,9 @@ def create_update_narrative_prompt(
     
     logger.debug(f"Creating update_narrative_prompt for {speaker.name}, bootstrap={is_bootstrap}")
     
-    # Sort events by time
+    # Sort events by time and inject time gaps
     sorted_events = sorted(new_events, key=lambda e: e.game_time_ms)
+    sorted_events = inject_time_gaps(sorted_events, last_update_time_ms=last_update_time_ms)
     
     # Build character identity
     faction_desc = get_faction_description(speaker.faction)

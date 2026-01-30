@@ -18,6 +18,7 @@ from talker_service.prompts import (
     create_pick_speaker_prompt,
     create_dialogue_request_prompt,
     create_compress_memories_prompt,
+    inject_time_gaps,
     create_update_narrative_prompt,
     create_transcription_prompt,
 )
@@ -452,3 +453,139 @@ class TestMessage:
         msg = Message(role="assistant", content="Response")
         d = msg.to_dict()
         assert d == {"role": "assistant", "content": "Response"}
+
+
+# ============================================================================
+# Time Gap Injection Tests
+# ============================================================================
+
+class TestInjectTimeGaps:
+    """Tests for inject_time_gaps function."""
+    
+    def test_no_events_returns_empty(self):
+        """Empty events list returns empty list."""
+        result = inject_time_gaps([], last_update_time_ms=0)
+        assert result == []
+    
+    def test_single_event_no_gap(self):
+        """Single event with no prior timestamp returns unchanged."""
+        event = Event(type="DEATH", game_time_ms=1000)
+        result = inject_time_gaps([event], last_update_time_ms=0)
+        assert len(result) == 1
+        assert result[0].type == "DEATH"
+    
+    def test_single_event_with_large_gap_from_last_update(self):
+        """Single event with large gap from last_update_time injects GAP event."""
+        MS_PER_HOUR = 60 * 60 * 1000
+        last_update = 1000
+        event = Event(type="DEATH", game_time_ms=last_update + (13 * MS_PER_HOUR))  # 13 hours later
+        
+        result = inject_time_gaps([event], last_update_time_ms=last_update)
+        
+        assert len(result) == 2
+        assert result[0].type == "GAP"
+        assert result[0].context["hours"] == 13
+        assert "TIME GAP" in result[0].context["message"]
+        assert result[1].type == "DEATH"
+    
+    def test_two_events_no_gap(self):
+        """Two events close in time have no GAP injected."""
+        MS_PER_HOUR = 60 * 60 * 1000
+        events = [
+            Event(type="DEATH", game_time_ms=1000),
+            Event(type="DIALOGUE", game_time_ms=1000 + (1 * MS_PER_HOUR)),  # 1 hour later
+        ]
+        
+        result = inject_time_gaps(events, last_update_time_ms=0)
+        
+        assert len(result) == 2
+        assert result[0].type == "DEATH"
+        assert result[1].type == "DIALOGUE"
+    
+    def test_two_events_with_large_gap(self):
+        """Two events with large time gap have GAP injected between them."""
+        MS_PER_HOUR = 60 * 60 * 1000
+        events = [
+            Event(type="DEATH", game_time_ms=1000),
+            Event(type="DIALOGUE", game_time_ms=1000 + (24 * MS_PER_HOUR)),  # 24 hours later
+        ]
+        
+        result = inject_time_gaps(events, last_update_time_ms=0)
+        
+        assert len(result) == 3
+        assert result[0].type == "DEATH"
+        assert result[1].type == "GAP"
+        assert result[1].context["hours"] == 24
+        assert result[2].type == "DIALOGUE"
+    
+    def test_custom_time_gap_threshold(self):
+        """Custom time_gap_hours threshold is respected."""
+        MS_PER_HOUR = 60 * 60 * 1000
+        events = [
+            Event(type="DEATH", game_time_ms=1000),
+            Event(type="DIALOGUE", game_time_ms=1000 + (8 * MS_PER_HOUR)),  # 8 hours later
+        ]
+        
+        # With default 12 hour threshold, no gap should be injected
+        result_default = inject_time_gaps(events, last_update_time_ms=0, time_gap_hours=12)
+        assert len(result_default) == 2
+        
+        # With 6 hour threshold, gap should be injected
+        result_custom = inject_time_gaps(events, last_update_time_ms=0, time_gap_hours=6)
+        assert len(result_custom) == 3
+        assert result_custom[1].type == "GAP"
+    
+    def test_gap_event_type_is_sufficient(self):
+        """GAP events are identified by type, not flags."""
+        MS_PER_HOUR = 60 * 60 * 1000
+        events = [
+            Event(type="DEATH", game_time_ms=1000),
+            Event(type="DIALOGUE", game_time_ms=1000 + (15 * MS_PER_HOUR)),
+        ]
+        
+        result = inject_time_gaps(events, last_update_time_ms=0)
+        gap_event = result[1]
+        
+        assert gap_event.type == "GAP"
+        # No special flags needed - type is sufficient
+        assert gap_event.flags == {}
+    
+    def test_events_sorted_by_time(self):
+        """Events are sorted by game_time_ms before gap injection."""
+        MS_PER_HOUR = 60 * 60 * 1000
+        # Provide events out of order
+        events = [
+            Event(type="DIALOGUE", game_time_ms=2000 + (24 * MS_PER_HOUR)),
+            Event(type="DEATH", game_time_ms=2000),
+        ]
+        
+        result = inject_time_gaps(events, last_update_time_ms=0)
+        
+        # Should be sorted: DEATH, GAP, DIALOGUE
+        assert result[0].type == "DEATH"
+        assert result[1].type == "GAP"
+        assert result[2].type == "DIALOGUE"
+    
+    def test_gap_message_format(self):
+        """GAP event message is properly formatted."""
+        MS_PER_HOUR = 60 * 60 * 1000
+        events = [Event(type="DEATH", game_time_ms=1000 + (15 * MS_PER_HOUR))]
+        
+        result = inject_time_gaps(events, last_update_time_ms=1000)
+        gap_event = result[0]
+        
+        assert gap_event.context["message"] == "TIME GAP: Approximately 15 hours have passed since the last event."
+    
+    def test_describe_event_formats_gap(self):
+        """describe_event properly formats GAP events."""
+        gap_event = Event(
+            type="GAP",
+            context={"hours": 12, "message": "TIME GAP: Approximately 12 hours have passed since the last event."},
+            game_time_ms=5000,
+            flags={}
+        )
+        
+        description = describe_event(gap_event)
+        
+        assert "TIME GAP" in description
+        assert "12 hours" in description

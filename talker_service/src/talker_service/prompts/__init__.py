@@ -22,6 +22,7 @@ from .helpers import (
     describe_event,
     is_junk_event,
     was_witnessed_by,
+    inject_time_gaps,
 )
 from .factions import (
     get_faction_description,
@@ -41,6 +42,7 @@ __all__ = [
     "describe_event",
     "is_junk_event",
     "was_witnessed_by",
+    "inject_time_gaps",
     # Factions
     "get_faction_description",
     "get_faction_relation",
