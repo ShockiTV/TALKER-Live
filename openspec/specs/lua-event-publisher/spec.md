@@ -1,73 +1,56 @@
-# lua-event-publisher (MODIFIED)
+# lua-event-publisher
 
-## Overview
+## Purpose
 
-Extends existing `bin/lua/infra/zmq/publisher.lua` to handle state query responses and integrate with new command handlers.
+Extends `bin/lua/infra/zmq/publisher.lua` to handle state query responses and integrate with command handlers.
 
 ## Requirements
 
-### MODIFIED: Publisher Module
+### Publisher Module
 
-The existing publisher module MUST be extended with:
-- `send_state_response(request_id, type, data)` function
-- `send_error_response(request_id, type, error)` function
-- Integration with state query handlers
+The publisher module MUST provide event publishing and state response capabilities for ZMQ communication.
 
-### ADDED: State Response Function
+#### Scenario: Publish game event
+- **WHEN** send_game_event(event, is_important) is called
+- **THEN** event SHALL be serialized and published to game.event topic
 
-The system MUST provide `send_state_response(request_id, type, data)` that:
-- Publishes to `state.response` topic
-- Includes request_id for correlation
-- Sets success=true in payload
-- Serializes data appropriately
+### State Response Function
 
-### ADDED: Error Response Function
+The system MUST provide `send_state_response(request_id, type, data)` that publishes to `state.response` topic with correlation ID.
 
-The system MUST provide `send_error_response(request_id, type, error_msg)` that:
-- Publishes to `state.response` topic
-- Includes request_id for correlation
-- Sets success=false in payload
-- Includes error message
+#### Scenario: Send successful memory response
+- **WHEN** Lua queries memory_store successfully
+- **THEN** send_state_response is called with memory context
+- **AND** message includes request_id
+- **AND** success=true in payload
 
-### ADDED: Query Response Topic Constant
+### Error Response Function
 
-The system MUST add topic constant:
-- `publisher.topics.STATE_RESPONSE = "state.response"`
+The system MUST provide `send_error_response(request_id, type, error_msg)` for reporting query failures.
 
-### MODIFIED: Serialization Helpers
+#### Scenario: Send error response
+- **WHEN** character query fails (not found)
+- **THEN** send_error_response is called
+- **AND** message includes request_id
+- **AND** success=false with error message
 
-The existing serialization helpers MUST be extended to handle:
-- Memory context (narrative + events)
-- Event lists with all fields
-- Character objects with visual_faction
+### Query Response Topic Constant
 
-## Scenarios
+The system MUST define topic constant `publisher.topics.STATE_RESPONSE = "state.response"`.
 
-#### Send successful memory response
+#### Scenario: Topic constant available
+- **WHEN** publisher module is loaded
+- **THEN** STATE_RESPONSE topic constant SHALL be defined
 
-WHEN Lua queries memory_store successfully
-THEN send_state_response is called with memory context
-AND message includes request_id
-AND success=true in payload
-AND Python receives correlated response
+### Serialization Helpers
 
-#### Send error response
+The serialization helpers MUST handle memory context, event lists, and character objects.
 
-WHEN character query fails (not found)
-THEN send_error_response is called
-AND message includes request_id
-AND success=false with error message
-AND Python QueryError is raised
+#### Scenario: Serialize event list
+- **WHEN** events.recent query returns 10 events
+- **THEN** all events are serialized to JSON
+- **AND** typed events preserve type + context fields
 
-#### Serialize event list
-
-WHEN events.recent query returns 10 events
-THEN all events are serialized to JSON
-AND typed events preserve type + context fields
-AND legacy events include content field
-
-#### Response includes request_id
-
-WHEN any state response is sent
-THEN request_id from original query is included
-AND Python correlation matches correctly
+#### Scenario: Response includes request_id
+- **WHEN** any state response is sent
+- **THEN** request_id from original query is included

@@ -1,6 +1,6 @@
 # python-service-required
 
-## Overview
+## Purpose
 
 The Python service is MANDATORY for TALKER Expanded v0.3.0+. There is no fallback to Lua-based AI processing. This is a BREAKING change from previous versions.
 

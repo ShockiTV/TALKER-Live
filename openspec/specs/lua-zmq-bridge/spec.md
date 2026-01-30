@@ -1,6 +1,6 @@
 # lua-zmq-bridge
 
-## Overview
+## Purpose
 
 `bin/lua/infra/zmq/bridge.lua` provides ZMQ communication with Python service. ZMQ is always required (no fallback path).
 
@@ -43,6 +43,11 @@ The system MUST initialize SUB socket by:
 - Using ZMQ_NOBLOCK for non-blocking operations
 - Handling connection failure gracefully
 
+#### Scenario: SUB socket connects on init
+- **WHEN** bridge.init() is called
+- **THEN** SUB socket SHALL connect to tcp://127.0.0.1:5556
+- **AND** socket SHALL subscribe to all topics with empty filter
+
 ### Poll Commands Function
 
 The system MUST provide `poll_commands()` that:
@@ -52,6 +57,12 @@ The system MUST provide `poll_commands()` that:
 - Processes all pending messages in single call
 - Returns number of messages processed
 
+#### Scenario: Poll processes pending messages
+- **WHEN** poll_commands() is called with messages in queue
+- **THEN** all pending messages SHALL be processed
+- **AND** each message SHALL be dispatched to its registered handler
+- **AND** function SHALL return count of processed messages
+
 ### Handler Registration
 
 The system MUST provide `register_handler(topic, func)` that:
@@ -59,12 +70,22 @@ The system MUST provide `register_handler(topic, func)` that:
 - Supports multiple handlers per topic
 - Handlers receive parsed payload table
 
+#### Scenario: Handler registered for topic
+- **WHEN** register_handler(topic, func) is called
+- **THEN** the handler SHALL be stored for that topic
+- **AND** handler SHALL receive parsed payload when topic message arrives
+
 ### Response Publishing
 
 The system MUST provide `publish_response(topic, payload)` that:
 - Uses existing PUB socket (port 5555)
 - Formats message as `{topic} {json}`
 - Used for state.response messages
+
+#### Scenario: Response published to Python
+- **WHEN** publish_response(topic, payload) is called
+- **THEN** message SHALL be sent via PUB socket on port 5555
+- **AND** message SHALL be formatted as "{topic} {json}"
 
 ### Connection Status API
 
@@ -100,6 +121,12 @@ Shutdown MUST:
 - Close SUB socket
 - Close PUB socket
 - Clear handler registrations
+
+#### Scenario: Clean shutdown
+- **WHEN** bridge.shutdown() is called
+- **THEN** SUB socket SHALL be closed
+- **AND** PUB socket SHALL be closed
+- **AND** all handler registrations SHALL be cleared
 
 ## Scenarios
 

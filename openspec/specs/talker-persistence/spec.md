@@ -1,11 +1,18 @@
-## MODIFIED Requirements
+# talker-persistence
 
-### Requirement: Config sync on load
+## Purpose
+
+Game save/load persistence for TALKER Expanded, including memory stores and configuration sync.
+
+## Requirements
+
+### Config sync on load
+
 The persistence module SHALL trigger a config sync to Python after loading game state.
 
 #### Scenario: Load triggers delayed sync
 - **WHEN** `load_state(saved_data)` completes successfully
-- **THEN** a delayed config sync is scheduled for 1 seconds later
+- **THEN** a delayed config sync is scheduled for 1 second later
 
 #### Scenario: Sync uses config_sync module
 - **WHEN** the delayed sync timer fires
@@ -15,9 +22,8 @@ The persistence module SHALL trigger a config sync to Python after loading game 
 - **WHEN** game is loaded but Python service is not running
 - **THEN** the sync attempt fails silently (fire-and-forget)
 
-## ADDED Requirements
+### ZMQ shutdown on game end
 
-### Requirement: ZMQ shutdown on game end
 The persistence module SHALL clean up ZMQ resources when the game ends.
 
 #### Scenario: Shutdown on game end
