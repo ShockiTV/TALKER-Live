@@ -4,6 +4,10 @@ local unique_characters = require("infra.STALKER.unique_characters")
 local queries = talker_game_queries or require("tests.mocks.mock_game_queries")
 local mcm = talker_mcm
 
+-- Version for personalities store save data format
+-- "2" is first versioned format (legacy unversioned saves are treated as version 1)
+local PERSONALITIES_VERSION = "2"
+
 local M = {}
 
 -- Cache of character_id -> personality_id
@@ -136,7 +140,11 @@ M.get_personality_id = M.get_personality
 
 function M.get_save_data()
 	log.debug("Returning character personalities for save.")
-	return character_personalities
+	-- Return versioned structure for forward compatibility
+	return {
+		personalities_version = PERSONALITIES_VERSION,
+		personalities = character_personalities,
+	}
 end
 
 function M.clear()
@@ -144,18 +152,40 @@ function M.clear()
 	character_personalities = {}
 end
 
-function M.load_save_data(saved_character_personalities)
+function M.load_save_data(saved_data)
+	log.info("Loading personalities store...")
+	
+	-- MCM reset option takes priority
 	if mcm and mcm.get and mcm.get("reset_personality") then
 		log.debug("TALKER personality reset is enabled. Clearing all saved personalities.")
 		character_personalities = {}
-	else
-		if saved_character_personalities ~= nil then
-			log.debug("TALKER personality reset is disabled. Loading saved personalities.")
-			character_personalities = saved_character_personalities
-		else
-			log.info("No saved personalities provided to load_save_data; keeping current cache.")
-		end
+		return
 	end
+	
+	-- Handle nil data → start fresh
+	if not saved_data then
+		log.info("No saved personalities data, starting fresh")
+		character_personalities = {}
+		return
+	end
+	
+	-- Check for versioned format
+	if saved_data.personalities_version then
+		if saved_data.personalities_version == PERSONALITIES_VERSION then
+			-- Current version: load normally
+			log.info("Loading versioned personalities store (v" .. saved_data.personalities_version .. ")")
+			character_personalities = saved_data.personalities or {}
+		else
+			-- Unknown version: start fresh with warning
+			log.warn("Unknown personalities store version: " .. tostring(saved_data.personalities_version) .. ", starting fresh")
+			character_personalities = {}
+		end
+		return
+	end
+	
+	-- Legacy format (no version): clear and re-assign on demand
+	log.warn("Loading legacy personalities store format (no version), starting fresh")
+	character_personalities = {}
 end
 
 return M
