@@ -3,6 +3,10 @@ local log = require("framework.logger")
 local queries = talker_game_queries or require("tests.mocks.mock_game_queries")
 local mcm = talker_mcm
 
+-- Version for backstories store save data format
+-- "2" is first versioned format (legacy unversioned saves are treated as version 1)
+local BACKSTORIES_VERSION = "2"
+
 local M = {}
 
 -- Cache of valid unique IDs from .ltx file (loaded once)
@@ -169,7 +173,11 @@ M.get_backstory_id = M.get_backstory
 
 function M.get_save_data()
 	log.debug("Returning character backstories for save.")
-	return character_backstories
+	-- Return versioned structure for forward compatibility
+	return {
+		backstories_version = BACKSTORIES_VERSION,
+		backstories = character_backstories,
+	}
 end
 
 function M.clear()
@@ -177,34 +185,40 @@ function M.clear()
 	character_backstories = {}
 end
 
-function M.load_save_data(saved_character_backstories)
+function M.load_save_data(saved_data)
+	log.info("Loading backstories store...")
+	
+	-- MCM reset option takes priority
 	if mcm and mcm.get and mcm.get("reset_backstory") then
 		log.debug("TALKER backstory reset is enabled. Clearing all saved backstories.")
 		character_backstories = {}
-	else
-		if saved_character_backstories ~= nil then
-			log.debug("TALKER backstory reset is disabled. Loading saved backstories.")
-			-- Check for migration: old saves have full text, new saves have IDs
-			-- If any value is longer than 50 chars, it's probably old format
-			local needs_migration = false
-			for _, backstory in pairs(saved_character_backstories) do
-				if type(backstory) == "string" and #backstory > 50 then
-					needs_migration = true
-					break
-				end
-			end
-			
-			if needs_migration then
-				log.info("Migrating backstories from old text format to new ID format")
-				-- Clear old backstories - they'll be re-assigned on demand
-				character_backstories = {}
-			else
-				character_backstories = saved_character_backstories
-			end
-		else
-			log.info("No saved backstories provided to load_save_data; keeping current cache.")
-		end
+		return
 	end
+	
+	-- Handle nil data → start fresh
+	if not saved_data then
+		log.info("No saved backstories data, starting fresh")
+		character_backstories = {}
+		return
+	end
+	
+	-- Check for versioned format
+	if saved_data.backstories_version then
+		if saved_data.backstories_version == BACKSTORIES_VERSION then
+			-- Current version: load normally
+			log.info("Loading versioned backstories store (v" .. saved_data.backstories_version .. ")")
+			character_backstories = saved_data.backstories or {}
+		else
+			-- Unknown version: start fresh with warning
+			log.warn("Unknown backstories store version: " .. tostring(saved_data.backstories_version) .. ", starting fresh")
+			character_backstories = {}
+		end
+		return
+	end
+	
+	-- Legacy format (no version): clear and re-assign on demand
+	log.warn("Loading legacy backstories store format (no version), starting fresh")
+	character_backstories = {}
 end
 
 return M
