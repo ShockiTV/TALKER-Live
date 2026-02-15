@@ -3,121 +3,120 @@ local log = require("framework.logger")
 local unique_characters = require("infra.STALKER.unique_characters")
 local queries = talker_game_queries or require("tests.mocks.mock_game_queries")
 local mcm = talker_mcm
+
 local M = {}
+
+-- Cache of character_id -> personality_id
 local character_personalities = {}
+
+-- INI file handle (lazy loaded)
+local ini = nil
 
 function M.set_queries(q)
 	log.spam("Setting queries...")
 	queries = q
 end
 
-local function get_random_personality()
-	local personality = queries.load_random_xml("traits")
-	local pid = ""
-	if type(personality) == "table" then
-		pid = tostring(personality.id or personality.text or "<table>")
-	else
-		pid = tostring(personality)
-	end
-	log.spam("Fetching a generic random personality... " .. pid)
-	return personality
-end
-
-local function get_random_personalities(amountOfPersonalities, xml_key)
-	local loadedPersonalities = {}
-	local maxAttempts = math.max(10, amountOfPersonalities * 10)
-	local attempts = 0
-
-	while #loadedPersonalities < amountOfPersonalities and attempts < maxAttempts do
-		local candidate = queries.load_random_xml(xml_key or "traits")
-		attempts = attempts + 1
-		if candidate then
-			local candidate_id = candidate.id or tostring(candidate)
-			local duplicate = false
-			for _, p in ipairs(loadedPersonalities) do
-				local pid = p.id or tostring(p)
-				if pid == candidate_id then
-					duplicate = true
-					break
-				end
-			end
-			if not duplicate then
-				table.insert(loadedPersonalities, candidate)
-			end
+-- Helper to parse comma-separated IDs from .ltx
+local function parse_ids(ids_str)
+	if not ids_str then return {} end
+	local ids = {}
+	for id in string.gmatch(ids_str, "([^,]+)") do
+		local trimmed = id:match("^%s*(.-)%s*$")
+		if trimmed and #trimmed > 0 then
+			table.insert(ids, trimmed)
 		end
 	end
-
-	if #loadedPersonalities < amountOfPersonalities then
-		log.info(
-			"Requested "
-				.. amountOfPersonalities
-				.. " unique personalities but only obtained "
-				.. #loadedPersonalities
-				.. " after "
-				.. attempts
-				.. " attempts."
-		)
-	end
-
-	-- helper to convert a personality entry to a string
-	local function personality_to_string(p)
-		if type(p) == "table" then
-			-- prefer a human-readable text field, fallback to id, then tostring
-			return (p.text or p.id or tostring(p))
-		end
-		return tostring(p)
-	end
-
-	-- concatenate all found personalities into a single string separated by ' and '
-	local parts = {}
-	for _, p in ipairs(loadedPersonalities) do
-		table.insert(parts, personality_to_string(p))
-	end
-	local result = table.concat(parts, " and ")
-
-	log.spam("Fetching " .. #loadedPersonalities .. " unique generic personalities.")
-	return result
+	return ids
 end
 
-local function get_random_faction_personalities(faction)
-	log.spam("Fetching random personalities for faction: " .. tostring(faction))
-	local sanitized_faction = tostring(faction):gsub(" ", "_")
-	local key = "traits_" .. sanitized_faction
-	if not queries.load_random_xml(key) then
-		return nil
+-- Get INI file handle (lazy load)
+local function get_ini()
+	if not ini then
+		ini = ini_file("talker\\personalities.ltx")
 	end
-	return get_random_personalities(2, key)
+	return ini
 end
 
+-- Map faction names to .ltx section names
+local faction_to_section = {
+	["bandit"] = "bandit",
+	["renegade"] = "renegade",
+	["monolith"] = "monolith",
+	["ecolog"] = "ecolog",
+	["ecologist"] = "ecolog",
+	["sin"] = "sin",
+	["zombied"] = "zombied",
+	-- All others fall back to generic
+}
+
+-- Get a random personality ID for a faction
+local function get_random_personality_id(faction)
+	local cfg = get_ini()
+	if not cfg then
+		log.warn("Could not load personalities.ltx, using generic fallback")
+		return "generic.1"
+	end
+	
+	-- Normalize faction name
+	local section = faction_to_section[string.lower(faction or "")] or "generic"
+	
+	-- Check if section exists
+	if not cfg:section_exist(section) then
+		log.spam("Section '" .. section .. "' not found, falling back to generic")
+		section = "generic"
+	end
+	
+	-- Read IDs
+	local ids_str = cfg:r_string_ex(section, "ids")
+	local ids = parse_ids(ids_str)
+	
+	if #ids == 0 then
+		log.warn("No IDs found in section '" .. section .. "', using fallback")
+		return "generic.1"
+	end
+	
+	-- Pick random ID
+	local idx = math.random(1, #ids)
+	local personality_id = section .. "." .. ids[idx]
+	
+	log.spam("Selected personality ID: " .. personality_id .. " for faction: " .. (faction or "unknown"))
+	return personality_id
+end
+
+-- Set a random personality ID for a character
 local function set_random_personality(character)
-	-- If the character is unique, we need to assign a specific personality
+	-- Player gets no personality
 	if tostring(character.game_id) == "0" then
-		return "" -- player
+		return ""
 	end
+	
+	-- Check for unique character
 	if queries.is_unique_character_by_id(character.game_id) then
-		log.debug("Handling unique character: " .. character.game_id)
 		local tech_name = queries.get_technical_name_by_id(character.game_id)
-		local personality = unique_characters[tech_name]
-		if not personality then
-			log.info("No personality found for unique character: " .. tech_name)
-			personality = get_random_personalities(2)
-			log.info("Assigning random personality instead: " .. personality)
-			character_personalities[character.game_id] = personality
+		log.debug("Handling unique character: " .. character.game_id .. " (" .. tech_name .. ")")
+		
+		-- Check if this unique character has a defined personality
+		local unique_personality = unique_characters[tech_name]
+		if unique_personality and unique_personality ~= "" then
+			-- Use "unique.{tech_name}" ID format for unique characters
+			local personality_id = "unique." .. tech_name
+			character_personalities[character.game_id] = personality_id
+			log.spam("Assigned unique personality ID: " .. personality_id)
 			return
+		else
+			log.info("No personality found for unique character: " .. tech_name .. ", using faction-based")
+			-- Fall through to random assignment
 		end
-		character_personalities[character.game_id] = unique_characters[tech_name]
-		return
 	end
-	-- Otherwise, we assign a random personality
-	local personality = get_random_faction_personalities(character.faction)
-	if not personality or personality == "" then
-		log.spam("Faction personality empty, loading generic personality.")
-		personality = get_random_personalities(2)
-	end
-	log.spam("Assigning random personality to character: " .. character.game_id .. " - " .. personality)
-	character_personalities[character.game_id] = personality
+	
+	-- Get random personality ID based on faction
+	local personality_id = get_random_personality_id(character.faction)
+	character_personalities[character.game_id] = personality_id
+	log.spam("Assigned personality ID: " .. personality_id .. " to character: " .. character.game_id)
 end
 
+-- Get personality ID for a character
 function M.get_personality(character)
 	log.spam("Retrieving personality for character: " .. character.game_id)
 	local personality = character_personalities[character.game_id]
@@ -132,6 +131,9 @@ function M.get_personality(character)
 	return personality or ""
 end
 
+-- Alias for compatibility
+M.get_personality_id = M.get_personality
+
 function M.get_save_data()
 	log.debug("Returning character personalities for save.")
 	return character_personalities
@@ -143,7 +145,7 @@ function M.clear()
 end
 
 function M.load_save_data(saved_character_personalities)
-	if mcm.get("reset_personality") then
+	if mcm and mcm.get and mcm.get("reset_personality") then
 		log.debug("TALKER personality reset is enabled. Clearing all saved personalities.")
 		character_personalities = {}
 	else

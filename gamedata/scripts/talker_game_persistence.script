@@ -62,7 +62,7 @@ end
 function on_game_start()
     RegisterScriptCallback("save_state", save_state)
     RegisterScriptCallback("load_state", load_state)
-    log.clean_log_files()
+    return log.clean_log_files()
 end
 
 return {
