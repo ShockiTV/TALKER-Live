@@ -8,6 +8,354 @@ schema: spec-driven
 #     Tech stack: TypeScript, React, Node.js
 #     We use conventional commits
 #     Domain: e-commerce platform
+context: |
+  ```instructions
+  # TALKER Expanded - AI Coding Agent Instructions
+
+  ## Project Overview
+
+  TALKER Expanded is a STALKER: Anomaly mod that enables AI-powered NPC dialogue using LLMs. It's a dual-codebase project: Lua (game integration) + Python (AI processing & microphone input). The mod implements a hierarchical memory system where NPCs witness events, store memories, and generate contextual dialogue through AI models.
+
+  **IMPORTANT (Phase 2+):** AI dialogue generation is handled by the Python service, NOT Lua. The game (Lua) stores events and sends them via ZeroMQ to Python, which handles LLM calls, speaker selection, and memory compression.
+
+  ## Architecture (Clean Architecture Pattern)
+
+  ### Lua Codebase (Game Integration)
+
+  The Lua codebase follows clean architecture with strict layer separation:
+
+  - **`bin/lua/app/`** - Application layer (e.g., `talker.lua` orchestrates event registration)
+  - **`bin/lua/domain/`** - Core entities (`Character`, `Event`) and repositories (`memory_store`, `event_store`, `personalities`, `backstories`)
+  - **`bin/lua/framework/`** - Utilities (logger, inspect) - no game dependencies
+  - **`bin/lua/infra/`** - External integrations:
+    - `HTTP/` - Network layer using pollnet FFI bindings
+    - `zmq/` - ZeroMQ bridge for Python service communication
+    - `STALKER/` - Game-specific data (factions, locations, world_state)
+  - **`bin/lua/interface/`** - Bridge layer (`config.lua` reads MCM settings, `interface.lua` exposes public API)
+  - **`gamedata/scripts/`** - Game callbacks (STALKER X-Ray engine integration):
+    - `talker_game_*.script` - Game adapters (queries, commands, persistence, async)
+    - `talker_trigger_*.script` - Event triggers (death, injury, artifact, etc.)
+    - `talker_listener_*.script` - Event listeners that register events with the talker system
+    - `talker_input_*.script` - Player input handlers (chatbox, microphone)
+    - `talker_zmq_*.script` - ZMQ integration (query handlers, command handlers)
+    - `talker_mcm.script` - MCM configuration UI
+
+  **Critical Rule**: `bin/lua/` code must NEVER directly call STALKER game APIs - always go through `talker_game_*` adapters in `gamedata/scripts/`.
+
+  ### Python Service (AI Processing)
+
+  Located in `talker_service/`:
+
+  - **`src/talker_service/`** - Main package
+    - `llm/` - LLM client implementations (OpenAI, OpenRouter, Ollama, Proxy)
+    - `prompts/` - Prompt building for dialogue, speaker selection, memory compression
+    - `dialogue/` - Dialogue generator and speaker selector
+    - `state/` - State query client for fetching game data
+    - `transport/` - ZMQ router for bidirectional communication
+    - `handlers/` - Event and config handlers
+    - `models/` - Pydantic message schemas
+
+  **Communication Flow:**
+  ```
+  Lua → ZMQ PUB (5555) → Python SUB
+  Python → ZMQ PUB (5556) → Lua SUB
+  ```
+
+  ## Key Patterns & Conventions
+
+  ### 1. Typed Event System (Core Workflow)
+
+  Events flow: Game → Trigger → `trigger.talker_event_near_player()` → Listener → `talker.register_event()` → Event Store → ZMQ → Python → AI Dialogue → ZMQ → Lua → Display
+
+  **Creating typed events** (preferred):
+  ```lua
+  local EventType = require("domain.model.event_types")
+  local trigger = require("interface.trigger")
+
+  -- In a trigger script:
+  local context = { actor = player_character, victim = target_character }
+  trigger.talker_event_near_player(EventType.DEATH, context, true, { is_silent = false })
+  ```
+
+  **Event structure** (typed):
+  - `type` - EventType enum value (DEATH, DIALOGUE, ARTIFACT, etc.)
+  - `context` - Table with event-specific fields (actor, victim, text, item_name, etc.)
+  - `game_time_ms`, `world_context`, `witnesses`, `flags`
+
+  **EventType enum** (see `bin/lua/domain/model/event_types.lua`):
+  `DEATH`, `DIALOGUE`, `CALLOUT`, `TAUNT`, `ARTIFACT`, `ANOMALY`, `MAP_TRANSITION`, `EMISSION`, `INJURY`, `SLEEP`, `TASK`, `WEAPON_JAM`, `RELOAD`, `IDLE`, `ACTION`
+
+  **Event templates** are defined in `bin/lua/domain/model/event.lua` TEMPLATES table - each EventType has a function that returns a format string and objects to interpolate.
+
+  **Key functions**:
+  - `Event.create(type, context, game_time_ms, world_context, witnesses, flags)` - Create typed event
+  - `Event.describe(event)` - Convert any event (typed or legacy) to human-readable text
+  - `Event.is_junk_event(event)` - Check if event is low-value for narrative (artifacts, anomalies, reloads, etc.)
+
+  ### 2. Memory Architecture (Three-Tier System)
+
+  - **Recent Events** (last ~12 events): Raw events stored in `event_store`
+  - **Mid-Term Memory** (previous ~12 events): Auto-compressed summary
+  - **Long-Term Memory** (persistent, max 7000 chars): Updated via LLM calls in `memory_store:update_narrative()`
+
+  Memory compression triggers when event count exceeds `COMPRESSION_THRESHOLD` (12 events). See [bin/lua/domain/repo/memory_store.lua](../bin/lua/domain/repo/memory_store.lua).
+
+  ### 3. ZMQ Communication Pattern (Phase 2+)
+
+  AI processing is now handled by the Python service. Lua publishes events and receives commands:
+
+  **Lua → Python (Events):**
+  ```lua
+  -- In talker_zmq_integration.script
+  publisher.send_game_event(event, is_important)
+  ```
+
+  **Python → Lua (Commands):**
+  ```lua
+  -- In talker_zmq_command_handlers.script
+  -- Handler for dialogue.display command
+  local function handle_dialogue_display(payload)
+      game.display_dialogue(payload.speaker_id, payload.dialogue)
+  end
+  ```
+
+  **State Queries (Python → Lua → Python):**
+  ```lua
+  -- Python publishes state.query, Lua responds with state.response
+  -- See talker_zmq_query_handlers.script for handlers
+  ```
+
+  ### 4. Error Handling
+
+  All game callbacks MUST be wrapped in error handlers:
+
+  ```lua
+  local function safely(func, name)
+      return function(...)
+          local status, result = pcall(func, ...)
+          if not status then log.error(name .. " failed: " .. result) end
+          return result
+      end
+  end
+  RegisterScriptCallback("actor_on_death", safely(on_death, "on_death"))
+  ```
+
+  ### 5. Package Path Management
+
+  Every Lua file accessing `bin/lua/` modules must start with:
+  ```lua
+  package.path = package.path .. ";./bin/lua/?.lua;"
+  ```
+
+  ### 6. Configuration Access
+
+  Always use getters from `interface.config`, never access MCM directly from `bin/lua/`:
+  ```lua
+  local config = require("interface.config")
+  local cooldown = config.idle_conversation_cooldown() * 1000 -- ms
+  ```
+
+  ## Testing
+
+  ### Lua Tests
+
+  - **Run tests**: `lua5.1.exe tests/<path>/test_<module>.lua` (uses LuaUnit)
+    - Note: Use `lua5.1.exe`, not `lua` (which may not be in PATH)
+    - Example: `lua5.1.exe tests/entities/test_event.lua`
+  - Test structure mirrors source: `tests/domain/`, `tests/infra/`, `tests/entities/`, etc.
+  - Use mocks from `tests/mocks/` (mock_characters, mock_game_adapter, mock_REST)
+  - Live integration tests in `tests/live/` (require actual LLM API keys)
+
+  ### Python Tests (talker_service)
+
+  - **IMPORTANT**: Must use the virtual environment, not system Python
+  - **Run all tests**:
+    ```powershell
+    cd talker_service
+    .\.venv\Scripts\activate
+    python -m pytest tests/ -v
+    ```
+  - Or in one line: `cd talker_service; .\.venv\Scripts\activate; python -m pytest tests/ -v`
+  - Test files: `tests/test_*.py` (pytest, ~130 tests)
+  - Coverage includes: LLM clients, prompts, dialogue generation, ZMQ router, state client
+
+  ## Critical Files to Reference
+
+  ### Lua (Game Integration)
+  - [bin/lua/app/talker.lua](../bin/lua/app/talker.lua) - Event registration, bypasses AI when Python service enabled
+  - [bin/lua/domain/repo/memory_store.lua](../bin/lua/domain/repo/memory_store.lua) - Memory storage (compression now in Python)
+  - [bin/lua/interface/config.lua](../bin/lua/interface/config.lua) - MCM config getters, default settings
+  - [gamedata/scripts/talker_game_queries.script](../gamedata/scripts/talker_game_queries.script) - Game state queries (locations, characters, items)
+  - [gamedata/scripts/talker_zmq_integration.script](../gamedata/scripts/talker_zmq_integration.script) - ZMQ lifecycle, event publishing
+  - [gamedata/scripts/talker_zmq_command_handlers.script](../gamedata/scripts/talker_zmq_command_handlers.script) - Handles commands from Python
+
+  ### Python (AI Processing - Phase 2+)
+  - [talker_service/src/talker_service/dialogue/generator.py](../talker_service/src/talker_service/dialogue/generator.py) - Main dialogue generation orchestrator
+  - [talker_service/src/talker_service/prompts/dialogue.py](../talker_service/src/talker_service/prompts/dialogue.py) - Dialogue prompt building
+  - [talker_service/src/talker_service/llm/factory.py](../talker_service/src/talker_service/llm/factory.py) - LLM client factory (OpenAI, OpenRouter, Ollama, Proxy)
+  - [talker_service/src/talker_service/handlers/events.py](../talker_service/src/talker_service/handlers/events.py) - Game event handlers
+
+  ## Common Tasks
+
+  **Adding a new trigger**: Create `talker_trigger_<event>.script`, implement condition check, create event with `game.create_event()`, call `trigger.register_near_player()`. See [gamedata/scripts/talker_trigger_artifact.script](../gamedata/scripts/talker_trigger_artifact.script) for a simple example.
+
+  **Adding AI provider (Phase 2+)**: Create module in `talker_service/src/talker_service/llm/`, implement `BaseLLMClient` interface with `complete(messages, **kwargs) -> str`. Register in `llm/factory.py`.
+
+  **Debugging dialogue**:
+  - Lua side: Check `logs/talker_debug.log` (not console - console only shows warnings/errors)
+  - Python side: Check `talker_service/logs/talker_service.log`
+  - Enable verbose logging in MCM
+
+  **Modifying prompts (Phase 2+)**: Edit files in `talker_service/src/talker_service/prompts/`:
+  - `dialogue.py` - Dialogue generation prompts
+  - `speaker.py` - Speaker selection prompts
+  - `memory.py` - Memory compression prompts
+
+  ## Python Microphone System
+
+  Located in `mic_python/python/`:
+  - `main.py` - Watchdog-based file polling system
+  - `recorder.py` - Audio capture using sounddevice
+  - `whisper_api.py` / `whisper_local.py` - Transcription providers
+  - Communicates via temp files (`talker_mic_io_commands`, `talker_mic_io_transcription`)
+
+  Launch via `launch_mic.bat`, not directly.
+
+  ## Python Service (ZMQ Integration)
+
+  Located in `talker_service/`:
+  - **Purpose**: Python service that handles ALL AI dialogue generation (Phase 2+)
+  - **Communication**: Bidirectional ZeroMQ PUB/SUB
+  - **Status**: Phase 2 COMPLETE - full AI processing pipeline
+
+  ### Architecture
+
+  ```
+  talker_service/
+  ├── run.py                      # Entry point (Windows asyncio fix)
+  ├── src/talker_service/
+  │   ├── __main__.py             # FastAPI app + ZMQ router lifecycle
+  │   ├── config.py               # Service configuration (pydantic-settings)
+  │   ├── models/
+  │   │   ├── messages.py         # Pydantic schemas for ZMQ messages
+  │   │   └── config.py           # MCM config mirror schema (field mappings!)
+  │   ├── llm/                    # LLM client implementations
+  │   │   ├── factory.py          # get_llm_client(model_method, ...)
+  │   │   ├── openai.py           # OpenAI client (model_method=0)
+  │   │   ├── openrouter.py       # OpenRouter client (model_method=1)
+  │   │   ├── ollama.py           # Ollama client (model_method=2)
+  │   │   └── proxy.py            # Gemini proxy client (model_method=3)
+  │   ├── prompts/                # Prompt building
+  │   │   ├── dialogue.py         # create_dialogue_request_prompt()
+  │   │   ├── speaker.py          # create_pick_speaker_prompt()
+  │   │   ├── memory.py           # create_compress_memories_prompt()
+  │   │   └── lookup.py           # resolve_personality() and resolve_backstory() for ID→text lookup
+  │   ├── texts/                  # Text lookup modules (dict constants)
+  │   │   ├── personality/        # Personality texts (bandit.py with TEXTS dict, etc.)
+  │   │   └── backstory/          # Backstory texts (unique.py, generic.py, etc.)
+  │   ├── dialogue/               # Dialogue generation
+  │   │   ├── generator.py        # DialogueGenerator orchestrator
+  │   │   └── speaker.py          # SpeakerSelector
+  │   ├── state/                  # Game state queries
+  │   │   └── client.py           # StateQueryClient (ZMQ request/response)
+  │   ├── transport/
+  │   │   └── router.py           # ZMQRouter (bidirectional PUB/SUB)
+  │   └── handlers/
+  │       ├── events.py           # Game event handlers (triggers dialogue)
+  │       └── config.py           # ConfigMirror class
+  └── tests/                      # pytest test suite (~156 tests)
+  ```
+
+  ### Important Implementation Notes
+
+  **LLM Client API**: All LLM clients' `complete()` method returns a **string** directly, NOT an object with `.content`:
+  ```python
+  # Correct:
+  response = await llm_client.complete(messages)
+  text = response  # response IS the string
+
+  # WRONG (old pattern):
+  text = response.content  # AttributeError!
+  ```
+
+  **Config Field Mappings**: Lua MCM keys differ from Python model fields:
+  | Lua (MCM) Key | Python Field |
+  |---------------|-------------|
+  | `ai_model_method` | `model_method` |
+  | `custom_ai_model` | `model_name` |
+  | `custom_ai_model_fast` | `model_name_fast` |
+
+  **Async Event Handling**: Event handlers must NOT block the message loop. Use `asyncio.create_task()` for long-running operations:
+  ```python
+  # Correct:
+  asyncio.create_task(_handle_event_async(event))
+
+  # WRONG (causes deadlock):
+  await _handle_event_async(event)
+  ```
+
+  **Prompt Message Conversion**: The prompt builders use their own `Message` class. Convert to LLM `Message` before calling:
+  ```python
+  from talker_service.llm.models import Message
+  prompt_messages, timestamp = create_dialogue_request_prompt(...)
+  messages = [Message(role=m.role, content=m.content) for m in prompt_messages]
+  ```
+
+  ### Lua-Side Integration
+
+  - **`bin/lua/infra/zmq/bridge.lua`** - LuaJIT FFI binding to libzmq.dll
+  - **`bin/lua/infra/zmq/publisher.lua`** - High-level event publishing API
+  - **`gamedata/scripts/talker_zmq_integration.script`** - Game callbacks (init, heartbeat, shutdown)
+
+  ### ZMQ Topics
+
+  | Topic | Direction | Purpose |
+  |-------|-----------|---------|
+  | `game.event` | Lua → Python | Game events (death, dialogue, etc.) |
+  | `player.dialogue` | Lua → Python | Player chatbox input |
+  | `player.whisper` | Lua → Python | Player whisper input |
+  | `config.update` | Lua → Python | MCM setting changed |
+  | `config.sync` | Lua → Python | Full config on game load |
+  | `system.heartbeat` | Lua → Python | Connection health check |
+
+  ### Message Format
+
+  All messages use: `<topic> <json-payload>`
+
+  Example: `game.event {"event": {"type": "DEATH", "context": {...}, "witnesses": [...], ...}, "is_important": true}`
+
+  ### Key Files
+
+  - [talker_service/src/talker_service/__main__.py](../talker_service/src/talker_service/__main__.py) - FastAPI app
+  - [bin/lua/infra/zmq/publisher.lua](../bin/lua/infra/zmq/publisher.lua) - Event publishing
+  - [gamedata/scripts/talker_zmq_integration.script](../gamedata/scripts/talker_zmq_integration.script) - Game integration
+  - [docs/Python_Service_Setup.md](../docs/Python_Service_Setup.md) - Setup guide
+
+  ### Running Tests
+
+  **IMPORTANT**: Always use the virtual environment for Python tests:
+
+  ```powershell
+  cd talker_service
+  .\.venv\Scripts\activate
+  python -m pytest tests/ -v
+  ```
+
+  Or as a one-liner:
+  ```powershell
+  cd talker_service; .\.venv\Scripts\activate; python -m pytest tests/ -v --tb=short
+  ```
+
+  **First-time setup** (if `.venv` doesn't exist):
+  ```powershell
+  cd talker_service
+  python -m venv .venv
+  .\.venv\Scripts\activate
+  pip install -e ".[dev]"
+  ```
+
+  Launch service via `launch_talker_service.bat`.
+  ```
 
 # Per-artifact rules (optional)
 # Add custom rules for specific artifacts.
