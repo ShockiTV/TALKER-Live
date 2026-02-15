@@ -65,7 +65,7 @@ local function write_to_log(level, message, ...)
 end
 
 function M.clean_log_files()
-	file_io.override(logFile, "")
+	return file_io.override(logFile, "")
 end
 
 local function write(level, message, ...)

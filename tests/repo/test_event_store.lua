@@ -95,5 +95,93 @@ function testGetCountEventSince()
     luaunit.assertEquals(recent_events_count, 2)
 end
 
+-- ============================================================================
+-- Event Store Versioning Tests
+-- ============================================================================
+
+-- Test get_save_data() returns versioned structure
+function testGetSaveDataReturnsVersionedStructure()
+    event_store:clear()
+    store_mock_events(event_store, 2, 1000, 1000)
+    
+    local save_data = event_store:get_save_data()
+    
+    luaunit.assertNotNil(save_data.events_version)
+    luaunit.assertEquals(save_data.events_version, "2")
+    luaunit.assertNotNil(save_data.events)
+    luaunit.assertNotNil(save_data.events[1000])
+    luaunit.assertNotNil(save_data.events[2000])
+end
+
+-- Test load_save_data() with versioned data
+function testLoadSaveDataWithVersionedData()
+    event_store:clear()
+    
+    -- Create versioned save data
+    local event1 = create_mock_event(1000, nil)
+    local event2 = create_mock_event(2000, nil)
+    local save_data = {
+        events_version = "2",
+        events = {
+            [1000] = event1,
+            [2000] = event2,
+        }
+    }
+    
+    event_store:load_save_data(save_data)
+    
+    local all_events = event_store:get_all_events()
+    luaunit.assertEquals(#all_events, 2)
+    luaunit.assertEquals(all_events[1].game_time_ms, 1000)
+    luaunit.assertEquals(all_events[2].game_time_ms, 2000)
+end
+
+-- Test load_save_data() with legacy data (no version) clears store
+function testLoadSaveDataWithLegacyDataClearsStore()
+    event_store:clear()
+    
+    -- Create legacy format (just events, no version field)
+    local event1 = create_mock_event(1000, nil)
+    local legacy_data = {
+        [1000] = event1,
+    }
+    
+    event_store:load_save_data(legacy_data)
+    
+    local all_events = event_store:get_all_events()
+    luaunit.assertEquals(#all_events, 0, "Legacy data should result in empty store")
+end
+
+-- Test load_save_data() with nil data
+function testLoadSaveDataWithNilData()
+    event_store:clear()
+    -- Pre-populate to ensure it gets cleared
+    store_mock_events(event_store, 2, 1000, 1000)
+    
+    event_store:load_save_data(nil)
+    
+    local all_events = event_store:get_all_events()
+    luaunit.assertEquals(#all_events, 0, "Nil data should result in empty store")
+end
+
+-- Test load_save_data() with unknown version clears store
+function testLoadSaveDataWithUnknownVersionClearsStore()
+    event_store:clear()
+    
+    -- Create data with unknown version
+    local event1 = create_mock_event(1000, nil)
+    local unknown_version_data = {
+        events_version = "999",  -- Unknown version
+        events = {
+            [1000] = event1,
+        }
+    }
+    
+    event_store:load_save_data(unknown_version_data)
+    
+    local all_events = event_store:get_all_events()
+    luaunit.assertEquals(#all_events, 0, "Unknown version should result in empty store")
+end
+
 -- Run the tests
 os.exit(luaunit.LuaUnit.run())

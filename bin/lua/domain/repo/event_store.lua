@@ -1,6 +1,10 @@
 package.path = package.path .. ";./bin/lua/?.lua;"
 local logger = require("framework.logger")
 
+-- Version for event store save data format
+-- "2" is first versioned format (legacy unversioned saves are treated as version 1)
+local EVENTS_VERSION = "2"
+
 -- Define the EventStore class
 local EventStore = {
 	events = {},
@@ -10,8 +14,11 @@ local EventStore = {
 -- Method for saving the event store data
 function EventStore:get_save_data()
 	logger.info("Saving event store...")
-	-- We only save events map. sorted_keys is transient and rebuilt on load.
-	return self.events
+	-- Return versioned structure for forward compatibility
+	return {
+		events_version = EVENTS_VERSION,
+		events = self.events,
+	}
 end
 
 function EventStore:clear()
@@ -34,24 +41,35 @@ local function binary_search(list, value)
 end
 
 -- Method for loading the event store data
-function EventStore:load_save_data(saved_events)
+function EventStore:load_save_data(saved_data)
 	logger.info("Loading event store...")
 	
-	-- MIGRATION: Check if saved data uses old format (content string instead of typed events)
-	-- Old format events have a 'content' field with a string description
-	-- New format events have a 'type' field with an EventType enum value
-	if saved_events then
-		for _, event in pairs(saved_events) do
-			-- Check first event to detect format
-			if event.content and type(event.content) == "string" and not event.type then
-				logger.warn("Detected old event format (content-based). Wiping event store for clean migration.")
-				saved_events = {}
-			end
-			break -- Only need to check first event
-		end
+	-- Handle nil data → start fresh
+	if not saved_data then
+		logger.info("No saved event data, starting fresh")
+		self.events = {}
+		self.sorted_keys = {}
+		return
 	end
 	
-	self.events = saved_events or {}
+	-- Check for versioned format
+	if saved_data.events_version then
+		if saved_data.events_version == EVENTS_VERSION then
+			-- Current version: load normally
+			logger.info("Loading versioned event store (v" .. saved_data.events_version .. ")")
+			self.events = saved_data.events or {}
+		else
+			-- Unknown version: start fresh with warning
+			logger.warn("Unknown event store version: " .. tostring(saved_data.events_version) .. 
+				". Expected: " .. EVENTS_VERSION .. ". Starting fresh.")
+			self.events = {}
+		end
+	else
+		-- Legacy format (no version field): start fresh
+		-- This handles both old events map format and content-based events
+		logger.warn("Legacy event store format detected (no events_version). Starting fresh for clean migration.")
+		self.events = {}
+	end
 
 	-- Rebuild sorted_keys and count
 	self.sorted_keys = {}

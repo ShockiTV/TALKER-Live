@@ -61,7 +61,11 @@ talker_service/
 │   │   ├── builder.py          # Prompt building utilities
 │   │   ├── factions.py         # Faction-specific prompt content
 │   │   ├── helpers.py          # Prompt helper functions
-│   │   └── models.py           # Prompt-specific models
+│   │   ├── models.py           # Prompt-specific models
+│   │   └── lookup.py           # resolve_personality() and resolve_backstory() for ID→text lookup
+│   ├── texts/                  # Text lookup modules (dict constants)
+│   │   ├── personality/        # Personality texts (bandit.py with TEXTS dict, etc.)
+│   │   └── backstory/          # Backstory texts (unique.py, generic.py, etc.)
 │   ├── dialogue/               # Dialogue generation
 │   │   ├── generator.py        # DialogueGenerator orchestrator
 │   │   ├── speaker.py          # SpeakerSelector

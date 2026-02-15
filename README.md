@@ -54,7 +54,7 @@ I took their basic code for reloading personalities from [issue#40](https://gith
 * **...and more**
 
 ## Mod Compatibility:
-*  **KVMA Realism (Female characters):** I use KVMA Realism. Consequently, this mod treats the following characters as female: Kolin (mercenary tech in Zaton), Eidolon (monolith legend in Pripyat), Professor Semenov (Ecologist in Yantar). Edit these characters in unique_characters.lua/unique_backstories.lua if you don't want them characterized as female.
+*  **KVMA Realism (Female characters):** I use KVMA Realism. Consequently, this mod treats the following characters as female: Kolin (mercenary tech in Zaton), Eidolon (monolith legend in Pripyat), Professor Semenov (Ecologist in Yantar). Edit these characters in `unique_characters.lua` if you don't want them characterized as female.
 *  **New Levels** - Mostly compatible (AI training data will NOT include information about the new levels, but information *IS* provided by this mod when the map transition event triggers *as you enter* one of the new levels. NPCs will make accurate comments about the new levels when travelling to them, but might not if you randomly talk about Promzone while in Cordon and haven't been to Promzone yet, for example.)
 *  **Arrival** - Theoretically compatible, not tested.
 *  **Duty Expansion** - Fully compatible (Anna has a unique personality and backstory based on the mod)

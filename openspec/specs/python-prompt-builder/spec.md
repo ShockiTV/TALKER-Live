@@ -6,6 +6,40 @@ Python module that constructs prompts for dialogue generation, speaker selection
 
 ## Requirements
 
+### Text Lookup
+
+The system MUST provide `resolve_personality(id)` and `resolve_backstory(id)` for ID→text lookup.
+
+#### Storage Format
+- Personality and backstory texts are stored as Python dict constants in `.py` modules
+- Located at `talker_service/texts/personality/` and `talker_service/texts/backstory/`
+- Each faction has its own module (e.g., `bandit.py`, `unique.py`)
+- Each module exports a `TEXTS` dict mapping string keys to string values
+
+#### Scenario: Resolve personality ID
+- **WHEN** resolve_personality("bandit.3") is called
+- **THEN** returns the personality text from bandit.TEXTS["3"]
+
+#### Scenario: Resolve backstory ID  
+- **WHEN** resolve_backstory("unique.wolf") is called
+- **THEN** returns the backstory text from unique.TEXTS["wolf"]
+
+#### Scenario: Resolve unique character backstory ID
+- **GIVEN** a character with `backstory_id = "unique.esc_2_12_stalker_wolf"`
+- **WHEN** building dialogue prompt
+- **THEN** `resolve_backstory("unique.esc_2_12_stalker_wolf")` is called
+- **AND** returns the backstory text from texts/backstory/unique.py TEXTS["esc_2_12_stalker_wolf"]
+
+#### Scenario: Resolve faction backstory ID
+- **GIVEN** a character with `backstory_id = "loner.3"`
+- **WHEN** building dialogue prompt
+- **THEN** `resolve_backstory("loner.3")` is called
+- **AND** returns the backstory text from texts/backstory/loner.py TEXTS["3"]
+
+#### Scenario: Invalid format returns empty string
+- **WHEN** resolve_personality is called with text not matching "{faction}.{key}" format
+- **THEN** returns empty string
+
 ### Dialogue Prompt Builder
 
 The system MUST provide `create_dialogue_request_prompt(speaker, memory_context)` for dialogue generation.

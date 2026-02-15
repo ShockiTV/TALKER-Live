@@ -236,7 +236,11 @@ talker_service/
 │   ├── prompts/                # Prompt building
 │   │   ├── dialogue.py         # create_dialogue_request_prompt()
 │   │   ├── speaker.py          # create_pick_speaker_prompt()
-│   │   └── memory.py           # create_compress_memories_prompt()
+│   │   ├── memory.py           # create_compress_memories_prompt()
+│   │   └── lookup.py           # resolve_personality() and resolve_backstory() for ID→text lookup
+│   ├── texts/                  # Text lookup modules (dict constants)
+│   │   ├── personality/        # Personality texts (bandit.py with TEXTS dict, etc.)
+│   │   └── backstory/          # Backstory texts (unique.py, generic.py, etc.)
 │   ├── dialogue/               # Dialogue generation
 │   │   ├── generator.py        # DialogueGenerator orchestrator
 │   │   └── speaker.py          # SpeakerSelector
@@ -247,7 +251,7 @@ talker_service/
 │   └── handlers/
 │       ├── events.py           # Game event handlers (triggers dialogue)
 │       └── config.py           # ConfigMirror class
-└── tests/                      # pytest test suite (~130 tests)
+└── tests/                      # pytest test suite (~156 tests)
 ```
 
 ### Important Implementation Notes

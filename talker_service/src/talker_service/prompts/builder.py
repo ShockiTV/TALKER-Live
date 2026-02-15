@@ -12,6 +12,7 @@ from loguru import logger
 from .models import Character, Event, MemoryContext
 from .helpers import describe_character, describe_character_with_id, describe_event, is_junk_event, inject_time_gaps
 from .factions import get_faction_description, get_faction_relations_text
+from .lookup import resolve_personality, resolve_backstory
 
 
 @dataclass
@@ -257,9 +258,13 @@ def create_dialogue_request_prompt(
     if faction_desc:
         speaker_info += f"\n### FACTION DESCRIPTION: {faction_desc}"
     if speaker.backstory:
-        speaker_info += f"\n### BACKSTORY ANCHOR/DEFINING CHARACTER TRAIT (IMPORTANT): '{speaker.backstory}'"
+        # Resolve backstory ID to localized text (with backwards compat for full text)
+        backstory_text = resolve_backstory(speaker.backstory) or speaker.backstory
+        speaker_info += f"\n### BACKSTORY ANCHOR/DEFINING CHARACTER TRAIT (IMPORTANT): '{backstory_text}'"
     if speaker.personality:
-        speaker_info += f"\n### PERSONALITY: You are {speaker.personality}."
+        # Resolve personality ID to localized text (with backwards compat for full text)
+        personality_text = resolve_personality(speaker.personality) or speaker.personality
+        speaker_info += f"\n### PERSONALITY: You are {personality_text}."
     if speaker.reputation:
         speaker_info += f"\n### CURRENT REPUTATION: {speaker.reputation}."
     if speaker.weapon:
