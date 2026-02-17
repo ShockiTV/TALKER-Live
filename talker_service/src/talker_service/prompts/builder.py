@@ -11,7 +11,7 @@ from loguru import logger
 
 from .models import Character, Event, MemoryContext
 from .helpers import describe_character, describe_character_with_id, describe_event, is_junk_event, inject_time_gaps
-from .factions import get_faction_description, get_faction_relations_text
+from .factions import get_faction_description, get_faction_relations_text, resolve_faction_name
 from .lookup import resolve_personality, resolve_backstory
 
 
@@ -254,7 +254,8 @@ def create_dialogue_request_prompt(
     
     # Character anchor
     faction_desc = get_faction_description(speaker.faction)
-    speaker_info = f"### NAME: {speaker.name}\n### RANK: {speaker.experience}\n### FACTION: {speaker.faction}"
+    faction_display = resolve_faction_name(speaker.faction)
+    speaker_info = f"### NAME: {speaker.name}\n### RANK: {speaker.experience}\n### FACTION: {faction_display}"
     if faction_desc:
         speaker_info += f"\n### FACTION DESCRIPTION: {faction_desc}"
     if speaker.backstory:
@@ -265,8 +266,8 @@ def create_dialogue_request_prompt(
         # Resolve personality ID to localized text (with backwards compat for full text)
         personality_text = resolve_personality(speaker.personality) or speaker.personality
         speaker_info += f"\n### PERSONALITY: You are {personality_text}."
-    if speaker.reputation:
-        speaker_info += f"\n### CURRENT REPUTATION: {speaker.reputation}."
+    if speaker.reputation is not None:
+        speaker_info += f"\n### CURRENT REPUTATION: {speaker.reputation}"
     if speaker.weapon:
         speaker_info += f"\n### CURRENT WEAPON: You are wielding a {speaker.weapon}"
     else:
@@ -456,11 +457,12 @@ def create_update_narrative_prompt(
     
     # Build character identity
     faction_desc = get_faction_description(speaker.faction)
+    faction_display = resolve_faction_name(speaker.faction)
     identity_intro = (
-        f"## CHARACTER IDENTITY:\n{speaker.name} is living in the Chernobyl Exclusion Zone in the STALKER games setting."
-        f"\n\n<CHARACTER_INFORMATION>"
-        f"\n### RANK: {speaker.experience}"
-        f"\n### FACTION: {speaker.faction}"
+        f"## CHARACTER IDENTITY:\\n{speaker.name} is living in the Chernobyl Exclusion Zone in the STALKER games setting."
+        f"\\n\\n<CHARACTER_INFORMATION>"
+        f"\\n### RANK: {speaker.experience}"
+        f"\\n### FACTION: {faction_display}"
     )
     if faction_desc:
         identity_intro += f"\n### FACTION DESCRIPTION: {faction_desc}"

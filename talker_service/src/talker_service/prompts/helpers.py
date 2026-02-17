@@ -4,6 +4,7 @@ Ports helper functions from Lua's prompt_builder.lua and event.lua.
 """
 
 from .models import Character, Event
+from .factions import resolve_faction_name
 
 
 # Event types considered "junk" (low value for narrative)
@@ -22,10 +23,11 @@ def describe_character(char: Character) -> str:
         char: Character to describe
         
     Returns:
-        Formatted string like "Wolf (Veteran Loner, Good rep)"
+        Formatted string like "Wolf (Veteran Loner, Reputation: 1500)"
     """
-    if char.faction in ("Monster", "Zombied"):
-        return f"{char.name} ({char.faction})"
+    if char.faction in ("monster", "zombied"):
+        faction_display = resolve_faction_name(char.faction)
+        return f"{char.name} ({faction_display})"
     
     parts = [char.name]
     details = []
@@ -33,16 +35,17 @@ def describe_character(char: Character) -> str:
     if char.experience:
         details.append(char.experience)
     if char.faction:
-        details.append(char.faction)
-    if char.reputation:
-        details.append(f"{char.reputation} rep")
+        details.append(resolve_faction_name(char.faction))
+    if char.reputation is not None:
+        details.append(f"Reputation: {char.reputation}")
     
     if details:
         parts.append(f"({', '.join(details)})")
     
     # Add disguise info if present
     if char.visual_faction:
-        parts.append(f"[disguised as {char.visual_faction}]")
+        visual_display = resolve_faction_name(char.visual_faction)
+        parts.append(f"[disguised as {visual_display}]")
     
     return " ".join(parts)
 

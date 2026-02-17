@@ -1,4 +1,9 @@
-"""Lookup module for resolving personality and backstory IDs to text.
+"""Lookup module for resolving IDs to text.
+
+Central location for ID→text resolution functions:
+- resolve_personality: personality ID → text
+- resolve_backstory: backstory ID → text
+- resolve_faction_name: technical faction ID → display name
 
 Uses Python dict constants from text modules. Files are stored as:
   texts/personality/{faction}.py (exports TEXTS dict)
@@ -9,6 +14,9 @@ from importlib import import_module
 from typing import Dict
 
 from loguru import logger
+
+# Re-export resolve_faction_name for central access
+from talker_service.prompts.factions import resolve_faction_name
 
 
 # Module cache: faction name -> module with TEXTS dict

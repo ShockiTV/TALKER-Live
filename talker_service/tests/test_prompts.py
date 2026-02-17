@@ -37,13 +37,13 @@ class TestCharacter:
             name="Hip",
             faction="stalker",
             experience="Veteran",
-            reputation="Good",
+            reputation=500,
         )
         assert char.game_id == "123"
         assert char.name == "Hip"
         assert char.faction == "stalker"
         assert char.experience == "Veteran"
-        assert char.reputation == "Good"
+        assert char.reputation == 500
     
     def test_character_from_dict(self):
         data = {
@@ -51,7 +51,7 @@ class TestCharacter:
             "name": "Wolf",
             "faction": "stalker",
             "experience": "Expert",
-            "reputation": "Great",
+            "reputation": 1000,
             "personality": "gruff veteran",
             "backstory": "former military",
         }
@@ -115,25 +115,25 @@ class TestDescribeCharacter:
             name="Hip",
             faction="stalker",
             experience="Veteran",
-            reputation="Good",
+            reputation=500,
         )
         desc = describe_character(char)
         assert "Hip" in desc
         assert "Veteran" in desc
-        assert "stalker" in desc
-        assert "Good" in desc
+        assert "Loner" in desc  # stalker resolves to Loner
+        assert "Reputation: 500" in desc
     
     def test_describe_monster(self):
         char = Character(
             game_id="999",
             name="Bloodsucker",
-            faction="Monster",
+            faction="monster",
             experience="",
-            reputation="",
+            reputation=0,
         )
         desc = describe_character(char)
         assert "Bloodsucker" in desc
-        assert "Monster" in desc
+        assert "Monster" in desc  # monster resolves to Monster
     
     def test_describe_character_with_id(self):
         char = Character(
@@ -141,7 +141,7 @@ class TestDescribeCharacter:
             name="Wolf",
             faction="stalker",
             experience="Expert",
-            reputation="Great",
+            reputation=1000,
         )
         desc = describe_character_with_id(char)
         assert "[ID: 456]" in desc
@@ -152,8 +152,8 @@ class TestDescribeEvent:
     """Tests for describe_event helper."""
     
     def test_describe_death_event(self):
-        victim = Character(game_id="1", name="Bandit", faction="Bandit", experience="Novice", reputation="Bad")
-        killer = Character(game_id="2", name="Hip", faction="stalker", experience="Veteran", reputation="Good")
+        victim = Character(game_id="1", name="Bandit", faction="bandit", experience="Novice", reputation=-500)
+        killer = Character(game_id="2", name="Hip", faction="stalker", experience="Veteran", reputation=500)
         event = Event(
             type="DEATH",
             context={"victim": victim.__dict__, "killer": killer.__dict__},
@@ -163,7 +163,7 @@ class TestDescribeEvent:
         assert "killed" in desc.lower() or "death" in desc.lower() or "bandit" in desc.lower()
     
     def test_describe_dialogue_event(self):
-        speaker = Character(game_id="1", name="Hip", faction="stalker", experience="Veteran", reputation="Good")
+        speaker = Character(game_id="1", name="Hip", faction="stalker", experience="Veteran", reputation=500)
         event = Event(
             type="DIALOGUE",
             context={"speaker": speaker.__dict__, "text": "Stay safe out there"},
@@ -174,7 +174,7 @@ class TestDescribeEvent:
 
     def test_describe_event_case_insensitive(self):
         """Event types from Lua are lowercase - Python must handle both."""
-        speaker = Character(game_id="1", name="Wolf", faction="stalker", experience="Veteran", reputation="Good")
+        speaker = Character(game_id="1", name="Wolf", faction="stalker", experience="Veteran", reputation=500)
         # Lua sends lowercase event types
         event = Event(
             type="dialogue",  # lowercase like Lua EventType.DIALOGUE = "dialogue"
@@ -228,7 +228,7 @@ class TestWasWitnessedBy:
     """Tests for was_witnessed_by helper."""
     
     def test_character_in_witnesses(self):
-        witness = Character(game_id="123", name="Hip", faction="stalker", experience="Veteran", reputation="Good")
+        witness = Character(game_id="123", name="Hip", faction="stalker", experience="Veteran", reputation=500)
         event = Event(
             type="DEATH",
             context={},
@@ -251,7 +251,7 @@ class TestFactions:
     """Tests for faction helpers."""
     
     def test_get_faction_description(self):
-        desc = get_faction_description("Duty")
+        desc = get_faction_description("dolg")  # technical ID for Duty
         assert "paramilitary" in desc.lower() or "zone" in desc.lower()
     
     def test_get_faction_description_unknown(self):
@@ -259,11 +259,11 @@ class TestFactions:
         assert desc == ""
     
     def test_get_faction_relation_hostile(self):
-        assert get_faction_relation("Duty", "Freedom") == -1
-        assert get_faction_relation("Freedom", "Duty") == -1
+        assert get_faction_relation("dolg", "freedom") == -1
+        assert get_faction_relation("freedom", "dolg") == -1
     
     def test_get_faction_relation_allied(self):
-        assert get_faction_relation("Duty", "Ecolog") == 1
+        assert get_faction_relation("dolg", "ecolog") == 1
     
     def test_get_faction_relation_same(self):
         assert get_faction_relation("Duty", "Duty") == 1
@@ -273,9 +273,9 @@ class TestFactions:
         assert get_faction_relation("Duty", "UnknownFaction") == 0
     
     def test_get_faction_relations_text(self):
-        text = get_faction_relations_text("Duty", {"Freedom", "Bandit"})
+        text = get_faction_relations_text("dolg", {"freedom", "bandit"})
         assert "HOSTILE" in text
-        assert "Duty" in text
+        assert "Duty" in text  # dolg resolves to Duty in display
 
 
 # ============================================================================
@@ -286,7 +286,7 @@ class TestCreatePickSpeakerPrompt:
     """Tests for create_pick_speaker_prompt."""
     
     def test_creates_messages(self):
-        witness = Character(game_id="123", name="Hip", faction="stalker", experience="Veteran", reputation="Good")
+        witness = Character(game_id="123", name="Hip", faction="stalker", experience="Veteran", reputation=500)
         event = Event(type="DIALOGUE", context={"text": "Hello"}, game_time_ms=1000)
         
         messages = create_pick_speaker_prompt([event], [witness])
@@ -297,7 +297,7 @@ class TestCreatePickSpeakerPrompt:
         assert any("CANDIDATES" in m.content.upper() for m in messages)
     
     def test_limits_to_8_events(self):
-        witness = Character(game_id="123", name="Hip", faction="stalker", experience="Veteran", reputation="Good")
+        witness = Character(game_id="123", name="Hip", faction="stalker", experience="Veteran", reputation=500)
         events = [Event(type="DIALOGUE", context={"text": f"Hello {i}"}, game_time_ms=i * 1000) for i in range(15)]
         
         messages = create_pick_speaker_prompt(events, [witness])
@@ -312,7 +312,7 @@ class TestCreatePickSpeakerPrompt:
             create_pick_speaker_prompt([event], [])
     
     def test_raises_on_no_events(self):
-        witness = Character(game_id="123", name="Hip", faction="stalker", experience="Veteran", reputation="Good")
+        witness = Character(game_id="123", name="Hip", faction="stalker", experience="Veteran", reputation=500)
         with pytest.raises(ValueError, match="No recent events"):
             create_pick_speaker_prompt([], [witness])
 
@@ -326,7 +326,7 @@ class TestCreateDialogueRequestPrompt:
             name="Hip",
             faction="stalker",
             experience="Veteran",
-            reputation="Good",
+            reputation=500,
             personality="friendly",
             backstory="former medic",
         )
@@ -343,7 +343,7 @@ class TestCreateDialogueRequestPrompt:
         assert timestamp is None  # No idle event
     
     def test_detects_idle_event(self):
-        speaker = Character(game_id="123", name="Hip", faction="stalker", experience="Veteran", reputation="Good")
+        speaker = Character(game_id="123", name="Hip", faction="stalker", experience="Veteran", reputation=500)
         idle_event = Event(
             type="IDLE",
             context={},
@@ -362,7 +362,7 @@ class TestCreateDialogueRequestPrompt:
             name="Hip",
             faction="stalker",
             experience="Veteran",
-            reputation="Good",
+            reputation=500,
             personality="friendly",
             backstory="former medic",
         )
@@ -381,7 +381,7 @@ class TestCreateCompressMemoriesPrompt:
     """Tests for create_compress_memories_prompt."""
     
     def test_creates_messages(self):
-        speaker = Character(game_id="123", name="Hip", faction="stalker", experience="Veteran", reputation="Good")
+        speaker = Character(game_id="123", name="Hip", faction="stalker", experience="Veteran", reputation=500)
         events = [
             Event(type="DIALOGUE", context={"text": "Hello"}, game_time_ms=1000),
             Event(type="DEATH", context={"victim": {"name": "Bandit"}}, game_time_ms=2000),
@@ -411,7 +411,7 @@ class TestCreateUpdateNarrativePrompt:
     """Tests for create_update_narrative_prompt."""
     
     def test_creates_bootstrap_prompt(self):
-        speaker = Character(game_id="123", name="Hip", faction="stalker", experience="Veteran", reputation="Good")
+        speaker = Character(game_id="123", name="Hip", faction="stalker", experience="Veteran", reputation=500)
         events = [
             Event(type="DIALOGUE", context={"text": "Hello"}, game_time_ms=1000),
         ]
@@ -422,7 +422,7 @@ class TestCreateUpdateNarrativePrompt:
         assert any("MEMORY" in m.content.upper() for m in messages)
     
     def test_creates_update_prompt_with_existing_narrative(self):
-        speaker = Character(game_id="123", name="Hip", faction="stalker", experience="Veteran", reputation="Good")
+        speaker = Character(game_id="123", name="Hip", faction="stalker", experience="Veteran", reputation=500)
         narrative = "Hip previously met the player in Cordon."
         events = [
             Event(type="DIALOGUE", context={"text": "Hello again"}, game_time_ms=5000),
