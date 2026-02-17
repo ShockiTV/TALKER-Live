@@ -11,7 +11,7 @@ class Character:
     name: str
     faction: str = ""
     experience: str = ""  # Rank
-    reputation: str = ""
+    reputation: int = 0
     personality: str = ""
     backstory: str = ""
     weapon: str = ""
@@ -25,7 +25,7 @@ class Character:
             name=data.get("name", "Unknown"),
             faction=data.get("faction", ""),
             experience=data.get("experience", ""),
-            reputation=data.get("reputation", ""),
+            reputation=data.get("reputation", 0),
             personality=data.get("personality", ""),
             backstory=data.get("backstory", ""),
             weapon=data.get("weapon", ""),

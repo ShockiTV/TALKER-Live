@@ -1,7 +1,7 @@
 """Tests for lookup module - personality and backstory ID resolution."""
 
 import pytest
-from talker_service.prompts.lookup import resolve_personality, resolve_backstory
+from talker_service.prompts.lookup import resolve_personality, resolve_backstory, resolve_faction_name
 
 
 class TestResolvePersonality:
@@ -105,3 +105,52 @@ class TestResolveBackstory:
         result = resolve_backstory("unique.esc_2_12_stalker_wolf")
         assert result != ""
         assert "rookie village" in result.lower() or "security" in result.lower()
+
+
+class TestResolveFactionName:
+    """Tests for resolve_faction_name function."""
+    
+    def test_resolve_valid_faction_id(self):
+        """Test resolving a valid faction ID."""
+        result = resolve_faction_name("dolg")
+        assert result == "Duty"
+    
+    def test_resolve_stalker_to_loner(self):
+        """Test that 'stalker' resolves to 'Loner'."""
+        result = resolve_faction_name("stalker")
+        assert result == "Loner"
+    
+    def test_resolve_killer_to_mercenary(self):
+        """Test that 'killer' resolves to 'Mercenary'."""
+        result = resolve_faction_name("killer")
+        assert result == "Mercenary"
+    
+    def test_resolve_csky_to_clear_sky(self):
+        """Test that 'csky' resolves to 'Clear Sky'."""
+        result = resolve_faction_name("csky")
+        assert result == "Clear Sky"
+    
+    def test_resolve_unknown_returns_raw(self):
+        """Test that unknown faction ID returns the raw ID."""
+        result = resolve_faction_name("unknownfaction")
+        assert result == "unknownfaction"
+    
+    def test_resolve_empty_returns_empty(self):
+        """Test that empty string returns empty string."""
+        result = resolve_faction_name("")
+        assert result == ""
+    
+    def test_resolve_none_returns_none(self):
+        """Test that None returns None."""
+        result = resolve_faction_name(None)
+        assert result is None
+    
+    def test_resolve_monster_faction(self):
+        """Test resolving monster faction."""
+        result = resolve_faction_name("monster")
+        assert result == "Monster"
+    
+    def test_resolve_zombied_faction(self):
+        """Test resolving zombied faction."""
+        result = resolve_faction_name("zombied")
+        assert result == "Zombied"

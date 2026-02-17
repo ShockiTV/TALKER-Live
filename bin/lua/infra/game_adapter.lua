@@ -109,12 +109,12 @@ function m.create_character(game_object_person)
 		end
 	end
 
-	local faction = get_faction_name(raw_faction) or raw_faction or "unknown" -- Map to display name, or use raw if no mapping exists
+	local faction = raw_faction or "unknown" -- Send technical ID directly, Python resolves to display name
 	local raw_reputation = nil
 	if game_object_person.character_reputation then
 		raw_reputation = game_object_person:character_reputation()
 	end
-	local reputation_tier = query.get_reputation_tier(raw_reputation) or "none"
+	local reputation = raw_reputation or 0 -- Send raw integer, Python uses numeric value directly
 	local weapon = query.get_weapon(game_object_person)
 	local weapon_description = nil
 	if weapon then
@@ -130,9 +130,9 @@ function m.create_character(game_object_person)
 			.. ", faction: "
 			.. faction
 			.. ", reputation: "
-			.. reputation_tier
+			.. tostring(reputation)
 	)
-	return Character.new(game_id, name, experience, faction, reputation_tier, weapon_description, visual_faction)
+	return Character.new(game_id, name, experience, faction, reputation, weapon_description, visual_faction)
 end
 
 function m.get_player_weapon()
