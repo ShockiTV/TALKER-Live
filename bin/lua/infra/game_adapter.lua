@@ -3,7 +3,6 @@ package.path = package.path .. ";./bin/lua/?.lua;"
 local Event = require("domain.model.event")
 local EventType = require("domain.model.event_types")
 local Character = require("domain.model.character")
-local Item = require("domain.model.item")
 local log = require("framework.logger")
 local config = require("interface.config")
 
@@ -137,19 +136,6 @@ function m.create_character(game_object_person)
 			.. tostring(story_id)
 	)
 	return Character.new(game_id, name, experience, faction, reputation, weapon_description, visual_faction, story_id)
-end
-
-function m.get_player_weapon()
-	local player_obj = query.get_player()
-	local weapon_obj = query.get_weapon(player_obj)
-	local weapon = m.create_item(weapon_obj)
-	return weapon
-end
-
-function m.create_item(game_object_item)
-	local game_id = get_id(game_object_item)
-	local name = query.get_item_description(game_object_item)
-	return Item.new(game_id, name)
 end
 
 function m.create_dialogue_event(speaker_id, dialogue, source_event)

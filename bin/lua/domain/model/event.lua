@@ -1,5 +1,4 @@
 package.path = package.path .. ";./bin/lua/?.lua;"
-local Item = require("domain.model.item")
 local EventType = require("domain.model.event_types")
 
 -- Event data structure
