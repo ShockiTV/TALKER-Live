@@ -434,19 +434,18 @@ class TestMapTransitionLifecycle:
                 "story_ids": [
                     "agr_smart_terrain_1_6_near_2_military_colonel_kovalski",
                     "bar_dolg_leader",
-                    "mil_smart_terrain_7_7_freedom_leader_stalker",
-                    "mar_smart_terrain_base_stalker_leader_marsh",
-                    "yan_stalker_sakharov",
                     "cit_killers_merc_trader_stalker",
-                    "zat_b7_bandit_boss_sultan",
-                    "lider_monolith_haron",
-                    "kat_greh_sabaoth",
-                    "gen_greh_sabaoth",
-                    "sar_greh_sabaoth",
                     "ds_domik_isg_leader",
+                    "gen_greh_sabaoth",
+                    "hunter_gar_trader",
                     "jup_depo_isg_leader",
-                    "gar_digger_m_trader",
-                    "gar_bandit_trader"
+                    "kat_greh_sabaoth",
+                    "lider_monolith_haron",
+                    "mar_smart_terrain_base_stalker_leader_marsh",
+                    "mil_smart_terrain_7_7_freedom_leader_stalker",
+                    "sar_greh_sabaoth",
+                    "yan_stalker_sakharov",
+                    "zat_b7_bandit_boss_sultan"
                 ]
             }
         }
@@ -460,19 +459,18 @@ class TestMapTransitionLifecycle:
             "alive": {
                 "agr_smart_terrain_1_6_near_2_military_colonel_kovalski": true,
                 "bar_dolg_leader": true,
-                "mil_smart_terrain_7_7_freedom_leader_stalker": true,
-                "mar_smart_terrain_base_stalker_leader_marsh": true,
-                "yan_stalker_sakharov": true,
                 "cit_killers_merc_trader_stalker": true,
-                "zat_b7_bandit_boss_sultan": true,
-                "lider_monolith_haron": true,
-                "kat_greh_sabaoth": true,
-                "gen_greh_sabaoth": true,
-                "sar_greh_sabaoth": true,
                 "ds_domik_isg_leader": true,
+                "gen_greh_sabaoth": true,
+                "hunter_gar_trader": false,
                 "jup_depo_isg_leader": true,
-                "gar_digger_m_trader": false,
-                "gar_bandit_trader": true
+                "kat_greh_sabaoth": true,
+                "lider_monolith_haron": true,
+                "mar_smart_terrain_base_stalker_leader_marsh": true,
+                "mil_smart_terrain_7_7_freedom_leader_stalker": true,
+                "sar_greh_sabaoth": true,
+                "yan_stalker_sakharov": true,
+                "zat_b7_bandit_boss_sultan": true
             }
         }
         """
