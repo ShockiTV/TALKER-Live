@@ -59,19 +59,17 @@ RANKS_DEFINITION = """## RANKS DEFINITION (Lowest to Highest)
 
 REPUTATION_RULES = """## REPUTATION RULES & DEFINITIONS
 
-### REPUTATION TIERS (lowest to highest):
-Terrible, Dreary, Awful, Bad, Neutral, Good, Great, Brilliant, Excellent
-### REPUTATION DEFINITIONS:
- - Reputation is an overall measure of a person's morality and attitude. It represents how honorable, diligent and friendly their actions have been so far.
- - A 'Good', 'Great' etc. reputation means the person is known for generally helping others, completing tasks successfully and fighting criminals/mutants.
- - A 'Bad', 'Awful' etc. reputation means the person is known for backstabbing, betraying, failing to complete tasks and/or killing non-hostile targets.
- - How far a person's reputation is from 'Neutral' (in either direction) denotes the extent of how moral or immoral they are and the amount of good or bad actions they've done as described above.
+### REPUTATION SCALE:
+Reputation is a numeric value from around -2000 (extremely bad) to +2000 (extremely good). Zero is neutral.
+ - **Positive reputation** (above 0): The person is known for helping others, completing tasks, and fighting criminals/mutants. Higher numbers = more trustworthy.
+ - **Negative reputation** (below 0): The person is known for backstabbing, betraying, failing tasks, and/or killing non-hostile targets. Lower numbers = more dangerous/untrustworthy.
+ - The magnitude (how far from zero) indicates the extent of their good or bad deeds.
 ### REPUTATION USAGE RULES:
-1. DON'T explicitly state a person's reputation as if it were a data value (e.g., NEVER say 'you have a good reputation').
-2. IF talking about a person's reputation, imply it using general language (example: use 'why would I trust someone with a reputation like yours?' instead of 'you have a bad reputation').
-3. If another person has a GOOD reputation: You generally trust them more easily. If someone has a very good reputation you may treat them with more respect, kindness and patience than you otherwise would.
-4. If another person has a BAD reputation: You are suspicious and wary of them, even if they are otherwise in good standing with your faction. You might suspect they will betray you, or fail to finish any tasks you give them. You may show them less respect and patience than you otherwise would.
-5. EXCEPTION: (CRITICAL): If you are a member of the Bandit or Renegade factions, you might actually RESPECT a bad reputation, or laugh at a 'Good' or better reputation.
+1. DON'T explicitly state a person's reputation as a number (e.g., NEVER say 'you have 500 reputation').
+2. IF talking about a person's reputation, imply it using general language (example: use 'why would I trust someone with a reputation like yours?' instead of stating their number).
+3. If another person has a POSITIVE reputation: You generally trust them more easily. Very high reputation = treat them with more respect, kindness and patience.
+4. If another person has a NEGATIVE reputation: You are suspicious and wary of them, even if they are otherwise in good standing with your faction. You might suspect they will betray you. Very low reputation = treat them with less respect and patience.
+5. EXCEPTION: (CRITICAL): If you are a member of the Bandit or Renegade factions, you might actually RESPECT a negative reputation, or mock a highly positive reputation.
 """
 
 KNOWLEDGE_FAMILIARITY = """## KNOWLEDGE AND FAMILIARITY

@@ -7,6 +7,7 @@ from typing import Any, Union
 
 from .models import Character, Event, NarrativeCue
 from .factions import resolve_faction_name
+from .lookup import resolve_personality
 from texts.locations import get_location_name, get_location_description
 
 
@@ -75,16 +76,60 @@ def describe_character(char: Character) -> str:
     return " ".join(parts)
 
 
-def describe_character_with_id(char: Character) -> str:
-    """Format character with ID for speaker selection.
+def describe_character_for_speaker(char: Character) -> str:
+    """Format character description for speaker selection (personality, no reputation).
+    
+    Matches Lua fork's Character.describe() format used for speaker candidates.
+    Includes personality trait instead of reputation to help LLM pick based on
+    who would most likely react to the event.
     
     Args:
         char: Character to describe
         
     Returns:
-        Formatted string like "[ID: 123] Wolf (Veteran Loner)"
+        Formatted string like "Wolf, a Veteran rank member of the Loner faction who is cynical"
     """
-    return f"[ID: {char.game_id}] {describe_character(char)}"
+    if char.faction in ("monster", "zombied"):
+        faction_display = resolve_faction_name(char.faction)
+        return f"{char.name} ({faction_display})"
+    
+    faction_display = resolve_faction_name(char.faction)
+    experience = char.experience or "Experienced"
+    
+    # Base description
+    description = f"{char.name}, a {experience} rank member of the {faction_display} faction"
+    
+    # Add personality if available
+    # Try resolve_personality for "faction.key" format, else use raw value with underscores cleaned
+    if char.personality:
+        resolved = resolve_personality(char.personality)
+        if resolved:
+            personality_text = resolved
+        else:
+            # Raw text: replace underscores with spaces
+            personality_text = char.personality.replace("_", " ")
+        description += f" who is {personality_text}"
+    
+    # Add weapon if available
+    if char.weapon:
+        description += f" wielding a {char.weapon}"
+    
+    return description
+
+
+def describe_character_with_id(char: Character) -> str:
+    """Format character with ID for speaker selection.
+    
+    Uses describe_character_for_speaker to include personality (not reputation)
+    since speaker selection should be based on who would react, not their standing.
+    
+    Args:
+        char: Character to describe
+        
+    Returns:
+        Formatted string like "[ID: 123] Wolf, a Veteran rank member of the Loner faction who is cynical"
+    """
+    return f"[ID: {char.game_id}] {describe_character_for_speaker(char)}"
 
 
 def _format_visit_count(count: int) -> str:

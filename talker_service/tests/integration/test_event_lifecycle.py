@@ -386,16 +386,16 @@ class TestEventLifecycleL9:
         
         Complete lifecycle with all 14 steps in order:
         1)  Input event (ZMQ from Lua)
-        2)  Scene context query request
-        3)  Scene context query response
-        4)  Characters alive query request
-        5)  Characters alive query response
-        6)  Memory query request
-        7)  Memory query response
-        8)  Character query request
-        9)  Character query response
-        10) LLM speaker request
-        11) LLM speaker response
+        2)  LLM speaker request (uses witnesses from event directly)
+        3)  LLM speaker response
+        4)  Memory query request (for selected speaker)
+        5)  Memory query response
+        6)  Character query request (for selected speaker)
+        7)  Character query response
+        8)  Scene/world context query request
+        9)  Scene/world context query response
+        10) Characters alive query request (nested in world_context)
+        11) Characters alive query response
         12) LLM dialogue request
         13) LLM dialogue response
         14) Publish request (ZMQ to Lua)
@@ -431,14 +431,16 @@ class TestEventLifecycleL9:
                         "name": "Wolf",
                         "faction": "stalker",
                         "experience": "Veteran",
-                        "reputation": 750
+                        "reputation": 750,
+                        "personality": "gruff_but_fair"
                     },
                     {
                         "game_id": 11111,
                         "name": "Petruha",
                         "faction": "stalker",
                         "experience": "Experienced",
-                        "reputation": 0
+                        "reputation": 0,
+                        "personality": "generic.15"
                     }
                 ],
                 "flags": {}
@@ -448,7 +450,7 @@ class TestEventLifecycleL9:
         """
         
         # =====================================================================
-        # 2) SCENE CONTEXT QUERY REQUEST
+        # 2) LLM SPEAKER REQUEST (uses witnesses from event directly)
         # =====================================================================
         SCENE_CONTEXT_REQUEST = """
         {
@@ -458,12 +460,18 @@ class TestEventLifecycleL9:
         """
         
         # =====================================================================
-        # 3) SCENE CONTEXT QUERY RESPONSE
+        # 3) LLM SPEAKER RESPONSE (see LLM_SPEAKER_RESPONSE below)
+        # 4) MEMORY QUERY REQUEST (see MEMORY_REQUEST below)
+        # 5) MEMORY QUERY RESPONSE (see MEMORY_RESPONSE below)
+        # 6) CHARACTER QUERY REQUEST (see CHARACTER_REQUEST below)
+        # 7) CHARACTER QUERY RESPONSE (see CHARACTER_RESPONSE below)
+        # 8) SCENE/WORLD CONTEXT QUERY REQUEST (SCENE_CONTEXT_REQUEST above)
+        # 9) SCENE/WORLD CONTEXT QUERY RESPONSE
         # =====================================================================
         SCENE_CONTEXT_RESPONSE = """
         {
             "loc": "l01_escape",
-            "poi": "esc_smart_terrain_5_7",
+            "poi": "Rookie Village",
             "time": {"Y": 2012, "M": 6, "D": 15, "h": 14, "m": 30, "s": 0, "ms": 0},
             "weather": "clear",
             "emission": false,
@@ -476,7 +484,7 @@ class TestEventLifecycleL9:
         """
         
         # =====================================================================
-        # 4) CHARACTERS ALIVE QUERY REQUEST
+        # 10) CHARACTERS ALIVE QUERY REQUEST (nested in world_context)
         # Filtered by location: leaders (globally relevant) + Cordon characters
         # =====================================================================
         CHARACTERS_ALIVE_REQUEST = """
@@ -509,8 +517,8 @@ class TestEventLifecycleL9:
         """
         
         # =====================================================================
-        # 5) CHARACTERS ALIVE QUERY RESPONSE
-        # Wolf (esc_2_12_stalker_wolf) is dead for notable character death context
+        # 11) CHARACTERS ALIVE QUERY RESPONSE
+        # bar_dolg_leader (General Voronin) is dead for notable character death context
         # =====================================================================
         CHARACTERS_ALIVE_RESPONSE = """
         {
@@ -539,7 +547,7 @@ class TestEventLifecycleL9:
         """
         
         # =====================================================================
-        # 6) MEMORY QUERY REQUEST
+        # Note: MEMORY_REQUEST is step 4 (after speaker selection)
         # =====================================================================
         MEMORY_REQUEST = """
         {
@@ -549,7 +557,7 @@ class TestEventLifecycleL9:
         """
         
         # =====================================================================
-        # 7) MEMORY QUERY RESPONSE
+        # Note: MEMORY_RESPONSE is step 5
         # =====================================================================
         MEMORY_RESPONSE = """
         {
@@ -582,7 +590,7 @@ class TestEventLifecycleL9:
         """
         
         # =====================================================================
-        # 8) CHARACTER QUERY REQUEST
+        # Note: CHARACTER_REQUEST is step 6
         # =====================================================================
         CHARACTER_REQUEST = """
         {
@@ -592,7 +600,7 @@ class TestEventLifecycleL9:
         """
         
         # =====================================================================
-        # 9) CHARACTER QUERY RESPONSE
+        # Note: CHARACTER_RESPONSE is step 7
         # =====================================================================
         CHARACTER_RESPONSE = """
         {
@@ -609,9 +617,8 @@ class TestEventLifecycleL9:
         """
         
         # =====================================================================
-        # 10) LLM SPEAKER REQUEST
+        # Note: LLM_SPEAKER_REQUEST is step 2
         # Built from: INPUT_EVENT only (not memory events)
-        # The actual prompt has 6 messages with real content
         # =====================================================================
         LLM_SPEAKER_REQUEST = """
         {
@@ -622,7 +629,7 @@ class TestEventLifecycleL9:
                 },
                 {
                     "role": "system",
-                    "content": "## CANDIDATES (in order of distance): <CANDIDATES>\\n\\n[ID: 12345] Wolf (Veteran, Loner, Reputation: 750), [ID: 11111] Petruha (Experienced, Loner, Reputation: 0)\\n\\n</CANDIDATES>"
+                    "content": "## CANDIDATES (in order of distance): <CANDIDATES>\\n\\n[ID: 12345] Wolf, a Veteran rank member of the Loner faction who is gruff but fair, [ID: 11111] Petruha, a Experienced rank member of the Loner faction who is unpredictable\\n\\n</CANDIDATES>"
                 },
                 {
                     "role": "system",
@@ -646,12 +653,12 @@ class TestEventLifecycleL9:
         """
         
         # =====================================================================
-        # 11) LLM SPEAKER RESPONSE
+        # Note: LLM_SPEAKER_RESPONSE is step 3
         # =====================================================================
         LLM_SPEAKER_RESPONSE = """{"id": 12345}"""
         
         # =====================================================================
-        # 12) LLM DIALOGUE REQUEST (exact output from create_dialogue_request_prompt)
+        # 12) LLM DIALOGUE REQUEST
         # =====================================================================
         LLM_DIALOGUE_REQUEST = """{
     "messages": [
@@ -660,12 +667,12 @@ class TestEventLifecycleL9:
         {"role": "system", "content": "## FORBIDDEN BEHAVIOUR:\\n\\n0. **NO STAGE DIRECTIONS:** NEVER use action descriptions, emotes, or asterisks (e.g., *chuckles*, *scratches head*, (sighs), [reloads]).\\n 1. **NO SCRIPT FORMATTING:** NEVER use quotes around your speech. NEVER use prefixes (like Barkeep: or [You]:).2. **NO PUPPETEERING:** NEVER write the user's lines or describe the user's actions.\\n 3. **NO SELF-TALK:** NEVER simulate a back-and-forth dialogue with yourself. You speak only your line.\\n ### FORBIDDEN PHRASES (Video Game Cliches)\\n1. **DO NOT USE:** 'Get out of here, Stalker!', 'I have a mission for you', 'What do you need?', 'Stay safe out there', 'Welcome to the Zone!'.\\n2. AVOID generic NPC exposition. You are a living person, not a quest giver.\\n3. **NEVER make jokes about people 'glowing' from radiation."},
         {"role": "system", "content": "## ZONE GEOGRAPHICAL CONTEXT / DANGER SCALE\\n\\n - The Zone has a clear North-South axis of danger. Danger increases SIGNIFICANTLY as one travels North.\\n - Southern/Periphery Areas (Safer): Cordon, Garbage, Great Swamps, Agroprom, Dark Valley, Darkscape, Meadow.\\n - Settlement (Safest): Rostok, despite being north of Garbage, is the safest place in the Zone thanks to the heavy Duty faction prescence guarding it.\\n - Central/Northern Areas (Dangerous): Trucks Cemetery, Army Warehouses, Yantar, 'Yuzhniy' Town, Promzone, Grimwood, Red Forest, Jupiter, Zaton.\\n - Underground Areas (High Danger): Agroprom Underground, Jupiter Underground, Lab X8, Lab X-16, Lab X-18, Lab-X-19, Collider, Bunker A1. Only experienced and well-equipped stalkers venture into the underground areas and labs.\\n - Deep North/Heart of the Zone (Extreme Danger): Radar, Limansk, Pripyat Outskirts, Pripyat, Chernobyl NPP, Generators. Travel here is extremely rare and only for the most experienced and well-equipped stalkers.\\n"},
         {"role": "system", "content": "## RANKS DEFINITION (Lowest to Highest) \\n\\n**RANKS:** Novice (Rookie), Trainee, Experienced, Professional, Veteran, Expert, Master, Legend.\\n - Ranks are a general measure of both a person's capability and their time spent in the Zone.\\n - The higher your rank, the more experienced and capable you are & the more time you have spent in the Zone. 'Novice' means fresh and inexperienced.\\n - The higher your rank, the more desensitized you are to the horrors of the Zone. 'Novices' are easily shaken.\\n"},
-        {"role": "system", "content": "## REPUTATION RULES & DEFINITIONS\\n\\n### REPUTATION TIERS (lowest to highest):\\nTerrible, Dreary, Awful, Bad, Neutral, Good, Great, Brilliant, Excellent\\n### REPUTATION DEFINITIONS:\\n - Reputation is an overall measure of a person's morality and attitude. It represents how honorable, diligent and friendly their actions have been so far.\\n - A 'Good', 'Great' etc. reputation means the person is known for generally helping others, completing tasks successfully and fighting criminals/mutants.\\n - A 'Bad', 'Awful' etc. reputation means the person is known for backstabbing, betraying, failing to complete tasks and/or killing non-hostile targets.\\n - How far a person's reputation is from 'Neutral' (in either direction) denotes the extent of how moral or immoral they are and the amount of good or bad actions they've done as described above.\\n### REPUTATION USAGE RULES:\\n1. DON'T explicitly state a person's reputation as if it were a data value (e.g., NEVER say 'you have a good reputation').\\n2. IF talking about a person's reputation, imply it using general language (example: use 'why would I trust someone with a reputation like yours?' instead of 'you have a bad reputation').\\n3. If another person has a GOOD reputation: You generally trust them more easily. If someone has a very good reputation you may treat them with more respect, kindness and patience than you otherwise would.\\n4. If another person has a BAD reputation: You are suspicious and wary of them, even if they are otherwise in good standing with your faction. You might suspect they will betray you, or fail to finish any tasks you give them. You may show them less respect and patience than you otherwise would.\\n5. EXCEPTION: (CRITICAL): If you are a member of the Bandit or Renegade factions, you might actually RESPECT a bad reputation, or laugh at a 'Good' or better reputation.\\n"},
+        {"role": "system", "content": "## REPUTATION RULES & DEFINITIONS\\n\\n### REPUTATION SCALE:\\nReputation is a numeric value from around -2000 (extremely bad) to +2000 (extremely good). Zero is neutral.\\n - **Positive reputation** (above 0): The person is known for helping others, completing tasks, and fighting criminals/mutants. Higher numbers = more trustworthy.\\n - **Negative reputation** (below 0): The person is known for backstabbing, betraying, failing tasks, and/or killing non-hostile targets. Lower numbers = more dangerous/untrustworthy.\\n - The magnitude (how far from zero) indicates the extent of their good or bad deeds.\\n### REPUTATION USAGE RULES:\\n1. DON'T explicitly state a person's reputation as a number (e.g., NEVER say 'you have 500 reputation').\\n2. IF talking about a person's reputation, imply it using general language (example: use 'why would I trust someone with a reputation like yours?' instead of stating their number).\\n3. If another person has a POSITIVE reputation: You generally trust them more easily. Very high reputation = treat them with more respect, kindness and patience.\\n4. If another person has a NEGATIVE reputation: You are suspicious and wary of them, even if they are otherwise in good standing with your faction. You might suspect they will betray you. Very low reputation = treat them with less respect and patience.\\n5. EXCEPTION: (CRITICAL): If you are a member of the Bandit or Renegade factions, you might actually RESPECT a negative reputation, or mock a highly positive reputation.\\n"},
         {"role": "system", "content": "## KNOWLEDGE AND FAMILIARITY\\n\\n1. You are NOT an encyclopedia. Speak **ONLY** from your personal experience and what you may have heard from others. If you don't know something, say so (e.g., 'who knows?').\\n2. The extent of your general knowledge of things relevant to life in the Zone is governed by your rank. Use your rank to inform you of how much your character knows: higher rank = more knowledge. A 'novice' barely knows anything.\\n3. You have extensive knowledge of the Zone, including locations (e.g., Cordon, Garbage, Agroprom, Rostok, etc.) and factions (e.g., Duty, Freedom, Loners, Military, Bandits, Monolith, Clear Sky, Mercenaries).\\n4. Your personal familiarity with a LOCATION is determined by your rank **AND** how far north it is. Higher rank = more knowledge, further north = less knowledge.\\n5. You are familiar with the notable people who are currently active in the Zone (e.g., Sidorovich, Barkeep, Arnie, Beard, Sakharov, General Voronin, Lukash, Sultan, Butcher etc.). The extent of your knowledge of the notable people in the Zone is governed by your rank, higher rank = more likely to be familiar & higher degree of familiarity.\\n"},
         {"role": "system", "content": "## CHARACTER ANCHOR (CORE IDENTITY)\\n\\n### CHARACTER ANCHOR USE GUIDELINES:\\n0. **INTERNAL MONOLOGUE VS EXTERNAL ACTION:** Your traits define your **MINDSET**. They do **NOT** require you to narrate the action.\\n1. **SUBTLETY:** The 'DEFINING CHARACTER TRAIT/BACKSTORY' should inform your characterisation subtly. Do not explicitly reference it in every response.\\n2. **PRIORITY:** Your individual personality always takes precedence over general faction traits.\\n3. AVOID talking about your weapon unless directly asked about it, or you have a **GOOD** reason to do so.\\n\\n### CHARACTER DETAILS:\\n<CHARACTER>\\n### NAME: Wolf\\n### RANK: Veteran\\n### FACTION: Loner\\n### FACTION DESCRIPTION: Independent stalkers (Loners) who survive in the Zone through scavenging, artifact hunting, and odd jobs. No central leadership, just mutual aid.\\n### BACKSTORY ANCHOR/DEFINING CHARACTER TRAIT (IMPORTANT): 'veteran_stalker'\\n### PERSONALITY: You are gruff_but_fair.\\n### CURRENT REPUTATION: 750\\n### CURRENT WEAPON: You are wielding a AK-74\\n</CHARACTER>"},
         {"role": "system", "content": "## INTERACTION RULES: COMBAT AND AGGRESSION\\n\\n1. The Zone is a dangerous place: assume every person is carrying a firearm for self-defence. There are no 'unarmed civilians' in the Zone.\\n2. Do not be overly hostile or aggressive unless provoked, or if you have a reason to be."},
         {"role": "system", "content": "<CONTEXT>\\n"},
-        {"role": "system", "content": "## CURRENT LOCATION\\n\\nLocation: Cordon (near esc_smart_terrain_5_7)\\nTime: afternoon\\nWeather: clear\\n"},
+        {"role": "system", "content": "## CURRENT LOCATION\\n\\nLocation: Cordon (near Rookie Village)\\nTime: afternoon\\nWeather: clear\\n"},
         {"role": "system", "content": "## DYNAMIC WORLD STATE / NEWS\\n\\nGeneral Voronin, leader of Duty, is dead.\\n\\nThe Military and Loners have an uneasy truce in Cordon. The Military controls the southern checkpoint but allows stalkers through as long as they don't cause trouble.\\n"},
         {"role": "system", "content": "## LONG-TERM MEMORIES\\n\\n<MEMORIES>\\nWolf had been patrolling the Cordon for three days.\\n</MEMORIES>"},
         {"role": "system", "content": "## Events\\n\\n<EVENTS>\\n"},
