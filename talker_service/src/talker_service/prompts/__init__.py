@@ -7,7 +7,7 @@ Ports prompt building logic from Lua to Python for:
 - Narrative updates
 """
 
-from .models import Character, Event, MemoryContext
+from .models import Character, Event, MemoryContext, NarrativeCue
 from .builder import (
     Message,
     create_dialogue_request_prompt,
@@ -35,6 +35,7 @@ __all__ = [
     "Character",
     "Event",
     "MemoryContext",
+    "NarrativeCue",
     "Message",
     # Helpers
     "describe_character",

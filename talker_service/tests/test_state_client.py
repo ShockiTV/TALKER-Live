@@ -40,14 +40,15 @@ class TestCharacterModel:
         assert char.personality == "curious and friendly"
     
     def test_from_dict_minimal(self):
-        """Test creating Character from minimal dict."""
+        """Test creating Character from minimal dict with defaults."""
         data = {"game_id": 456, "name": "Unknown"}
         
         char = Character.from_dict(data)
         
         assert char.game_id == "456"  # Converted to string
         assert char.name == "Unknown"
-        assert char.faction == ""
+        assert char.faction == "stalker"  # Default
+        assert char.experience == "Experienced"  # Default
     
     def test_from_dict_with_disguise(self):
         """Test creating Character with visual_faction (disguise)."""
@@ -91,7 +92,7 @@ class TestEventModel:
         assert event.witnesses[0].name == "Hip"
     
     def test_from_dict_legacy_event(self):
-        """Test creating legacy Event from dict."""
+        """Legacy content field is ignored - events must be typed."""
         data = {
             "content": "Hip killed a Bandit",
             "game_time_ms": 500000,
@@ -100,20 +101,21 @@ class TestEventModel:
         event = Event.from_dict(data)
         
         assert event.type is None
-        assert event.content == "Hip killed a Bandit"
+        # content field no longer exists - legacy events are ignored
     
-    def test_from_dict_compressed_event(self):
-        """Test creating compressed memory event."""
+    def test_from_dict_with_flags(self):
+        """Test creating event with custom flags."""
         data = {
-            "content": "Summary of recent events...",
+            "type": "CUSTOM",
+            "context": {"message": "Something happened"},
             "game_time_ms": 2000000,
-            "flags": {"is_compressed": True, "is_synthetic": True},
+            "flags": {"is_important": True, "is_silent": False},
         }
         
         event = Event.from_dict(data)
         
-        assert event.flags.get("is_compressed") is True
-        assert event.flags.get("is_synthetic") is True
+        assert event.flags.get("is_important") is True
+        assert event.flags.get("is_silent") is False
 
 
 class TestMemoryContextModel:

@@ -7,6 +7,7 @@ from talker_service.prompts import (
     Event,
     MemoryContext,
     Message,
+    NarrativeCue,
     describe_character,
     describe_character_with_id,
     describe_event,
@@ -88,18 +89,20 @@ class TestEvent:
             "type": "DIALOGUE",
             "context": {"speaker": {"name": "Hip"}, "text": "Hello!"},
             "game_time_ms": 2000,
-            "world_context": "In Cordon",
+            "world_context": "In Cordon",  # Should be ignored (backward compat)
             "flags": {"is_idle": True},
         }
         event = Event.from_dict(data)
         assert event.type == "DIALOGUE"
-        assert event.world_context == "In Cordon"
+        # world_context intentionally not stored - queried JIT during prompt building
         assert event.flags == {"is_idle": True}
     
     def test_event_from_dict_with_legacy_content(self):
+        """Legacy content field is ignored - events must be typed."""
         data = {"content": "Something happened", "game_time_ms": 500}
         event = Event.from_dict(data)
-        assert event.content == "Something happened"
+        # content field no longer exists
+        assert event.type is None
 
 
 # ============================================================================
@@ -185,15 +188,37 @@ class TestDescribeEvent:
         assert "Wolf" in desc
         assert "Watch your back" in desc
     
-    def test_describe_legacy_event(self):
+    def test_describe_unknown_event(self):
+        """Unknown event types return formatted fallback."""
         event = Event(
-            type=None,
+            type="CUSTOM_TYPE",
             context={},
             game_time_ms=1000,
-            content="A mysterious event occurred",
         )
         desc = describe_event(event)
-        assert "mysterious event" in desc
+        assert "Event: CUSTOM_TYPE" in desc
+
+    def test_describe_compressed_event_with_narrative(self):
+        """COMPRESSED events use context.narrative for the summary."""
+        event = Event(
+            type="COMPRESSED",
+            context={"narrative": "Encountered dangerous anomalies and found an artifact."},
+            game_time_ms=1000,
+        )
+        desc = describe_event(event)
+        assert "[COMPRESSED MEMORY]" in desc
+        assert "Encountered dangerous anomalies" in desc
+
+    def test_describe_compressed_event_without_narrative(self):
+        """COMPRESSED events without narrative show fallback."""
+        event = Event(
+            type="COMPRESSED",
+            context={},
+            game_time_ms=1000,
+        )
+        desc = describe_event(event)
+        assert "[COMPRESSED MEMORY]" in desc
+        assert "no narrative available" in desc
 
 
 class TestIsJunkEvent:
@@ -375,6 +400,74 @@ class TestCreateDialogueRequestPrompt:
         assert "Hip" in content
         assert "stalker" in content
         assert "friendly" in content
+    
+    def test_includes_scene_context(self):
+        """Test that scene_context adds CURRENT LOCATION section."""
+        speaker = Character(
+            game_id="123",
+            name="Hip",
+            faction="stalker",
+            experience="Veteran",
+            reputation=500,
+        )
+        memory_context = MemoryContext()
+        scene_context = {
+            "loc": "l01_escape",
+            "poi": "Rookie Village",
+            "time": {"h": 14, "m": 30},
+            "weather": "clear",
+            "emission": False,
+            "psy_storm": False,
+        }
+        
+        messages, _ = create_dialogue_request_prompt(
+            speaker, memory_context, scene_context=scene_context
+        )
+        
+        content = " ".join(m.content for m in messages)
+        assert "CURRENT LOCATION" in content
+        assert "Cordon" in content  # Location translated from l01_escape
+        assert "Rookie Village" in content  # POI name
+        assert "afternoon" in content  # Time (14:30)
+    
+    def test_includes_world_state_context_news(self):
+        """Test that world_state_context adds DYNAMIC WORLD STATE / NEWS section."""
+        speaker = Character(
+            game_id="123",
+            name="Hip",
+            faction="stalker",
+            experience="Veteran",
+            reputation=500,
+        )
+        memory_context = MemoryContext()
+        world_state_context = "Sidorovich, the trader in Cordon, is dead."
+        
+        messages, _ = create_dialogue_request_prompt(
+            speaker, memory_context, world_state_context=world_state_context
+        )
+        
+        content = " ".join(m.content for m in messages)
+        assert "NEWS" in content or "DYNAMIC WORLD STATE" in content
+        assert "Sidorovich" in content
+    
+    def test_no_news_section_when_context_empty(self):
+        """Test that empty world_state_context doesn't add NEWS section."""
+        speaker = Character(
+            game_id="123",
+            name="Hip",
+            faction="stalker",
+            experience="Veteran",
+            reputation=500,
+        )
+        memory_context = MemoryContext()
+        
+        messages, _ = create_dialogue_request_prompt(
+            speaker, memory_context, world_state_context=""
+        )
+        
+        content = " ".join(m.content for m in messages)
+        # Should not have NEWS section when context is empty
+        assert "DYNAMIC WORLD STATE" not in content
 
 
 class TestCreateCompressMemoriesPrompt:
@@ -488,7 +581,7 @@ class TestInjectTimeGaps:
         assert result[0].type == "DEATH"
     
     def test_single_event_with_large_gap_from_last_update(self):
-        """Single event with large gap from last_update_time injects GAP event."""
+        """Single event with large gap from last_update_time injects NarrativeCue."""
         MS_PER_HOUR = 60 * 60 * 1000
         last_update = 1000
         event = Event(type="DEATH", game_time_ms=last_update + (13 * MS_PER_HOUR))  # 13 hours later
@@ -496,9 +589,9 @@ class TestInjectTimeGaps:
         result = inject_time_gaps([event], last_update_time_ms=last_update)
         
         assert len(result) == 2
-        assert result[0].type == "GAP"
-        assert result[0].context["hours"] == 13
-        assert "TIME GAP" in result[0].context["message"]
+        assert isinstance(result[0], NarrativeCue)
+        assert result[0].type == "TIME_GAP"
+        assert "13 hours" in result[0].message
         assert result[1].type == "DEATH"
     
     def test_two_events_no_gap(self):
@@ -516,7 +609,7 @@ class TestInjectTimeGaps:
         assert result[1].type == "DIALOGUE"
     
     def test_two_events_with_large_gap(self):
-        """Two events with large time gap have GAP injected between them."""
+        """Two events with large time gap have NarrativeCue injected between them."""
         MS_PER_HOUR = 60 * 60 * 1000
         events = [
             Event(type="DEATH", game_time_ms=1000),
@@ -527,8 +620,9 @@ class TestInjectTimeGaps:
         
         assert len(result) == 3
         assert result[0].type == "DEATH"
-        assert result[1].type == "GAP"
-        assert result[1].context["hours"] == 24
+        assert isinstance(result[1], NarrativeCue)
+        assert result[1].type == "TIME_GAP"
+        assert "24 hours" in result[1].message
         assert result[2].type == "DIALOGUE"
     
     def test_custom_time_gap_threshold(self):
@@ -546,10 +640,11 @@ class TestInjectTimeGaps:
         # With 6 hour threshold, gap should be injected
         result_custom = inject_time_gaps(events, last_update_time_ms=0, time_gap_hours=6)
         assert len(result_custom) == 3
-        assert result_custom[1].type == "GAP"
+        assert isinstance(result_custom[1], NarrativeCue)
+        assert result_custom[1].type == "TIME_GAP"
     
-    def test_gap_event_type_is_sufficient(self):
-        """GAP events are identified by type, not flags."""
+    def test_narrative_cue_has_correct_properties(self):
+        """NarrativeCue has expected properties."""
         MS_PER_HOUR = 60 * 60 * 1000
         events = [
             Event(type="DEATH", game_time_ms=1000),
@@ -557,11 +652,13 @@ class TestInjectTimeGaps:
         ]
         
         result = inject_time_gaps(events, last_update_time_ms=0)
-        gap_event = result[1]
+        cue = result[1]
         
-        assert gap_event.type == "GAP"
-        # No special flags needed - type is sufficient
-        assert gap_event.flags == {}
+        assert isinstance(cue, NarrativeCue)
+        assert cue.type == "TIME_GAP"
+        assert cue.is_cue is True
+        # Cue is placed just after the preceding event (at +1ms)
+        assert cue.game_time_ms == 1001
     
     def test_events_sorted_by_time(self):
         """Events are sorted by game_time_ms before gap injection."""
@@ -574,31 +671,31 @@ class TestInjectTimeGaps:
         
         result = inject_time_gaps(events, last_update_time_ms=0)
         
-        # Should be sorted: DEATH, GAP, DIALOGUE
+        # Should be sorted: DEATH, NarrativeCue, DIALOGUE
         assert result[0].type == "DEATH"
-        assert result[1].type == "GAP"
+        assert isinstance(result[1], NarrativeCue)
+        assert result[1].type == "TIME_GAP"
         assert result[2].type == "DIALOGUE"
     
-    def test_gap_message_format(self):
-        """GAP event message is properly formatted."""
+    def test_narrative_cue_message_format(self):
+        """NarrativeCue message is properly formatted."""
         MS_PER_HOUR = 60 * 60 * 1000
         events = [Event(type="DEATH", game_time_ms=1000 + (15 * MS_PER_HOUR))]
         
         result = inject_time_gaps(events, last_update_time_ms=1000)
-        gap_event = result[0]
+        cue = result[0]
         
-        assert gap_event.context["message"] == "TIME GAP: Approximately 15 hours have passed since the last event."
+        assert isinstance(cue, NarrativeCue)
+        assert cue.message == "TIME GAP: Approximately 15 hours have passed since the last event."
     
-    def test_describe_event_formats_gap(self):
-        """describe_event properly formats GAP events."""
-        gap_event = Event(
-            type="GAP",
-            context={"hours": 12, "message": "TIME GAP: Approximately 12 hours have passed since the last event."},
+    def test_narrative_cue_is_cue_property(self):
+        """NarrativeCue has is_cue property that returns True."""
+        cue = NarrativeCue(
+            type="TIME_GAP",
+            message="TIME GAP: Approximately 12 hours have passed since the last event.",
             game_time_ms=5000,
-            flags={}
         )
         
-        description = describe_event(gap_event)
-        
-        assert "TIME GAP" in description
-        assert "12 hours" in description
+        assert cue.is_cue is True
+        assert cue.type == "TIME_GAP"
+        assert "12 hours" in cue.message

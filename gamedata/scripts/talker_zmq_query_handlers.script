@@ -296,8 +296,91 @@ local function handle_characters_nearby(topic, payload)
     end
 end
 
+--------------------------------------------------------------------------------
+-- Characters Alive Handler
+--------------------------------------------------------------------------------
+
+--- Helper to find a server object by story ID
+-- Checks both Engine Lookup and Script Registry
+local function get_story_object(id)
+    -- 1. Try Engine Lookup
+    local sobj = alife():story_object(id)
+    if sobj then
+        return sobj
+    end
+
+    -- 2. Try Script Registry (story_objects.script)
+    -- This handles modded characters that aren't in game_story_ids.ltx
+    if _G.story_objects and _G.story_objects.object_id_by_story_id then
+        local numeric_id = _G.story_objects.object_id_by_story_id[id]
+        if numeric_id then
+            return alife():object(numeric_id)
+        end
+    end
+
+    return nil
+end
+
+--- Check if a server object is alive
+-- Handles both online/offline objects and squads
+local function is_sobj_alive(sobj)
+    if not sobj then
+        return false
+    end
+    
+    -- Handle objects with alive() method
+    if type(sobj.alive) == "function" then
+        return sobj:alive()
+    end
+    
+    -- Squad fallback: Check if npc_count is 0
+    if sobj:clsid() == clsid.online_offline_group_s then
+        local npc_count = 0
+        if type(sobj.npc_count) == "function" then
+            npc_count = sobj:npc_count()
+        else
+            npc_count = sobj.npc_count or 0
+        end
+        return npc_count > 0
+    end
+    
+    -- Default to true if we can't determine (assume alive)
+    return true
+end
+
+--- Handler for characters.alive query
+-- Checks alive status for a list of character story IDs
+local function handle_characters_alive(topic, payload)
+    local request_id = payload.request_id
+    local ids = payload.ids or {}
+    
+    logger.debug("Handling characters.alive for %d IDs", #ids)
+    
+    local ok, result = pcall(function()
+        local alive_status = {}
+        
+        for _, id in ipairs(ids) do
+            local sobj = get_story_object(id)
+            if sobj then
+                alive_status[id] = is_sobj_alive(sobj)
+            else
+                -- Unknown/non-existent character - report as dead
+                alive_status[id] = false
+            end
+        end
+        
+        return alive_status
+    end)
+    
+    if ok then
+        publish_response(request_id, "characters.alive", result)
+    else
+        publish_error(request_id, "characters.alive", tostring(result))
+    end
+end
+
 --- Handler for world.context query
--- Fetches current world context (location, time, weather)
+-- Fetches current world context (location, time, weather, info portions)
 local function handle_world_context(topic, payload)
     local request_id = payload.request_id
     
@@ -309,13 +392,38 @@ local function handle_world_context(topic, payload)
             error("talker_game_queries not available")
         end
         
+        -- Get time components
+        local game_time = game.get_game_time()
+        local time_obj = {
+            Y = game_time:year(),
+            M = game_time:month(),
+            D = game_time:day(),
+            h = game_time:hour(),
+            m = game_time:minute(),
+            s = game_time:second(),
+            ms = game_time:millisecond(),
+        }
+        
+        -- Check info portions for major world events
+        local brain_scorcher_disabled = has_alife_info and has_alife_info("bar_deactivate_radar_done") or false
+        local miracle_machine_disabled = has_alife_info and has_alife_info("yan_kill_brain_done") or false
+        
         return {
+            loc = queries.get_location_technical_name(),
+            poi = queries.get_nearby_smart_terrain_name(),
+            time = time_obj,
+            weather = queries.describe_weather(),
+            emission = queries.is_emission_active and queries.is_emission_active() or false,
+            psy_storm = queries.is_psy_storm_active and queries.is_psy_storm_active() or false,
+            sheltering = queries.is_player_sheltering and queries.is_player_sheltering() or false,
+            campfire = queries.get_nearby_campfire_state and queries.get_nearby_campfire_state() or nil,
+            brain_scorcher_disabled = brain_scorcher_disabled,
+            miracle_machine_disabled = miracle_machine_disabled,
+            -- Keep legacy fields for backward compatibility
             location = queries.get_location_name(),
             location_technical = queries.get_location_technical_name(),
             nearby_smart_terrain = queries.get_nearby_smart_terrain_name(),
             time_of_day = queries.describe_current_time(),
-            weather = queries.describe_weather(),
-            emission = queries.describe_emission(),
             game_time_ms = queries.get_game_time_ms(),
         }
     end)
@@ -344,6 +452,7 @@ local function register_handlers()
     zmq.register_command_handler("state.query.events", handle_events_recent)
     zmq.register_command_handler("state.query.character", handle_character_get)
     zmq.register_command_handler("state.query.characters_nearby", handle_characters_nearby)
+    zmq.register_command_handler("state.query.characters_alive", handle_characters_alive)
     zmq.register_command_handler("state.query.world", handle_world_context)
     
     logger.info("ZMQ query handlers registered successfully")

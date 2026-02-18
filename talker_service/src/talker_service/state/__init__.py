@@ -1,7 +1,14 @@
 """State query module for querying game state from Lua via ZMQ."""
 
 from .client import StateQueryClient
-from .models import MemoryContext, Character, Event, WorldContext
+from .models import (
+    MemoryContext,
+    Character,
+    Event,
+    WorldContext,
+    SceneContext,
+    CharactersAliveResponse,
+)
 
 __all__ = [
     "StateQueryClient",
@@ -9,4 +16,6 @@ __all__ = [
     "Character",
     "Event",
     "WorldContext",
+    "SceneContext",
+    "CharactersAliveResponse",
 ]

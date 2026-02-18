@@ -6,16 +6,21 @@ from typing import Any
 
 @dataclass
 class Character:
-    """Character data returned from Lua."""
+    """Character data.
+    
+    Canonical model for character information throughout the service.
+    Mirrors the Lua Character entity structure.
+    """
     game_id: str
     name: str
-    faction: str = ""
-    experience: str = ""  # Rank
+    faction: str = "stalker"
+    experience: str = "Experienced"  # Rank
     reputation: int = 0
     personality: str = ""
     backstory: str = ""
     weapon: str = ""
-    visual_faction: str | None = None
+    visual_faction: str | None = None  # For disguises
+    story_id: str | None = None  # Story ID for notable character matching
     
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "Character":
@@ -23,41 +28,51 @@ class Character:
         return cls(
             game_id=str(data.get("game_id", "")),
             name=data.get("name", "Unknown"),
-            faction=data.get("faction", ""),
-            experience=data.get("experience", ""),
+            faction=data.get("faction", "stalker"),
+            experience=data.get("experience", "Experienced"),
             reputation=data.get("reputation", 0),
             personality=data.get("personality", ""),
             backstory=data.get("backstory", ""),
             weapon=data.get("weapon", ""),
             visual_faction=data.get("visual_faction"),
+            story_id=data.get("story_id"),
         )
 
 
 @dataclass
 class Event:
-    """Event data returned from Lua."""
+    """Event data.
+    
+    Canonical model for game events throughout the service.
+    All events use typed format with `type` and `context` fields.
+    """
+    game_time_ms: int
     type: str | None = None
-    content: str | None = None  # Legacy format
     context: dict[str, Any] = field(default_factory=dict)
-    game_time_ms: int = 0
-    world_context: str = ""
     witnesses: list[Character] = field(default_factory=list)
     flags: dict[str, Any] = field(default_factory=dict)
     
+    @property
+    def is_typed(self) -> bool:
+        """Check if this is a typed event."""
+        return self.type is not None
+    
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "Event":
-        """Create Event from dict."""
+        """Create Event from dict.
+        
+        Note: world_context is intentionally ignored if present in data.
+        World context is now queried JIT during prompt building.
+        """
         witnesses = []
         for w in data.get("witnesses", []):
             if isinstance(w, dict):
                 witnesses.append(Character.from_dict(w))
         
         return cls(
-            type=data.get("type"),
-            content=data.get("content"),
-            context=data.get("context", {}),
             game_time_ms=data.get("game_time_ms", 0),
-            world_context=data.get("world_context", ""),
+            type=data.get("type"),
+            context=data.get("context", {}),
             witnesses=witnesses,
             flags=data.get("flags", {}),
         )
@@ -65,11 +80,15 @@ class Event:
 
 @dataclass
 class MemoryContext:
-    """Memory context for a character."""
-    character_id: str
+    """Memory context for dialogue prompts.
+    
+    Canonical model for character memory context throughout the service.
+    Contains long-term narrative plus recent events.
+    """
     narrative: str | None = None
     last_update_time_ms: int = 0
     new_events: list[Event] = field(default_factory=list)
+    character_id: str | None = None  # Optional, set when querying for specific character
     
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "MemoryContext":
@@ -79,11 +98,13 @@ class MemoryContext:
             if isinstance(e, dict):
                 new_events.append(Event.from_dict(e))
         
+        # character_id may or may not be present
+        char_id = data.get("character_id")
         return cls(
-            character_id=str(data.get("character_id", "")),
             narrative=data.get("narrative"),
             last_update_time_ms=data.get("last_update_time_ms", 0),
             new_events=new_events,
+            character_id=str(char_id) if char_id else None,
         )
 
 
@@ -110,3 +131,56 @@ class WorldContext:
             emission=data.get("emission", ""),
             game_time_ms=data.get("game_time_ms", 0),
         )
+
+
+@dataclass
+class SceneContext:
+    """Enhanced scene context from world.context query.
+    
+    Contains location, time, weather, and world state info portions.
+    """
+    loc: str = ""
+    poi: str | None = None
+    time: dict[str, int] | None = None  # {Y, M, D, h, m, s, ms}
+    weather: str = ""
+    emission: bool = False
+    psy_storm: bool = False
+    sheltering: bool = False
+    campfire: str | None = None  # "lit" | "unlit" | None
+    brain_scorcher_disabled: bool = False
+    miracle_machine_disabled: bool = False
+    
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "SceneContext":
+        """Create SceneContext from dict."""
+        return cls(
+            loc=data.get("loc", ""),
+            poi=data.get("poi"),
+            time=data.get("time"),
+            weather=data.get("weather", ""),
+            emission=data.get("emission", False),
+            psy_storm=data.get("psy_storm", False),
+            sheltering=data.get("sheltering", False),
+            campfire=data.get("campfire"),
+            brain_scorcher_disabled=data.get("brain_scorcher_disabled", False),
+            miracle_machine_disabled=data.get("miracle_machine_disabled", False),
+        )
+
+
+@dataclass
+class CharactersAliveResponse:
+    """Response from characters.alive query.
+    
+    Maps character story_id to alive status.
+    """
+    alive_status: dict[str, bool]
+    
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "CharactersAliveResponse":
+        """Create CharactersAliveResponse from dict.
+        
+        Expects data to be the mapping directly: {"story_id1": true, "story_id2": false}
+        """
+        # Filter to only include boolean values
+        alive_status = {k: bool(v) for k, v in data.items() if isinstance(v, bool)}
+        return cls(alive_status=alive_status)

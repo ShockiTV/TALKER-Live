@@ -30,13 +30,13 @@ end
 -- Test was_conversation check (uses source_event field)
 function testWasConversation()
     local speaker = mock_character("John", "1")
-    local source_event = Event.create(EventType.TAUNT, { actor = speaker }, 8000, "Street", {speaker})
+    local source_event = Event.create(EventType.TAUNT, { actor = speaker }, 8000, {speaker})
     
     -- Create a dialogue event as a response (with source_event reference)
-    local conversation = Event.create(EventType.DIALOGUE, { speaker = speaker, text = "Hello!" }, 8001, "Street", {speaker})
+    local conversation = Event.create(EventType.DIALOGUE, { speaker = speaker, text = "Hello!" }, 8001, {speaker})
     conversation.source_event = source_event  -- This is how dialogue events reference their source
     
-    local non_conversation = Event.create(EventType.DIALOGUE, { speaker = speaker, text = "Random comment" }, 8002, "Street", {speaker})
+    local non_conversation = Event.create(EventType.DIALOGUE, { speaker = speaker, text = "Random comment" }, 8002, {speaker})
 
     luaunit.assertTrue(Event.was_conversation(conversation))
     luaunit.assertFalse(Event.was_conversation(non_conversation))
@@ -48,7 +48,7 @@ function testWasWitnessedBy()
     local witness2 = mock_character("Witness2", "2")
     local actor = mock_character("Actor", "3")
     
-    local event = Event.create(EventType.INJURY, { actor = actor }, 1000, "Forest", {witness1, witness2})
+    local event = Event.create(EventType.INJURY, { actor = actor }, 1000, {witness1, witness2})
 
     luaunit.assertTrue(Event.was_witnessed_by(event, "1"))
     luaunit.assertTrue(Event.was_witnessed_by(event, "2"))
@@ -61,14 +61,13 @@ function testTypedEventCreation()
     local context = { actor = actor }
     local witnesses = { actor }
     
-    local event = Event.create(EventType.WEAPON_JAM, context, 1000, "Forest", witnesses)
+    local event = Event.create(EventType.WEAPON_JAM, context, 1000, witnesses)
     
     luaunit.assertNotNil(event)
     luaunit.assertEquals(event.type, EventType.WEAPON_JAM)
     luaunit.assertNotNil(event.context)
     luaunit.assertEquals(event.context.actor.name, "John")
     luaunit.assertEquals(event.game_time_ms, 1000)
-    luaunit.assertEquals(event.world_context, "Forest")
     luaunit.assertEquals(#event.witnesses, 1)
 end
 
@@ -78,132 +77,20 @@ function testTypedEventWithFlags()
     local context = { actor = actor }
     local flags = { is_silent = true }
     
-    local event = Event.create(EventType.INJURY, context, 2000, "Swamp", {actor}, flags)
+    local event = Event.create(EventType.INJURY, context, 2000, {actor}, flags)
     
     luaunit.assertNotNil(event.flags)
     luaunit.assertTrue(event.flags.is_silent)
-end
-
--- Test Event.describe() for DEATH event
-function testTypedEventDescribeDeath()
-    local victim = mock_character("Victim", "1", "Bandit", "Novice")
-    local killer = mock_character("Killer", "2", "stalker", "Veteran")
-    local context = { victim = victim, killer = killer }
-    
-    local event = Event.create(EventType.DEATH, context, 1000, "Garbage", {killer})
-    local description = Event.describe(event)
-    
-    luaunit.assertStrContains(description, "killed")
-    luaunit.assertStrContains(description, "Victim")
-end
-
--- Test Event.describe() for DIALOGUE event
-function testTypedEventDescribeDialogue()
-    local speaker = mock_character("Speaker", "1")
-    local context = { speaker = speaker, text = "Hello there!" }
-    
-    local event = Event.create(EventType.DIALOGUE, context, 1000, "Bar", {speaker})
-    local description = Event.describe(event)
-    
-    luaunit.assertStrContains(description, "said:")
-    luaunit.assertStrContains(description, "Hello there!")
-end
-
--- Test Event.describe() for whisper DIALOGUE event
-function testTypedEventDescribeWhisper()
-    local speaker = mock_character("Speaker", "1")
-    local context = { speaker = speaker, text = "Secret message", is_whisper = true }
-    
-    local event = Event.create(EventType.DIALOGUE, context, 1000, "Bar", {speaker})
-    local description = Event.describe(event)
-    
-    luaunit.assertStrContains(description, "whispered")
-    luaunit.assertStrContains(description, "Secret message")
-end
-
--- Test Event.describe() for CALLOUT event
-function testTypedEventDescribeCallout()
-    local spotter = mock_character("Spotter", "1")
-    local target = mock_character("Enemy", "2", "Bandit")
-    local context = { spotter = spotter, target = target }
-    
-    local event = Event.create(EventType.CALLOUT, context, 1000, "Cordon", {spotter})
-    local description = Event.describe(event)
-    
-    luaunit.assertStrContains(description, "spotted")
-end
-
--- Test Event.describe() for ARTIFACT event
-function testTypedEventDescribeArtifact()
-    local actor = mock_character("Stalker", "1")
-    local context = { actor = actor, action = "pickup", item_name = "Moonlight" }
-    
-    local event = Event.create(EventType.ARTIFACT, context, 1000, "Yantar", {actor})
-    local description = Event.describe(event)
-    
-    luaunit.assertStrContains(description, "picked up")
-    luaunit.assertStrContains(description, "Moonlight")
-end
-
--- Test Event.describe() for MAP_TRANSITION event
-function testTypedEventDescribeMapTransition()
-    local actor = mock_character("Traveler", "1")
-    local context = { actor = actor, source = "Cordon", destination = "Garbage" }
-    
-    local event = Event.create(EventType.MAP_TRANSITION, context, 1000, "Garbage", {actor})
-    local description = Event.describe(event)
-    
-    luaunit.assertStrContains(description, "traveled")
-    luaunit.assertStrContains(description, "Cordon")
-    luaunit.assertStrContains(description, "Garbage")
-end
-
--- Test Event.describe() for EMISSION event
-function testTypedEventDescribeEmission()
-    local context = { emission_type = "emission", status = "starting" }
-    
-    local event = Event.create(EventType.EMISSION, context, 1000, "Zone", {})
-    local description = Event.describe(event)
-    
-    luaunit.assertStrContains(description, "Emission")
-    luaunit.assertStrContains(description, "starting")
-end
-
--- Test Event.describe() for content-based events (compressed memories)
-function testTypedEventDescribeContent()
-    local event = {
-        content = "This is a compressed memory summary.",
-        game_time_ms = 1000,
-        flags = { is_compressed = true }
-    }
-    
-    local description = Event.describe(event)
-    luaunit.assertEquals(description, "This is a compressed memory summary.")
-end
-
--- Test Event.describe() falls back to description field for legacy/raw events
-function testTypedEventDescribeLegacyFallback()
-    -- Simulate a legacy event with description field (e.g., from old save data)
-    local legacy_event = {
-        description = "%s %s %s",
-        involved_objects = {"Bob", "ran", "away"},
-        game_time_ms = 1000,
-        world_context = "Forest",
-        witnesses = {}
-    }
-    local description = Event.describe(legacy_event)
-    
-    luaunit.assertEquals(description, "Bob ran away")
 end
 
 -- Test Event.is_junk_event() for typed events
 function testIsJunkEventTyped()
     local actor = mock_character("Test", "1")
     
-    local artifact_event = Event.create(EventType.ARTIFACT, { actor = actor, action = "pickup", item_name = "Stone" }, 1000, "Zone", {})
-    local anomaly_event = Event.create(EventType.ANOMALY, { actor = actor, anomaly_type = "electro" }, 1000, "Zone", {})
-    local reload_event = Event.create(EventType.RELOAD, { actor = actor }, 1000, "Zone", {})
-    local death_event = Event.create(EventType.DEATH, { victim = actor }, 1000, "Zone", {})
+    local artifact_event = Event.create(EventType.ARTIFACT, { actor = actor, action = "pickup", item_name = "Stone" }, 1000, {})
+    local anomaly_event = Event.create(EventType.ANOMALY, { actor = actor, anomaly_type = "electro" }, 1000, {})
+    local reload_event = Event.create(EventType.RELOAD, { actor = actor }, 1000, {})
+    local death_event = Event.create(EventType.DEATH, { victim = actor }, 1000, {})
     
     luaunit.assertTrue(Event.is_junk_event(artifact_event))
     luaunit.assertTrue(Event.is_junk_event(anomaly_event))
@@ -235,7 +122,7 @@ function testGetInvolvedCharactersTyped()
         companions = { companion1, companion2 }
     }
     
-    local event = Event.create(EventType.TAUNT, context, 1000, "Zone", {})
+    local event = Event.create(EventType.TAUNT, context, 1000, {})
     local characters = Event.get_involved_characters(event)
     
     luaunit.assertEquals(#characters, 4)
