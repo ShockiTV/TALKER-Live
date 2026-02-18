@@ -3,8 +3,14 @@
 Ports helper functions from Lua's prompt_builder.lua and event.lua.
 """
 
-from .models import Character, Event
+from typing import Any, Union
+
+from .models import Character, Event, NarrativeCue
 from .factions import resolve_faction_name
+
+
+# Type alias for items that can appear in a prompt sequence
+PromptItem = Union[Event, NarrativeCue]
 
 
 # Event types considered "junk" (low value for narrative)
@@ -14,6 +20,24 @@ JUNK_EVENT_TYPES = {
     "RELOAD",
     "WEAPON_JAM",
 }
+
+
+def _char_from_context(value: Any) -> Character | None:
+    """Extract Character from context value.
+    
+    Handles both dict (from ZMQ payload) and Character object (from state query).
+    
+    Args:
+        value: Context value that may be a Character or dict
+        
+    Returns:
+        Character if valid, None otherwise
+    """
+    if isinstance(value, Character):
+        return value
+    if isinstance(value, dict):
+        return Character.from_dict(value)
+    return None
 
 
 def describe_character(char: Character) -> str:
@@ -62,10 +86,22 @@ def describe_character_with_id(char: Character) -> str:
     return f"[ID: {char.game_id}] {describe_character(char)}"
 
 
+def describe_prompt_item(item: PromptItem) -> str:
+    """Convert a prompt item (Event or NarrativeCue) to human-readable text.
+    
+    Args:
+        item: Event or NarrativeCue to describe
+        
+    Returns:
+        Human-readable description
+    """
+    if isinstance(item, NarrativeCue):
+        return item.message
+    return describe_event(item)
+
+
 def describe_event(event: Event) -> str:
     """Convert event to human-readable text.
-    
-    Handles both typed events and legacy content-based events.
     
     Args:
         event: Event to describe
@@ -73,20 +109,11 @@ def describe_event(event: Event) -> str:
     Returns:
         Human-readable event description
     """
-    # Synthetic/compressed events return content directly
-    if event.is_synthetic and event.content:
-        return event.content
-    
-    # Legacy content-based events
-    if event.content and not event.is_typed:
-        return event.content
-    
     # Typed events - format based on type
     if event.type:
         return _format_typed_event(event)
     
-    # Fallback
-    return event.content or "Unknown event"
+    return "Unknown event"
 
 
 def _format_typed_event(event: Event) -> str:
@@ -95,16 +122,12 @@ def _format_typed_event(event: Event) -> str:
     # Normalize to uppercase for case-insensitive matching (Lua uses lowercase)
     event_type = event.type.upper() if event.type else None
     
-    # Get actor description if present
-    actor = None
-    if "actor" in ctx and isinstance(ctx["actor"], dict):
-        actor = Character.from_dict(ctx["actor"])
+    # Get actor description if present (common field for many events)
+    actor = _char_from_context(ctx.get("actor"))
     
     if event_type == "DEATH":
-        victim = ctx.get("victim", {})
-        killer = ctx.get("killer", {})
-        victim_char = Character.from_dict(victim) if isinstance(victim, dict) else None
-        killer_char = Character.from_dict(killer) if isinstance(killer, dict) else None
+        victim_char = _char_from_context(ctx.get("victim"))
+        killer_char = _char_from_context(ctx.get("killer"))
         
         if killer_char and victim_char:
             return f"{describe_character(killer_char)} killed {describe_character(victim_char)}"
@@ -113,27 +136,23 @@ def _format_typed_event(event: Event) -> str:
         return "Someone died"
     
     elif event_type == "DIALOGUE":
-        speaker = ctx.get("speaker", {})
         text = ctx.get("text", "")
-        speaker_char = Character.from_dict(speaker) if isinstance(speaker, dict) else None
+        speaker_char = _char_from_context(ctx.get("speaker"))
         
         if speaker_char:
             return f'{describe_character(speaker_char)} said: "{text}"'
         return f'Someone said: "{text}"'
     
     elif event_type == "CALLOUT":
-        spotter = ctx.get("spotter", {})
-        target = ctx.get("target", {})
-        spotter_char = Character.from_dict(spotter) if isinstance(spotter, dict) else None
-        target_char = Character.from_dict(target) if isinstance(target, dict) else None
+        spotter_char = _char_from_context(ctx.get("spotter"))
+        target_char = _char_from_context(ctx.get("target"))
         
         if spotter_char and target_char:
             return f"{describe_character(spotter_char)} spotted {describe_character(target_char)}"
         return "Someone spotted an enemy"
     
     elif event_type == "TAUNT":
-        taunter = ctx.get("taunter", {})
-        taunter_char = Character.from_dict(taunter) if isinstance(taunter, dict) else None
+        taunter_char = _char_from_context(ctx.get("taunter"))
         
         if taunter_char:
             return f"{describe_character(taunter_char)} taunted their enemies"
@@ -208,18 +227,15 @@ def _format_typed_event(event: Event) -> str:
             return f"{describe_character(actor)} {action_text}"
         return action_text
     
-    elif event_type == "GAP":
-        # Time gap event - return the message directly
-        message = ctx.get("message", "")
-        hours = ctx.get("hours", 0)
-        if message:
-            return message
-        elif hours:
-            return f"TIME GAP: Approximately {hours} hours have passed."
-        return "TIME GAP: Some time has passed."
+    elif event_type == "COMPRESSED":
+        # Compressed events contain a narrative summary in context.narrative
+        narrative = ctx.get("narrative", "")
+        if narrative:
+            return f"[COMPRESSED MEMORY] {narrative}"
+        return "[COMPRESSED MEMORY] (no narrative available)"
     
     # Fallback for unknown types
-    return event.content or f"Event: {event_type}"
+    return f"Event: {event_type}"
 
 
 def is_junk_event(event: Event) -> bool:
@@ -238,14 +254,6 @@ def is_junk_event(event: Event) -> bool:
     # Check flags
     if event.flags.get("is_junk"):
         return True
-    
-    # Legacy content-based checks
-    if event.content:
-        content_lower = event.content.lower()
-        junk_keywords = ["artifact", "anomaly", "reload", "jammed"]
-        for keyword in junk_keywords:
-            if keyword in content_lower:
-                return True
     
     return False
 
@@ -277,8 +285,8 @@ def inject_time_gaps(
     events: list[Event],
     last_update_time_ms: int = 0,
     time_gap_hours: int = DEFAULT_TIME_GAP_HOURS,
-) -> list[Event]:
-    """Inject synthetic TIME GAP events between events with significant time gaps.
+) -> list[PromptItem]:
+    """Inject NarrativeCue markers between events with significant time gaps.
     
     Similar to Lua's transformations.inject_time_gaps().
     
@@ -288,13 +296,13 @@ def inject_time_gaps(
         time_gap_hours: Minimum hours to consider a "significant" gap
         
     Returns:
-        New list with GAP events injected where appropriate
+        Mixed list of Events and NarrativeCues for prompt building
     """
     if not events:
         return []
     
     significant_gap_ms = time_gap_hours * MS_PER_HOUR
-    processed_events: list[Event] = []
+    processed: list[PromptItem] = []
     
     # Sort events by time just in case
     sorted_events = sorted(events, key=lambda e: e.game_time_ms)
@@ -305,11 +313,11 @@ def inject_time_gaps(
         delta = first_event_time - last_update_time_ms
         if delta > significant_gap_ms:
             hours = delta // MS_PER_HOUR
-            gap_event = _create_gap_event(
+            cue = _create_time_gap_cue(
                 timestamp_ms=last_update_time_ms + 1,
                 hours=hours,
             )
-            processed_events.append(gap_event)
+            processed.append(cue)
     
     # 2. Process events and check internal gaps
     for i, event in enumerate(sorted_events):
@@ -321,35 +329,31 @@ def inject_time_gaps(
             
             if delta > significant_gap_ms:
                 hours = delta // MS_PER_HOUR
-                gap_event = _create_gap_event(
+                cue = _create_time_gap_cue(
                     timestamp_ms=prev_time + 1,
                     hours=hours,
                 )
-                processed_events.append(gap_event)
+                processed.append(cue)
         
-        processed_events.append(event)
+        processed.append(event)
     
-    return processed_events
+    return processed
 
 
-def _create_gap_event(timestamp_ms: int, hours: int) -> Event:
-    """Create a GAP event to mark time passage.
+def _create_time_gap_cue(timestamp_ms: int, hours: int) -> NarrativeCue:
+    """Create a NarrativeCue to mark time passage.
     
     Args:
-        timestamp_ms: Timestamp for the gap event
+        timestamp_ms: Timestamp for sorting with events
         hours: Number of hours in the gap
         
     Returns:
-        Event with type=GAP
+        NarrativeCue with type="TIME_GAP"
     """
     message = f"TIME GAP: Approximately {hours} hours have passed since the last event."
     
-    return Event(
+    return NarrativeCue(
+        type="TIME_GAP",
+        message=message,
         game_time_ms=timestamp_ms,
-        type="GAP",
-        context={
-            "hours": hours,
-            "message": message,
-        },
-        flags={},
     )

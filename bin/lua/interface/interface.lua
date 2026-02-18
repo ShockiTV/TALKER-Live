@@ -43,12 +43,12 @@ end
 local function register_typed_event_internal(event_type, context, witnesses, important, flags)
 	log.info("Registering typed event: %s", tostring(event_type))
 
-	-- Get game time and world context from game adapter
+	-- Get game time from game adapter
+	-- Note: world_context removed - now queried JIT during prompt building
 	local game_time = query.get_game_time_ms()
-	local world_context = query.describe_world()
 
 	-- Create typed event using Event.create
-	local new_event = Event.create(event_type, context, game_time, world_context, witnesses, flags)
+	local new_event = Event.create(event_type, context, game_time, witnesses, flags)
 	log.debug("New typed event: %s", new_event)
 
 	-- PARALLEL: Publish to ZMQ (fire-and-forget, won't block)

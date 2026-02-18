@@ -9,10 +9,12 @@ from typing import Optional
 
 from loguru import logger
 
-from .models import Character, Event, MemoryContext
-from .helpers import describe_character, describe_character_with_id, describe_event, is_junk_event, inject_time_gaps
+from .models import Character, Event, MemoryContext, NarrativeCue
+from .helpers import describe_character, describe_character_with_id, describe_event, describe_prompt_item, is_junk_event, inject_time_gaps, PromptItem
 from .factions import get_faction_description, get_faction_relations_text, resolve_faction_name
 from .lookup import resolve_personality, resolve_backstory
+
+from texts.locations import get_location_name
 
 
 @dataclass
@@ -167,6 +169,8 @@ def create_dialogue_request_prompt(
     player_name: str = "the user",
     action_descriptions: bool = False,
     is_companion: bool = False,
+    scene_context: Optional[dict] = None,
+    world_state_context: str = "",
 ) -> tuple[list[Message], Optional[int]]:
     """Create prompt for generating dialogue.
     
@@ -176,6 +180,8 @@ def create_dialogue_request_prompt(
         player_name: Name of the player character
         action_descriptions: Whether to allow action descriptions (*sighs* etc)
         is_companion: Whether speaker is player's companion
+        scene_context: Optional scene data from world.context query (loc, poi, time, weather, etc.)
+        world_state_context: Optional world state context (dead leaders, info portions, etc.)
         
     Returns:
         Tuple of (messages list, timestamp_to_delete if idle event)
@@ -305,26 +311,76 @@ def create_dialogue_request_prompt(
     # Context section
     messages.append(Message.system("<CONTEXT>\n"))
     
+    # Current location section (from scene context)
+    if scene_context:
+        location_parts = []
+        
+        # Location name (translate technical ID)
+        loc = scene_context.get("loc")
+        if loc:
+            location_name = get_location_name(loc)
+            poi = scene_context.get("poi")
+            if poi:
+                location_parts.append(f"Location: {location_name} (near {poi})")
+            else:
+                location_parts.append(f"Location: {location_name}")
+        
+        # Time of day (derive from hour)
+        time_data = scene_context.get("time")
+        if time_data and isinstance(time_data, dict):
+            hour = time_data.get("h")
+            if hour is not None:
+                if hour < 6:
+                    location_parts.append("Time: night")
+                elif hour < 12:
+                    location_parts.append("Time: morning")
+                elif hour < 18:
+                    location_parts.append("Time: afternoon")
+                else:
+                    location_parts.append("Time: evening")
+        
+        # Weather
+        weather = scene_context.get("weather")
+        if weather:
+            location_parts.append(f"Weather: {weather}")
+        
+        # Emission/psy storm warnings
+        if scene_context.get("emission"):
+            location_parts.append("**WARNING: EMISSION ACTIVE**")
+        if scene_context.get("psy_storm"):
+            location_parts.append("**WARNING: PSY-STORM ACTIVE**")
+        if scene_context.get("sheltering"):
+            location_parts.append("(Currently sheltering)")
+        
+        # Campfire state
+        campfire_state = scene_context.get("campfire")
+        if campfire_state == "lit":
+            location_parts.append("(At a lit campfire)")
+        elif campfire_state == "unlit":
+            location_parts.append("(Near an unlit campfire)")
+        
+        # Only add section if we have any location info
+        if location_parts:
+            location_text = "\n".join(location_parts)
+            messages.append(Message.system(f"## CURRENT LOCATION\n\n{location_text}\n"))
+    
+    # Dynamic world state section (dead leaders, info portions, regional politics)
+    if world_state_context and world_state_context.strip():
+        messages.append(Message.system(f"## DYNAMIC WORLD STATE / NEWS\n\n{world_state_context}\n"))
+    
     # Long-term memories
     if narrative:
         messages.append(Message.system(f"## LONG-TERM MEMORIES\n\n<MEMORIES>\n{narrative}\n</MEMORIES>"))
     
     messages.append(Message.system("## Events\n\n<EVENTS>\n"))
     
-    # Handle compressed memory vs raw events
-    start_idx = 0
-    if new_events and new_events[0].flags and new_events[0].flags.get("is_compressed"):
-        content = describe_event(new_events[0])
-        messages.append(Message.system(f"### RECENT EVENTS\n(Since last long-term memory update)\n{content}"))
-        start_idx = 1
-    
     # Current events
     if not new_events:
         messages.append(Message.system("### CURRENT EVENTS\n(No new events)\n"))
-    elif start_idx < len(new_events):
+    else:
         messages.append(Message.system("### CURRENT EVENTS\n(from oldest to newest):\n"))
-        for event in new_events[start_idx:]:
-            content = describe_event(event)
+        for item in new_events:
+            content = describe_prompt_item(item)
             messages.append(Message.user(content))
     
     messages.append(Message.system("</EVENTS>\n\n"))
@@ -398,10 +454,11 @@ def create_compress_memories_prompt(
     
     messages.append(Message.system("## EVENTS TO SUMMARIZE\n\n<EVENTS>"))
     
-    # Add events, filtering out junk
-    for event in processed_events:
-        if not is_junk_event(event):
-            content = describe_event(event)
+    # Add events, filtering out junk (NarrativeCues are always included)
+    for item in processed_events:
+        # NarrativeCues are always included; only filter junk Events
+        if isinstance(item, NarrativeCue) or not is_junk_event(item):
+            content = describe_prompt_item(item)
             messages.append(Message.user(content))
     
     messages.append(Message.system("\n</EVENTS>"))
@@ -535,9 +592,10 @@ def create_update_narrative_prompt(
     
     # Inject new events
     new_events_text = ""
-    for event in sorted_events:
-        if not is_junk_event(event):
-            content = describe_event(event)
+    for item in sorted_events:
+        # NarrativeCues are always included; only filter junk Events
+        if isinstance(item, NarrativeCue) or not is_junk_event(item):
+            content = describe_prompt_item(item)
             new_events_text += f"- {content}\n"
     
     if new_events_text:

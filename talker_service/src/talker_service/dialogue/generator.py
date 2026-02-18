@@ -14,10 +14,12 @@ from ..prompts import (
     create_pick_speaker_prompt,
     create_compress_memories_prompt,
     create_update_narrative_prompt,
-    Character as PromptCharacter,
-    Event as PromptEvent,
-    MemoryContext as PromptMemoryContext,
+    Character,
+    Event,
+    MemoryContext,
 )
+from ..prompts.world_context import build_world_context
+from ..state.models import SceneContext
 
 
 # Memory compression threshold
@@ -198,21 +200,21 @@ class DialogueGenerator:
         
         # Use LLM to pick speaker
         try:
-            # Convert to prompt format
+            # Convert witnesses from dicts to Character objects
             prompt_witnesses = [
-                PromptCharacter(
+                Character(
                     game_id=str(w.get("game_id", "")),
                     name=w.get("name", "Unknown"),
-                    faction=w.get("faction", ""),
-                    experience=w.get("experience", ""),
-                    reputation=w.get("reputation", ""),
+                    faction=w.get("faction", "stalker"),
+                    experience=w.get("experience", "Experienced"),
+                    reputation=w.get("reputation", 0),
                     personality=w.get("personality", ""),
                 )
                 for w in available
             ]
             
             # Build recent events list (use event as single item for now)
-            prompt_events = [self._event_to_prompt_event(event)]
+            prompt_events = [Event.from_dict(event)]
             
             prompt_messages = create_pick_speaker_prompt(prompt_events, prompt_witnesses)
             messages = [Message(role=m.role, content=m.content) for m in prompt_messages]
@@ -263,27 +265,57 @@ class DialogueGenerator:
             # Query character details
             character = await self.state.query_character(speaker_id)
             
-            # Convert to prompt format
-            prompt_character = PromptCharacter(
-                game_id=str(character.game_id),
-                name=character.name,
-                faction=character.faction,
-                experience=character.experience,
-                reputation=character.reputation,
-                personality=character.personality,
-                backstory=character.backstory,
-                weapon=character.weapon,
-                visual_faction=character.visual_faction,
-            )
+            # Query scene context JIT for CURRENT LOCATION section
+            scene_context = None
+            world_state_context = ""
+            try:
+                scene_ctx = await self.state.query_world_context()
+                # Build scene_context dict from SceneContext dataclass
+                scene_context = {
+                    "loc": scene_ctx.loc,
+                    "poi": scene_ctx.poi,
+                    "time": scene_ctx.time,
+                    "weather": scene_ctx.weather,
+                    "emission": scene_ctx.emission,
+                    "psy_storm": scene_ctx.psy_storm,
+                    "sheltering": scene_ctx.sheltering,
+                    "campfire": scene_ctx.campfire,
+                    "brain_scorcher_disabled": scene_ctx.brain_scorcher_disabled,
+                    "miracle_machine_disabled": scene_ctx.miracle_machine_disabled,
+                }
+                
+                # Build world state context (dead leaders, info portions, regional politics)
+                try:
+                    world_state_context = await build_world_context(
+                        scene_ctx,
+                        self.state,
+                        recent_events=memory_ctx.new_events,
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to build world context: {e}")
+                    world_state_context = ""
+            except Exception as e:
+                logger.warning(f"Failed to query scene context: {e}")
             
-            prompt_memory = PromptMemoryContext(
+            # Character from state query is already correct type
+            prompt_character = character
+            
+            prompt_memory = MemoryContext(
                 narrative=memory_ctx.narrative,
                 last_update_time_ms=memory_ctx.last_update_time_ms,
-                new_events=[self._state_event_to_prompt_event(e) for e in memory_ctx.new_events],
+                new_events=[
+                    *memory_ctx.new_events,
+                    Event.from_dict(event),  # Add input event as most recent
+                ],
             )
             
-            # Build dialogue prompt
-            prompt_messages, timestamp_to_delete = create_dialogue_request_prompt(prompt_character, prompt_memory)
+            # Build dialogue prompt with scene and world context
+            prompt_messages, timestamp_to_delete = create_dialogue_request_prompt(
+                prompt_character,
+                prompt_memory,
+                scene_context=scene_context,
+                world_state_context=world_state_context,
+            )
             
             # Convert prompt Message objects to LLM Message objects
             messages = [Message(role=m.role, content=m.content) for m in prompt_messages]
@@ -348,18 +380,11 @@ class DialogueGenerator:
             # Get character for prompt
             character = await self.state.query_character(speaker_id)
             
-            prompt_character = PromptCharacter(
-                game_id=str(character.game_id),
-                name=character.name,
-                faction=character.faction,
-                experience=character.experience,
-            )
+            # Character from state query is already correct type
+            prompt_character = character
             
-            # Convert events to prompt format
-            prompt_events = [
-                self._state_event_to_prompt_event(e) 
-                for e in memory_ctx.new_events
-            ]
+            # Events from state query are already correct type
+            prompt_events = memory_ctx.new_events
             
             current_narrative = memory_ctx.narrative
             
@@ -430,47 +455,3 @@ class DialogueGenerator:
             logger.info(f"Published dialogue for {speaker_id}: {dialogue[:50]}...")
         else:
             logger.error("Failed to publish dialogue command")
-    
-    def _event_to_prompt_event(self, event: dict[str, Any]) -> PromptEvent:
-        """Convert raw event dict to prompt Event."""
-        return PromptEvent(
-            type=event.get("type"),
-            content=event.get("content"),
-            context=event.get("context", {}),
-            game_time_ms=event.get("game_time_ms", 0),
-            world_context=event.get("world_context", ""),
-            witnesses=[
-                PromptCharacter(
-                    game_id=str(w.get("game_id", "")),
-                    name=w.get("name", "Unknown"),
-                    faction=w.get("faction", ""),
-                    experience=w.get("experience", ""),
-                    reputation=w.get("reputation", ""),
-                    personality=w.get("personality", ""),
-                )
-                for w in event.get("witnesses", [])
-            ],
-            flags=event.get("flags", {}),
-        )
-    
-    def _state_event_to_prompt_event(self, event: Any) -> PromptEvent:
-        """Convert state query Event to prompt Event."""
-        return PromptEvent(
-            type=event.type,
-            content=event.content,
-            context=event.context,
-            game_time_ms=event.game_time_ms,
-            world_context=event.world_context,
-            witnesses=[
-                PromptCharacter(
-                    game_id=str(w.game_id),
-                    name=w.name,
-                    faction=w.faction,
-                    experience=w.experience,
-                    reputation=w.reputation,
-                    personality=w.personality,
-                )
-                for w in event.witnesses
-            ],
-            flags=event.flags,
-        )

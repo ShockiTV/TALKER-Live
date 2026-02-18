@@ -146,6 +146,14 @@ class TestDialogueGenerator:
     def mock_state(self):
         """Create mock state query client."""
         state = AsyncMock()
+        # Set up _send_query to return empty dict (for query_characters_alive)
+        state._send_query = AsyncMock(return_value={})
+        # Set up query_world_context to return a scene context with required attributes
+        scene_ctx = MagicMock()
+        scene_ctx.loc = ""
+        scene_ctx.brain_scorcher_disabled = False
+        scene_ctx.miracle_machine_disabled = False
+        state.query_world_context = AsyncMock(return_value=scene_ctx)
         return state
     
     @pytest.fixture

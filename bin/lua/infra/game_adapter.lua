@@ -120,6 +120,8 @@ function m.create_character(game_object_person)
 	if weapon then
 		weapon_description = query.get_item_description(weapon)
 	end
+	-- Look up story_id for important character matching (nil for generic NPCs)
+	local story_id = query.get_story_id(game_id)
 	log.spam(
 		"creating character with id: "
 			.. game_id
@@ -131,8 +133,10 @@ function m.create_character(game_object_person)
 			.. faction
 			.. ", reputation: "
 			.. tostring(reputation)
+			.. ", story_id: "
+			.. tostring(story_id)
 	)
-	return Character.new(game_id, name, experience, faction, reputation, weapon_description, visual_faction)
+	return Character.new(game_id, name, experience, faction, reputation, weapon_description, visual_faction, story_id)
 end
 
 function m.get_player_weapon()
@@ -340,120 +344,6 @@ function m.get_faction_relations_string(speaker_faction, mentioned_factions_map)
 		end
 	end
 	return nil
-end
-
-function m.get_mentioned_factions(events)
-	local mentioned = {}
-	-- Faction names as they appear in event descriptions
-	local faction_names = {
-		"Mercenaries",
-		"Mercs",
-		"Mercenary",
-		"Duty",
-		"Freedom",
-		"Bandit",
-		"Monolith",
-		"Loner",
-		"stalker",
-		"Clear Sky",
-		"scientist",
-		"egghead",
-		"Ecolog",
-		"Army",
-		"Military",
-		"Renegade",
-		"Trader",
-		"Sin",
-		"UNISG",
-		"ISG",
-		"Zombie",
-		"Zombied",
-	}
-
-	for _, event in ipairs(events) do
-		local content = event.content or Event.describe_short(event)
-		for _, faction in ipairs(faction_names) do
-			-- Case-insensitive search for faction name
-			if content:lower():find(faction:lower(), 1, true) then
-				mentioned[faction] = true
-			end
-		end
-	end
-
-	return mentioned
-end
-
-function m.is_player_involved(events, player_name)
-	for _, event in ipairs(events) do
-		local content = event.content or Event.describe_short(event)
-		-- Case-insensitive search for player's name
-		if content:lower():find(player_name:lower(), 1, true) then
-			return true
-		end
-	end
-	return false
-end
-
--- Context-aware character mention detection
--- Returns a set (table with character IDs as keys) of notable characters that are contextually relevant
--- based on three checks: name in events, area in events, or current location match
-function m.get_mentioned_characters(events, current_location, notable_characters)
-	local mentioned = {}
-
-	-- Helper: Check if a name appears in any event
-	local function is_name_in_events(name)
-		for _, event in ipairs(events) do
-			local content = event.content or Event.describe_short(event)
-			-- Case-insensitive search for character name
-			if content:lower():find(name:lower(), 1, true) then
-				return true
-			end
-		end
-		return false
-	end
-
-	-- Helper: Check if an area is mentioned in any event
-	local function is_area_in_events(area)
-		for _, event in ipairs(events) do
-			local content = event.content or Event.describe_short(event)
-			-- Case-insensitive search for area name
-			if content:lower():find(area:lower(), 1, true) then
-				return true
-			end
-		end
-		return false
-	end
-
-	-- Check each notable character against our three criteria
-	for _, char in ipairs(notable_characters) do
-		local char_id = char.id or (char.ids and char.ids[1])
-
-		-- Check 1: Character name mentioned in events
-		local names_to_check = char.names or { char.name }
-		local name_found = false
-		for _, name in ipairs(names_to_check) do
-			if name and is_name_in_events(name) then
-				name_found = true
-				break
-			end
-		end
-
-		if name_found then
-			mentioned[char_id] = true
-		end
-
-		-- Check 2: Character's area mentioned in events
-		if not mentioned[char_id] and char.area and is_area_in_events(char.area) then
-			mentioned[char_id] = true
-		end
-
-		-- Check 3: Current location matches character's area
-		if not mentioned[char_id] and char.area and char.area == current_location then
-			mentioned[char_id] = true
-		end
-	end
-
-	return mentioned
 end
 
 ------------------------------------------------------------
