@@ -221,6 +221,114 @@ class TestDescribeEvent:
         assert "no narrative available" in desc
 
 
+class TestDescribeMapTransitionEvent:
+    """Tests for MAP_TRANSITION event formatting with technical IDs."""
+    
+    def test_map_transition_solo_travel(self):
+        """Test MAP_TRANSITION with actor traveling alone."""
+        actor = Character(game_id="1", name="Wolf", faction="stalker", experience="Veteran", reputation=1000)
+        event = Event(
+            type="MAP_TRANSITION",
+            context={
+                "actor": actor.__dict__,
+                "source": "l01_escape",
+                "destination": "l02_garbage",
+                "visit_count": 1,
+                "companions": [],
+            },
+            game_time_ms=1000,
+        )
+        desc = describe_event(event)
+        # Should resolve technical IDs to human names
+        assert "Wolf" in desc
+        assert "Cordon" in desc
+        assert "Garbage" in desc
+        assert "for the first time" in desc
+        # Should include destination description
+        assert "radioactive trash" in desc.lower() or "connecting" in desc.lower()
+    
+    def test_map_transition_with_companions(self):
+        """Test MAP_TRANSITION with companions."""
+        actor = Character(game_id="1", name="Wolf", faction="stalker", experience="Veteran", reputation=1000)
+        event = Event(
+            type="MAP_TRANSITION",
+            context={
+                "actor": actor.__dict__,
+                "source": "l01_escape",
+                "destination": "l05_bar",
+                "visit_count": 2,
+                "companions": [
+                    {"name": "Hip", "game_id": "2", "faction": "stalker"},
+                    {"name": "Fanatic", "game_id": "3", "faction": "stalker"},
+                ],
+            },
+            game_time_ms=1000,
+        )
+        desc = describe_event(event)
+        assert "Wolf" in desc
+        assert "travelling companions" in desc
+        assert "Hip" in desc
+        assert "Fanatic" in desc
+        assert "Cordon" in desc
+        assert "Rostok" in desc
+        assert "for the 2nd time" in desc
+    
+    def test_map_transition_visit_count_formatting(self):
+        """Test visit count formatting variations."""
+        actor = Character(game_id="1", name="Wolf", faction="stalker", experience="Veteran", reputation=1000)
+        
+        # First visit
+        event1 = Event(
+            type="MAP_TRANSITION",
+            context={"actor": actor.__dict__, "source": "jupiter", "destination": "zaton", "visit_count": 1, "companions": []},
+            game_time_ms=1000,
+        )
+        assert "for the first time" in describe_event(event1)
+        
+        # Second visit
+        event2 = Event(
+            type="MAP_TRANSITION",
+            context={"actor": actor.__dict__, "source": "jupiter", "destination": "zaton", "visit_count": 2, "companions": []},
+            game_time_ms=1000,
+        )
+        assert "for the 2nd time" in describe_event(event2)
+        
+        # Third visit
+        event3 = Event(
+            type="MAP_TRANSITION",
+            context={"actor": actor.__dict__, "source": "jupiter", "destination": "zaton", "visit_count": 3, "companions": []},
+            game_time_ms=1000,
+        )
+        assert "for the 3rd time" in describe_event(event3)
+        
+        # Fourth+ visits
+        event4 = Event(
+            type="MAP_TRANSITION",
+            context={"actor": actor.__dict__, "source": "jupiter", "destination": "zaton", "visit_count": 4, "companions": []},
+            game_time_ms=1000,
+        )
+        assert "again" in describe_event(event4)
+    
+    def test_map_transition_unknown_location(self):
+        """Test MAP_TRANSITION with unknown location falls back to ID."""
+        actor = Character(game_id="1", name="Wolf", faction="stalker", experience="Veteran", reputation=1000)
+        event = Event(
+            type="MAP_TRANSITION",
+            context={
+                "actor": actor.__dict__,
+                "source": "unknown_zone",
+                "destination": "another_unknown",
+                "visit_count": 1,
+                "companions": [],
+            },
+            game_time_ms=1000,
+        )
+        desc = describe_event(event)
+        # Unknown locations should use the technical ID as-is
+        assert "unknown_zone" in desc
+        assert "another_unknown" in desc
+
+
 class TestIsJunkEvent:
     """Tests for is_junk_event helper."""
     

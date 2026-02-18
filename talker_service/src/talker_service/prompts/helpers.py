@@ -7,6 +7,7 @@ from typing import Any, Union
 
 from .models import Character, Event, NarrativeCue
 from .factions import resolve_faction_name
+from texts.locations import get_location_name, get_location_description
 
 
 # Type alias for items that can appear in a prompt sequence
@@ -84,6 +85,55 @@ def describe_character_with_id(char: Character) -> str:
         Formatted string like "[ID: 123] Wolf (Veteran Loner)"
     """
     return f"[ID: {char.game_id}] {describe_character(char)}"
+
+
+def _format_visit_count(count: int) -> str:
+    """Format visit count as descriptive text.
+    
+    Args:
+        count: Number of times location has been visited
+        
+    Returns:
+        Formatted text like "for the first time", "for the 2nd time", etc.
+    """
+    if count == 1:
+        return "for the first time"
+    elif count == 2:
+        return "for the 2nd time"
+    elif count == 3:
+        return "for the 3rd time"
+    else:
+        return "again"
+
+
+def _format_companions(companions: list) -> str:
+    """Format companion names for display.
+    
+    Args:
+        companions: List of companion characters (dicts or Character objects)
+        
+    Returns:
+        Formatted string like "Hip" or "Hip and Fanatic"
+    """
+    if not companions:
+        return ""
+    
+    names = []
+    for comp in companions:
+        if isinstance(comp, dict):
+            names.append(comp.get("name", "Unknown"))
+        elif hasattr(comp, "name"):
+            names.append(comp.name)
+    
+    if not names:
+        return ""
+    
+    if len(names) == 1:
+        return names[0]
+    elif len(names) == 2:
+        return f"{names[0]} and {names[1]}"
+    else:
+        return ", ".join(names[:-1]) + f" and {names[-1]}"
 
 
 def describe_prompt_item(item: PromptItem) -> str:
@@ -174,12 +224,45 @@ def _format_typed_event(event: Event) -> str:
         return f"Someone encountered {anomaly_type}"
     
     elif event_type == "MAP_TRANSITION":
-        from_area = ctx.get("from_area", "somewhere")
-        to_area = ctx.get("to_area", "somewhere")
+        # Get technical IDs and resolve to human-readable names
+        source_id = ctx.get("source", "")
+        dest_id = ctx.get("destination", "")
+        source_name = get_location_name(source_id) if source_id else "somewhere"
+        dest_name = get_location_name(dest_id) if dest_id else "somewhere"
         
+        # Get optional context
+        visit_count = ctx.get("visit_count", 0)
+        companions = ctx.get("companions", [])
+        
+        # Build actor + companions prefix
+        parts = []
         if actor:
-            return f"{describe_character(actor)} traveled from {from_area} to {to_area}"
-        return f"Traveled from {from_area} to {to_area}"
+            actor_desc = describe_character(actor)
+            companion_str = _format_companions(companions)
+            if companion_str:
+                parts.append(f"{actor_desc} and their travelling companions {companion_str}")
+            else:
+                parts.append(actor_desc)
+        
+        # Build travel phrase
+        travel_str = f"traveled from {source_name} to {dest_name}"
+        
+        # Add visit count if available
+        if visit_count > 0:
+            travel_str += f" {_format_visit_count(visit_count)}"
+        
+        # Combine actor/companions with travel
+        if parts:
+            result = f"{parts[0]} {travel_str}"
+        else:
+            result = travel_str.capitalize()
+        
+        # Append destination description if available
+        dest_desc = get_location_description(dest_id)
+        if dest_desc:
+            result += f". {dest_desc}"
+        
+        return result
     
     elif event_type == "EMISSION":
         return "An emission swept through the Zone"

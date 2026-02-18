@@ -5,7 +5,6 @@
 -- Imports
 package.path = package.path .. ";./bin/lua/?.lua;"
 local trigger = require("interface.trigger")
-local locations = require("infra.STALKER.locations")
 local logger = require("framework.logger")
 local game = require("infra.game_adapter")
 local mcm = talker_mcm
@@ -37,9 +36,6 @@ function on_map_change_event(previous_map, current_map)
     local player = game.get_player_character()
     local companions = game.get_companions() or {}
     local witnesses = {}
-    local previous_map_name = locations.get_location_name(previous_map)
-    local current_map_name = locations.get_location_name(current_map)
-    local current_map_description = locations.describe_location_detailed(current_map)
     
     -- Build witness list
     for _, companion in ipairs(companions) do
@@ -47,13 +43,12 @@ function on_map_change_event(previous_map, current_map)
     end
     witnesses[#witnesses+1] = player
 
-    -- Create typed event context
+    -- Create typed event context with technical IDs (Python resolves to names)
     local context = {
         actor = player,
-        source = previous_map_name,
-        destination = current_map_name,
+        source = previous_map,           -- Technical ID (e.g., "l01_escape")
+        destination = current_map,       -- Technical ID (e.g., "l02_garbage")
         visit_count = visit_count,
-        destination_description = current_map_description,
         companions = companions
     }
 
