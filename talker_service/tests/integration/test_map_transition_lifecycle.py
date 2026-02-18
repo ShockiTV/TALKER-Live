@@ -471,7 +471,7 @@ class TestMapTransitionLifecycle:
                 "sar_greh_sabaoth": true,
                 "ds_domik_isg_leader": true,
                 "jup_depo_isg_leader": true,
-                "gar_digger_m_trader": true,
+                "gar_digger_m_trader": false,
                 "gar_bandit_trader": true
             }
         }
