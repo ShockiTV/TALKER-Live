@@ -83,32 +83,6 @@ function testTypedEventWithFlags()
     luaunit.assertTrue(event.flags.is_silent)
 end
 
--- Test Event.is_junk_event() for typed events
-function testIsJunkEventTyped()
-    local actor = mock_character("Test", "1")
-    
-    local artifact_event = Event.create(EventType.ARTIFACT, { actor = actor, action = "pickup", item_name = "Stone" }, 1000, {})
-    local anomaly_event = Event.create(EventType.ANOMALY, { actor = actor, anomaly_type = "electro" }, 1000, {})
-    local reload_event = Event.create(EventType.RELOAD, { actor = actor }, 1000, {})
-    local death_event = Event.create(EventType.DEATH, { victim = actor }, 1000, {})
-    
-    luaunit.assertTrue(Event.is_junk_event(artifact_event))
-    luaunit.assertTrue(Event.is_junk_event(anomaly_event))
-    luaunit.assertTrue(Event.is_junk_event(reload_event))
-    luaunit.assertFalse(Event.is_junk_event(death_event))
-end
-
--- Test Event.is_junk_event() for legacy flag-based events
-function testIsJunkEventLegacyFlags()
-    local junk_event = { flags = { is_artifact = true } }
-    local non_junk_event = { flags = { is_dialogue = true } }
-    local no_flags_event = {}
-    
-    luaunit.assertTrue(Event.is_junk_event(junk_event))
-    luaunit.assertFalse(Event.is_junk_event(non_junk_event))
-    luaunit.assertFalse(Event.is_junk_event(no_flags_event))
-end
-
 -- Test Event.get_involved_characters() for typed events
 function testGetInvolvedCharactersTyped()
     local actor = mock_character("Actor", "1")

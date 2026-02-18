@@ -73,40 +73,6 @@ function Event.get_involved_characters(event)
 	return characters
 end
 
--- Define junk event types that should be filtered in narrative compression
-local JUNK_EVENT_TYPES = {
-	[EventType.ARTIFACT] = true,
-	[EventType.ANOMALY] = true,
-	[EventType.RELOAD] = true,
-	[EventType.WEAPON_JAM] = true,
-	[EventType.CALLOUT] = true,
-	[EventType.TAUNT] = true,
-}
-
--- Check if event is "junk" (low-value for narrative compression)
--- Works with both typed events and legacy flag-based events
-function Event.is_junk_event(event)
-	-- Check typed events first
-	if event.type and JUNK_EVENT_TYPES[event.type] then
-		return true
-	end
-
-	-- Fallback for legacy flag-based events
-	local flags = event.flags
-	if flags then
-		if flags.is_artifact
-			or flags.is_anomaly
-			or flags.is_reload
-			or flags.is_weapon_jam
-			or flags.is_callout
-			or flags.is_taunt then
-			return true
-		end
-	end
-
-	return false
-end
-
 function Event.was_witnessed_by(event, character_id)
 	if not event or not event.witnesses then
 		return false
