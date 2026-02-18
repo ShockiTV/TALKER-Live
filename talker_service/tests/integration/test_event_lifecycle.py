@@ -25,33 +25,16 @@ REQUIRED JSON CONSTANTS (in order):
        "is_important": true|false
    }
 
-2) SCENE_CONTEXT_REQUEST - Expected state query for world context
-   {"method": "query_world_context", "args": {}}
+2) LLM_SPEAKER_REQUEST - Expected prompt for speaker selection
+   {"messages": [...], "options": {"temperature": 0.3, "max_tokens": 50}}
 
-3) SCENE_CONTEXT_RESPONSE - Mock response for scene/world state
-   {
-       "loc": "l01_escape",
-       "poi": "esc_smart_terrain_5_7",
-       "time": {"Y": 2012, "M": 6, "D": 15, "h": 14, "m": 30, "s": 0, "ms": 0},
-       "weather": "clear",
-       "emission": false,
-       "psy_storm": false,
-       "sheltering": false,
-       "campfire": null,
-       "brain_scorcher_disabled": false,
-       "miracle_machine_disabled": false
-   }
+3) LLM_SPEAKER_RESPONSE - Mock LLM response (JSON with selected ID)
+   '{"id": 12345}'
 
-4) CHARACTERS_ALIVE_REQUEST - Expected query for notable character status
-   {"method": "query_characters_alive", "args": {"story_ids": [...]}}
-
-5) CHARACTERS_ALIVE_RESPONSE - Mock response (story_id -> alive boolean)
-   {"alive": {"story_id_1": true, "story_id_2": false}}
-
-6) MEMORY_REQUEST - Expected memory query
+4) MEMORY_REQUEST - Expected memory query
    {"method": "query_memories", "args": {"character_id": "<game_id>"}}
 
-7) MEMORY_RESPONSE (variable name: MEMORY) - Mock memory context
+5) MEMORY_RESPONSE - Mock memory context
    {
        "narrative": "Long-term memories..." or null,
        "last_update_time_ms": <int>,
@@ -67,10 +50,10 @@ REQUIRED JSON CONSTANTS (in order):
    
    Note: COMPRESSED events use context.narrative for the summary text.
 
-8) CHARACTER_REQUEST - Expected character detail query
+6) CHARACTER_REQUEST - Expected character detail query
    {"method": "query_character", "args": {"character_id": "<game_id>"}}
 
-9) CHARACTER_RESPONSE (variable name: CHARACTER) - Full character data
+7) CHARACTER_RESPONSE - Full character data
    {
        "game_id": 12345,
        "name": "Wolf",
@@ -83,23 +66,43 @@ REQUIRED JSON CONSTANTS (in order):
        "visual_faction": "stalker"
    }
 
-10) LLM_SPEAKER_REQUEST - Expected prompt for speaker selection
-    {"messages": [...], "options": {"temperature": 0.3, "max_tokens": 50}}
+8) SCENE_CONTEXT_REQUEST - Expected state query for world context
+   {"method": "query_world_context", "args": {}}
 
-11) LLM_RESPONSE_SPEAKER - Mock LLM response (JSON with selected ID)
-    '{"id": 12345}'
+9) SCENE_CONTEXT_RESPONSE - Mock response for scene/world state
+   {
+       "loc": "l01_escape",
+       "poi": "Rookie Village",
+       "time": {"Y": 2012, "M": 6, "D": 15, "h": 14, "m": 30, "s": 0, "ms": 0},
+       "weather": "clear",
+       "emission": false,
+       "psy_storm": false,
+       "sheltering": false,
+       "campfire": null,
+       "brain_scorcher_disabled": false,
+       "miracle_machine_disabled": false
+   }
+
+10) CHARACTERS_ALIVE_REQUEST - Expected query for notable character status
+    {"method": "query_characters_alive", "args": {"story_ids": [...]}}
+
+11) CHARACTERS_ALIVE_RESPONSE - Mock response (story_id -> alive boolean)
+    {"alive": {"story_id_1": true, "story_id_2": false}}
 
 12) LLM_DIALOGUE_REQUEST - Expected prompt for dialogue generation
-    {"messages": [...], "options": {"temperature": 0.7, "max_tokens": 150}}
+    {"messages": [...], "options": {"temperature": 0.8, "max_tokens": 200}}
 
-13) LLM_RESPONSE_DIALOGUE - Mock LLM response (dialogue text)
+13) LLM_DIALOGUE_RESPONSE - Mock LLM response (dialogue text)
     'That one won\\'t be causing any more trouble.'
 
 14) PUBLISH_REQUEST - Expected ZMQ publish message
     {
-        "character_id": 12345,
-        "text": "That one won't be causing any more trouble.",
-        "trigger_event_timestamp_to_delete": 2000000
+        "topic": "dialogue.display",
+        "payload": {
+            "speaker_id": "12345",
+            "dialogue": "That one won't be causing any more trouble.",
+            "create_event": true
+        }
     }
 
 ================================================================================
@@ -451,6 +454,117 @@ class TestEventLifecycleL9:
         
         # =====================================================================
         # 2) LLM SPEAKER REQUEST (uses witnesses from event directly)
+        # Built from: INPUT_EVENT only (not memory events)
+        # =====================================================================
+        LLM_SPEAKER_REQUEST = """
+        {
+            "messages": [
+                {
+                    "role": "system",
+                    "content": "# CORE DIRECTIVE: SPEAKER ID SELECTION ENGINE\\n\\nYou are a Speaker ID Selection Engine. Your task is to identify the next speaker based on events and the conversation flow.\\n\\n## INSTRUCTIONS:\\n1. Analyze the `CANDIDATES` and `EVENTS` sections to see who was addressed or who would logically react based on their traits.\\n2. Return ONLY a valid JSON object with the 'id' of the selected speaker.\\n\\n\\nExample Output: { \\"id\\": 123 }\\n3. Do not include markdown formatting (like ```json)."
+                },
+                {
+                    "role": "system",
+                    "content": "## CANDIDATES (in order of distance): <CANDIDATES>\\n\\n[ID: 12345] Wolf, a Veteran rank member of the Loner faction who is gruff but fair, [ID: 11111] Petruha, a Experienced rank member of the Loner faction who is unpredictable\\n\\n</CANDIDATES>"
+                },
+                {
+                    "role": "system",
+                    "content": "## CURRENT EVENTS (oldest to newest):\\n\\n<EVENTS>\\n"
+                },
+                {
+                    "role": "user",
+                    "content": "Wolf (Veteran, Loner, Reputation: 750) killed Bandit_001 (Experienced, Bandit, Reputation: -300)"
+                },
+                {
+                    "role": "system",
+                    "content": "</EVENTS>"
+                },
+                {
+                    "role": "system",
+                    "content": "## FINAL INSTRUCTION: Return ONLY the JSON object containing the speaker ID of the most likely next speaker. Do not provide **ANY** analysis, reasoning, or explanation."
+                }
+            ],
+            "options": {"temperature": 0.3, "max_tokens": 50}
+        }
+        """
+        
+        # =====================================================================
+        # 3) LLM SPEAKER RESPONSE
+        # =====================================================================
+        LLM_SPEAKER_RESPONSE = """{"id": 12345}"""
+        
+        # =====================================================================
+        # 4) MEMORY QUERY REQUEST (for selected speaker)
+        # =====================================================================
+        MEMORY_REQUEST = """
+        {
+            "method": "query_memories",
+            "args": {"character_id": "12345"}
+        }
+        """
+        
+        # =====================================================================
+        # 5) MEMORY QUERY RESPONSE
+        # =====================================================================
+        MEMORY_RESPONSE = """
+        {
+            "narrative": "Wolf had been patrolling the Cordon for three days.",
+            "last_update_time_ms": 1000000,
+            "new_events": [
+                {
+                    "type": "CALLOUT",
+                    "context": {
+                        "spotter": {
+                            "game_id": 12345,
+                            "name": "Wolf",
+                            "faction": "stalker",
+                            "experience": "Veteran",
+                            "reputation": 750
+                        },
+                        "target": {
+                            "game_id": 99999,
+                            "name": "Bloodsucker",
+                            "faction": "monster",
+                            "experience": "Experienced",
+                            "reputation": 0
+                        }
+                    },
+                    "game_time_ms": 1500000,
+                    "flags": {}
+                }
+            ]
+        }
+        """
+        
+        # =====================================================================
+        # 6) CHARACTER QUERY REQUEST (for selected speaker)
+        # =====================================================================
+        CHARACTER_REQUEST = """
+        {
+            "method": "query_character",
+            "args": {"character_id": "12345"}
+        }
+        """
+        
+        # =====================================================================
+        # 7) CHARACTER QUERY RESPONSE
+        # =====================================================================
+        CHARACTER_RESPONSE = """
+        {
+            "game_id": 12345,
+            "name": "Wolf",
+            "faction": "stalker",
+            "experience": "Veteran",
+            "reputation": 750,
+            "personality": "gruff_but_fair",
+            "backstory": "veteran_stalker",
+            "weapon": "AK-74",
+            "visual_faction": "stalker"
+        }
+        """
+        
+        # =====================================================================
+        # 8) SCENE/WORLD CONTEXT QUERY REQUEST
         # =====================================================================
         SCENE_CONTEXT_REQUEST = """
         {
@@ -460,12 +574,6 @@ class TestEventLifecycleL9:
         """
         
         # =====================================================================
-        # 3) LLM SPEAKER RESPONSE (see LLM_SPEAKER_RESPONSE below)
-        # 4) MEMORY QUERY REQUEST (see MEMORY_REQUEST below)
-        # 5) MEMORY QUERY RESPONSE (see MEMORY_RESPONSE below)
-        # 6) CHARACTER QUERY REQUEST (see CHARACTER_REQUEST below)
-        # 7) CHARACTER QUERY RESPONSE (see CHARACTER_RESPONSE below)
-        # 8) SCENE/WORLD CONTEXT QUERY REQUEST (SCENE_CONTEXT_REQUEST above)
         # 9) SCENE/WORLD CONTEXT QUERY RESPONSE
         # =====================================================================
         SCENE_CONTEXT_RESPONSE = """
@@ -545,117 +653,6 @@ class TestEventLifecycleL9:
             }
         }
         """
-        
-        # =====================================================================
-        # Note: MEMORY_REQUEST is step 4 (after speaker selection)
-        # =====================================================================
-        MEMORY_REQUEST = """
-        {
-            "method": "query_memories",
-            "args": {"character_id": "12345"}
-        }
-        """
-        
-        # =====================================================================
-        # Note: MEMORY_RESPONSE is step 5
-        # =====================================================================
-        MEMORY_RESPONSE = """
-        {
-            "narrative": "Wolf had been patrolling the Cordon for three days.",
-            "last_update_time_ms": 1000000,
-            "new_events": [
-                {
-                    "type": "CALLOUT",
-                    "context": {
-                        "spotter": {
-                            "game_id": 12345,
-                            "name": "Wolf",
-                            "faction": "stalker",
-                            "experience": "Veteran",
-                            "reputation": 750
-                        },
-                        "target": {
-                            "game_id": 99999,
-                            "name": "Bloodsucker",
-                            "faction": "monster",
-                            "experience": "Experienced",
-                            "reputation": 0
-                        }
-                    },
-                    "game_time_ms": 1500000,
-                    "flags": {}
-                }
-            ]
-        }
-        """
-        
-        # =====================================================================
-        # Note: CHARACTER_REQUEST is step 6
-        # =====================================================================
-        CHARACTER_REQUEST = """
-        {
-            "method": "query_character",
-            "args": {"character_id": "12345"}
-        }
-        """
-        
-        # =====================================================================
-        # Note: CHARACTER_RESPONSE is step 7
-        # =====================================================================
-        CHARACTER_RESPONSE = """
-        {
-            "game_id": 12345,
-            "name": "Wolf",
-            "faction": "stalker",
-            "experience": "Veteran",
-            "reputation": 750,
-            "personality": "gruff_but_fair",
-            "backstory": "veteran_stalker",
-            "weapon": "AK-74",
-            "visual_faction": "stalker"
-        }
-        """
-        
-        # =====================================================================
-        # Note: LLM_SPEAKER_REQUEST is step 2
-        # Built from: INPUT_EVENT only (not memory events)
-        # =====================================================================
-        LLM_SPEAKER_REQUEST = """
-        {
-            "messages": [
-                {
-                    "role": "system",
-                    "content": "# CORE DIRECTIVE: SPEAKER ID SELECTION ENGINE\\n\\nYou are a Speaker ID Selection Engine. Your task is to identify the next speaker based on events and the conversation flow.\\n\\n## INSTRUCTIONS:\\n1. Analyze the `CANDIDATES` and `EVENTS` sections to see who was addressed or who would logically react based on their traits.\\n2. Return ONLY a valid JSON object with the 'id' of the selected speaker.\\n\\n\\nExample Output: { \\"id\\": 123 }\\n3. Do not include markdown formatting (like ```json)."
-                },
-                {
-                    "role": "system",
-                    "content": "## CANDIDATES (in order of distance): <CANDIDATES>\\n\\n[ID: 12345] Wolf, a Veteran rank member of the Loner faction who is gruff but fair, [ID: 11111] Petruha, a Experienced rank member of the Loner faction who is unpredictable\\n\\n</CANDIDATES>"
-                },
-                {
-                    "role": "system",
-                    "content": "## CURRENT EVENTS (oldest to newest):\\n\\n<EVENTS>\\n"
-                },
-                {
-                    "role": "user",
-                    "content": "Wolf (Veteran, Loner, Reputation: 750) killed Bandit_001 (Experienced, Bandit, Reputation: -300)"
-                },
-                {
-                    "role": "system",
-                    "content": "</EVENTS>"
-                },
-                {
-                    "role": "system",
-                    "content": "## FINAL INSTRUCTION: Return ONLY the JSON object containing the speaker ID of the most likely next speaker. Do not provide **ANY** analysis, reasoning, or explanation."
-                }
-            ],
-            "options": {"temperature": 0.3, "max_tokens": 50}
-        }
-        """
-        
-        # =====================================================================
-        # Note: LLM_SPEAKER_RESPONSE is step 3
-        # =====================================================================
-        LLM_SPEAKER_RESPONSE = """{"id": 12345}"""
         
         # =====================================================================
         # 12) LLM DIALOGUE REQUEST
