@@ -5,6 +5,7 @@ local memory_store = require("domain.repo.memory_store")
 local event_store = require("domain.repo.event_store")
 local personality_store = require("domain.repo.personalities")
 local backstories_store = require("domain.repo.backstories")
+local levels_store = require("domain.repo.levels")
 local log = require("framework.logger")
 
 -- ZMQ integration reference (lazy-loaded)
@@ -24,6 +25,7 @@ function save_state(saved_data)
     saved_data.events = event_store:get_save_data()
     saved_data.personalities = personality_store:get_save_data()
     saved_data.backstories = backstories_store:get_save_data()
+    saved_data.levels = levels_store.get_save_data()
 end
 
 -- Load the data
@@ -43,6 +45,20 @@ function load_state(saved_data)
     end
     if (saved_data.backstories) then
         backstories_store.load_save_data(saved_data.backstories)
+    end
+    
+    -- Load levels store (with legacy migration bridge)
+    if saved_data.levels then
+        levels_store.load_save_data(saved_data.levels)
+    elseif saved_data.level_visit_count or saved_data.previous_map then
+        -- Legacy: old trigger script stored these keys directly in saved_data
+        log.info("Persistence: Migrating legacy map transition data to levels store")
+        levels_store.load_save_data({
+            level_visit_count = saved_data.level_visit_count,
+            from_level = saved_data.previous_map,
+        })
+    else
+        levels_store.load_save_data(nil)
     end
     
     -- Trigger ZMQ config sync after a 2-second delay (allows MCM to fully initialize)
