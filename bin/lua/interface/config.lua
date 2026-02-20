@@ -176,6 +176,10 @@ function c.state_query_timeout()
 	return tonumber(cfg("state_query_timeout", 30))
 end
 
+function c.max_log_entries_per_level()
+	return tonumber(cfg("max_log_entries_per_level", 0))
+end
+
 -- Get all MCM config values as a table for sync
 function c.get_all_config()
 	return {
