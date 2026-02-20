@@ -15,7 +15,6 @@ local EventType = trigger.EventType
 
 -- Saved variable to track the number of visits to each map
 local level_visit_count = {}
-local commented_already = false
 
 local mode_map_transition = tonumber(mcm.get("enable_trigger_map_transition") or "0")
 
@@ -95,14 +94,12 @@ end
 -- Function to save the state
 function save_state(m_data)
     m_data.level_visit_count = level_visit_count or {}
-    m_data.level_visit_count = commented_already
     m_data.previous_map = level.name()
 end
 
 -- Function to load the state
 function load_state(m_data)
     level_visit_count = m_data.level_visit_count or {}
-    commented_already = m_data.commented_already
     previous_map = m_data.previous_map
 end
 
