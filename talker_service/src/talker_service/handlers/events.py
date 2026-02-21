@@ -2,6 +2,7 @@
 
 import asyncio
 import random
+import time
 from datetime import datetime
 from typing import Any, Optional, Protocol, TYPE_CHECKING
 
@@ -11,6 +12,7 @@ from ..models.messages import GameEventMessage, PlayerDialogueMessage, Heartbeat
 
 if TYPE_CHECKING:
     from ..dialogue import DialogueGenerator
+    from ..dialogue.retry_queue import DialogueRetryQueue
 
 
 class PublisherProtocol(Protocol):
@@ -28,6 +30,9 @@ _dialogue_generator: Optional["DialogueGenerator"] = None
 # Publisher for sending heartbeat acks (injected by main)
 _publisher: Optional[PublisherProtocol] = None
 
+# Retry queue for deferred dialogue generation (injected by main)
+_retry_queue: Optional["DialogueRetryQueue"] = None
+
 # Base probability for dialogue generation
 BASE_DIALOGUE_CHANCE = 0.25
 
@@ -44,6 +49,13 @@ def set_publisher(publisher: PublisherProtocol) -> None:
     global _publisher
     _publisher = publisher
     logger.info("Publisher injected into event handlers")
+
+
+def set_retry_queue(queue: "DialogueRetryQueue") -> None:
+    """Set the retry queue instance for heartbeat-aware flush."""
+    global _retry_queue
+    _retry_queue = queue
+    logger.info("Retry queue injected into event handlers")
 
 
 def get_last_heartbeat() -> Optional[str]:
@@ -255,7 +267,8 @@ async def handle_player_whisper(payload: dict[str, Any]) -> None:
 async def handle_heartbeat(payload: dict[str, Any]) -> None:
     """Handle heartbeat message from Lua.
     
-    Updates last_seen timestamp for health monitoring and sends ack back.
+    Updates last_seen timestamp for health monitoring, sends ack back,
+    and checks for connectivity gap to trigger retry queue flush.
     """
     global _last_heartbeat, _last_heartbeat_game_time
     
@@ -272,6 +285,13 @@ async def handle_heartbeat(payload: dict[str, Any]) -> None:
                 f"Heartbeat received: alive={msg.alive}, "
                 f"game_time={msg.game_time_ms}"
             )
+        
+        # Check retry queue for heartbeat gap (Lua recovered from pause)
+        if _retry_queue and _dialogue_generator:
+            should_flush = _retry_queue.notify_heartbeat(time.time())
+            if should_flush:
+                logger.info("Flushing retry queue after heartbeat gap")
+                _retry_queue.flush(_dialogue_generator)
         
         # Send heartbeat acknowledgement back to Lua so it knows we're alive
         if _publisher:

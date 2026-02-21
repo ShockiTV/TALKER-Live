@@ -7,8 +7,10 @@ from loguru import logger
 
 from .speaker import SpeakerSelector
 from .cleaner import clean_dialogue, extract_speaker_id
+from .retry_queue import DialogueRetryQueue, get_retry_attempt
 
 from ..llm import LLMClient, Message, LLMOptions
+from ..state.client import StateQueryTimeout
 from ..prompts import (
     create_dialogue_request_prompt,
     create_pick_speaker_prompt,
@@ -64,6 +66,7 @@ class DialogueGenerator:
         publisher: ZMQPublisherProtocol,
         speaker_selector: SpeakerSelector | None = None,
         llm_timeout: float = 60.0,
+        retry_queue: DialogueRetryQueue | None = None,
     ):
         """Initialize dialogue generator.
         
@@ -73,6 +76,9 @@ class DialogueGenerator:
             publisher: ZMQ publisher for sending commands
             speaker_selector: Optional speaker selector (created if None)
             llm_timeout: Timeout for LLM calls in seconds
+            retry_queue: Optional retry queue for deferring transient failures.
+                When provided, StateQueryTimeout errors are enqueued for retry
+                instead of being silently discarded.
         """
         # Store either a fixed client or a factory
         if callable(llm_client) and not isinstance(llm_client, LLMClient):
@@ -86,6 +92,7 @@ class DialogueGenerator:
         self.publisher = publisher
         self.speakers = speaker_selector or SpeakerSelector()
         self.llm_timeout = llm_timeout
+        self.retry_queue = retry_queue
         
         # Lock to prevent concurrent memory updates for same character
         self._memory_locks: dict[str, asyncio.Lock] = {}
@@ -126,7 +133,19 @@ class DialogueGenerator:
         current_time_ms = event.get("game_time_ms", 0)
         
         # Pick speaker
-        speaker_id = await self._pick_speaker(event, witnesses, current_time_ms)
+        try:
+            speaker_id = await self._pick_speaker(event, witnesses, current_time_ms)
+        except StateQueryTimeout as e:
+            if self.retry_queue:
+                attempt = get_retry_attempt(event)
+                logger.warning(
+                    f"State query timeout during speaker selection, "
+                    f"deferring to retry queue (attempt {attempt}): {e}"
+                )
+                self.retry_queue.enqueue("event", event, attempt_count=attempt)
+            else:
+                logger.error(f"Speaker selection failed (no retry queue): {e}")
+            return
         if not speaker_id:
             logger.debug("No speaker selected, skipping dialogue")
             return
@@ -135,7 +154,18 @@ class DialogueGenerator:
         self.speakers.set_spoke(speaker_id, current_time_ms)
         
         # Generate and display dialogue
-        await self._generate_dialogue_for_speaker(speaker_id, event)
+        try:
+            await self._generate_dialogue_for_speaker(speaker_id, event)
+        except StateQueryTimeout as e:
+            if self.retry_queue:
+                attempt = get_retry_attempt(event)
+                logger.warning(
+                    f"State query timeout during event dialogue, "
+                    f"deferring to retry queue (attempt {attempt}): {e}"
+                )
+                self.retry_queue.enqueue("event", event, attempt_count=attempt)
+            else:
+                logger.error(f"Dialogue generation failed (no retry queue): {e}")
     
     async def generate_from_instruction(
         self,
@@ -164,7 +194,21 @@ class DialogueGenerator:
         self.speakers.set_spoke(speaker_id, current_time_ms)
         
         # Generate and display dialogue
-        await self._generate_dialogue_for_speaker(speaker_id, event)
+        try:
+            await self._generate_dialogue_for_speaker(speaker_id, event)
+        except StateQueryTimeout as e:
+            if self.retry_queue:
+                attempt = get_retry_attempt(event)
+                logger.warning(
+                    f"State query timeout during instruction dialogue, "
+                    f"deferring to retry queue (attempt {attempt}): {e}"
+                )
+                self.retry_queue.enqueue(
+                    "instruction", event,
+                    speaker_id=speaker_id, attempt_count=attempt,
+                )
+            else:
+                logger.error(f"Dialogue generation failed (no retry queue): {e}")
     
     async def _pick_speaker(
         self,
@@ -291,9 +335,13 @@ class DialogueGenerator:
                         self.state,
                         recent_events=memory_ctx.new_events,
                     )
+                except StateQueryTimeout:
+                    raise  # propagate for retry
                 except Exception as e:
                     logger.warning(f"Failed to build world context: {e}")
                     world_state_context = ""
+            except StateQueryTimeout:
+                raise  # propagate for retry
             except Exception as e:
                 logger.warning(f"Failed to query scene context: {e}")
             
@@ -335,6 +383,9 @@ class DialogueGenerator:
             # Publish dialogue.display command
             await self._publish_dialogue(speaker_id, dialogue, event)
             
+        except StateQueryTimeout:
+            # Let StateQueryTimeout propagate to callers for retry handling
+            raise
         except Exception as e:
             logger.error(f"Dialogue generation failed: {e}")
     

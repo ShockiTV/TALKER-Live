@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 from talker_service.state import (
     StateQueryClient,
+    StateQueryTimeout,
     MemoryContext,
     Character,
     Event,
@@ -327,3 +328,87 @@ class TestStateQueryClient:
         
         with pytest.raises(TimeoutError):
             await client.query_memories("123")
+
+
+class TestStateQueryTimeout:
+    """Tests for StateQueryTimeout exception."""
+
+    def test_is_subclass_of_timeout_error(self):
+        """StateQueryTimeout must be a subclass of TimeoutError."""
+        assert issubclass(StateQueryTimeout, TimeoutError)
+
+    def test_caught_by_except_timeout_error(self):
+        """Existing ``except TimeoutError`` handlers must still catch it."""
+        with pytest.raises(TimeoutError):
+            raise StateQueryTimeout("test")
+
+    def test_caught_by_except_state_query_timeout(self):
+        """Can be caught specifically as StateQueryTimeout."""
+        with pytest.raises(StateQueryTimeout):
+            raise StateQueryTimeout("test")
+
+    def test_default_attributes(self):
+        """Default topic and character_id are None."""
+        exc = StateQueryTimeout()
+        assert exc.topic is None
+        assert exc.character_id is None
+        assert str(exc) == "State query timed out"
+
+    def test_custom_attributes(self):
+        """Topic and character_id are stored when provided."""
+        exc = StateQueryTimeout(
+            "query timed out",
+            topic="state.query.memories",
+            character_id="123",
+        )
+        assert exc.topic == "state.query.memories"
+        assert exc.character_id == "123"
+        assert str(exc) == "query timed out"
+
+    @pytest.mark.asyncio
+    async def test_send_query_raises_state_query_timeout(self):
+        """_send_query re-raises TimeoutError as StateQueryTimeout with metadata."""
+        router = MagicMock()
+        router.publish = AsyncMock(return_value=True)
+        
+        future = asyncio.get_event_loop().create_future()
+        
+        async def timeout_after():
+            await asyncio.sleep(0.05)
+            if not future.done():
+                future.set_exception(TimeoutError("Request timed out"))
+        
+        asyncio.create_task(timeout_after())
+        router.create_request.return_value = future
+        
+        client = StateQueryClient(router, timeout=5.0)
+        
+        with pytest.raises(StateQueryTimeout) as exc_info:
+            await client.query_memories("456")
+        
+        assert exc_info.value.topic == "state.query.memories"
+        assert exc_info.value.character_id == "456"
+
+    @pytest.mark.asyncio
+    async def test_send_query_timeout_for_world_context(self):
+        """World context query (no character_id) sets character_id=None."""
+        router = MagicMock()
+        router.publish = AsyncMock(return_value=True)
+        
+        future = asyncio.get_event_loop().create_future()
+        
+        async def timeout_after():
+            await asyncio.sleep(0.05)
+            if not future.done():
+                future.set_exception(TimeoutError("Request timed out"))
+        
+        asyncio.create_task(timeout_after())
+        router.create_request.return_value = future
+        
+        client = StateQueryClient(router, timeout=5.0)
+        
+        with pytest.raises(StateQueryTimeout) as exc_info:
+            await client.query_world_context()
+        
+        assert exc_info.value.topic == "state.query.world"
+        assert exc_info.value.character_id is None
