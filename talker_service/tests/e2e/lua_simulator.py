@@ -114,11 +114,26 @@ class LuaSimulator:
                 logger.warning(f"LuaSimulator poll error: {exc}")
                 await asyncio.sleep(0.01)
 
+    # Maps batch resource names to state_mocks topic keys
+    _RESOURCE_TO_MOCK_TOPIC: dict[str, str] = {
+        "store.memories": "state.query.memories",
+        "store.events": "state.query.events",
+        "query.character": "state.query.character",
+        "query.world": "state.query.world",
+        "query.characters_alive": "state.query",
+        "query.characters_nearby": "state.query.nearby",
+    }
+
     async def _respond_to_state_query(self, topic: str, payload: dict[str, Any]) -> None:
         """Auto-respond to a state.query.* message using configured mocks."""
         request_id = payload.get("request_id")
         if not request_id:
             logger.warning(f"LuaSimulator: state query with no request_id on {topic}")
+            return
+
+        # Handle batch queries by routing sub-queries to individual mocks
+        if topic == "state.query.batch":
+            await self._respond_to_batch_query(request_id, payload)
             return
 
         mock = self._state_mocks.get(topic)
@@ -133,6 +148,37 @@ class LuaSimulator:
         wire = f"state.response {json.dumps(response)}"
         await self._pub.send_string(wire)
         logger.debug(f"LuaSimulator: responded to {topic} (request_id={request_id})")
+
+    async def _respond_to_batch_query(
+        self, request_id: str, payload: dict[str, Any]
+    ) -> None:
+        """Respond to state.query.batch by routing sub-queries to individual mocks."""
+        queries = payload.get("queries", [])
+        results: dict[str, dict[str, Any]] = {}
+
+        for q in queries:
+            qid = q["id"]
+            resource = q["resource"]
+            mock_topic = self._RESOURCE_TO_MOCK_TOPIC.get(resource)
+            if mock_topic is None:
+                results[qid] = {"ok": False, "error": f"unknown resource: {resource}"}
+                continue
+            mock = self._state_mocks.get(mock_topic)
+            if mock is None:
+                results[qid] = {"ok": False, "error": f"no mock for {mock_topic}"}
+                continue
+            results[qid] = {"ok": True, "data": mock.get("response", {})}
+
+        response = {
+            "request_id": request_id,
+            "data": {"results": results},
+        }
+        wire = f"state.response {json.dumps(response)}"
+        await self._pub.send_string(wire)
+        logger.debug(
+            f"LuaSimulator: responded to batch query ({len(queries)} sub-queries, "
+            f"request_id={request_id})"
+        )
 
     def close(self) -> None:
         """Cancel poll task and close sockets. Does NOT terminate the shared context."""

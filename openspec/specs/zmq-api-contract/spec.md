@@ -106,40 +106,56 @@ Each message SHALL specify: `direction: python→lua`, `description`, and `paylo
 - **WHEN** the `memory.update` message is read from the schema
 - **THEN** its `payload` SHALL define `character_id` (string, required), `narrative` (string, optional), `last_event_time_ms` (int, optional)
 
-### Requirement: State query definitions
+### Requirement: state.query.batch message definition
 
-The `messages` section SHALL define all state query request/response pairs. State queries use a pattern where Python publishes a request topic and Lua responds on `state.response`.
+The `messages` section SHALL define the `state.query.batch` topic with `direction: python→lua→python`.
 
-| Query Topic | Description |
-|-------------|-------------|
-| `state.query.memories` | Character memory context |
-| `state.query.events` | Recent events |
-| `state.query.character` | Character info by ID |
-| `state.query.characters_nearby` | Characters near a position |
-| `state.query.characters_alive` | Alive status for story IDs |
-| `state.query.world` | Current world context |
+The `request` payload SHALL define:
+- `request_id` (string, required): Unique correlation ID
+- `queries` (array, required): Ordered array of sub-query objects
 
-Each state query message SHALL specify: `direction: python→lua→python`, `description`, `request` (payload fields), and `response` (response data fields).
+Each sub-query SHALL define:
+- `id` (string, required): Unique identifier within the batch
+- `resource` (string, required): Resource name in `store.*` or `query.*` format
+- `params` (object, optional): Resource-specific parameters
+- `filter` (object, optional): MongoDB-style filter document
+- `sort` (object, optional): Sort specification
+- `limit` (integer, optional): Maximum results
+- `fields` (array of string, optional): Field projection paths
 
-All requests implicitly include `request_id` (string) — this SHALL NOT be listed per-query but documented once at schema level.
+The `response` payload SHALL define:
+- `request_id` (string, required): Correlated to the request
+- `results` (object, required): Map of sub-query ID to result object containing `ok` (bool) and either `data` or `error` (string)
 
-#### Scenario: state.query.memories is fully defined
+#### Scenario: state.query.batch is fully defined
+- **WHEN** the `state.query.batch` message is read from the schema
+- **THEN** its `direction` SHALL be `python→lua→python`
+- **AND** its `request` SHALL define `request_id` and `queries` array with sub-query schema
+- **AND** its `response` SHALL define `request_id` and `results` map
 
-- **WHEN** the `state.query.memories` message is read from the schema
-- **THEN** its `request` SHALL define `character_id` (string, required)
-- **AND** its `response` SHALL define `character_id` (string), `narrative` (string, optional), `last_update_time_ms` (int), `new_events` (array of Event)
+### Requirement: Filter document type definition
 
-#### Scenario: state.query.world is fully defined
+The `types` section SHALL define a `FilterDocument` type documenting all supported operators:
+- Comparison: `$eq`, `$ne`, `$gt`, `$gte`, `$lt`, `$lte`
+- Set: `$in`, `$nin`
+- String: `$regex`, `$regex_flags`
+- Existence: `$exists`
+- Array: `$elemMatch`, `$size`, `$all`
+- Logical: `$and`, `$or`, `$not`
+- Reference: `$ref:<id>.<path>` string syntax
 
-- **WHEN** the `state.query.world` message is read from the schema
-- **THEN** its `request` SHALL be empty (no parameters beyond request_id)
-- **AND** its `response` SHALL define `loc` (string), `poi` (string, optional), `time` (object), `weather` (string), `emission` (bool), `psy_storm` (bool), `sheltering` (bool), `campfire` (string, optional), `brain_scorcher_disabled` (bool), `miracle_machine_disabled` (bool)
+#### Scenario: FilterDocument type is defined in schema
+- **WHEN** the `FilterDocument` type is read from `docs/zmq-api.yaml`
+- **THEN** it SHALL list all supported operators with descriptions and value types
 
-#### Scenario: state.query.characters_alive is fully defined
+### Requirement: Resource registry documentation
 
-- **WHEN** the `state.query.characters_alive` message is read from the schema
-- **THEN** its `request` SHALL define `ids` (array of string, required)
-- **AND** its `response` SHALL be a flat object mapping story_id (string) to alive status (bool)
+The schema SHALL document the available resources and their parameters in a `resources` section or as part of the `state.query.batch` message definition.
+
+#### Scenario: All resources documented
+- **WHEN** a developer reads the `state.query.batch` definition
+- **THEN** they SHALL find documentation for `store.events`, `store.memories`, `store.personalities`, `store.backstories`, `store.levels`, `store.timers`, `query.character`, `query.characters_nearby`, `query.characters_alive`, and `query.world`
+- **AND** each resource SHALL list its required and optional `params`
 
 ### Requirement: state.response envelope
 

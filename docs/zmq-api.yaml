@@ -24,10 +24,11 @@ notes:
     The game does not wait for responses. Message loss is
     acceptable.
   state_query_envelope: >
-    All state queries implicitly include a request_id field
-    (UUID string) added by the Python StateQueryClient.
-    It is echoed back in the state.response envelope.
-    Individual query definitions omit request_id for brevity.
+    All state queries use a single batch endpoint (state.query.batch).
+    Each request includes a request_id field (UUID string) added by
+    the Python StateQueryClient. It is echoed back in the
+    state.response envelope. Sub-queries within the batch are
+    identified by their own id field.
 
 # ──────────────────────────────────────────────────────────────
 # Shared Types
@@ -195,65 +196,113 @@ messages:
     payload: {}
 
   # ── State Queries (Python → Lua → Python) ──────────────────
-  # Python publishes request on the topic below.
-  # Lua responds on 'state.response' with the request_id echoed.
-  # See state.response for the envelope format.
+  # Python publishes a single batch request on state.query.batch.
+  # Lua executes all sub-queries and responds on 'state.response'
+  # with the request_id echoed.
 
-  state.query.memories:
+  state.query.batch:
     direction: python→lua→python
-    description: "Query character memory context"
+    description: "Batch state query – multiple sub-queries in a single roundtrip"
     request:
-      character_id: { type: string, required: true }
+      queries:
+        type: array
+        required: true
+        description: "Ordered list of sub-queries"
+        items:
+          id:       { type: string, required: true, description: "Unique sub-query identifier" }
+          resource: { type: string, required: true, description: "Resource name (see resource registry below)" }
+          params:   { type: object, description: "Resource-specific key-value parameters" }
+          filter:   { type: object, description: "MongoDB-style filter document (see FilterDocument)" }
+          sort:     { type: object, description: "Field→direction map. 1=ascending, -1=descending" }
+          limit:    { type: int, description: "Maximum number of results to return" }
+          fields:   { type: array, items: { type: string }, description: "Restrict returned fields" }
     response:
-      character_id:       { type: string }
-      narrative:          { type: string }
-      last_update_time_ms: { type: int }
-      new_events:         { type: array, items: { $ref: Event } }
+      results:
+        type: object
+        description: "Map of sub-query id → result object"
+        values:
+          ok:    { type: bool, description: "true on success, false on failure" }
+          data:  { type: any, description: "Query result (when ok=true). Shape depends on resource." }
+          error: { type: string, description: "Error message (when ok=false)" }
 
-  state.query.events:
-    direction: python→lua→python
-    description: "Query recent events since a timestamp"
-    request:
-      since_ms: { type: int, default: 0 }
-      limit:    { type: int, default: 50 }
-    response:
-      events: { type: array, items: { $ref: Event } }
-      count:  { type: int }
+    resource_registry:
+      store.memories:
+        description: "Query character memory context"
+        params:
+          character_id: { type: string, required: true }
+        returns: "MemoryContext object (narrative, new_events, etc.)"
+      store.events:
+        description: "Query event store entries"
+        params:
+          character_id: { type: string, required: true }
+        returns: "Array of Event objects (supports filter/sort/limit)"
+      query.character:
+        description: "Query character information by game ID"
+        params:
+          id: { type: string, required: true }
+        returns: "Character object"
+      query.characters_nearby:
+        description: "Query characters near player"
+        params:
+          center_id: { type: string, description: "Defaults to player" }
+          radius:    { type: float, default: 50.0 }
+        returns: "Array of Character objects"
+      query.world:
+        description: "Query current world context (location, time, weather)"
+        params: {}
+        returns: "SceneContext object"
+      query.characters_alive:
+        description: "Check alive status for story character IDs"
+        params:
+          ids: { type: array, items: { type: string }, required: true }
+        returns: "Object mapping story_id → bool"
+      query.events_recent:
+        description: "Query recent events since a timestamp"
+        params:
+          since_ms: { type: int, default: 0 }
+          limit:    { type: int, default: 50 }
+        returns: "Array of Event objects"
+      query.smart_terrain_population:
+        description: "Query NPC count for a smart terrain"
+        params:
+          smart_terrain_name: { type: string, required: true }
+        returns: "Object with count field"
+      query.faction_goodwill:
+        description: "Query faction goodwill toward another faction"
+        params:
+          from_faction: { type: string, required: true }
+          to_faction:   { type: string, required: true }
+        returns: "Object with goodwill field"
+      query.player_rank:
+        description: "Query player rank and reputation"
+        params: {}
+        returns: "Object with rank and reputation fields"
 
-  state.query.character:
-    direction: python→lua→python
-    description: "Query character information by game ID"
-    request:
-      character_id: { type: string, required: true }
-    response:
-      character: { $ref: Character }
+    filter_document:
+      description: "MongoDB-style query filter applied to result arrays"
+      operators:
+        $eq:        "Exact equality"
+        $ne:        "Not equal"
+        $gt:        "Greater than"
+        $gte:       "Greater than or equal"
+        $lt:        "Less than"
+        $lte:       "Less than or equal"
+        $in:        "Value in array"
+        $nin:       "Value not in array"
+        $regex:     "Lua pattern match"
+        $exists:    "Field exists (true) or is missing (false)"
+        $elemMatch: "At least one array element matches sub-filter"
+        $size:      "Array has exactly N elements"
+        $all:       "Array contains all specified values"
+        $and:       "Logical AND of sub-filters"
+        $or:        "Logical OR of sub-filters"
+        $not:       "Logical NOT of sub-filter"
 
-  state.query.characters_nearby:
-    direction: python→lua→python
-    description: "Query characters near a position or the player"
-    request:
-      center_id: { type: string, description: "Character ID to center on (defaults to player)" }
-      radius:    { type: float, default: 50.0 }
-    response:
-      characters: { type: array, items: { $ref: Character } }
-      count:      { type: int }
-
-  state.query.characters_alive:
-    direction: python→lua→python
-    description: "Check alive status for a list of character story IDs"
-    request:
-      ids: { type: array, items: { type: string }, required: true }
-    response:
-      # Flat object mapping story_id → bool
-      type: object
-      description: "Keys are story_id strings, values are booleans"
-
-  state.query.world:
-    direction: python→lua→python
-    description: "Query current world context (location, time, weather)"
-    request: {}
-    response:
-      $ref: SceneContext
+    cross_query_references:
+      description: "Sub-queries can reference results from earlier sub-queries"
+      format: "$ref:<query_id>.<dotted.path>"
+      example: '{"game_time_ms": {"$gt": "$ref:mem.last_update_time_ms"}}'
+      constraint: "Referenced query must appear earlier in the queries array"
 
   # ── State Response Envelope ─────────────────────────────────
 

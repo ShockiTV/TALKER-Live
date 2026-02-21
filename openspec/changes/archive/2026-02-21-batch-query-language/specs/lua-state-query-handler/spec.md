@@ -1,10 +1,6 @@
 # lua-state-query-handler
 
-## Purpose
-
-Lua batch query handler that responds to `state.query.batch` requests, dispatching sub-queries to a resource registry and returning all results in a single response.
-
-## Requirements
+## ADDED Requirements
 
 ### Requirement: Batch query dispatcher
 
@@ -68,21 +64,34 @@ The batch handler SHALL resolve `$ref` strings in sub-query `filter` and `params
 - **WHEN** referenced query "mem" has `ok: false`
 - **THEN** the referencing sub-query SHALL have `ok: false` with error `"$ref: 'mem' resolved to error"`
 
-### Memory Update Command Handler
+## REMOVED Requirements
 
-The system MUST handle `memory.update {character_id, narrative, last_update_time_ms}` commands.
+### Requirement: Memories Query Handler
 
-#### Scenario: Memory update applied
-- **WHEN** Lua receives memory.update command
-- **THEN** memory_store updates character's narrative and last_update_time_ms
+**Reason**: Replaced by batch dispatcher with `store.memories` resource
+**Migration**: Use `state.query.batch` with `{"resource": "store.memories", "params": {"character_id": "..."}}`
 
-### Dialogue Display Command Handler
+### Requirement: Events Query Handler
 
-The system MUST handle `dialogue.display {speaker_id, speaker_name, text}` commands.
+**Reason**: Replaced by batch dispatcher with `store.events` resource
+**Migration**: Use `state.query.batch` with `{"resource": "store.events"}` and optional filter/sort/limit
 
-#### Scenario: Display dialogue command
-- **WHEN** Python sends dialogue.display command
-- **THEN** game displays the dialogue via HUD
-- **AND** dialogue event is created and stored
+### Requirement: Character Query Handler
 
+**Reason**: Replaced by batch dispatcher with `query.character` resource
+**Migration**: Use `state.query.batch` with `{"resource": "query.character", "params": {"id": "..."}}`
 
+### Requirement: Nearby Characters Query Handler
+
+**Reason**: Replaced by batch dispatcher with `query.characters_nearby` resource
+**Migration**: Use `state.query.batch` with `{"resource": "query.characters_nearby", "params": {"radius": 50}}`
+
+### Requirement: Characters Alive Query Handler
+
+**Reason**: Replaced by batch dispatcher with `query.characters_alive` resource
+**Migration**: Use `state.query.batch` with `{"resource": "query.characters_alive", "params": {"ids": [...]}}`
+
+### Requirement: World Context Query Handler
+
+**Reason**: Replaced by batch dispatcher with `query.world` resource
+**Migration**: Use `state.query.batch` with `{"resource": "query.world"}`

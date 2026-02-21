@@ -55,12 +55,7 @@ from typing import Any
 from talker_service.dialogue.generator import DialogueGenerator
 from talker_service.prompts.helpers import describe_event
 from talker_service.prompts.models import Event
-from talker_service.state.models import (
-    Character as StateCharacter,
-    Event as StateEvent,
-    MemoryContext,
-    SceneContext,
-)
+from talker_service.state.batch import BatchResult
 
 
 # =============================================================================
@@ -83,61 +78,46 @@ class MockStateClient:
         self.characters_alive_response = json.loads(characters_alive_json)
         # Record requests as JSON-serializable dicts
         self.requests: list[dict] = []
-    
-    async def _send_query(self, topic: str, payload: dict) -> dict:
-        """Low-level query method used by world_context module."""
-        if payload.get("type") == "characters.alive":
-            ids = payload.get("ids", [])
-            self.requests.append({
-                "method": "query_characters_alive",
-                "args": {"story_ids": ids}
-            })
-            # Return the alive dict directly
-            return self.characters_alive_response.get("alive", {})
-        return {}
-    
-    async def query_memories(self, character_id: str) -> MemoryContext:
-        self.requests.append({
-            "method": "query_memories",
-            "args": {"character_id": character_id}
-        })
-        new_events = []
-        for e in self.memory_response.get("new_events", []):
-            new_events.append(StateEvent.from_dict(e))
-        return MemoryContext(
-            character_id=character_id,
-            narrative=self.memory_response.get("narrative"),
-            last_update_time_ms=self.memory_response.get("last_update_time_ms", 0),
-            new_events=new_events,
-        )
-    
-    async def query_character(self, character_id: str) -> StateCharacter:
-        self.requests.append({
-            "method": "query_character",
-            "args": {"character_id": character_id}
-        })
-        return StateCharacter.from_dict(self.character_response)
-    
-    async def query_world_context(self) -> SceneContext:
-        self.requests.append({
-            "method": "query_world_context",
-            "args": {}
-        })
-        return SceneContext.from_dict(self.scene_response)
-    
-    async def query_characters_alive(self, story_ids: list[str]) -> dict:
-        self.requests.append({
-            "method": "query_characters_alive",
-            "args": {"story_ids": story_ids}
-        })
-        return self.characters_alive_response
-    
-    async def query_events_recent(self, since_ms: int, limit: int) -> list:
-        self.requests.append({
-            "method": "query_events_recent",
-            "args": {"since_ms": since_ms, "limit": limit}
-        })
-        return []
+
+    async def execute_batch(self, batch) -> "BatchResult":
+        """Route batch sub-queries to individual mock methods, recording requests."""
+        results: dict[str, dict] = {}
+        for q in batch.build():
+            qid = q["id"]
+            resource = q["resource"]
+            params = q.get("params", {})
+            try:
+                if resource == "store.memories":
+                    self.requests.append({
+                        "method": "query_memories",
+                        "args": {"character_id": params["character_id"]}
+                    })
+                    results[qid] = {"ok": True, "data": self.memory_response}
+                elif resource == "query.character":
+                    self.requests.append({
+                        "method": "query_character",
+                        "args": {"character_id": params["id"]}
+                    })
+                    results[qid] = {"ok": True, "data": self.character_response}
+                elif resource == "query.world":
+                    self.requests.append({
+                        "method": "query_world_context",
+                        "args": {}
+                    })
+                    results[qid] = {"ok": True, "data": self.scene_response}
+                elif resource == "query.characters_alive":
+                    ids = params.get("ids", [])
+                    self.requests.append({
+                        "method": "query_characters_alive",
+                        "args": {"story_ids": ids}
+                    })
+                    alive_data = self.characters_alive_response.get("alive", {})
+                    results[qid] = {"ok": True, "data": alive_data}
+                else:
+                    results[qid] = {"ok": False, "error": f"unknown resource: {resource}"}
+            except Exception as e:
+                results[qid] = {"ok": False, "error": str(e)}
+        return BatchResult(results)
 
 
 class MockPublisher:

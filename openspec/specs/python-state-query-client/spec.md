@@ -2,65 +2,51 @@
 
 ## Purpose
 
-Python client for requesting state from Lua stores via ZMQ, with timeout handling and response correlation.
+Python client for requesting state from Lua stores via ZMQ, using the batch query protocol (`state.query.batch`) for all state fetching in a single roundtrip.
 
 ## Requirements
 
-### State Query Client Class
+### Requirement: State Query Client Class
 
-The system MUST provide `StateQueryClient` class with async query methods.
+The system MUST provide `StateQueryClient` class. `execute_batch()` is the primary API for fetching state from Lua. Individual `query_*` methods have been removed in favor of batch queries.
 
-#### Scenario: Query memories successfully
-- **WHEN** query_memories("123") is called
-- **THEN** request_id is generated
-- **AND** state.query is published with type=memories.get
-- **AND** MemoryContext is returned with narrative and events
+#### Scenario: execute_batch is the primary API
+- **WHEN** code needs to fetch state from Lua
+- **THEN** it SHALL use `execute_batch()` with a `BatchQuery`
+- **AND** results SHALL be accessible via the returned `BatchResult`
 
-### Request-Response Correlation
+### Requirement: execute_batch method
+
+The `StateQueryClient` SHALL provide `async execute_batch(batch: BatchQuery) -> BatchResult` that sends a single ZMQ message on topic `state.query.batch` and awaits a correlated `state.response`.
+
+#### Scenario: Batch execution sends single message
+- **WHEN** `execute_batch(batch)` is called with 4 sub-queries
+- **THEN** exactly one ZMQ message SHALL be published
+- **AND** one correlated response SHALL be awaited
+
+#### Scenario: Batch timeout raises StateQueryTimeout
+- **WHEN** batch response is not received within timeout
+- **THEN** `StateQueryTimeout` SHALL be raised with topic `"state.query.batch"`
+
+### Requirement: Request-Response Correlation
 
 The system MUST correlate requests and responses using unique request_ids.
 
 #### Scenario: Concurrent queries
-- **WHEN** two queries are made simultaneously
-- **THEN** each gets unique request_id
+- **WHEN** two batch queries are made simultaneously
+- **THEN** each gets a unique request_id
 - **AND** responses are correctly correlated
 
-### Timeout Handling
+### Requirement: Timeout Handling
 
-The system MUST handle query timeouts with configurable duration. Timeout errors SHALL raise `StateQueryTimeout` (a subclass of `TimeoutError`) to allow callers to distinguish transient connectivity failures from other errors. The `StateQueryTimeout` exception SHALL include the query topic and character_id (if applicable) for diagnostic logging.
+The system MUST handle query timeouts with configurable duration. Timeout errors SHALL raise `StateQueryTimeout` (a subclass of `TimeoutError`). For batch queries, the timeout SHALL apply to the entire batch response. The `StateQueryTimeout` exception SHALL include the query topic (`"state.query.batch"`) and optionally character_id for diagnostic logging.
 
-#### Scenario: Query times out
-- **WHEN** query_memories("123") takes > 30 seconds
-- **THEN** `StateQueryTimeout` SHALL be raised (not generic `TimeoutError`)
-- **AND** pending request SHALL be cleaned up
-- **AND** exception SHALL include topic "state.query.memories" and character_id "123"
+#### Scenario: Batch query times out
+- **WHEN** `execute_batch(batch)` takes longer than the configured timeout
+- **THEN** `StateQueryTimeout` SHALL be raised
+- **AND** exception SHALL include topic `"state.query.batch"`
 
 #### Scenario: Existing TimeoutError catchers still work
 - **WHEN** caller catches `TimeoutError`
 - **THEN** `StateQueryTimeout` SHALL be caught (it is a subclass)
 - **AND** backward compatibility SHALL be preserved
-
-### Response Parsing
-
-The system MUST parse responses and check success field.
-
-#### Scenario: Query returns error
-- **WHEN** Lua responds with success=false
-- **THEN** QueryError is raised with error message
-
-### Memory Context Model
-
-The system MUST define `MemoryContext` dataclass with narrative, last_update_time_ms, and new_events.
-
-#### Scenario: MemoryContext creation
-- **WHEN** successful query returns memory data
-- **THEN** MemoryContext is created with all fields populated
-
-### Graceful Degradation
-
-The system MUST handle failures gracefully without crashing.
-
-#### Scenario: Timeout returns empty context
-- **WHEN** query times out
-- **THEN** empty MemoryContext is returned
-- **AND** warning is logged

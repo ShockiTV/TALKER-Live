@@ -134,7 +134,7 @@ def _is_notable_relevant(
     return False
 
 
-def _get_all_story_ids() -> List[str]:
+def get_all_story_ids() -> List[str]:
     """Get all story IDs from all characters (flattened)."""
     ids = []
     for char in _get_characters():
@@ -186,39 +186,6 @@ def _get_story_ids_for_area(current_area: str) -> List[str]:
     return ids
 
 
-async def query_characters_alive(
-    state_client: "StateQueryClient",
-    ids: list[str],
-) -> dict[str, bool]:
-    """Query Lua for alive/dead status of specified characters.
-    
-    Args:
-        state_client: StateQueryClient instance
-        ids: List of character story_ids to check
-        
-    Returns:
-        Dict mapping story_id to alive status (True=alive, False=dead)
-    """
-    if not ids:
-        return {}
-    
-    try:
-        # Use _send_query directly for custom query type
-        data = await state_client._send_query(
-            "state.query",
-            {"type": "characters.alive", "ids": ids},
-        )
-        
-        # Response should be a dict mapping id to boolean
-        result = {}
-        for id_ in ids:
-            result[id_] = bool(data.get(id_, False))
-        return result
-        
-    except Exception as e:
-        logger.error(f"Failed to query characters alive: {e}")
-        # Return all as alive on error (safe default)
-        return {id_: True for id_ in ids}
 
 
 def build_dead_leaders_context(alive_status: dict[str, bool]) -> str:
@@ -363,8 +330,8 @@ def build_regional_context(current_area: str) -> str:
 
 async def build_world_context(
     scene_data: "SceneContext",
-    state_client: "StateQueryClient",
     recent_events: list | None = None,
+    alive_status: dict[str, bool] | None = None,
 ) -> str:
     """Build complete world context section for dialogue prompts.
     
@@ -376,8 +343,8 @@ async def build_world_context(
     
     Args:
         scene_data: SceneContext from world.context query
-        state_client: StateQueryClient for character alive queries
         recent_events: Optional list of recent events
+        alive_status: Pre-fetched alive status dict from batch query
         
     Returns:
         Combined world context text, or empty string if nothing notable
@@ -386,10 +353,9 @@ async def build_world_context(
     
     # Get character IDs filtered by current area
     current_area = scene_data.loc if scene_data else ""
-    relevant_ids = _get_story_ids_for_area(current_area)
     
-    # Query alive status for relevant characters only
-    alive_status = await query_characters_alive(state_client, relevant_ids)
+    if alive_status is None:
+        alive_status = {}
     
     # Build dead leaders section
     dead_leaders = build_dead_leaders_context(alive_status)

@@ -10,6 +10,7 @@ from .cleaner import clean_dialogue, extract_speaker_id
 from .retry_queue import DialogueRetryQueue, get_retry_attempt
 
 from ..llm import LLMClient, Message, LLMOptions
+from ..state.batch import BatchQuery
 from ..state.client import StateQueryTimeout
 from ..prompts import (
     create_dialogue_request_prompt,
@@ -20,7 +21,7 @@ from ..prompts import (
     Event,
     MemoryContext,
 )
-from ..prompts.world_context import build_world_context
+from ..prompts.world_context import build_world_context, get_all_story_ids
 from ..state.models import SceneContext
 
 
@@ -31,9 +32,7 @@ COMPRESSION_THRESHOLD = 12
 class StateQueryProtocol(Protocol):
     """Protocol for state query client."""
     
-    async def query_memories(self, character_id: str) -> Any: ...
-    async def query_events_recent(self, since_ms: int, limit: int) -> list[Any]: ...
-    async def query_character(self, character_id: str) -> Any: ...
+    async def execute_batch(self, batch: Any, *, timeout: float | None = None) -> Any: ...
 
 
 class ZMQPublisherProtocol(Protocol):
@@ -293,28 +292,43 @@ class DialogueGenerator:
     ) -> None:
         """Generate and display dialogue for a speaker.
         
+        Uses a single batch query to fetch memories, character data,
+        world context, and alive status in one ZMQ roundtrip.
+        
         Args:
             speaker_id: Character ID
             event: Event context
         """
         try:
-            # Query memory context
-            memory_ctx = await self.state.query_memories(speaker_id)
+            # Gather all story IDs for alive check
+            story_ids = get_all_story_ids()
+            
+            # Single batch query for all needed state
+            batch = (
+                BatchQuery()
+                .add("mem", "store.memories", params={"character_id": speaker_id})
+                .add("char", "query.character", params={"id": speaker_id})
+                .add("world", "query.world")
+            )
+            if story_ids:
+                batch.add("alive", "query.characters_alive", params={"ids": story_ids})
+            
+            result = await self.state.execute_batch(batch)
+            
+            # Parse results
+            memory_ctx = MemoryContext.from_dict(result["mem"])
+            character = Character.from_dict(result["char"])
             
             # Check if memory compression needed (run in background)
             asyncio.create_task(
                 self._maybe_compress_memory(speaker_id, memory_ctx)
             )
             
-            # Query character details
-            character = await self.state.query_character(speaker_id)
-            
-            # Query scene context JIT for CURRENT LOCATION section
+            # Build scene context dict from world query result
             scene_context = None
             world_state_context = ""
             try:
-                scene_ctx = await self.state.query_world_context()
-                # Build scene_context dict from SceneContext dataclass
+                scene_ctx = SceneContext.from_dict(result["world"])
                 scene_context = {
                     "loc": scene_ctx.loc,
                     "poi": scene_ctx.poi,
@@ -328,25 +342,21 @@ class DialogueGenerator:
                     "miracle_machine_disabled": scene_ctx.miracle_machine_disabled,
                 }
                 
-                # Build world state context (dead leaders, info portions, regional politics)
+                # Get alive status from batch result (if available)
+                alive_status = result["alive"] if story_ids and result.ok("alive") else {}
+                
+                # Build world state context using pre-fetched alive data
                 try:
                     world_state_context = await build_world_context(
                         scene_ctx,
-                        self.state,
                         recent_events=memory_ctx.new_events,
+                        alive_status=alive_status,
                     )
-                except StateQueryTimeout:
-                    raise  # propagate for retry
                 except Exception as e:
                     logger.warning(f"Failed to build world context: {e}")
                     world_state_context = ""
-            except StateQueryTimeout:
-                raise  # propagate for retry
             except Exception as e:
-                logger.warning(f"Failed to query scene context: {e}")
-            
-            # Character from state query is already correct type
-            prompt_character = character
+                logger.warning(f"Failed to parse scene context: {e}")
             
             prompt_memory = MemoryContext(
                 narrative=memory_ctx.narrative,
@@ -359,7 +369,7 @@ class DialogueGenerator:
             
             # Build dialogue prompt with scene and world context
             prompt_messages, timestamp_to_delete = create_dialogue_request_prompt(
-                prompt_character,
+                character,
                 prompt_memory,
                 scene_context=scene_context,
                 world_state_context=world_state_context,
@@ -428,11 +438,10 @@ class DialogueGenerator:
         logger.info(f"Compressing memories for {speaker_id}")
         
         try:
-            # Get character for prompt
-            character = await self.state.query_character(speaker_id)
-            
-            # Character from state query is already correct type
-            prompt_character = character
+            # Get character for prompt via batch query
+            batch = BatchQuery().add("char", "query.character", params={"id": speaker_id})
+            result = await self.state.execute_batch(batch)
+            character = Character.from_dict(result["char"])
             
             # Events from state query are already correct type
             prompt_events = memory_ctx.new_events
@@ -441,11 +450,11 @@ class DialogueGenerator:
             
             if not current_narrative:
                 # Bootstrap: Use compression prompt
-                prompt_messages = create_compress_memories_prompt(prompt_events, prompt_character)
+                prompt_messages = create_compress_memories_prompt(prompt_events, character)
             else:
                 # Update existing narrative
                 prompt_messages = create_update_narrative_prompt(
-                    prompt_character,
+                    character,
                     current_narrative,
                     prompt_events
                 )

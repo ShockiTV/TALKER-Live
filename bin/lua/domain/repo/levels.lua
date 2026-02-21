@@ -200,4 +200,11 @@ function levels._count_levels()
     return count
 end
 
+--- Get the raw visits map (read-only reference).
+-- Used by batch query handler for collection iteration.
+-- @return table  Map of level_id to {count, log}
+function levels.get_all_visits()
+    return data.visits
+end
+
 return levels

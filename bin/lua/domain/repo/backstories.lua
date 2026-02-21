@@ -221,4 +221,11 @@ function M.load_save_data(saved_data)
 	character_backstories = {}
 end
 
+--- Get the raw character_id → backstory_id map (read-only reference).
+-- Used by batch query handler for collection iteration.
+-- @return table  Map of character_id to backstory_id
+function M.get_all_mappings()
+	return character_backstories
+end
+
 return M

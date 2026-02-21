@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 from talker_service.dialogue import DialogueGenerator, SpeakerSelector
 from talker_service.dialogue.cleaner import clean_dialogue, extract_speaker_id
+from talker_service.state.batch import BatchResult
 
 
 class TestSpeakerSelector:
@@ -132,6 +133,22 @@ class TestExtractSpeakerId:
         assert extract_speaker_id("no numbers here") is None
 
 
+def _make_batch_result(
+    mem=None, char=None, world=None, alive=None,
+):
+    """Build a BatchResult from optional data dicts."""
+    results = {}
+    if mem is not None:
+        results["mem"] = {"ok": True, "data": mem}
+    if char is not None:
+        results["char"] = {"ok": True, "data": char}
+    if world is not None:
+        results["world"] = {"ok": True, "data": world}
+    if alive is not None:
+        results["alive"] = {"ok": True, "data": alive}
+    return BatchResult(results)
+
+
 class TestDialogueGenerator:
     """Tests for DialogueGenerator class."""
     
@@ -146,14 +163,15 @@ class TestDialogueGenerator:
     def mock_state(self):
         """Create mock state query client."""
         state = AsyncMock()
-        # Set up _send_query to return empty dict (for query_characters_alive)
-        state._send_query = AsyncMock(return_value={})
-        # Set up query_world_context to return a scene context with required attributes
-        scene_ctx = MagicMock()
-        scene_ctx.loc = ""
-        scene_ctx.brain_scorcher_disabled = False
-        scene_ctx.miracle_machine_disabled = False
-        state.query_world_context = AsyncMock(return_value=scene_ctx)
+        # Default execute_batch returns sensible empty data
+        state.execute_batch = AsyncMock(return_value=_make_batch_result(
+            mem={"narrative": None, "last_update_time_ms": 0, "new_events": []},
+            char={"game_id": "123", "name": "Hip", "faction": "stalker",
+                  "experience": "Experienced", "reputation": 0,
+                  "personality": "", "backstory": "", "weapon": ""},
+            world={"loc": "", "weather": ""},
+            alive={},
+        ))
         return state
     
     @pytest.fixture
@@ -195,23 +213,15 @@ class TestDialogueGenerator:
         # Set up mocks - complete() returns a string directly
         mock_llm.complete.return_value = "What the hell happened here?"
         
-        mock_memory = MagicMock()
-        mock_memory.narrative = None
-        mock_memory.last_update_time_ms = 0
-        mock_memory.new_events = []
-        mock_state.query_memories.return_value = mock_memory
-        
-        mock_char = MagicMock()
-        mock_char.game_id = "123"
-        mock_char.name = "Hip"
-        mock_char.faction = "stalker"
-        mock_char.experience = "Experienced"
-        mock_char.reputation = "Good"
-        mock_char.personality = ""
-        mock_char.backstory = ""
-        mock_char.weapon = ""
-        mock_char.visual_faction = None
-        mock_state.query_character.return_value = mock_char
+        # Set up batch result for the speaker's state queries
+        mock_state.execute_batch = AsyncMock(return_value=_make_batch_result(
+            mem={"narrative": None, "last_update_time_ms": 0, "new_events": []},
+            char={"game_id": "123", "name": "Hip", "faction": "stalker",
+                  "experience": "Experienced", "reputation": "Good",
+                  "personality": "", "backstory": "", "weapon": ""},
+            world={"loc": "", "weather": ""},
+            alive={},
+        ))
         
         event = {
             "type": "DEATH",
@@ -276,23 +286,15 @@ class TestDialogueGenerator:
         # Set up mocks - complete() returns a string directly
         mock_llm.complete.return_value = "Just passing through."
         
-        mock_memory = MagicMock()
-        mock_memory.narrative = None
-        mock_memory.last_update_time_ms = 0
-        mock_memory.new_events = []
-        mock_state.query_memories.return_value = mock_memory
-        
-        mock_char = MagicMock()
-        mock_char.game_id = "456"
-        mock_char.name = "Wolf"
-        mock_char.faction = "stalker"
-        mock_char.experience = "Veteran"
-        mock_char.reputation = "Good"
-        mock_char.personality = ""
-        mock_char.backstory = ""
-        mock_char.weapon = ""
-        mock_char.visual_faction = None
-        mock_state.query_character.return_value = mock_char
+        # Set up batch result for the speaker's state queries
+        mock_state.execute_batch = AsyncMock(return_value=_make_batch_result(
+            mem={"narrative": None, "last_update_time_ms": 0, "new_events": []},
+            char={"game_id": "456", "name": "Wolf", "faction": "stalker",
+                  "experience": "Veteran", "reputation": "Good",
+                  "personality": "", "backstory": "", "weapon": ""},
+            world={"loc": "", "weather": ""},
+            alive={},
+        ))
         
         event = {
             "type": "IDLE",
