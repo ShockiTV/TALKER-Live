@@ -26,10 +26,38 @@ class TestZMQRouter:
         sub_endpoint = "tcp://127.0.0.1:5555"
         pub_endpoint = "tcp://*:5556"
         router = ZMQRouter(sub_endpoint, pub_endpoint)
-        
+
         assert router.sub_endpoint == sub_endpoint
         assert router.pub_endpoint == pub_endpoint
         assert router.pub_socket is not None
+
+    def test_router_owns_context_by_default(self):
+        """Router creates and owns its own context when none is provided."""
+        router = ZMQRouter("tcp://127.0.0.1:5555")
+        assert router._owns_context is True
+
+    def test_router_uses_shared_context(self):
+        """Router uses provided context and marks it as not owned."""
+        import zmq.asyncio as zmq_asyncio
+        shared_ctx = zmq_asyncio.Context()
+        router = ZMQRouter("tcp://127.0.0.1:5555", context=shared_ctx)
+        assert router._owns_context is False
+        assert router.context is shared_ctx
+        # Must close sockets before terminating the shared context
+        router.sub_socket.close()
+        shared_ctx.term()
+
+    @pytest.mark.asyncio
+    async def test_shutdown_does_not_term_shared_context(self):
+        """Shutdown skips context.term() when context was provided externally."""
+        from unittest.mock import MagicMock
+        router = ZMQRouter("tcp://127.0.0.1:5555")
+        router.sub_socket = MagicMock()
+        mock_ctx = MagicMock()
+        router.context = mock_ctx
+        router._owns_context = False
+        await router.shutdown()
+        mock_ctx.term.assert_not_called()
 
     def test_handler_registration(self):
         """Test registering handlers for topics."""

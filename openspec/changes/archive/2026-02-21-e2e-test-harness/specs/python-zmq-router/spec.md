@@ -1,12 +1,8 @@
-# python-zmq-router
+# python-zmq-router (delta)
 
-## Purpose
+## MODIFIED Requirements
 
-Python ZMQ router with PUB/SUB sockets for bidirectional communication with Lua game client.
-
-## Requirements
-
-### ZMQRouter Class
+### Requirement: Initialize with both sockets
 
 The `ZMQRouter` class MUST accept an optional `context` parameter. When provided, the router SHALL use that context instance instead of creating its own `zmq.asyncio.Context`. When not provided, the router SHALL create its own context as before (backward-compatible).
 
@@ -28,30 +24,3 @@ The `ZMQRouter` class MUST accept an optional `context` parameter. When provided
 
 - **WHEN** router starts
 - **THEN** PUB socket binds to the configured pub_endpoint
-
-### Publish Method
-
-The system MUST provide `publish(topic: str, payload: dict)` for sending messages.
-
-#### Scenario: Publish command to Lua
-- **WHEN** publish("dialogue.display", {...}) is called
-- **THEN** message is sent on PUB socket
-- **AND** Lua SUB receives the message
-
-### Response Handler Integration
-
-The system MUST handle state.response messages and forward to StateQueryClient.
-
-#### Scenario: Handle state response
-- **WHEN** state.response message is received
-- **THEN** message is routed to StateQueryClient
-- **AND** correlation completes
-
-### Shutdown Sequence
-
-The shutdown MUST close both sockets and flush pending publishes.
-
-#### Scenario: Graceful shutdown
-- **WHEN** shutdown() is called
-- **THEN** pending publishes are flushed
-- **AND** both sockets are closed

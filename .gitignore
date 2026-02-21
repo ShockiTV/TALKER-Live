@@ -50,4 +50,6 @@ talker.log
 .env
 .venv/
 **/__pycache__/
+**/.test_artifacts/
+**/.pytest_cache/
 

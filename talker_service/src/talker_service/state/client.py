@@ -5,7 +5,7 @@ from typing import Any
 
 from loguru import logger
 
-from .models import MemoryContext, Character, Event, WorldContext
+from .models import MemoryContext, Character, Event, WorldContext, SceneContext
 
 
 class StateQueryTimeout(TimeoutError):
@@ -191,11 +191,11 @@ class StateQueryClient:
                 characters.append(Character.from_dict(c))
         return characters
     
-    async def query_world_context(self) -> WorldContext:
+    async def query_world_context(self) -> SceneContext:
         """Query current world context (location, time, weather).
         
         Returns:
-            WorldContext object
+            SceneContext object
         """
         data = await self._send_query("state.query.world", {})
-        return WorldContext.from_dict(data)
+        return SceneContext.from_dict(data)
