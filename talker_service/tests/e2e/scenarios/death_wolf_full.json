@@ -137,41 +137,13 @@
   "expected": {
     "state_queries": [
       {
-        "topic": "state.query.memories",
-        "payload": { "character_id": "12345" }
-      },
-      {
-        "topic": "state.query.character",
-        "payload": { "character_id": "12345" }
-      },
-      {
-        "topic": "state.query.world",
-        "payload": {}
-      },
-      {
-        "topic": "state.query",
+        "topic": "state.query.batch",
         "payload": {
-          "type": "characters.alive",
-          "ids": [
-            "agr_smart_terrain_1_6_near_2_military_colonel_kovalski",
-            "bar_dolg_leader",
-            "mil_smart_terrain_7_7_freedom_leader_stalker",
-            "mar_smart_terrain_base_stalker_leader_marsh",
-            "yan_stalker_sakharov",
-            "cit_killers_merc_trader_stalker",
-            "zat_b7_bandit_boss_sultan",
-            "lider_monolith_haron",
-            "kat_greh_sabaoth",
-            "gen_greh_sabaoth",
-            "sar_greh_sabaoth",
-            "ds_domik_isg_leader",
-            "jup_depo_isg_leader",
-            "esc_m_trader",
-            "m_trader",
-            "esc_2_12_stalker_trader",
-            "esc_2_12_stalker_wolf",
-            "esc_2_12_stalker_fanat",
-            "devushka"
+          "queries": [
+            {"id": "mem", "resource": "store.memories", "params": {"character_id": "12345"}},
+            {"id": "char", "resource": "query.character", "params": {"id": "12345"}},
+            {"id": "world", "resource": "query.world"},
+            {"id": "alive", "resource": "query.characters_alive", "params": {"ids": "__ANY_LIST__"}}
           ]
         }
       }

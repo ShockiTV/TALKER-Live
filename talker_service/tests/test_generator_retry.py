@@ -7,47 +7,36 @@ from unittest.mock import AsyncMock, MagicMock
 
 from talker_service.dialogue import DialogueGenerator
 from talker_service.dialogue.retry_queue import DialogueRetryQueue
+from talker_service.state.batch import BatchResult
 from talker_service.state.client import StateQueryTimeout
 
 
-def _make_scene_ctx():
-    """Create a mock SceneContext with required attributes."""
-    ctx = MagicMock()
-    ctx.loc = ""
-    ctx.poi = ""
-    ctx.time = ""
-    ctx.weather = ""
-    ctx.emission = ""
-    ctx.psy_storm = ""
-    ctx.sheltering = ""
-    ctx.campfire = ""
-    ctx.brain_scorcher_disabled = False
-    ctx.miracle_machine_disabled = False
-    return ctx
+def _make_batch_result(
+    mem=None, char=None, world=None, alive=None,
+):
+    """Build a BatchResult from optional data dicts."""
+    results = {}
+    if mem is not None:
+        results["mem"] = {"ok": True, "data": mem}
+    if char is not None:
+        results["char"] = {"ok": True, "data": char}
+    if world is not None:
+        results["world"] = {"ok": True, "data": world}
+    if alive is not None:
+        results["alive"] = {"ok": True, "data": alive}
+    return BatchResult(results)
 
 
-def _make_memory_ctx():
-    """Create a mock MemoryContext."""
-    ctx = MagicMock()
-    ctx.narrative = None
-    ctx.last_update_time_ms = 0
-    ctx.new_events = []
-    return ctx
-
-
-def _make_character(game_id="123", name="Hip"):
-    """Create a mock Character."""
-    char = MagicMock()
-    char.game_id = game_id
-    char.name = name
-    char.faction = "stalker"
-    char.experience = "Experienced"
-    char.reputation = "Good"
-    char.personality = ""
-    char.backstory = ""
-    char.weapon = ""
-    char.visual_faction = None
-    return char
+def _default_batch_result():
+    """Return a BatchResult with sensible defaults."""
+    return _make_batch_result(
+        mem={"narrative": None, "last_update_time_ms": 0, "new_events": []},
+        char={"game_id": "123", "name": "Hip", "faction": "stalker",
+              "experience": "Experienced", "reputation": "Good",
+              "personality": "", "backstory": "", "weapon": ""},
+        world={"loc": "", "weather": ""},
+        alive={},
+    )
 
 
 def _make_event(event_type="DEATH", witnesses=None, game_time_ms=1000000):
@@ -76,10 +65,7 @@ class TestGeneratorWithRetryQueue:
         llm.complete = AsyncMock(return_value="Some dialogue")
 
         state = AsyncMock()
-        state.query_memories = AsyncMock(return_value=_make_memory_ctx())
-        state.query_character = AsyncMock(return_value=_make_character())
-        state.query_world_context = AsyncMock(return_value=_make_scene_ctx())
-        state._send_query = AsyncMock(return_value={})
+        state.execute_batch = AsyncMock(return_value=_default_batch_result())
 
         publisher = AsyncMock()
         publisher.publish = AsyncMock(return_value=True)
@@ -99,8 +85,8 @@ class TestGeneratorWithRetryQueue:
     async def test_event_timeout_enqueues(self, setup):
         """StateQueryTimeout during event dialogue enqueues to retry queue."""
         gen, state, publisher, retry_queue = setup
-        state.query_memories.side_effect = StateQueryTimeout(
-            "timeout", topic="state.query.memories", character_id="123"
+        state.execute_batch.side_effect = StateQueryTimeout(
+            "timeout", topic="state.query.batch", character_id="123"
         )
 
         event = _make_event()
@@ -115,8 +101,8 @@ class TestGeneratorWithRetryQueue:
     async def test_instruction_timeout_enqueues(self, setup):
         """StateQueryTimeout during instruction enqueues with speaker_id."""
         gen, state, publisher, retry_queue = setup
-        state.query_memories.side_effect = StateQueryTimeout(
-            "timeout", topic="state.query.memories", character_id="456"
+        state.execute_batch.side_effect = StateQueryTimeout(
+            "timeout", topic="state.query.batch", character_id="456"
         )
 
         event = _make_event(event_type="IDLE")
@@ -132,11 +118,11 @@ class TestGeneratorWithRetryQueue:
 
     @pytest.mark.asyncio
     async def test_world_context_timeout_enqueues(self, setup):
-        """StateQueryTimeout during world context query is caught and deferred."""
+        """StateQueryTimeout during batch query is caught and deferred."""
         gen, state, publisher, retry_queue = setup
-        # Memories and character succeed, world context times out
-        state.query_world_context.side_effect = StateQueryTimeout(
-            "timeout", topic="state.query.world"
+        # Batch query times out
+        state.execute_batch.side_effect = StateQueryTimeout(
+            "timeout", topic="state.query.batch"
         )
 
         event = _make_event()
@@ -150,7 +136,7 @@ class TestGeneratorWithRetryQueue:
     async def test_non_timeout_exception_not_enqueued(self, setup):
         """Non-timeout exceptions are NOT enqueued — just logged."""
         gen, state, publisher, retry_queue = setup
-        state.query_memories.side_effect = RuntimeError("data corruption")
+        state.execute_batch.side_effect = RuntimeError("data corruption")
 
         event = _make_event()
         await gen.generate_from_event(event)
@@ -174,10 +160,7 @@ class TestGeneratorWithoutRetryQueue:
         llm.complete = AsyncMock(return_value="Hello stalker")
 
         state = AsyncMock()
-        state.query_memories = AsyncMock(return_value=_make_memory_ctx())
-        state.query_character = AsyncMock(return_value=_make_character())
-        state.query_world_context = AsyncMock(return_value=_make_scene_ctx())
-        state._send_query = AsyncMock(return_value={})
+        state.execute_batch = AsyncMock(return_value=_default_batch_result())
 
         publisher = AsyncMock()
         publisher.publish = AsyncMock(return_value=True)
@@ -195,7 +178,7 @@ class TestGeneratorWithoutRetryQueue:
     async def test_event_timeout_logged_not_enqueued(self, setup):
         """Without retry queue, StateQueryTimeout is logged and discarded."""
         gen, state, publisher = setup
-        state.query_memories.side_effect = StateQueryTimeout("timeout")
+        state.execute_batch.side_effect = StateQueryTimeout("timeout")
 
         event = _make_event()
         # Should NOT raise — error is caught and logged
@@ -206,7 +189,7 @@ class TestGeneratorWithoutRetryQueue:
     async def test_instruction_timeout_logged_not_enqueued(self, setup):
         """Without retry queue, instruction timeout is handled gracefully."""
         gen, state, publisher = setup
-        state.query_memories.side_effect = StateQueryTimeout("timeout")
+        state.execute_batch.side_effect = StateQueryTimeout("timeout")
 
         event = _make_event(event_type="IDLE")
         await gen.generate_from_instruction("123", event)
@@ -243,10 +226,7 @@ class TestLLMTimeoutNotEnqueued:
         llm.complete = AsyncMock(side_effect=TimeoutError("LLM read timeout"))
 
         state = AsyncMock()
-        state.query_memories = AsyncMock(return_value=_make_memory_ctx())
-        state.query_character = AsyncMock(return_value=_make_character())
-        state.query_world_context = AsyncMock(return_value=_make_scene_ctx())
-        state._send_query = AsyncMock(return_value={})
+        state.execute_batch = AsyncMock(return_value=_default_batch_result())
 
         publisher = AsyncMock()
         publisher.publish = AsyncMock(return_value=True)
@@ -306,13 +286,10 @@ class TestAttemptCountPreserved:
         llm.complete = AsyncMock(return_value="Some dialogue")
 
         state = AsyncMock()
-        # Always timeout on memories
-        state.query_memories = AsyncMock(
-            side_effect=StateQueryTimeout("timeout", topic="state.query.memories")
+        # Always timeout on batch query
+        state.execute_batch = AsyncMock(
+            side_effect=StateQueryTimeout("timeout", topic="state.query.batch")
         )
-        state.query_character = AsyncMock(return_value=_make_character())
-        state.query_world_context = AsyncMock(return_value=_make_scene_ctx())
-        state._send_query = AsyncMock(return_value={})
 
         publisher = AsyncMock()
         publisher.publish = AsyncMock(return_value=True)

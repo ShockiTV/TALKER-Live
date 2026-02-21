@@ -2,6 +2,9 @@
 
 from .harness import RunResult
 
+# Sentinel value used in scenario JSON to indicate "any non-empty list"
+_ANY_LIST_SENTINEL = "__ANY_LIST__"
+
 
 def assert_scenario(result: RunResult, scenario: dict) -> None:
     """Assert RunResult matches all declared expected keys in the scenario.
@@ -20,6 +23,25 @@ def assert_scenario(result: RunResult, scenario: dict) -> None:
         _assert_zmq_published(result.zmq_published, expected["zmq_published"])
 
 
+def _deep_match(actual, expected):
+    """Deep compare with support for __ANY_LIST__ sentinel.
+
+    Returns True if actual matches expected, treating __ANY_LIST__ as
+    'any non-empty list'.
+    """
+    if expected == _ANY_LIST_SENTINEL:
+        return isinstance(actual, list) and len(actual) > 0
+    if isinstance(expected, dict) and isinstance(actual, dict):
+        if set(expected.keys()) != set(actual.keys()):
+            return False
+        return all(_deep_match(actual[k], expected[k]) for k in expected)
+    if isinstance(expected, list) and isinstance(actual, list):
+        if len(expected) != len(actual):
+            return False
+        return all(_deep_match(a, e) for a, e in zip(actual, expected))
+    return actual == expected
+
+
 def _assert_state_queries(actual: list[dict], expected: list[dict]) -> None:
     assert len(actual) == len(expected), (
         f"Expected {len(expected)} state queries, got {len(actual)}.\n"
@@ -29,7 +51,7 @@ def _assert_state_queries(actual: list[dict], expected: list[dict]) -> None:
         assert act["topic"] == exp["topic"], (
             f"State query {i}: topic mismatch — got {act['topic']!r}, expected {exp['topic']!r}"
         )
-        assert act["payload"] == exp["payload"], (
+        assert _deep_match(act["payload"], exp["payload"]), (
             f"State query {i} ({act['topic']}): payload mismatch.\n"
             f"Expected: {exp['payload']}\n"
             f"Actual:   {act['payload']}"

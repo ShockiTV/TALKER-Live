@@ -1,11 +1,13 @@
 """State query client for requesting game state from Lua via ZMQ."""
 
+from __future__ import annotations
+
 import uuid
 from typing import Any
 
 from loguru import logger
 
-from .models import MemoryContext, Character, Event, WorldContext, SceneContext
+from .batch import BatchQuery, BatchResult
 
 
 class StateQueryTimeout(TimeoutError):
@@ -106,96 +108,67 @@ class StateQueryClient:
         logger.debug(f"Received response for {request_id}")
         
         return response.get("data", response)
-    
-    async def query_memories(self, character_id: str) -> MemoryContext:
-        """Query memory context for a character.
-        
-        Args:
-            character_id: Character game ID
-            
-        Returns:
-            MemoryContext with narrative and new events
-        """
-        data = await self._send_query(
-            "state.query.memories",
-            {"character_id": character_id}
-        )
-        return MemoryContext.from_dict(data)
-    
-    async def query_events_recent(
+
+    async def execute_batch(
         self,
-        since_ms: int = 0,
-        limit: int = 50
-    ) -> list[Event]:
-        """Query recent events since a timestamp.
-        
+        batch: BatchQuery,
+        *,
+        timeout: float | None = None,
+    ) -> BatchResult:
+        """Execute a batch query against Lua in a single ZMQ roundtrip.
+
+        Publishes a ``state.query.batch`` message containing all sub-queries,
+        waits for a correlated ``state.response``, and wraps the per-query
+        results in a :class:`BatchResult`.
+
         Args:
-            since_ms: Game time in milliseconds to query since
-            limit: Maximum number of events to return
-            
+            batch: A :class:`BatchQuery` with at least one sub-query.
+            timeout: Optional timeout override in seconds.
+
         Returns:
-            List of Event objects
+            BatchResult accessor for individual sub-query results.
+
+        Raises:
+            StateQueryTimeout: If Lua does not respond within the timeout.
+            ConnectionError: If the ZMQ publish fails.
+            ValueError: If the batch has invalid $ref ordering.
         """
-        data = await self._send_query(
-            "state.query.events",
-            {"since_ms": since_ms, "limit": limit}
+        queries = batch.build()  # validates $ref ordering
+        request_id = self._generate_request_id()
+        effective_timeout = timeout or self.timeout
+
+        future = self.router.create_request(request_id, effective_timeout)
+
+        payload = {
+            "request_id": request_id,
+            "queries": queries,
+        }
+
+        success = await self.router.publish("state.query.batch", payload)
+        if not success:
+            raise ConnectionError("Failed to publish batch query")
+
+        logger.debug(
+            "Sent batch query with {} sub-queries, request_id={}",
+            len(queries),
+            request_id,
         )
-        
-        events = []
-        for e in data.get("events", []):
-            if isinstance(e, dict):
-                events.append(Event.from_dict(e))
-        return events
-    
-    async def query_character(self, character_id: str) -> Character:
-        """Query character information by ID.
-        
-        Args:
-            character_id: Character game ID
-            
-        Returns:
-            Character object
-        """
-        data = await self._send_query(
-            "state.query.character",
-            {"character_id": character_id}
+
+        try:
+            response = await future
+        except TimeoutError:
+            raise StateQueryTimeout(
+                f"Batch query timed out (request_id={request_id})",
+                topic="state.query.batch",
+            ) from None
+
+        # Extract data field (matches wire format: {"request_id": ..., "data": {...}})
+        data = response.get("data", response)
+        results_raw = data.get("results", {}) if isinstance(data, dict) else {}
+        logger.debug(
+            "Received batch response for {} ({} results)",
+            request_id,
+            len(results_raw),
         )
-        return Character.from_dict(data.get("character", data))
-    
-    async def query_characters_nearby(
-        self,
-        center_id: str | None = None,
-        radius: float = 50.0
-    ) -> list[Character]:
-        """Query characters near a position or the player.
-        
-        Args:
-            center_id: Optional character ID to center on (defaults to player)
-            radius: Search radius in game units
-            
-        Returns:
-            List of Character objects
-        """
-        params = {"radius": radius}
-        if center_id:
-            params["center_id"] = center_id
-        
-        data = await self._send_query(
-            "state.query.characters_nearby",
-            params
-        )
-        
-        characters = []
-        for c in data.get("characters", []):
-            if isinstance(c, dict):
-                characters.append(Character.from_dict(c))
-        return characters
-    
-    async def query_world_context(self) -> SceneContext:
-        """Query current world context (location, time, weather).
-        
-        Returns:
-            SceneContext object
-        """
-        data = await self._send_query("state.query.world", {})
-        return SceneContext.from_dict(data)
+
+        return BatchResult(results_raw)

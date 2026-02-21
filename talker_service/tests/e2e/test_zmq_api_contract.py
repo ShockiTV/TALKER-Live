@@ -267,65 +267,65 @@ class TestMemoryUpdateMessage:
 # ── Requirement: State query definitions ─────────────────────
 
 
-class TestStateQueryTopics:
-    """All state query topics present with correct direction."""
+class TestStateQueryBatch:
+    """State query batch topic is present with correct structure."""
 
-    TOPICS = [
-        "state.query.memories", "state.query.events",
-        "state.query.character", "state.query.characters_nearby",
-        "state.query.characters_alive", "state.query.world",
-    ]
+    def test_topic_exists(self, messages):
+        assert "state.query.batch" in messages
 
-    @pytest.mark.parametrize("topic", TOPICS)
-    def test_topic_exists(self, messages, topic):
-        assert topic in messages
+    def test_direction_bidirectional(self, messages):
+        assert messages["state.query.batch"]["direction"] == "python→lua→python"
 
-    @pytest.mark.parametrize("topic", TOPICS)
-    def test_direction_bidirectional(self, messages, topic):
-        assert messages[topic]["direction"] == "python→lua→python"
+    def test_has_request_and_response(self, messages):
+        assert "request" in messages["state.query.batch"]
+        assert "response" in messages["state.query.batch"]
 
-    @pytest.mark.parametrize("topic", TOPICS)
-    def test_has_request_and_response(self, messages, topic):
-        assert "request" in messages[topic]
-        assert "response" in messages[topic]
+    def test_request_queries_required(self, messages):
+        req = messages["state.query.batch"]["request"]
+        assert "queries" in req
+        assert req["queries"]["type"] == "array"
+        assert req["queries"].get("required") is True
+
+    def test_response_has_results(self, messages):
+        resp = messages["state.query.batch"]["response"]
+        assert "results" in resp
+
+    def test_resource_registry_present(self, messages):
+        batch = messages["state.query.batch"]
+        assert "resource_registry" in batch
+
+    def test_resource_registry_has_core_resources(self, messages):
+        registry = messages["state.query.batch"]["resource_registry"]
+        expected = [
+            "store.memories", "store.events",
+            "query.character", "query.characters_nearby",
+            "query.world", "query.characters_alive",
+            "query.events_recent",
+        ]
+        for resource in expected:
+            assert resource in registry, f"Missing resource: {resource}"
+
+    def test_filter_document_present(self, messages):
+        batch = messages["state.query.batch"]
+        assert "filter_document" in batch
+
+    def test_filter_document_has_operators(self, messages):
+        fd = messages["state.query.batch"]["filter_document"]
+        assert "operators" in fd
+        expected_ops = ["$eq", "$ne", "$gt", "$gte", "$lt", "$lte",
+                       "$in", "$nin", "$regex", "$exists",
+                       "$elemMatch", "$size", "$all", "$and", "$or", "$not"]
+        for op in expected_ops:
+            assert op in fd["operators"], f"Missing operator: {op}"
+
+    def test_cross_query_references_present(self, messages):
+        batch = messages["state.query.batch"]
+        assert "cross_query_references" in batch
+        assert "format" in batch["cross_query_references"]
 
 
-class TestStateQueryMemories:
-    """Scenario: state.query.memories is fully defined."""
-
-    def test_request_character_id_required(self, messages):
-        field = messages["state.query.memories"]["request"]["character_id"]
-        assert field["type"] == "string"
-        assert field.get("required") is True
-
-    def test_response_character_id(self, messages):
-        resp = messages["state.query.memories"]["response"]
-        assert "character_id" in resp
-
-    def test_response_narrative(self, messages):
-        resp = messages["state.query.memories"]["response"]
-        assert resp["narrative"]["type"] == "string"
-
-    def test_response_last_update_time_ms(self, messages):
-        resp = messages["state.query.memories"]["response"]
-        assert resp["last_update_time_ms"]["type"] == "int"
-
-    def test_response_new_events_array_of_event(self, messages):
-        field = messages["state.query.memories"]["response"]["new_events"]
-        assert field["type"] == "array"
-        assert field["items"]["$ref"] == "Event"
-
-
-class TestStateQueryWorld:
-    """Scenario: state.query.world is fully defined."""
-
-    def test_request_empty(self, messages):
-        req = messages["state.query.world"]["request"]
-        assert req == {} or req is None or len(req) == 0
-
-    def test_response_references_scene_context(self, messages):
-        resp = messages["state.query.world"]["response"]
-        assert resp.get("$ref") == "SceneContext"
+class TestSceneContextType:
+    """SceneContext type has all required fields."""
 
     def test_scene_context_has_all_fields(self, types):
         sc = types["SceneContext"]
@@ -336,20 +336,6 @@ class TestStateQueryWorld:
 
     def test_campfire_is_nullable(self, types):
         assert types["SceneContext"]["campfire"].get("nullable") is True
-
-
-class TestStateQueryCharactersAlive:
-    """Scenario: state.query.characters_alive is fully defined."""
-
-    def test_request_ids_required(self, messages):
-        field = messages["state.query.characters_alive"]["request"]["ids"]
-        assert field["type"] == "array"
-        assert field["items"]["type"] == "string"
-        assert field.get("required") is True
-
-    def test_response_is_flat_object(self, messages):
-        resp = messages["state.query.characters_alive"]["response"]
-        assert resp.get("type") == "object"
 
 
 # ── Requirement: state.response envelope ─────────────────────

@@ -138,12 +138,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from talker_service.dialogue.generator import DialogueGenerator
-from talker_service.state.models import (
-    Character as StateCharacter,
-    Event as StateEvent,
-    MemoryContext,
-    SceneContext,
-)
+from talker_service.state.batch import BatchResult
 
 
 # =============================================================================
@@ -166,61 +161,46 @@ class MockStateClient:
         self.characters_alive_response = json.loads(characters_alive_json)
         # Record requests as JSON-serializable dicts
         self.requests: list[dict] = []
-    
-    async def _send_query(self, topic: str, payload: dict) -> dict:
-        """Low-level query method used by world_context module."""
-        if payload.get("type") == "characters.alive":
-            ids = payload.get("ids", [])
-            self.requests.append({
-                "method": "query_characters_alive",
-                "args": {"story_ids": ids}
-            })
-            # Return the alive dict directly
-            return self.characters_alive_response.get("alive", {})
-        return {}
-    
-    async def query_memories(self, character_id: str) -> MemoryContext:
-        self.requests.append({
-            "method": "query_memories",
-            "args": {"character_id": character_id}
-        })
-        new_events = []
-        for e in self.memory_response.get("new_events", []):
-            new_events.append(StateEvent.from_dict(e))
-        return MemoryContext(
-            character_id=character_id,
-            narrative=self.memory_response.get("narrative"),
-            last_update_time_ms=self.memory_response.get("last_update_time_ms", 0),
-            new_events=new_events,
-        )
-    
-    async def query_character(self, character_id: str) -> StateCharacter:
-        self.requests.append({
-            "method": "query_character",
-            "args": {"character_id": character_id}
-        })
-        return StateCharacter.from_dict(self.character_response)
-    
-    async def query_world_context(self) -> SceneContext:
-        self.requests.append({
-            "method": "query_world_context",
-            "args": {}
-        })
-        return SceneContext.from_dict(self.scene_response)
-    
-    async def query_characters_alive(self, story_ids: list[str]) -> dict:
-        self.requests.append({
-            "method": "query_characters_alive",
-            "args": {"story_ids": story_ids}
-        })
-        return self.characters_alive_response
-    
-    async def query_events_recent(self, since_ms: int, limit: int) -> list:
-        self.requests.append({
-            "method": "query_events_recent",
-            "args": {"since_ms": since_ms, "limit": limit}
-        })
-        return []
+
+    async def execute_batch(self, batch) -> "BatchResult":
+        """Route batch sub-queries to individual mock methods, recording requests."""
+        results: dict[str, dict] = {}
+        for q in batch.build():
+            qid = q["id"]
+            resource = q["resource"]
+            params = q.get("params", {})
+            try:
+                if resource == "store.memories":
+                    self.requests.append({
+                        "method": "query_memories",
+                        "args": {"character_id": params["character_id"]}
+                    })
+                    results[qid] = {"ok": True, "data": self.memory_response}
+                elif resource == "query.character":
+                    self.requests.append({
+                        "method": "query_character",
+                        "args": {"character_id": params["id"]}
+                    })
+                    results[qid] = {"ok": True, "data": self.character_response}
+                elif resource == "query.world":
+                    self.requests.append({
+                        "method": "query_world_context",
+                        "args": {}
+                    })
+                    results[qid] = {"ok": True, "data": self.scene_response}
+                elif resource == "query.characters_alive":
+                    ids = params.get("ids", [])
+                    self.requests.append({
+                        "method": "query_characters_alive",
+                        "args": {"story_ids": ids}
+                    })
+                    alive_data = self.characters_alive_response.get("alive", {})
+                    results[qid] = {"ok": True, "data": alive_data}
+                else:
+                    results[qid] = {"ok": False, "error": f"unknown resource: {resource}"}
+            except Exception as e:
+                results[qid] = {"ok": False, "error": str(e)}
+        return BatchResult(results)
 
 
 class MockPublisher:
@@ -593,8 +573,10 @@ class TestEventLifecycleL9:
         
         # =====================================================================
         # 10) CHARACTERS ALIVE QUERY REQUEST (nested in world_context)
-        # Filtered by location: leaders (globally relevant) + Cordon characters
+        # Batch queries send ALL story IDs (not area-filtered).
+        # We assert that the area-relevant IDs are a SUBSET of actual.
         # =====================================================================
+        # Minimum expected IDs (leaders + Cordon characters):
         CHARACTERS_ALIVE_REQUEST = """
         {
             "method": "query_characters_alive",
@@ -731,7 +713,14 @@ class TestEventLifecycleL9:
         assert len(snapshot.state_requests) == len(expected_state_requests), \
             f"Expected {len(expected_state_requests)} state requests, got {len(snapshot.state_requests)}"
         for i, (actual, expected) in enumerate(zip(snapshot.state_requests, expected_state_requests)):
-            assert actual == expected, f"State request {i} mismatch:\nExpected: {expected}\nActual: {actual}"
+            if expected.get("method") == "query_characters_alive":
+                # Batch queries send ALL story IDs; verify method + superset
+                assert actual["method"] == expected["method"]
+                assert set(expected["args"]["story_ids"]).issubset(
+                    set(actual["args"]["story_ids"])
+                ), f"Alive query missing expected IDs: {set(expected['args']['story_ids']) - set(actual['args']['story_ids'])}"
+            else:
+                assert actual == expected, f"State request {i} mismatch:\nExpected: {expected}\nActual: {actual}"
         
         # LLM requests - deep comparison
         assert len(snapshot.llm_requests) == 2, f"Expected 2 LLM calls, got {len(snapshot.llm_requests)}"

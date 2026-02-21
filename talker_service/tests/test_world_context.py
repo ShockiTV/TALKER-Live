@@ -1,7 +1,6 @@
 """Tests for world_context module - world state context builders."""
 
 import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
 from dataclasses import dataclass
 
 # Import the module under test
@@ -10,10 +9,9 @@ from talker_service.prompts.world_context import (
     _get_leaders,
     _get_important,
     _get_notable,
-    _get_all_story_ids,
+    get_all_story_ids,
     _extract_story_ids_from_events,
     _is_notable_relevant,
-    query_characters_alive,
     build_dead_leaders_context,
     build_dead_important_context,
     build_info_portions_context,
@@ -72,71 +70,14 @@ class TestGetCharacters:
         for char in notable:
             assert char.get("role") == "notable"
     
-    def test_get_all_story_ids_returns_flat_list(self):
-        """Test that _get_all_story_ids returns flattened list of IDs."""
-        ids = _get_all_story_ids()
+    def testget_all_story_ids_returns_flat_list(self):
+        """Test that get_all_story_ids returns flattened list of IDs."""
+        ids = get_all_story_ids()
         assert isinstance(ids, list)
         assert len(ids) > 0
         # All IDs should be strings
         for id_ in ids:
             assert isinstance(id_, str)
-
-
-class TestQueryCharactersAlive:
-    """Tests for query_characters_alive function."""
-    
-    @pytest.mark.asyncio
-    async def test_query_empty_ids_returns_empty(self):
-        """Test that empty ID list returns empty dict."""
-        mock_client = MagicMock()
-        result = await query_characters_alive(mock_client, [])
-        assert result == {}
-    
-    @pytest.mark.asyncio
-    async def test_query_returns_alive_status(self):
-        """Test that query returns correct alive status dict."""
-        mock_client = MagicMock()
-        mock_client._send_query = AsyncMock(return_value={
-            "esc_2_12_stalker_nimble": True,
-            "bar_visitors_barman_stalker_trader": True,
-            "zat_a2_stalker_mechanic": False,
-        })
-        
-        result = await query_characters_alive(mock_client, [
-            "esc_2_12_stalker_nimble",
-            "bar_visitors_barman_stalker_trader",
-            "zat_a2_stalker_mechanic",
-        ])
-        
-        assert result["esc_2_12_stalker_nimble"] is True
-        assert result["bar_visitors_barman_stalker_trader"] is True
-        assert result["zat_a2_stalker_mechanic"] is False
-    
-    @pytest.mark.asyncio
-    async def test_query_missing_ids_default_to_false(self):
-        """Test that missing IDs in response default to False."""
-        mock_client = MagicMock()
-        mock_client._send_query = AsyncMock(return_value={
-            "some_id": True,
-            # missing_id not in response
-        })
-        
-        result = await query_characters_alive(mock_client, ["some_id", "missing_id"])
-        
-        assert result["some_id"] is True
-        assert result["missing_id"] is False
-    
-    @pytest.mark.asyncio
-    async def test_query_error_returns_all_alive(self):
-        """Test that errors return all as alive (safe default)."""
-        mock_client = MagicMock()
-        mock_client._send_query = AsyncMock(side_effect=Exception("Connection failed"))
-        
-        result = await query_characters_alive(mock_client, ["id1", "id2"])
-        
-        # Should return all as alive on error
-        assert result["id1"] is True
-        assert result["id2"] is True
 
 
 class TestBuildDeadLeadersContext:
@@ -145,7 +86,7 @@ class TestBuildDeadLeadersContext:
     def test_no_dead_leaders_returns_empty(self):
         """Test that no dead leaders returns empty string."""
         # All leaders alive
-        all_ids = _get_all_story_ids()
+        all_ids = get_all_story_ids()
         alive_status = {id_: True for id_ in all_ids}
         
         result = build_dead_leaders_context(alive_status)
@@ -392,7 +333,7 @@ class TestBuildDeadImportantContext:
     
     def test_no_dead_important_returns_empty(self):
         """Test that no dead important characters returns empty string."""
-        all_ids = _get_all_story_ids()
+        all_ids = get_all_story_ids()
         alive_status = {id_: True for id_ in all_ids}
         
         result = build_dead_important_context(alive_status)
@@ -597,19 +538,16 @@ class TestBuildWorldContext:
     @pytest.mark.asyncio
     async def test_aggregates_all_sections(self):
         """Test that build_world_context combines all context sections."""
-        mock_client = MagicMock()
-        
         # Return all characters as alive
-        all_ids = _get_all_story_ids()
-        alive_response = {id_: True for id_ in all_ids}
-        mock_client._send_query = AsyncMock(return_value=alive_response)
+        all_ids = get_all_story_ids()
+        alive_status = {id_: True for id_ in all_ids}
         
         scene = MockSceneContext(
             loc="l01_escape",
             brain_scorcher_disabled=True,
         )
         
-        result = await build_world_context(scene, mock_client)
+        result = await build_world_context(scene, alive_status=alive_status)
         
         # Should include Brain Scorcher (info portion) and Cordon truce (regional)
         assert "Brain Scorcher" in result
@@ -618,12 +556,9 @@ class TestBuildWorldContext:
     @pytest.mark.asyncio
     async def test_empty_when_nothing_notable(self):
         """Test that empty context returns empty string."""
-        mock_client = MagicMock()
-        
         # All alive, nothing disabled, no regional context
-        all_ids = _get_all_story_ids()
-        alive_response = {id_: True for id_ in all_ids}
-        mock_client._send_query = AsyncMock(return_value=alive_response)
+        all_ids = get_all_story_ids()
+        alive_status = {id_: True for id_ in all_ids}
         
         scene = MockSceneContext(
             loc="l03_agroprom",
@@ -631,29 +566,26 @@ class TestBuildWorldContext:
             miracle_machine_disabled=False,
         )
         
-        result = await build_world_context(scene, mock_client)
+        result = await build_world_context(scene, alive_status=alive_status)
         
         assert result == ""
     
     @pytest.mark.asyncio
     async def test_includes_dead_leaders(self):
         """Test that dead leaders appear in aggregated context."""
-        mock_client = MagicMock()
-        
         leaders = _get_leaders()
         if not leaders:
             pytest.skip("No leaders defined")
         
         # Mark first leader as dead
         leader_id = leaders[0]["ids"][0]
-        all_ids = _get_all_story_ids()
-        alive_response = {id_: True for id_ in all_ids}
-        alive_response[leader_id] = False
-        mock_client._send_query = AsyncMock(return_value=alive_response)
+        all_ids = get_all_story_ids()
+        alive_status = {id_: True for id_ in all_ids}
+        alive_status[leader_id] = False
         
         scene = MockSceneContext(loc="l03_agroprom")
         
-        result = await build_world_context(scene, mock_client)
+        result = await build_world_context(scene, alive_status=alive_status)
         
         assert leaders[0]["name"] in result
         assert "is dead" in result

@@ -74,3 +74,51 @@ class HeartbeatMessage(BaseMessage):
     
     alive: bool = True
     game_time_ms: Optional[int] = None
+
+
+# --- Batch Query wire-format schemas ---
+
+
+class BatchSubQuery(BaseModel):
+    """A single sub-query within a batch request.
+
+    Mirrors the JSON structure sent over ZMQ to Lua's
+    ``state.query.batch`` handler.
+    """
+
+    id: str
+    resource: str
+    params: Optional[dict[str, Any]] = None
+    filter: Optional[dict[str, Any]] = None
+    sort: Optional[dict[str, int]] = None
+    limit: Optional[int] = None
+    fields: Optional[list[str]] = None
+
+
+class BatchQueryMessage(BaseMessage):
+    """Batch query request published on ``state.query.batch``.
+
+    Contains an array of sub-queries executed sequentially on the Lua
+    side with ``$ref`` cross-query resolution.
+    """
+
+    request_id: str
+    queries: list[BatchSubQuery]
+
+
+class BatchSubResult(BaseModel):
+    """Result for a single sub-query within a batch response."""
+
+    ok: bool
+    data: Optional[Any] = None
+    error: Optional[str] = None
+
+
+class BatchResponseMessage(BaseMessage):
+    """Batch response received on ``state.response``.
+
+    ``results`` is keyed by the sub-query ``id``.
+    """
+
+    request_id: str
+    results: dict[str, BatchSubResult]

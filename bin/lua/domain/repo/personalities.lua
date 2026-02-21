@@ -188,4 +188,11 @@ function M.load_save_data(saved_data)
 	character_personalities = {}
 end
 
+--- Get the raw character_id → personality_id map (read-only reference).
+-- Used by batch query handler for collection iteration.
+-- @return table  Map of character_id to personality_id
+function M.get_all_mappings()
+	return character_personalities
+end
+
 return M

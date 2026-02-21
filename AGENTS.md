@@ -169,7 +169,7 @@ All messages use: `<topic> <json-payload>`
 |-------|---------|
 | `dialogue.display` | Display dialogue for an NPC |
 | `memory.update` | Update character's long-term memory |
-| `state.query` | Request game state from Lua |
+| `state.query.batch` | Batch state query (multiple sub-queries in one roundtrip) |
 | `state.response` | Response to state query |
 
 ### 4. Error Handling

@@ -7,6 +7,8 @@ from unittest.mock import AsyncMock, MagicMock
 from talker_service.state import (
     StateQueryClient,
     StateQueryTimeout,
+)
+from talker_service.state.models import (
     MemoryContext,
     Character,
     Event,
@@ -193,111 +195,26 @@ class TestStateQueryClient:
         return router
     
     @pytest.mark.asyncio
-    async def test_query_memories_success(self, mock_router):
-        """Test successful memory query."""
-        # Set up mock response
+    async def test_send_query_success(self, mock_router):
+        """Test successful _send_query returns data."""
         response_future = asyncio.get_event_loop().create_future()
         response_future.set_result({
             "data": {
                 "character_id": "123",
                 "narrative": "Test narrative",
-                "last_update_time_ms": 1000,
-                "new_events": [],
             }
         })
         mock_router.create_request.return_value = response_future
         
         client = StateQueryClient(mock_router, timeout=5.0)
-        result = await client.query_memories("123")
+        result = await client._send_query(
+            "state.query.memories",
+            {"character_id": "123"}
+        )
         
-        assert isinstance(result, MemoryContext)
-        assert result.character_id == "123"
-        assert result.narrative == "Test narrative"
+        assert result["character_id"] == "123"
+        assert result["narrative"] == "Test narrative"
         mock_router.publish.assert_called_once()
-    
-    @pytest.mark.asyncio
-    async def test_query_events_recent(self, mock_router):
-        """Test querying recent events."""
-        response_future = asyncio.get_event_loop().create_future()
-        response_future.set_result({
-            "data": {
-                "events": [
-                    {"type": "DEATH", "game_time_ms": 1000},
-                    {"type": "DIALOGUE", "game_time_ms": 2000},
-                ],
-                "count": 2,
-            }
-        })
-        mock_router.create_request.return_value = response_future
-        
-        client = StateQueryClient(mock_router)
-        events = await client.query_events_recent(since_ms=0, limit=10)
-        
-        assert len(events) == 2
-        assert events[0].type == "DEATH"
-        assert events[1].type == "DIALOGUE"
-    
-    @pytest.mark.asyncio
-    async def test_query_character(self, mock_router):
-        """Test querying character by ID."""
-        response_future = asyncio.get_event_loop().create_future()
-        response_future.set_result({
-            "data": {
-                "character": {
-                    "game_id": "456",
-                    "name": "Hip",
-                    "faction": "stalker",
-                }
-            }
-        })
-        mock_router.create_request.return_value = response_future
-        
-        client = StateQueryClient(mock_router)
-        char = await client.query_character("456")
-        
-        assert isinstance(char, Character)
-        assert char.name == "Hip"
-    
-    @pytest.mark.asyncio
-    async def test_query_characters_nearby(self, mock_router):
-        """Test querying nearby characters."""
-        response_future = asyncio.get_event_loop().create_future()
-        response_future.set_result({
-            "data": {
-                "characters": [
-                    {"game_id": "1", "name": "Hip", "faction": "stalker"},
-                    {"game_id": "2", "name": "Wolf", "faction": "stalker"},
-                ],
-                "count": 2,
-            }
-        })
-        mock_router.create_request.return_value = response_future
-        
-        client = StateQueryClient(mock_router)
-        chars = await client.query_characters_nearby(radius=50.0)
-        
-        assert len(chars) == 2
-        assert chars[0].name == "Hip"
-        assert chars[1].name == "Wolf"
-    
-    @pytest.mark.asyncio
-    async def test_query_world_context(self, mock_router):
-        """Test querying world context."""
-        response_future = asyncio.get_event_loop().create_future()
-        response_future.set_result({
-            "data": {
-                "loc": "Rostok",
-                "weather": "cloudy",
-            }
-        })
-        mock_router.create_request.return_value = response_future
-        
-        client = StateQueryClient(mock_router)
-        ctx = await client.query_world_context()
-        
-        assert isinstance(ctx, SceneContext)
-        assert ctx.loc == "Rostok"
-        assert ctx.weather == "cloudy"
     
     @pytest.mark.asyncio
     async def test_query_publish_failure(self, mock_router):
@@ -308,12 +225,11 @@ class TestStateQueryClient:
         client = StateQueryClient(mock_router)
         
         with pytest.raises(ConnectionError, match="Failed to publish"):
-            await client.query_memories("123")
+            await client._send_query("state.query.memories", {"character_id": "123"})
     
     @pytest.mark.asyncio
     async def test_query_timeout(self, mock_router):
         """Test handling query timeout."""
-        # Create a future that will timeout
         future = asyncio.get_event_loop().create_future()
         
         async def timeout_after():
@@ -327,7 +243,7 @@ class TestStateQueryClient:
         client = StateQueryClient(mock_router, timeout=0.05)
         
         with pytest.raises(TimeoutError):
-            await client.query_memories("123")
+            await client._send_query("state.query.memories", {"character_id": "123"})
 
 
 class TestStateQueryTimeout:
@@ -384,7 +300,10 @@ class TestStateQueryTimeout:
         client = StateQueryClient(router, timeout=5.0)
         
         with pytest.raises(StateQueryTimeout) as exc_info:
-            await client.query_memories("456")
+            await client._send_query(
+                "state.query.memories",
+                {"character_id": "456"}
+            )
         
         assert exc_info.value.topic == "state.query.memories"
         assert exc_info.value.character_id == "456"
@@ -408,7 +327,7 @@ class TestStateQueryTimeout:
         client = StateQueryClient(router, timeout=5.0)
         
         with pytest.raises(StateQueryTimeout) as exc_info:
-            await client.query_world_context()
+            await client._send_query("state.query.world", {})
         
         assert exc_info.value.topic == "state.query.world"
         assert exc_info.value.character_id is None
