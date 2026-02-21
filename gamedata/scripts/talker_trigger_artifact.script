@@ -3,13 +3,14 @@
 ----------------------------------------------------------------------------------------------------
 
 package.path = package.path .. ";./bin/lua/?.lua;"
-local game = require("infra.game_adapter")
-local trigger = require("interface.trigger")
-local logger = require("framework.logger")
+local game     = require("infra.game_adapter")
+local trigger  = require("interface.trigger")
+local logger   = require("framework.logger")
+local Cooldown = require("domain.service.cooldown")
 
-local queries = talker_game_queries
+local queries  = talker_game_queries
 local commands = talker_game_commands
-local mcm = talker_mcm
+local mcm      = talker_mcm
 
 -- EventType shorthand for cleaner code
 local EventType = trigger.EventType
@@ -39,58 +40,12 @@ local function is_excluded_artifact(name)
     return false
 end
 
-local LAST_ARTIFACT_PICKUP_COMMENT = 0
-local LAST_ARTIFACT_USE_COMMENT = 0
-local LAST_ARTIFACT_EQUIP_COMMENT = 0
-
-local LAST_ARTIFACT_PICKUP_SPAM = 0
-local LAST_ARTIFACT_USE_SPAM = 0
-local LAST_ARTIFACT_EQUIP_SPAM = 0
-
--- Helper to determine if an artifact event should be silent
--- Mode: 0 = On, 1 = Off, 2 = Silent
--- Trigger types: 1 = pickup, 2 = use, 3 = equip
-local function get_silence_status(mode, trigger_type)
-    local current_time = queries.get_game_time_ms()
-    local cooldown, last_time, last_spam
-    
-    if trigger_type == 1 then
-        cooldown, last_time, last_spam = ARTIFACT_PICKUP_COMMENT_CD, LAST_ARTIFACT_PICKUP_COMMENT, LAST_ARTIFACT_PICKUP_SPAM
-    elseif trigger_type == 2 then
-        cooldown, last_time, last_spam = ARTIFACT_USE_COMMENT_CD, LAST_ARTIFACT_USE_COMMENT, LAST_ARTIFACT_USE_SPAM
-    else
-        cooldown, last_time, last_spam = ARTIFACT_EQUIP_COMMENT_CD, LAST_ARTIFACT_EQUIP_COMMENT, LAST_ARTIFACT_EQUIP_SPAM
-    end
-    
-    -- 1. Anti-spam check
-    if (current_time - last_spam) < ANTI_SPAM_CD then
-        return nil -- Abort, too soon even for a silent event
-    end
-
-    -- Update anti-spam timer
-    if trigger_type == 1 then LAST_ARTIFACT_PICKUP_SPAM = current_time 
-    elseif trigger_type == 2 then LAST_ARTIFACT_USE_SPAM = current_time 
-    else LAST_ARTIFACT_EQUIP_SPAM = current_time end
-
-    -- 2. Dialogue Cooldown check
-    local dialogue_ready = (current_time - last_time) >= cooldown
-
-    if mode == 0 then -- Mode: On
-        if dialogue_ready then
-            -- Reset the dialogue cooldown timer
-            if trigger_type == 1 then LAST_ARTIFACT_PICKUP_COMMENT = current_time 
-            elseif trigger_type == 2 then LAST_ARTIFACT_USE_COMMENT = current_time 
-            else LAST_ARTIFACT_EQUIP_COMMENT = current_time end
-            return false -- Dialogue requested
-        else
-            return true -- Silent event
-        end
-    elseif mode == 2 then -- Mode: Silent
-        return true
-    end
-
-    return nil
-end
+-- Three CooldownManagers (one per slot type) replace the 6 LAST_* timer variables
+-- and the multi-branch get_silence_status() function.
+-- Each shares ANTI_SPAM_CD; each has its own per-action dialogue cooldown.
+local cd_pickup = Cooldown.new({ cooldown_ms = ARTIFACT_PICKUP_COMMENT_CD, anti_spam_ms = ANTI_SPAM_CD })
+local cd_use    = Cooldown.new({ cooldown_ms = ARTIFACT_USE_COMMENT_CD,    anti_spam_ms = ANTI_SPAM_CD })
+local cd_equip  = Cooldown.new({ cooldown_ms = ARTIFACT_EQUIP_COMMENT_CD,  anti_spam_ms = ANTI_SPAM_CD })
 
 ----------------------------------------------------------------------------------------------------
 -- Helper: Create artifact event with typed system
@@ -136,7 +91,7 @@ local function actor_on_item_use(obj, str)
 
     if is_excluded_artifact(artifact_description) then return end
 
-    local is_silent = get_silence_status(mode_use, 2)
+    local is_silent = cd_use:check("default", queries.get_game_time_ms(), mode_use)
     if is_silent == nil then return end
 
     create_artifact_event("use", artifact_description, is_silent)
@@ -154,7 +109,7 @@ local function actor_item_to_belt(obj)
 
     if is_excluded_artifact(artifact_description) then return end
 
-    local is_silent = get_silence_status(mode_equip, 3)
+    local is_silent = cd_equip:check("default", queries.get_game_time_ms(), mode_equip)
     if is_silent == nil then return end
 
     create_artifact_event("equip", artifact_description, is_silent)
@@ -172,7 +127,7 @@ local function actor_on_item_to_slot(obj)
 
     if is_excluded_artifact(artifact_description) then return end
 
-    local is_silent = get_silence_status(mode_equip, 3)
+    local is_silent = cd_equip:check("default", queries.get_game_time_ms(), mode_equip)
     if is_silent == nil then return end
 
     create_artifact_event("equip", artifact_description, is_silent)
@@ -192,7 +147,7 @@ local function actor_on_item_before_pickup(obj)
     
     if is_excluded_artifact(artifact_description) then return end
 
-    local is_silent = get_silence_status(mode_pickup, 1)
+    local is_silent = cd_pickup:check("default", queries.get_game_time_ms(), mode_pickup)
     if is_silent == nil then return end
 
     create_artifact_event("pickup", artifact_description, is_silent)

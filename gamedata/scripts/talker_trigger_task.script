@@ -1,8 +1,9 @@
 package.path = package.path .. ";./bin/lua/?.lua;"
-local log = require("framework.logger")
-local config = require("interface.config")
-local queries = talker_game_queries
-local trigger = require("interface.trigger")
+local log        = require("framework.logger")
+local config     = require("interface.config")
+local Cooldown   = require("domain.service.cooldown")
+local queries    = talker_game_queries
+local trigger    = require("interface.trigger")
 -- Game interface
 local game_adapter = require("infra.game_adapter")
 local mcm = talker_mcm
@@ -32,42 +33,12 @@ local faction_map = {
     monster = "Monster"
 }
 
-local LAST_TASK_TIME = 0
-local LAST_TASK_SPAM = 0
 local TASK_COOLDOWN_CD = mcm.get("task_cooldown") * 1000 -- default 40 seconds cooldown
 local ANTI_SPAM_CD = mcm.get("anti_spam_cd") * 1000
 local mode_task = tonumber(mcm.get("enable_trigger_task") or "0")
 
--- Helper to determine if a task event should be silent
--- Mode: 0 = On, 1 = Off, 2 = Silent
-local function get_silence_status(mode)
-    local current_time = queries.get_game_time_ms()
-    
-    -- 1. Anti-spam check
-    if (current_time - LAST_TASK_SPAM) < ANTI_SPAM_CD then
-        log.info("TALKER: Task event aborted (anti-spam)")
-        return nil -- Abort, too soon
-    end
-
-    -- Update anti-spam timer
-    LAST_TASK_SPAM = current_time
-
-    -- 2. Dialogue Cooldown check
-    local dialogue_ready = (current_time - LAST_TASK_TIME) >= TASK_COOLDOWN_CD
-
-    if mode == 0 then -- Mode: On
-        if dialogue_ready then
-            LAST_TASK_TIME = current_time
-            return false -- Dialogue requested
-        else
-            return true -- Silent event
-        end
-    elseif mode == 2 then -- Mode: Silent
-        return true
-    end
-
-    return nil
-end
+-- CooldownManager replaces LAST_TASK_TIME + LAST_TASK_SPAM + get_silence_status()
+local cd = Cooldown.new({ cooldown_ms = TASK_COOLDOWN_CD, anti_spam_ms = ANTI_SPAM_CD })
 
 function on_game_start()
     -- Hook the task_callback function to intercept task completion
@@ -140,7 +111,7 @@ function on_task_completed_event(tsk, cached_info)
     end
 
     -- Proceed with event: determine if it's silent based on cooldown and chance
-    local is_silent = get_silence_status(mode_task)
+    local is_silent = cd:check("default", queries.get_game_time_ms(), mode_task)
     if is_silent == nil then return end
     
     local is_unique = queries.is_unique_character_by_id(task_giver_id)
