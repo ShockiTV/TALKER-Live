@@ -6,6 +6,7 @@ local event_store = require("domain.repo.event_store")
 local personality_store = require("domain.repo.personalities")
 local backstories_store = require("domain.repo.backstories")
 local levels_store = require("domain.repo.levels")
+local timers_store = require("domain.repo.timers")
 local log = require("framework.logger")
 
 -- ZMQ integration reference (lazy-loaded)
@@ -26,6 +27,7 @@ function save_state(saved_data)
     saved_data.personalities = personality_store:get_save_data()
     saved_data.backstories = backstories_store:get_save_data()
     saved_data.levels = levels_store.get_save_data()
+    saved_data.timers = timers_store.get_save_data(talker_game_queries.get_game_time_ms())
 end
 
 -- Load the data
@@ -59,6 +61,20 @@ function load_state(saved_data)
         })
     else
         levels_store.load_save_data(nil)
+    end
+
+    -- Load timers store (with legacy migration bridge)
+    if saved_data.timers then
+        timers_store.load_save_data(saved_data.timers)
+    elseif saved_data.game_time_since_last_load or saved_data.talker_idle_last_check_time_ms then
+        -- Legacy: inline callbacks stored these keys directly in saved_data
+        log.info("Persistence: Migrating legacy timer data to timers store")
+        timers_store.load_save_data({
+            game_time_since_last_load = saved_data.game_time_since_last_load,
+            talker_idle_last_check_time_ms = saved_data.talker_idle_last_check_time_ms,
+        })
+    else
+        timers_store.load_save_data(nil)
     end
     
     -- Trigger ZMQ config sync after a 2-second delay (allows MCM to fully initialize)
