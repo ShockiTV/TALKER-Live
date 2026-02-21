@@ -79,6 +79,7 @@ class TestGeneratorWithRetryQueue:
         state.query_memories = AsyncMock(return_value=_make_memory_ctx())
         state.query_character = AsyncMock(return_value=_make_character())
         state.query_world_context = AsyncMock(return_value=_make_scene_ctx())
+        state._send_query = AsyncMock(return_value={})
 
         publisher = AsyncMock()
         publisher.publish = AsyncMock(return_value=True)
@@ -176,6 +177,7 @@ class TestGeneratorWithoutRetryQueue:
         state.query_memories = AsyncMock(return_value=_make_memory_ctx())
         state.query_character = AsyncMock(return_value=_make_character())
         state.query_world_context = AsyncMock(return_value=_make_scene_ctx())
+        state._send_query = AsyncMock(return_value={})
 
         publisher = AsyncMock()
         publisher.publish = AsyncMock(return_value=True)
@@ -244,6 +246,7 @@ class TestLLMTimeoutNotEnqueued:
         state.query_memories = AsyncMock(return_value=_make_memory_ctx())
         state.query_character = AsyncMock(return_value=_make_character())
         state.query_world_context = AsyncMock(return_value=_make_scene_ctx())
+        state._send_query = AsyncMock(return_value={})
 
         publisher = AsyncMock()
         publisher.publish = AsyncMock(return_value=True)
@@ -309,6 +312,7 @@ class TestAttemptCountPreserved:
         )
         state.query_character = AsyncMock(return_value=_make_character())
         state.query_world_context = AsyncMock(return_value=_make_scene_ctx())
+        state._send_query = AsyncMock(return_value={})
 
         publisher = AsyncMock()
         publisher.publish = AsyncMock(return_value=True)

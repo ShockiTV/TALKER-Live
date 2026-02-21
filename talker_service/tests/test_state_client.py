@@ -10,6 +10,7 @@ from talker_service.state import (
     MemoryContext,
     Character,
     Event,
+    SceneContext,
     WorldContext,
 )
 
@@ -285,8 +286,7 @@ class TestStateQueryClient:
         response_future = asyncio.get_event_loop().create_future()
         response_future.set_result({
             "data": {
-                "location": "Rostok",
-                "time_of_day": "evening",
+                "loc": "Rostok",
                 "weather": "cloudy",
             }
         })
@@ -295,9 +295,9 @@ class TestStateQueryClient:
         client = StateQueryClient(mock_router)
         ctx = await client.query_world_context()
         
-        assert isinstance(ctx, WorldContext)
-        assert ctx.location == "Rostok"
-        assert ctx.time_of_day == "evening"
+        assert isinstance(ctx, SceneContext)
+        assert ctx.loc == "Rostok"
+        assert ctx.weather == "cloudy"
     
     @pytest.mark.asyncio
     async def test_query_publish_failure(self, mock_router):

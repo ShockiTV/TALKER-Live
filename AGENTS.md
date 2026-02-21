@@ -247,27 +247,23 @@ await _handle_event_async(event)
 - Live integration tests in `tests/live/` (require actual LLM API keys)
 
 ### Python Tests
-**IMPORTANT**: Must use the virtual environment, not system Python
+**IMPORTANT**: Always use the `talker-tests` MCP server tools to run Python tests — do NOT call `python`, `pytest`, or `.venv` directly in the terminal.
 
-**Run all tests**:
-```powershell
-cd talker_service
-.\.venv\Scripts\activate
-python -m pytest tests/ -v
-```
+| MCP Tool | Purpose |
+|----------|---------|
+| `list_tests` | Discover all test node IDs (optionally filter by `path`) |
+| `run_tests` | Run tests by path/pattern; accepts `path`, `pattern`, `verbose`, `fail_fast` |
+| `run_single_test` | Run one test by full node ID with detailed traceback |
+| `get_last_run_results` | Read results from the most recent run |
+| `get_captured_payloads` | Inspect ZMQ/HTTP wire payloads from e2e tests |
+| `get_test_source` | Read source of a specific test function |
 
-Or as one-liner:
-```powershell
-cd talker_service; .\.venv\Scripts\activate; python -m pytest tests/ -v --tb=short
-```
-
-**First-time setup** (if `.venv` doesn't exist):
-```powershell
-cd talker_service
-python -m venv .venv
-.\.venv\Scripts\activate
-pip install -e ".[dev]"
-```
+**Examples**:
+- All tests: `run_tests {}` (no args)
+- E2E only: `run_tests { path: "tests/e2e/" }`
+- Integration only: `run_tests { path: "tests/integration/" }`
+- By pattern: `run_tests { pattern: "test_dialogue" }`
+- Single: `run_single_test { node_id: "tests/e2e/test_scenarios.py::test_e2e_scenario[death_wolf_full]" }`
 
 ## Common Tasks
 

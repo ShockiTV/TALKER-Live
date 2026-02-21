@@ -168,14 +168,15 @@ context: |
 
   ### Python Tests (talker_service)
 
-  - **IMPORTANT**: Must use the virtual environment, not system Python
-  - **Run all tests**:
-    ```powershell
-    cd talker_service
-    .\.venv\Scripts\activate
-    python -m pytest tests/ -v
-    ```
-  - Or in one line: `cd talker_service; .\.venv\Scripts\activate; python -m pytest tests/ -v`
+  - **IMPORTANT**: Always use MCP tools to run Python tests — do NOT call `python`, `pytest`, or `.venv` directly in the terminal.
+  - Use the `run_tests` MCP tool with an optional `path` argument:
+    - All tests: omit `path`
+    - Unit tests (top-level): `path: "tests/"` with a `pattern` filter
+    - Integration tests: `path: "tests/integration/"`
+    - E2E tests: `path: "tests/e2e/"`
+  - Use `run_single_test` to run a specific test by node ID
+  - Use `list_tests` to discover available tests before running
+  - Use `get_last_run_results` to inspect results from the previous run
   - Test files: `tests/test_*.py` (pytest, ~130 tests)
   - Coverage includes: LLM clients, prompts, dialogue generation, ZMQ router, state client
 
@@ -333,26 +334,22 @@ context: |
 
   ### Running Tests
 
-  **IMPORTANT**: Always use the virtual environment for Python tests:
+  **IMPORTANT**: Always use MCP tools to run Python tests — never call `python`, `pytest`, or `activate` in the terminal.
 
-  ```powershell
-  cd talker_service
-  .\.venv\Scripts\activate
-  python -m pytest tests/ -v
-  ```
+  Available MCP tools (`talker-tests` server):
+  - `list_tests` — discover all test node IDs (optionally filter by `path`)
+  - `run_tests` — run a test path/pattern; accepts `path`, `pattern`, `verbose`, `fail_fast`
+  - `run_single_test` — run one test by full node ID with detailed traceback
+  - `get_last_run_results` — read results from the most recent run
+  - `get_captured_payloads` — inspect ZMQ/HTTP wire payloads captured during e2e tests
+  - `get_test_source` — read source of a specific test function
 
-  Or as a one-liner:
-  ```powershell
-  cd talker_service; .\.venv\Scripts\activate; python -m pytest tests/ -v --tb=short
-  ```
-
-  **First-time setup** (if `.venv` doesn't exist):
-  ```powershell
-  cd talker_service
-  python -m venv .venv
-  .\.venv\Scripts\activate
-  pip install -e ".[dev]"
-  ```
+  Examples:
+  - All tests: `run_tests {}` (no args)
+  - E2E only: `run_tests { path: "tests/e2e/" }`
+  - Integration only: `run_tests { path: "tests/integration/" }`
+  - By pattern: `run_tests { pattern: "test_dialogue" }`
+  - Single test: `run_single_test { node_id: "tests/e2e/test_scenarios.py::test_e2e_scenario[death_wolf_full]" }`
 
   Launch service via `launch_talker_service.bat`.
   ```

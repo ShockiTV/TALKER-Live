@@ -24,28 +24,37 @@ class ZMQRouter:
     Also binds a PUB socket for sending commands to Lua's SUB socket.
     """
     
-    def __init__(self, sub_endpoint: str, pub_endpoint: str | None = None):
+    def __init__(
+        self,
+        sub_endpoint: str,
+        pub_endpoint: str | None = None,
+        context: zmq.asyncio.Context | None = None,
+    ):
         """Initialize router.
-        
+
         Args:
             sub_endpoint: ZMQ endpoint to connect SUB socket to (e.g., "tcp://127.0.0.1:5555")
             pub_endpoint: ZMQ endpoint to bind PUB socket to (e.g., "tcp://*:5556").
                           If None, PUB socket is not created.
+            context: Optional shared ZMQ context. When provided the caller owns the
+                     context and shutdown() will NOT call context.term(). Required
+                     for inproc:// transport where both sockets must share a context.
         """
         self.sub_endpoint = sub_endpoint
         self.pub_endpoint = pub_endpoint
         self.handlers: dict[str, MessageHandler] = {}
         self.running = False
         self.is_connected = False
-        
+
         # Internal handlers for state responses (request_id -> future)
         self._pending_requests: dict[str, asyncio.Future] = {}
-        
+
         # Initialize ZMQ context and sockets
-        self.context = zmq.asyncio.Context()
+        self._owns_context = context is None
+        self.context = context if context is not None else zmq.asyncio.Context()
         self.sub_socket = self.context.socket(zmq.SUB)
         self.pub_socket: zmq.asyncio.Socket | None = None
-        
+
         if pub_endpoint:
             self.pub_socket = self.context.socket(zmq.PUB)
         
@@ -173,7 +182,8 @@ class ZMQRouter:
         
         self.sub_socket.setsockopt(zmq.LINGER, 100)
         self.sub_socket.close()
-        self.context.term()
+        if self._owns_context:
+            self.context.term()
         logger.info("ZMQ Router shutdown complete")
     
     async def publish(self, topic: str, payload: dict[str, Any]) -> bool:

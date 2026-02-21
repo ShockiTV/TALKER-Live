@@ -1,0 +1,11 @@
+{
+    "servers": {
+        "talker-tests": {
+            "command": "f:/GAMMA/mods/TALKER-Expanded/talker_service/.venv/Scripts/python.exe",
+            "args": ["f:/GAMMA/mods/TALKER-Expanded/talker_service/mcp_test_runner.py"],
+            "env": {
+                "PYTHONPATH": "f:/GAMMA/mods/TALKER-Expanded/talker_service/src"
+            }
+        }
+    }
+}
