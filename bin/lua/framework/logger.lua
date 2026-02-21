@@ -4,10 +4,12 @@ package.path = package.path .. ";./bin/lua/?.lua;"
 
 local inspect = require("framework.inspect")
 local file_io = require("infra.file_io")
+local engine = require("interface.engine")
 
-local mcm = talker_mcm
--- print functions
-local print_fun = printf or print -- depends on game state
+-- print functions — prefer game printf when available
+local function get_print()
+    return printf or print
+end
 
 -- Logging levels
 local levels = {
@@ -36,7 +38,7 @@ local function write_to_log(level, message, ...)
 		return
 	end
 
-	local mode = tonumber(mcm.get("debug_logging") or "0")
+	local mode = tonumber(engine.get_mcm_value("debug_logging") or "0")
 
 	local is_essential = levels[level] >= levels.warn
 	local should_print = is_essential or (mode == 1 or mode == 3)
@@ -56,7 +58,7 @@ local function write_to_log(level, message, ...)
 	local str = string.format("%s[%s]: %s", indent, level, formatted_message)
 
 	if should_print then
-		print_fun(str)
+		get_print()(str)
 	end
 
 	if should_log then
@@ -69,10 +71,10 @@ function M.clean_log_files()
 end
 
 local function write(level, message, ...)
-	local result, error = pcall(write_to_log, level, message, ...)
+	local result, err = pcall(write_to_log, level, message, ...)
 	if not result then
-		print_fun(
-			string.format("Error in logging at level '%s' with message '%s': %s", level, message, tostring(error))
+		get_print()(
+			string.format("Error in logging at level '%s' with message '%s': %s", level, message, tostring(err))
 		)
 	end
 end
@@ -96,8 +98,11 @@ end
 
 function M.error(message, ...)
 	write("error", message, ...)
-	local game_adapter = require("infra.game_adapter")
-	game_adapter.display_error_to_player("ERROR: " .. message)
+	-- Guard: only display to player if game_adapter is available (not in test env)
+	local ok, game_adapter = pcall(require, "infra.game_adapter")
+	if ok and game_adapter and game_adapter.display_error_to_player then
+		pcall(game_adapter.display_error_to_player, "ERROR: " .. message)
+	end
 end
 
 function M.http(message, ...)

@@ -1,5 +1,6 @@
 -- Adjust the package path
 package.path = package.path .. ';./bin/lua/?.lua;./bin/lua/*/?.lua'
+require("tests.test_bootstrap")
 
 -- Require LuaUnit and event_store module
 local luaunit = require('tests.utils.luaunit')
@@ -15,7 +16,7 @@ local function create_mock_event(game_time_ms, source_event)
     if source_event then
         flags = { source_event = source_event }
     end
-    return Event.create(EventType.ACTION, context, game_time_ms, "Somewhere", witnesses, flags)
+    return Event.create(EventType.ACTION, context, game_time_ms, witnesses, flags)
 end
 
 -- Helper function to store a sequence of events

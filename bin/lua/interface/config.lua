@@ -1,11 +1,15 @@
--- dynamic_config.lua – values that depend on talker_mcm are now getters
-local game_config = talker_mcm
+-- config.lua – configuration values backed by MCM, with defaults fallback
+local engine = require("interface.engine")
+local defaults = require("interface.config_defaults")
 local language = require("infra.language")
-local mcm = talker_mcm
 
--- helper
-local function cfg(key, default)
-	return (game_config and game_config.get and game_config.get(key)) or default
+-- helper: read from MCM via engine facade, fall back to defaults table
+local function cfg(key)
+	local val = engine.get_mcm_value(key)
+	if val == nil then
+		val = defaults[key]
+	end
+	return val
 end
 
 local function is_valid_key(key)
@@ -58,9 +62,9 @@ end
 local c = {}
 
 -- static values
-c.EVENT_WITNESS_RANGE = mcm.get("witness_distance")
-c.NPC_SPEAK_DISTANCE = mcm.get("npc_speak_distance")
-c.BASE_DIALOGUE_CHANCE = mcm.get("base_dialogue_chance")
+c.EVENT_WITNESS_RANGE  = cfg("witness_distance")
+c.NPC_SPEAK_DISTANCE   = cfg("npc_speak_distance")
+c.BASE_DIALOGUE_CHANCE = cfg("base_dialogue_chance")
 c.player_speaks = false
 c.SHOW_HUD_MESSAGES = true
 c.PROXY_API_KEY = "VerysecretKey"
@@ -89,35 +93,35 @@ local DEFAULT_LANGUAGE = language.any.long
 
 -- dynamic getters
 function c.is_mic_enabled()
-	return cfg("input_option", "0") == "0"
+	return cfg("input_option") == "0"
 end
 
 function c.speak_key()
-	return cfg("speak_key", "x")
+	return cfg("speak_key")
 end
 
 function c.modelmethod()
-	return tonumber(cfg("ai_model_method", 0))
+	return tonumber(cfg("ai_model_method"))
 end
 
 function c.voice_provider()
-	return tonumber(cfg("voice_provider", 0))
+	return tonumber(cfg("voice_provider"))
 end
 
 function c.custom_dialogue_model()
-	return cfg("custom_ai_model", "google/gemini-2.0-flash-001")
+	return cfg("custom_ai_model")
 end
 
 function c.custom_dialogue_model_fast()
-	return cfg("custom_ai_model_fast", "openai/gpt-4o-mini")
+	return cfg("custom_ai_model_fast")
 end
 
 function c.reasoning_level()
-	return tonumber(cfg("reasoning_level", -1))
+	return tonumber(cfg("reasoning_level"))
 end
 
 function c.language()
-	return cfg("language", DEFAULT_LANGUAGE)
+	return cfg("language") or DEFAULT_LANGUAGE
 end
 
 function c.language_short()
@@ -125,18 +129,16 @@ function c.language_short()
 end
 
 function c.dialogue_model()
-	return cfg("gpt_version", "gpt-4o")
+	return cfg("gpt_version")
 end
 
 function c.recent_speech_threshold()
-	return mcm.get("recent_speech_threshold")
+	return cfg("recent_speech_threshold")
 end
 
 function c.is_gemini()
-	local model = mcm.get("custom_ai_model") or ""
-	local model_fast = mcm.get("custom_ai_model_fast") or ""
-
-	-- We'll check if either model string contains gemini or google.
+	local model = cfg("custom_ai_model") or ""
+	local model_fast = cfg("custom_ai_model_fast") or ""
 	if model:find("gemini") or model:find("google") or model_fast:find("gemini") or model_fast:find("google") then
 		return true
 	end
@@ -147,7 +149,7 @@ end
 -- Note: ZMQ and Python AI are always enabled (no longer configurable)
 
 function c.zmq_port()
-	return tonumber(cfg("zmq_port", 5555))
+	return tonumber(cfg("zmq_port"))
 end
 
 function c.zmq_endpoint()
@@ -155,7 +157,7 @@ function c.zmq_endpoint()
 end
 
 function c.zmq_command_port()
-	return tonumber(cfg("zmq_command_port", 5556))
+	return tonumber(cfg("zmq_command_port"))
 end
 
 function c.zmq_command_endpoint()
@@ -163,56 +165,56 @@ function c.zmq_command_endpoint()
 end
 
 function c.zmq_heartbeat_interval()
-	return tonumber(cfg("zmq_heartbeat_interval", 5))
+	return tonumber(cfg("zmq_heartbeat_interval"))
 end
 
 function c.llm_timeout()
 	-- Maximum seconds to wait for LLM response (default 60s)
-	return tonumber(cfg("llm_timeout", 60))
+	return tonumber(cfg("llm_timeout"))
 end
 
 function c.state_query_timeout()
 	-- Maximum seconds to wait for game state queries (default 30s)
-	return tonumber(cfg("state_query_timeout", 30))
+	return tonumber(cfg("state_query_timeout"))
 end
 
 function c.max_log_entries_per_level()
-	return tonumber(cfg("max_log_entries_per_level", 0))
+	return tonumber(cfg("max_log_entries_per_level"))
 end
 
 -- Get all MCM config values as a table for sync
 function c.get_all_config()
 	return {
 		-- Model settings
-		gpt_version = cfg("gpt_version", "gpt-4o"),
-		ai_model_method = tonumber(cfg("ai_model_method", 3)),
-		custom_ai_model = cfg("custom_ai_model", "gemini/gemini-2.5-flash"),
-		custom_ai_model_fast = cfg("custom_ai_model_fast", "gemini/gemini-2.5-flash-lite"),
-		reasoning_level = tonumber(cfg("reasoning_level", -1)),
-		voice_provider = tonumber(cfg("voice_provider", 2)),
-		language = cfg("language", "Any"),
-		
+		gpt_version             = cfg("gpt_version"),
+		ai_model_method         = tonumber(cfg("ai_model_method")),
+		custom_ai_model         = cfg("custom_ai_model"),
+		custom_ai_model_fast    = cfg("custom_ai_model_fast"),
+		reasoning_level         = tonumber(cfg("reasoning_level")),
+		voice_provider          = tonumber(cfg("voice_provider")),
+		language                = cfg("language"),
+
 		-- Input settings
-		input_option = cfg("input_option", "0"),
-		speak_key = cfg("speak_key", 0),
-		whisper_modifier = cfg("whisper_modifier", 0),
-		
+		input_option            = cfg("input_option"),
+		speak_key               = cfg("speak_key"),
+		whisper_modifier        = cfg("whisper_modifier"),
+
 		-- General settings
-		action_descriptions = cfg("action_descriptions", false),
-		female_gender = cfg("female_gender", false),
-		base_dialogue_chance = cfg("base_dialogue_chance", 0.25),
-		witness_distance = cfg("witness_distance", 25),
-		npc_speak_distance = cfg("npc_speak_distance", 30),
-		time_gap = cfg("time_gap", 12),
-		
+		action_descriptions     = cfg("action_descriptions"),
+		female_gender           = cfg("female_gender"),
+		base_dialogue_chance    = cfg("base_dialogue_chance"),
+		witness_distance        = cfg("witness_distance"),
+		npc_speak_distance      = cfg("npc_speak_distance"),
+		time_gap                = cfg("time_gap"),
+
 		-- ZMQ settings
-		zmq_port = tonumber(cfg("zmq_port", 5555)),
-		zmq_heartbeat_interval = tonumber(cfg("zmq_heartbeat_interval", 5)),
-		llm_timeout = tonumber(cfg("llm_timeout", 60)),
-		state_query_timeout = tonumber(cfg("state_query_timeout", 30)),
-		
+		zmq_port                = tonumber(cfg("zmq_port")),
+		zmq_heartbeat_interval  = tonumber(cfg("zmq_heartbeat_interval")),
+		llm_timeout             = tonumber(cfg("llm_timeout")),
+		state_query_timeout     = tonumber(cfg("state_query_timeout")),
+
 		-- Debug
-		debug_logging = tonumber(cfg("debug_logging", 2)),
+		debug_logging           = tonumber(cfg("debug_logging")),
 	}
 end
 

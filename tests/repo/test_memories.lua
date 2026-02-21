@@ -1,5 +1,6 @@
 -- Adjust the package path
 package.path = package.path .. ';./bin/lua/?.lua;./bin/lua/*/?.lua'
+require("tests.test_bootstrap")
 
 -- Require LuaUnit, memories module, and event_store module
 local luaunit = require('tests.utils.luaunit')
@@ -20,31 +21,29 @@ end
 
 -- Setup function to reset the state before each test
 function setup()
-    -- Reset the event_store and compressed_memories
-    package.loaded['event_store'] = nil
-    event_store = require('domain.repo.event_store')
-    package.loaded['memories'] = nil
-    memory_store = require('domain.repo.memory_store')
+    event_store:clear()
+    memory_store:clear()
 end
 
--- Test adding a memory for a character and retrieving it
+-- Test adding/updating a narrative for a character and retrieving it
 function testAddMemoryForCharacter()
+    memory_store:clear()
     local character_id = 'char_1'
     local content = 'This is a memory content'
-    local character_id = 'char_1'
 
-    memory_store:store_compressed_memory(character_id, content, 0)
+    memory_store:update_narrative(character_id, content, 0)
 
-    local compressed = memory_store:get_compressed_memories(character_id)
+    local narrative = memory_store:get_narrative(character_id)
 
-    luaunit.assertNotNil(compressed)
-    luaunit.assertEquals(#compressed, 1)
-    luaunit.assertEquals(compressed[1].content, content)
-    luaunit.assertEquals(compressed[1].game_time_ms, 0)
+    luaunit.assertNotNil(narrative)
+    luaunit.assertEquals(narrative.narrative, content)
+    luaunit.assertEquals(narrative.last_update_time_ms, 0)
 end
 
 -- Test getting memories for a character based on witnessed events
 function testGetMemoriesForCharacterId()
+    event_store:clear()
+    memory_store:clear()
     -- Create events with witnesses
     local event1 = create_mock_event(1000, {{game_id = 'char_1'}, {game_id = 'char_2'}})
     local event2 = create_mock_event(2000, {{game_id = 'char_2'}})
@@ -73,29 +72,31 @@ function testGetMemoriesForCharacterId()
     luaunit.assertEquals(#memories_char4, 0)
 end
 
--- Test getting compressed memories for a character
+-- Test updating a narrative multiple times (last write wins)
 function testGetCompressedMemories()
+    memory_store:clear()
     local character_id = 'char_1'
 
-    memory_store:store_compressed_memory(character_id, 'Memory 1', 0)
-    memory_store:store_compressed_memory(character_id, 'Memory 2', 1)
-    memory_store:store_compressed_memory(character_id, 'Memory 3', 2)
+    memory_store:update_narrative(character_id, 'Memory 1', 0)
+    memory_store:update_narrative(character_id, 'Memory 2', 1)
+    memory_store:update_narrative(character_id, 'Memory 3', 2)
 
-    local compressed = memory_store:get_compressed_memories(character_id)
-    luaunit.assertEquals(#compressed, 3)
-    luaunit.assertEquals(compressed[1].content, 'Memory 1')
-    luaunit.assertEquals(compressed[2].content, 'Memory 2')
-    luaunit.assertEquals(compressed[3].content, 'Memory 3')
+    local narrative = memory_store:get_narrative(character_id)
+    luaunit.assertNotNil(narrative)
+    luaunit.assertEquals(narrative.narrative, 'Memory 3')
+    luaunit.assertEquals(narrative.last_update_time_ms, 2)
 end
 
--- Test getting uncompressed memories since the last compression
+-- Test getting new events since last narrative update
 function testGetUncompressedMemoriesSinceLastCompression()
+    memory_store:clear()
+    event_store:clear()
     local character_1 = {game_id = 'char_1'}
 
-    -- Add compressed memories
-    memory_store:store_compressed_memory(character_1.game_id, 'Compressed Memory 1', 500)
+    -- Set narrative with last update at time 1600
+    memory_store:update_narrative(character_1.game_id, 'Compressed summary', 1600)
 
-    -- Create events that the character witnessed, before and after the last compressed memory time
+    -- Store events: two before and two after last update time
     local event1 = create_mock_event(1000, {character_1})
     local event2 = create_mock_event(1600, {character_1})
     local event3 = create_mock_event(2500, {character_1})
@@ -103,31 +104,28 @@ function testGetUncompressedMemoriesSinceLastCompression()
 
     event_store:store_event(event1)
     event_store:store_event(event2)
-    memory_store:store_compressed_memory(character_1.game_id, 'Compressed Memory 2', 1600)
     event_store:store_event(event3)
     event_store:store_event(event4)
 
-    local uncompressed_memories = memory_store:get_new_memories(character_1.game_id)
+    local new_events = memory_store:get_new_events(character_1.game_id)
 
-    -- Last compressed memory time is 2000 (from 'Compressed Memory 2')
-    -- So events after 2000 should be included
-
-    luaunit.assertEquals(#uncompressed_memories, 2)
-    luaunit.assertNotEquals(uncompressed_memories[1], event4, 'wrong')
-    luaunit.assertEquals(uncompressed_memories[1], event3, 'first event wrong')
-    luaunit.assertEquals(uncompressed_memories[2], event4, 'second event wrong')
-    luaunit.assertEquals(uncompressed_memories[2], event4)
+    -- Only events after last_update_time_ms=1600 should be included
+    luaunit.assertEquals(#new_events, 2)
+    luaunit.assertEquals(new_events[1], event3, 'first event wrong')
+    luaunit.assertEquals(new_events[2], event4, 'second event wrong')
 end
 
--- Test getting new and compressed memories ready for dialogue generation
+-- Test getting full memory context for dialogue generation
 function testGetAllMemories()
     print("testing get all memories")
+    memory_store:clear()
+    event_store:clear()
     local character_1 = {game_id = 'char_1'}
 
-    -- Add compressed memories
-    memory_store:store_compressed_memory(character_1.game_id, 'Compressed Memory 1', 500)
+    -- Set up narrative with last update at time 1600
+    memory_store:update_narrative(character_1.game_id, 'Compressed narrative', 1600)
 
-    -- Create events that the character witnessed, before and after the last compressed memory time
+    -- Store events; only those after 1600 should be in new_events
     local event1 = create_mock_event(1000, {character_1})
     local event2 = create_mock_event(1600, {character_1})
     local event3 = create_mock_event(2500, {character_1})
@@ -135,16 +133,16 @@ function testGetAllMemories()
 
     event_store:store_event(event1)
     event_store:store_event(event2)
-    memory_store:store_compressed_memory(character_1.game_id, 'Compressed Memory 2', 1600)
     event_store:store_event(event3)
     event_store:store_event(event4)
 
-    local dialogue_memories = memory_store:get_all_memories(character_1.game_id)
-    luaunit.assertEquals(#dialogue_memories, 4)
-    luaunit.assertEquals(dialogue_memories[1].content, 'Compressed Memory 1', 'first event wrong')
-    luaunit.assertEquals(dialogue_memories[2].content, 'Compressed Memory 2', 'second event wrong')
-    luaunit.assertEquals(dialogue_memories[3], event3)
-    luaunit.assertEquals(dialogue_memories[3], event3)
+    local context = memory_store:get_memory_context(character_1.game_id)
+    luaunit.assertNotNil(context)
+    luaunit.assertEquals(context.narrative, 'Compressed narrative')
+    luaunit.assertEquals(context.last_update_time_ms, 1600)
+    luaunit.assertEquals(#context.new_events, 2)
+    luaunit.assertEquals(context.new_events[1], event3, 'first new event wrong')
+    luaunit.assertEquals(context.new_events[2], event4, 'second new event wrong')
 end
 
 -- ============================================================================

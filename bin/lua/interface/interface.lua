@@ -4,10 +4,11 @@ local talker = require("app.talker")
 local game_adapter = require("infra.game_adapter")
 local Event = require("domain.model.event")
 local EventType = require("domain.model.event_types")
+local engine = require("interface.engine")
 
--- game interfaces
-local query = talker_game_queries
-local zmq_integration = talker_zmq_integration -- May be nil if not loaded yet
+-- zmq_integration may be nil if not loaded yet
+---@diagnostic disable-next-line: undefined-global
+local zmq_integration = talker_zmq_integration
 
 local m = {}
 
@@ -43,9 +44,8 @@ end
 local function register_typed_event_internal(event_type, context, witnesses, important, flags)
 	log.info("Registering typed event: %s", tostring(event_type))
 
-	-- Get game time from game adapter
-	-- Note: world_context removed - now queried JIT during prompt building
-	local game_time = query.get_game_time_ms()
+	-- Get game time from engine facade
+	local game_time = engine.get_game_time_ms()
 
 	-- Create typed event using Event.create
 	local new_event = Event.create(event_type, context, game_time, witnesses, flags)

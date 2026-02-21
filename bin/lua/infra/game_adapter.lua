@@ -5,17 +5,9 @@ local EventType = require("domain.model.event_types")
 local Character = require("domain.model.character")
 local log = require("framework.logger")
 local config = require("interface.config")
+local engine = require("interface.engine")
 
 require("infra.STALKER.factions")
--- game interfaces
-local query = talker_game_queries
-local game_async = talker_game_async
-local command = talker_game_commands
-
--- in the mod, IDs are always strings
-local function get_id(obj)
-	return tostring(query.get_id(obj))
-end
 
 local m = {}
 
@@ -24,12 +16,12 @@ local m = {}
 ------------------------------------------------------------
 
 function m.get_characters_near(obj, distance)
-	local nearby_character_objs = query.get_nearby_characters(obj, distance)
+	local nearby_character_objs = engine.get_nearby_characters(obj, distance)
 	return gameObj_to_characters(nearby_character_objs)
 end
 
 function m.get_characters_near_player(distance)
-	local player_obj = query.get_player()
+	local player_obj = engine.get_player()
 	if not player_obj then
 		return {}
 	end
@@ -37,22 +29,22 @@ function m.get_characters_near_player(distance)
 end
 
 function m.get_companions()
-	local companion_objs = query.get_companions()
+	local companion_objs = engine.get_companions()
 	return gameObj_to_characters(companion_objs)
 end
 
 function m.get_player_character()
-	local player_obj = query.get_player()
+	local player_obj = engine.get_player()
 	return m.create_character(player_obj)
 end
 
 function m.get_name_by_id(game_id)
-	local game_obj = query.get_obj_by_id(game_id)
-	return query.get_name(game_obj)
+	local game_obj = engine.get_obj_by_id(game_id)
+	return engine.get_name(game_obj)
 end
 
 function m.get_character_by_id(game_id)
-	local game_obj = query.get_obj_by_id(game_id)
+	local game_obj = engine.get_obj_by_id(game_id)
 	if game_obj then
 		return m.create_character(game_obj)
 	end
@@ -63,7 +55,7 @@ function m.get_name(game_obj)
 	if not game_obj then
 		return "Unknown"
 	end
-	return query.get_name(game_obj)
+	return engine.get_name(game_obj)
 end
 
 ------------------------------------------------------------
@@ -87,10 +79,10 @@ function m.create_character(game_object_person)
 		log.debug("create_character called with nil object")
 		return nil
 	end
-	local game_id = get_id(game_object_person)
-	local name = query.get_name(game_object_person)
-	local experience = query.get_rank(game_object_person)
-	local raw_faction = query.get_faction(game_object_person) -- Returns "Trader" for traders, or technical faction name
+	local game_id = tostring(engine.get_id(game_object_person))
+	local name = engine.get_name(game_object_person)
+	local experience = engine.get_rank(game_object_person)
+	local raw_faction = engine.get_faction(game_object_person) -- Returns "Trader" for traders, or technical faction name
 
 	-- DISGUISE LOGIC: If this is the player, check for disguise and use TRUE faction
 	local visual_faction = nil
@@ -114,13 +106,13 @@ function m.create_character(game_object_person)
 		raw_reputation = game_object_person:character_reputation()
 	end
 	local reputation = raw_reputation or 0 -- Send raw integer, Python uses numeric value directly
-	local weapon = query.get_weapon(game_object_person)
+	local weapon = engine.get_weapon(game_object_person)
 	local weapon_description = nil
 	if weapon then
-		weapon_description = query.get_item_description(weapon)
+		weapon_description = engine.get_item_description(weapon)
 	end
 	-- Look up story_id for important character matching (nil for generic NPCs)
-	local story_id = query.get_story_id(game_id)
+	local story_id = engine.get_story_id(game_id)
 	log.spam(
 		"creating character with id: "
 			.. game_id
@@ -140,7 +132,7 @@ end
 
 function m.create_dialogue_event(speaker_id, dialogue, source_event)
 	log.debug("creating dialogue event")
-	local speaker_obj = query.get_obj_by_id(speaker_id)
+	local speaker_obj = engine.get_obj_by_id(speaker_id)
 	local speaker_char = m.create_character(speaker_obj)
 
 	-- If speaker character creation failed, abort
@@ -174,8 +166,8 @@ function m.create_dialogue_event(speaker_id, dialogue, source_event)
 	end
 
 	-- Create typed dialogue event
-	local game_time = query.get_game_time_ms()
-	local world_context = query.describe_world()
+	local game_time = engine.get_game_time_ms()
+	local world_context = engine.describe_world()
 	local dialogue_event = Event.create(EventType.DIALOGUE, context, game_time, world_context, witnesses, flags)
 
 	return dialogue_event
@@ -239,14 +231,14 @@ end
 
 function m.get_player_goodwill_tier(faction_display_name)
 	local tech_name = m.get_technical_faction_name(faction_display_name)
-	local goodwill_value = query.get_community_goodwill(tech_name)
+	local goodwill_value = engine.get_community_goodwill(tech_name)
 	return m.get_goodwill_tier(goodwill_value)
 end
 
 function m.get_faction_relation_tier(f1_display, f2_display)
 	local f1_tech = m.get_technical_faction_name(f1_display)
 	local f2_tech = m.get_technical_faction_name(f2_display)
-	local rel_val = query.get_community_relation(f1_tech, f2_tech)
+	local rel_val = engine.get_community_relation(f1_tech, f2_tech)
 
 	if rel_val >= 1000 then
 		return "Allied"
@@ -266,13 +258,11 @@ function m.get_faction_relations_string(speaker_faction, mentioned_factions_map)
 	-- Deduplicate: use canonical names from factions.lua
 	local unique_factions = {}
 	for f_display, _ in pairs(mentioned_factions_map) do
-		-- Convert to technical name, then back to canonical display name
 		local tech_name = m.get_technical_faction_name(f_display)
 		local canonical = get_faction_name(tech_name)
 		if canonical then
 			unique_factions[canonical] = true
 		else
-			-- Fallback: use the display name we have if no canonical name found
 			unique_factions[f_display] = true
 		end
 	end
@@ -297,12 +287,10 @@ function m.get_faction_relations_string(speaker_faction, mentioned_factions_map)
 				local f1 = rel_factions_list[i]
 				local f2 = rel_factions_list[j]
 
-				-- Check for alias overlap (e.g. stalker vs Loner)
 				local f1_tech = m.get_technical_faction_name(f1)
 				local f2_tech = m.get_technical_faction_name(f2)
 
 				if f1_tech ~= f2_tech then
-					-- Get relation tier (Hostile/Neutral/Allied)
 					local tier = m.get_faction_relation_tier(f1, f2)
 					if relations[tier] then
 						table.insert(relations[tier], f1 .. " - " .. f2)
@@ -316,7 +304,6 @@ function m.get_faction_relations_string(speaker_faction, mentioned_factions_map)
 		for _, tier in ipairs(tiers_order) do
 			if #relations[tier] > 0 then
 				local section_lines = {}
-				-- Header: ### HOSTILE
 				table.insert(section_lines, "### " .. tier:upper())
 				for _, pair in ipairs(relations[tier]) do
 					table.insert(section_lines, "- " .. pair)
@@ -337,17 +324,17 @@ end
 ------------------------------------------------------------
 -- ASYNCs
 function m.repeat_until_true(seconds, func, ...)
-	game_async.repeat_until_true(seconds, func, ...)
+	engine.repeat_until_true(seconds, func, ...)
 end
 
 -- DIALOGUE
 function m.display_dialogue(speaker_id, dialogue)
 	log.debug("displaying dialogue")
-	command.display_message(speaker_id, dialogue)
+	engine.display_message(speaker_id, dialogue)
 end
 
 function m.display_error_to_player(message)
-	command.display_hud_message(message, 3)
+	engine.display_hud_message(message, 3)
 end
 
 function m.display_to_player(message, seconds)
@@ -355,23 +342,23 @@ function m.display_to_player(message, seconds)
 		return
 	end
 	seconds = seconds or 7
-	command.display_hud_message(message, seconds)
+	engine.display_hud_message(message, seconds)
 end
 
 function m.is_cooldown_over(LAST_GAME_TIME_MS, CD_MS)
-	return (query.get_game_time_ms() - LAST_GAME_TIME_MS > CD_MS)
+	return (engine.get_game_time_ms() - LAST_GAME_TIME_MS > CD_MS)
 end
 
 function m.get_distance(obj_id1, obj_id2)
-	local obj1 = query.get_obj_by_id(obj_id1)
-	local obj2 = query.get_obj_by_id(obj_id2)
-	return query.get_distance_between(obj1, obj2)
+	local obj1 = engine.get_obj_by_id(obj_id1)
+	local obj2 = engine.get_obj_by_id(obj_id2)
+	return engine.get_distance_between(obj1, obj2)
 end
 
 function m.get_distance_to_player(obj_id)
-	local obj = query.get_obj_by_id(obj_id)
-	local player = query.get_player()
-	return query.get_distance_between(obj, player)
+	local obj = engine.get_obj_by_id(obj_id)
+	local player = engine.get_player()
+	return engine.get_distance_between(obj, player)
 end
 
 -- to be moved
@@ -379,33 +366,29 @@ function m.is_player(character_id)
 	return tostring(character_id) == "0"
 end
 
-local game_files = talker_game_files or require("tests.mocks.mock_game_queries") -- todo improve
-
--- I hotfixed this due to a loop dependency but it may also be possible that this function m.get_base_path() was just broken and requiring all of game_query
 -- FILES
 function m.get_base_path()
-	return game_files.get_base_path()
+	return engine.get_base_path()
 end
 
 function m.get_player_disguise_status()
-	-- Check if gameplay_disguise script is available
+	---@diagnostic disable-next-line: undefined-global
 	if not gameplay_disguise then
 		return nil
 	end
 
-	-- Check if player is disguised
+	---@diagnostic disable-next-line: undefined-global
 	if not gameplay_disguise.is_actor_disguised() then
 		return { is_disguised = false }
 	end
 
-	-- Retrieve disguise details
 	-- default_comm is the player's TRUE faction (e.g., "stalker")
+	---@diagnostic disable-next-line: undefined-global
 	local raw_true_faction = gameplay_disguise.get_default_comm()
 	-- current community is the VISUAL faction (e.g., "dolg")
-	local player = query.get_player()
-	local raw_visual_faction = query.get_faction(player)
+	local player = engine.get_player()
+	local raw_visual_faction = engine.get_faction(player)
 
-	-- Map technical names to display names using our factions module
 	local true_faction_display = get_faction_name(raw_true_faction) or raw_true_faction
 	local visual_faction_display = get_faction_name(raw_visual_faction) or raw_visual_faction
 
@@ -414,11 +397,6 @@ function m.get_player_disguise_status()
 		true_faction = true_faction_display,
 		visual_faction = visual_faction_display,
 	}
-end
-
-local is_test_env, mock_game_adapter = pcall(require, "tests.mocks.mock_game_adapter")
-if false and is_test_env then
-	return mock_game_adapter
 end
 
 function m.is_mock()

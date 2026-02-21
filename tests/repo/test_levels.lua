@@ -1,11 +1,9 @@
 -- Test suite for levels domain repository
 package.path = package.path .. ';./bin/lua/?.lua;./bin/lua/*/?.lua'
+require("tests.test_bootstrap")
 
 local luaunit = require('tests.utils.luaunit')
-
--- Pre-populate a mock interface.config so levels.lua can require it without talker_mcm
-local mock_config = { max_log_entries_per_level = function() return 0 end }
-package.loaded["interface.config"] = mock_config
+local mock_engine = require('tests.mocks.mock_engine')
 
 local levels = require('domain.repo.levels')
 
@@ -213,20 +211,12 @@ end
 -- ============================================================================
 
 -- Override config for pruning tests
-local original_config_getter = nil
-
 local function set_pruning_config(value)
-    if not original_config_getter then
-        original_config_getter = mock_config.max_log_entries_per_level
-    end
-    mock_config.max_log_entries_per_level = function() return value end
+    mock_engine._set("max_log_entries_per_level", value)
 end
 
 local function restore_pruning_config()
-    if original_config_getter then
-        mock_config.max_log_entries_per_level = original_config_getter
-        original_config_getter = nil
-    end
+    mock_engine._set("max_log_entries_per_level", nil)  -- resets to config_defaults (0)
 end
 
 function testPruningDisabledKeepsAllEntries()

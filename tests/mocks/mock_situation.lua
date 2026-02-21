@@ -10,13 +10,13 @@ local witnesses = {mock_characters[1], mock_characters[2], mock_characters[3], m
 
 local events = { -- lead up to the kill
     -- lost map
-    Event.create(EventType.ACTION, { actor = victim, action_description = "lost the map" }, 0, "Cordon", witnesses),
+    Event.create(EventType.ACTION, { actor = victim, action_description = "lost the map" }, 100, witnesses),
     -- insult
-    Event.create(EventType.TAUNT, { actor = victim, target = killer }, 100, "Cordon", witnesses),
+    Event.create(EventType.TAUNT, { actor = victim, target = killer }, 200, witnesses),
     -- fight
-    Event.create(EventType.ACTION, { actor = killer, action_description = "fought " .. victim.name }, 200, "Cordon", witnesses),
+    Event.create(EventType.ACTION, { actor = killer, action_description = "fought " .. victim.name }, 300, witnesses),
     -- kill
-    Event.create(EventType.DEATH, { killer = killer, victim = victim }, 300, "Cordon", witnesses)
+    Event.create(EventType.DEATH, { killer = killer, victim = victim }, 400, witnesses)
 }
 
 return events

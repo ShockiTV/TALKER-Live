@@ -8,6 +8,7 @@ package.path = package.path .. ";./bin/lua/?.lua;"
 local bridge = require("infra.zmq.bridge")
 local logger = require("framework.logger")
 local Event = require("domain.model.event")
+local engine = require("interface.engine")
 local Character = require("domain.model.character")
 
 local publisher = {}
@@ -241,9 +242,10 @@ function publisher.send_heartbeat()
         status = "alive",
     }
     
-    -- Try to get game time if queries module is available
-    if talker_game_queries and talker_game_queries.get_game_time_ms then
-        payload.game_time_ms = talker_game_queries.get_game_time_ms()
+    -- Try to get game time via engine facade
+    local t = engine.get_game_time_ms()
+    if t and t > 0 then
+        payload.game_time_ms = t
     end
     
     local success = bridge.publish(publisher.topics.HEARTBEAT, payload)

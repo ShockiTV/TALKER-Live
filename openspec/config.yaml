@@ -147,6 +147,76 @@ context: |
   package.path = package.path .. ";./bin/lua/?.lua;"
   ```
 
+  ### 5a. Engine Facade (Required for all `bin/lua/` Code)
+
+  `bin/lua/` modules **must never** access STALKER engine globals directly (`talker_mcm`, `talker_game_queries`, `talker_game_commands`, `talker_game_async`, `talker_game_files`, `ini_file`, `printf`, `CreateTimeEvent`, etc.). Always go through the engine facade:
+
+  ```lua
+  local engine = require("interface.engine")
+
+  -- Read MCM config value (falls back to config_defaults if MCM not loaded)
+  local val = engine.get_mcm_value("debug_logging")
+
+  -- Game queries
+  local name = engine.get_name(character)
+  local alive = engine.is_alive(character)
+  local player = engine.get_player()
+
+  -- Game commands
+  engine.display_message(speaker, message, time)
+  engine.play_sound(character, sound_id)
+
+  -- Async / time events
+  engine.create_time_event("my_event", key, 0, handler)
+  engine.register_callback("on_death", handler)
+  ```
+
+  **Forbidden** (never use in `bin/lua/`):
+  ```lua
+  talker_mcm.get("debug_logging")
+  talker_game_queries.get_name(obj)
+  talker_game_commands.display_message(...)
+  ini_file("talker\\backstories.ltx")
+  printf("message")
+  CreateTimeEvent(...)
+  ```
+
+  This makes all `bin/lua/` modules **testable without a running game** — just inject `mock_engine`.
+
+  ### 5b. Test Bootstrap Pattern (Required for all Lua tests)
+
+  Every test file must begin with:
+  ```lua
+  package.path = package.path .. ';./bin/lua/?.lua;./bin/lua/*/?.lua'
+  require("tests.test_bootstrap")  -- must be BEFORE any bin/lua require
+  ```
+
+  `test_bootstrap.lua` wires `mock_engine` automatically. Use `mock_engine._set(key, value)` to override MCM config or game query return values per test:
+  ```lua
+  local mock_engine = require("tests.mocks.mock_engine")
+
+  function setUp()
+      mock_engine._set("debug_logging", 3)             -- MCM key
+      mock_engine._set("get_location_name", "Rostok")  -- game query
+  end
+
+  function tearDown()
+      mock_engine._reset()  -- clear all overrides
+  end
+  ```
+
+  ### 5c. Deterministic Tests
+
+  `test_bootstrap.lua` calls `math.randomseed(42)` to make backstory/personality assignment deterministic. Do not use snapshot assertions (`assert_or_record`) for data containing randomly-assigned backstory or personality IDs — use structural assertions instead.
+
+  ### 5d. Data Tables Over .ltx Files
+
+  Backstory and personality data is stored as pure Lua tables, not parsed from .ltx:
+  - `bin/lua/domain/repo/backstory_data.lua` — replaces `backstories.ltx`
+  - `bin/lua/domain/repo/personality_data.lua` — replaces `personalities.ltx`
+
+  These are the **source of truth** for tests. The `.ltx` files remain for the game engine loader but are not used at runtime by `bin/lua/` code.
+
   ### 6. Configuration Access
 
   Always use getters from `interface.config`, never access MCM directly from `bin/lua/`:

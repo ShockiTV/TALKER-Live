@@ -1,5 +1,6 @@
 -- test_filter_engine.lua — Unit tests for bin/lua/infra/query/filter_engine.lua
 package.path = package.path .. ";./bin/lua/?.lua;./bin/lua/*/?.lua"
+require("tests.test_bootstrap")
 local luaunit = require("tests.utils.luaunit")
 local fe = require("infra.query.filter_engine")
 

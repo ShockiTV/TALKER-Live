@@ -3,11 +3,11 @@ print(_VERSION)
 
 package.path = package.path .. ';./bin/lua/?.lua'
 package.path = package.path .. ';./bin/lua/*/?.lua'
+require("tests.test_bootstrap")
 
 -- Import required modules
 local luaunit = require('tests.utils.luaunit')
 local mock_situation = require("tests.mocks.mock_situation")
-local assert_or_record = require("tests.utils.assert_or_record")
 local talker = require('app.talker')
 local mock_game_adapter = require('tests.mocks.mock_game_adapter')
 talker.set_game_adapter(mock_game_adapter)
@@ -30,7 +30,14 @@ function Test_EventRegistration()
     -- Retrieve events and verify the event was stored
     local result = event_store:get_events_since(0)
     luaunit.assertEquals(#result, 1, "Expected 1 event to be stored")
-    assert_or_record('app', 'Test_EventRegistration', result)
+
+    -- Verify event structure (not backstory IDs which are randomly assigned)
+    local event = result[1]
+    luaunit.assertEquals(event.game_time_ms, 100, "Expected game_time_ms = 100")
+    luaunit.assertEquals(event.context.actor.name, "Sarik", "Expected actor name")
+    luaunit.assertEquals(event.context.actor.faction, "Freedom", "Expected actor faction")
+    luaunit.assertEquals(#event.witnesses, 6, "Expected 6 witnesses")
+    luaunit.assertEquals(event.flags, {}, "Expected empty flags")
 end
 
 -- Test Scenario: Silent Event

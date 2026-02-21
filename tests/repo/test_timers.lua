@@ -1,5 +1,6 @@
 -- Test suite for timers domain repository
 package.path = package.path .. ';./bin/lua/?.lua;./bin/lua/*/?.lua'
+require("tests.test_bootstrap")
 
 local luaunit = require('tests.utils.luaunit')
 
