@@ -13,6 +13,7 @@ from .transport.router import ZMQRouter
 from .handlers import events as event_handlers
 from .handlers import config as config_handlers
 from .dialogue import DialogueGenerator, SpeakerSelector
+from .dialogue.retry_queue import DialogueRetryQueue
 from .state.client import StateQueryClient
 from .llm import get_llm_client
 
@@ -59,17 +60,25 @@ async def lifespan(app: FastAPI):
         timeout=settings.state_query_timeout,
     )
     
+    # Create retry queue for deferred dialogue generation
+    retry_queue = DialogueRetryQueue(
+        max_retries=5,
+        heartbeat_interval=5.0,
+    )
+    
     # Create dialogue generator with factory function
     dialogue_generator = DialogueGenerator(
         llm_client=get_current_llm_client,  # Pass factory, not client
         state_client=state_client,
         publisher=zmq_router,
         llm_timeout=settings.llm_timeout,
+        retry_queue=retry_queue,
     )
     
     # Inject generator into event handlers
     event_handlers.set_dialogue_generator(dialogue_generator)
     event_handlers.set_publisher(zmq_router)  # For heartbeat acks
+    event_handlers.set_retry_queue(retry_queue)
     
     # Register handlers
     zmq_router.on("game.event", event_handlers.handle_game_event)

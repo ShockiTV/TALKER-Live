@@ -8,6 +8,31 @@ from loguru import logger
 from .models import MemoryContext, Character, Event, WorldContext
 
 
+class StateQueryTimeout(TimeoutError):
+    """Raised when a state query to Lua times out.
+    
+    Subclass of TimeoutError so existing ``except TimeoutError`` handlers
+    still catch it, while callers that need to distinguish transient
+    connectivity failures (e.g. Lua paused in main menu) can catch this
+    specific type.
+    
+    Attributes:
+        topic: The ZMQ query topic that timed out (e.g. "state.query.memories").
+        character_id: The character_id parameter if the query was character-specific.
+    """
+
+    def __init__(
+        self,
+        message: str = "State query timed out",
+        *,
+        topic: str | None = None,
+        character_id: str | None = None,
+    ):
+        super().__init__(message)
+        self.topic = topic
+        self.character_id = character_id
+
+
 class StateQueryClient:
     """Client for querying game state from Lua via ZMQ.
     
@@ -46,8 +71,8 @@ class StateQueryClient:
             Response data dict
             
         Raises:
-            TimeoutError: If query times out
-            Exception: If query returns error
+            StateQueryTimeout: If query times out (subclass of TimeoutError)
+            ConnectionError: If query cannot be published
         """
         request_id = self._generate_request_id()
         timeout = timeout or self.timeout
@@ -68,7 +93,16 @@ class StateQueryClient:
         logger.debug(f"Sent query {topic} with request_id {request_id}")
         
         # Wait for response
-        response = await future
+        try:
+            response = await future
+        except TimeoutError:
+            character_id = params.get("character_id")
+            raise StateQueryTimeout(
+                f"State query timed out: {topic} (request_id={request_id})",
+                topic=topic,
+                character_id=character_id,
+            ) from None
+        
         logger.debug(f"Received response for {request_id}")
         
         return response.get("data", response)
