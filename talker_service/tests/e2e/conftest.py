@@ -4,12 +4,93 @@ import dataclasses
 import json
 from pathlib import Path
 
+import jsonschema
 import pytest
 
 from .harness import E2eHarness
+from .scenario_loader import discover_scenarios, load_scenario, scenario_id
+from .schema_compiler import compile_schema
 
 # E2e tests may spin up async harnesses and mock LLM round-trips — allow more time.
 pytestmark = pytest.mark.timeout(30)
+
+
+# ── Schema validation at collection time ──────────────────────
+
+_SCHEMA_PATH = Path(__file__).resolve().parents[3] / "docs" / "zmq-api.yaml"
+
+
+def _validate_scenario(scenario: dict, compiled: dict, path: Path) -> list[str]:
+    """Validate one scenario against the compiled ZMQ schema.
+
+    Returns a list of human-readable error strings (empty == valid).
+    """
+    errors: list[str] = []
+
+    def _check(instance, schema_fragment, label: str) -> None:
+        try:
+            jsonschema.validate(instance, schema_fragment)
+        except jsonschema.ValidationError as exc:
+            errors.append(f"  {label}: {exc.message}")
+
+    # 1. input.payload
+    input_cfg = scenario.get("input", {})
+    topic = input_cfg.get("topic")
+    payload = input_cfg.get("payload")
+    if topic and payload and topic in compiled:
+        payload_schema = compiled[topic].get("payload")
+        if payload_schema:
+            _check(payload, payload_schema, f"input.payload ({topic})")
+
+    # 2. state_mocks.<topic>.response
+    for mock_topic, mock_data in scenario.get("state_mocks", {}).items():
+        if mock_topic not in compiled:
+            continue
+        resp_schema = compiled[mock_topic].get("response")
+        if resp_schema and "response" in mock_data:
+            _check(mock_data["response"], resp_schema, f"state_mocks.{mock_topic}")
+
+    # 3. expected.zmq_published[].payload
+    for i, pub in enumerate(scenario.get("expected", {}).get("zmq_published", [])):
+        t = pub.get("topic")
+        if t and t in compiled:
+            pub_schema = compiled[t].get("payload")
+            if pub_schema:
+                _check(pub["payload"], pub_schema, f"expected.zmq_published[{i}] ({t})")
+
+    # 4. expected.state_queries[].payload
+    for i, sq in enumerate(scenario.get("expected", {}).get("state_queries", [])):
+        t = sq.get("topic")
+        if t and t in compiled:
+            req_schema = compiled[t].get("request")
+            if req_schema:
+                _check(sq["payload"], req_schema, f"expected.state_queries[{i}] ({t})")
+
+    return errors
+
+
+def pytest_collection_modifyitems(config, items):
+    """Validate all scenario files against the ZMQ API schema during collection.
+
+    Runs once at collection time — before any ZMQ sockets or event loops spin up.
+    Any validation error causes an immediate, clear failure.
+    """
+    if not _SCHEMA_PATH.exists():
+        return  # Schema file absent — skip validation silently
+
+    compiled = compile_schema(str(_SCHEMA_PATH))
+    all_errors: list[str] = []
+
+    for path in discover_scenarios():
+        scenario = load_scenario(path)
+        errs = _validate_scenario(scenario, compiled, path)
+        if errs:
+            all_errors.append(f"{path.name}:")
+            all_errors.extend(errs)
+
+    if all_errors:
+        msg = "Scenario files failed ZMQ schema validation:\n" + "\n".join(all_errors)
+        pytest.exit(msg, returncode=1)
 
 
 @pytest.fixture

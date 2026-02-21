@@ -169,6 +169,10 @@ context: |
   ### Python Tests (talker_service)
 
   - **IMPORTANT**: Always use MCP tools to run Python tests — do NOT call `python`, `pytest`, or `.venv` directly in the terminal.
+
+  ### OpenSpec CLI
+
+  - **IMPORTANT**: Use the globally installed `openspec` CLI command directly (e.g., `openspec status`, `openspec list --json`). Do NOT try to run it via `python -m openspec` or through a venv — it is a global npm/system install.
   - Use the `run_tests` MCP tool with an optional `path` argument:
     - All tests: omit `path`
     - Unit tests (top-level): `path: "tests/"` with a `pattern` filter

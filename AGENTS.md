@@ -113,7 +113,7 @@ Lua (Game)                          Python (Service)
 - **LLM Clients**: OpenAI API, OpenRouter, Ollama, Custom Proxy
 
 ### Project Structure
-- **OpenSpec**: Experimental workflow for structured changes (`openspec/`)
+- **OpenSpec**: Experimental workflow for structured changes (`openspec/`). **IMPORTANT**: Use the globally installed `openspec` CLI directly (e.g., `openspec status`, `openspec list --json`). Do NOT run it via `python -m openspec` or through a venv — it is a global install.
 - **Kilocode**: `.kilocode/` directory with skills and configuration
 
 ## Key Patterns & Conventions
@@ -326,7 +326,7 @@ Edit files in `talker_service/src/talker_service/prompts/`:
 
 ### Documentation
 - [`docs/Python_Service_Setup.md`](docs/Python_Service_Setup.md) - Detailed setup instructions
-- [`docs/ZMQ_Message_Schema.md`](docs/ZMQ_Message_Schema.md) - ZMQ message format specification
+- [`docs/zmq-api.yaml`](docs/zmq-api.yaml) - ZMQ API contract (single source of truth for wire protocol)
 - [`docs/Memory_Compression.md`](docs/Memory_Compression.md) - Memory system documentation
 
 ## External Documentation

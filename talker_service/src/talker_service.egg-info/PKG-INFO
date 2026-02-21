@@ -17,6 +17,9 @@ Requires-Dist: tornado>=6.1
 Provides-Extra: dev
 Requires-Dist: pytest>=7.0.0; extra == "dev"
 Requires-Dist: pytest-asyncio>=0.21.0; extra == "dev"
+Requires-Dist: pytest-timeout>=2.3.0; extra == "dev"
 Requires-Dist: respx>=0.20.0; extra == "dev"
 Requires-Dist: mcp>=1.0.0; extra == "dev"
 Requires-Dist: pytest-json-report>=1.5.0; extra == "dev"
+Requires-Dist: jsonschema>=4.0.0; extra == "dev"
+Requires-Dist: pyyaml>=6.0; extra == "dev"
