@@ -1,3 +1,5 @@
+package.path = package.path .. ';./bin/lua/?.lua;./bin/lua/*/?.lua'
+require("tests.test_bootstrap")
 local luaunit = require('tests.utils.luaunit')
 
 local function check_format_sanity(unformatted_description, event_objects)

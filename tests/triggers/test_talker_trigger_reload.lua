@@ -1,4 +1,5 @@
 package.path = package.path .. ';./bin/lua/?.lua;./bin/lua/*/?.lua'
+require("tests.test_bootstrap")
 local luaunit = require('tests.utils.luaunit')
 local assert_or_record = require("tests.utils.assert_or_record")
 

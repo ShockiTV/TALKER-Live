@@ -1,4 +1,5 @@
 package.path = package.path .. ';./bin/lua/?.lua;./bin/lua/*/?.lua'
+require("tests.test_bootstrap")
 local file_io = require("infra.file_io")
 local luaunit = require('tests.utils.luaunit')
 
@@ -56,8 +57,7 @@ function testTempFile()
     luaunit.assertEquals(read_content, test_content)
 
     -- Clean up
-    local MIC_FILE_PATH = get_MIC_FILE_PATH(test_temp_file)
-    file_io.delete(MIC_FILE_PATH)
+    file_io.delete_temp(test_temp_file)
 end
 
 os.exit(luaunit.LuaUnit.run())

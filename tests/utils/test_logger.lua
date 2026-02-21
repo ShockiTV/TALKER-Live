@@ -1,9 +1,12 @@
 package.path = package.path .. ';./bin/lua/?.lua;./bin/lua/*/?.lua'
+require("tests.test_bootstrap")
+
+-- Override debug_logging to mode 3 (print+log) so we can capture printed output
+local mock_engine = require("tests.mocks.mock_engine")
+mock_engine._set("debug_logging", 3)
+
 local luaunit = require('tests.utils.luaunit')
 local file_io = require('infra.file_io')
-
--- simulate game load by loading mock_game_commands to the global namespace as talker_game_commands
-talker_game_commands = require('tests.mocks.mock_game_commands')
 
 -- Mock the file_io.write function to avoid actual file operations during tests
 ---@diagnostic disable-next-line: duplicate-set-field
@@ -17,6 +20,9 @@ local function mock_print(...)
     table.insert(printed_output, table.concat({...}, " "))
 end
 printf = mock_print
+
+-- Re-require logger after setting up printf mock
+package.loaded["framework.logger"] = nil
 local logger = require('framework.logger')
 
 
@@ -34,6 +40,7 @@ function testSetLogLevel()
 end
 
 function testLoggingAtDifferentLevels()
+    printed_output = {}
     logger.setLogLevel("debug")
 
     logger.debug("This is a debug message")
@@ -63,6 +70,7 @@ function testInvalidLogLevel()
 end
 
 function testLogLevelFiltering()
+    printed_output = {}
     logger.setLogLevel("warn")
 
     logger.debug("This debug message should not be logged")

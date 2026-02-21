@@ -194,6 +194,35 @@ Every Lua file accessing `bin/lua/` modules must start with:
 package.path = package.path .. ";./bin/lua/?.lua;"
 ```
 
+### 5a. Engine Facade (Required for all `bin/lua/` Code)
+
+`bin/lua/` modules **must never** access STALKER engine globals directly (`talker_mcm`, `talker_game_queries`, `talker_game_commands`, `talker_game_async`, `talker_game_files`, `ini_file`, `printf`, `CreateTimeEvent`, etc.). Always go through the engine facade:
+
+```lua
+local engine = require("interface.engine")
+
+-- Read MCM config value (falls back to config_defaults if MCM not loaded)
+local val = engine.get_mcm_value("debug_logging")
+
+-- Game queries
+local name = engine.get_name(character)
+local alive = engine.is_alive(character)
+
+-- Game commands
+engine.display_message(speaker, message, time)
+
+-- Async / time events
+engine.create_time_event("my_event", key, 0, handler)
+```
+
+This makes all `bin/lua/` modules **testable without a running game** — just inject `mock_engine`:
+```lua
+-- In any test file, before requiring any bin/lua module:
+require("tests.test_bootstrap")  -- wires mock_engine automatically
+```
+
+**Tests must require `tests.test_bootstrap` as their first line** (after `package.path`) to inject the mock engine before any `bin/lua/` module loads. Use `mock_engine._set(key, value)` to override return values per test.
+
 ### 6. Configuration Access
 
 Always use getters from `interface.config`, never access MCM directly from `bin/lua/`:

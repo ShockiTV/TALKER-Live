@@ -1,13 +1,14 @@
 local test_data_path = "tests/utils/test_data/"
 
 package.path = package.path .. ';./bin/lua/?.lua;./bin/lua/*/?.lua'
+require("tests.test_bootstrap")
 
 local event_recorder = require "framework.event_recorder"
 local luaunit = require('tests.utils.luaunit')
 local mock_situation = require("tests.mocks.mock_situation")
 
--- make test_data if not available
-os.execute("mkdir -p " .. test_data_path)
+-- make test_data if not available (cross-platform)
+os.execute('mkdir "' .. test_data_path:gsub("/", "\\") .. '" 2>nul || mkdir -p ' .. test_data_path .. ' 2>/dev/null')
 function testSaveAndLoadTable()
     local test_file = "tests/utils/test_data/" .. "testSaveAndLoadTable.txt"
     local my_table = {a = 1, b = "hello", c = {1, 2, 3}}

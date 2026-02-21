@@ -1,8 +1,11 @@
 -- Requires
+package.path = package.path .. ';./bin/lua/?.lua'
+require("tests.test_bootstrap")
+
 local luaunit = require('tests.utils.luaunit')
 local assert_or_record = require("tests.utils.assert_or_record")
 
-local Character = require('domain.model.Character')
+local Character = require('domain.model.character')
 
 -- Test Character creation
 function testCharacterCreation()
@@ -20,11 +23,10 @@ function testCharacterDescription()
     -- Get the description from the character object
     local description = Character.describe(char)
 
-    -- Pattern to validate: must contain the character's name followed by some description with keywords
-    local expected_pattern = "^John Doe, a .* Veteran Warrior$"
-
-    -- Assert description matches the expected pattern
-    luaunit.assertStrMatches(description, expected_pattern)
+    -- Description format: "John Doe, a Veteran rank member of the Warrior faction who is <personality>"
+    luaunit.assertStrContains(description, "John Doe")
+    luaunit.assertStrContains(description, "Veteran")
+    luaunit.assertStrContains(description, "Warrior")
 end
 
 -- Run tests

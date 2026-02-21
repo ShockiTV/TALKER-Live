@@ -1,6 +1,7 @@
 -- Adjust the package path to ensure LuaUnit and event_store can be required
 package.path = package.path .. ';./bin/lua/?.lua'
 package.path = package.path .. ';./bin/lua/*/?.lua'
+require("tests.test_bootstrap")
 
 -- Require LuaUnit and the Event module
 local luaunit = require('tests.utils.luaunit')

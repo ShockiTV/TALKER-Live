@@ -1,11 +1,6 @@
 -- file_io.lua
 local file_io = {}
-
--- legacy flag workaround
-local function get_base_path()
-    local game_files = talker_game_files or require('tests.mocks.mock_game_adapter')
-    return game_files.get_base_path()
-end
+local engine = require("interface.engine")
 
 -- always open in binary mode so UTF-8 bytes pass through untouched
 local function open_file(path, mode)
@@ -13,7 +8,7 @@ local function open_file(path, mode)
 end
 
 function file_io.read(file_name, not_game)
-    local full_path = not_game and file_name or get_base_path() .. file_name
+    local full_path = not_game and file_name or engine.get_base_path() .. file_name
     local file = open_file(full_path, "r")
     if not file then return nil end
     local contents = file:read("*a")
@@ -22,7 +17,7 @@ function file_io.read(file_name, not_game)
 end
 
 function file_io.write(file_name, contents, not_game)
-    local full_path = not_game and file_name or get_base_path() .. file_name
+    local full_path = not_game and file_name or engine.get_base_path() .. file_name
     contents = contents or ""
     local file, err = open_file(full_path, "a")
     if not file then
@@ -43,7 +38,7 @@ function file_io.add_line(file_name, contents)
 end
 
 function file_io.override(file_name, contents, not_game)
-    local full_path = not_game and file_name or get_base_path() .. file_name
+    local full_path = not_game and file_name or engine.get_base_path() .. file_name
     local file, err = open_file(full_path, "w")
     if not file then
         print("Error opening file:", err)
@@ -59,7 +54,7 @@ function file_io.override(file_name, contents, not_game)
 end
 
 function file_io.delete(file_name, not_game)
-    local full_path = not_game and file_name or get_base_path() .. file_name
+    local full_path = not_game and file_name or engine.get_base_path() .. file_name
     os.remove(full_path)
     return true
 end
@@ -81,6 +76,12 @@ end
 function file_io.override_temp(filename, contents)
     local p = mic_path(filename)
     assert(file_io.override(p, contents, true), "Failed to write to temporary file: " .. p)
+    return true
+end
+
+function file_io.delete_temp(filename)
+    local p = mic_path(filename)
+    os.remove(p)
     return true
 end
 
