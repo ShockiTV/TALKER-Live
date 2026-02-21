@@ -1,7 +1,8 @@
 package.path = package.path .. ";./bin/lua/?.lua;"
-local logger = require("framework.logger")
-local trigger = require("interface.trigger")
-local game = require("infra.game_adapter")
+local logger   = require("framework.logger")
+local trigger  = require("interface.trigger")
+local game     = require("infra.game_adapter")
+local Cooldown = require("domain.service.cooldown")
 -- Game interface
 local queries = talker_game_queries
 local mcm = talker_mcm
@@ -10,32 +11,21 @@ local mcm = talker_mcm
 local EventType = trigger.EventType
 
 local script_name = "TALKER Trigger Injury"
-local LAST_INJURY_TIME = 0
 local INJURY_COOLDOWN_CD = mcm.get("injury_cooldown") * 1000 -- default 20 seconds cooldown to prevent spam
 
 local mode_injury = tonumber(mcm.get("enable_trigger_injury") or "0")
 
--- Helper to determine if an injury event should be silent
--- Mode: 0 = On, 1 = Off, 2 = Silent
-local function get_silence_status(mode)
-    local current_time = queries.get_game_time_ms()
-    if (current_time - LAST_INJURY_TIME) < INJURY_COOLDOWN_CD then
-        return -- On cooldown, abort
-    end
-    
-    -- Reset the cooldown timer
-    LAST_INJURY_TIME = current_time
-    if mode == 2 then return true end -- Silent mode registers the event but doesn't request dialogue
-    return false
-end
+-- CooldownManager replaces LAST_INJURY_TIME + get_silence_status().
+-- on_cooldown = "abort": active cooldown returns nil so the event is dropped entirely.
+local cd = Cooldown.new({ cooldown_ms = INJURY_COOLDOWN_CD, on_cooldown = "abort" })
 
 function actor_on_hit_callback(obj, amount, local_direction, who, bone_index)
     if mode_injury == 1 then return end
     if db.actor.health >= mcm.get("injury_threshold") then return end
 
     local player = game.get_player_character()
-    local is_silent = get_silence_status(mode_injury)
-    if is_silent == nil then return end -- Cooldown active
+    local is_silent = cd:check("default", queries.get_game_time_ms(), mode_injury)
+    if is_silent == nil then return end -- Cooldown active or mode Off
 
     -- Create typed event context
     local context = {

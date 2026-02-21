@@ -5,9 +5,10 @@
 -- This script was a port from STALKER 1 and may need cleanup
 --------------------------------------------------------------------------------------------
 package.path = package.path .. ";./bin/lua/?.lua;"
-local log = require("framework.logger")
-local game = require("infra.game_adapter")
-local trigger = require("interface.trigger")
+local log      = require("framework.logger")
+local game     = require("infra.game_adapter")
+local trigger  = require("interface.trigger")
+local Cooldown = require("domain.service.cooldown")
 -- Import game interface modules
 local queries = talker_game_queries
 local mcm = talker_mcm
@@ -30,53 +31,10 @@ local ANTI_SPAM_CD = mcm.get("anti_spam_cd") * 1000
 ----------------------------------------------------------------------------------------------------
 -- Conditions
 ----------------------------------------------------------------------------------------------------
-local LAST_ANOMALY_PROXIMITY_COMMENT = 0
-local LAST_ANOMALY_DAMAGE_COMMENT = 0
-local LAST_ANOMALY_PROXIMITY_SPAM = 0
-local LAST_ANOMALY_DAMAGE_SPAM = 0
-
--- Helper to determine if an anomaly event should be silent
--- Mode: 0 = On, 1 = Off, 2 = Silent
-local function get_silence_status(mode, is_damage)
-    
-    local current_time = queries.get_game_time_ms()
-    local cooldown = is_damage and ANOMALY_DAMAGE_COMMENT_CD or ANOMALY_PROXIMITY_COMMENT_CD
-    local last_time = is_damage and LAST_ANOMALY_DAMAGE_COMMENT or LAST_ANOMALY_PROXIMITY_COMMENT
-    local last_spam = is_damage and LAST_ANOMALY_DAMAGE_SPAM or LAST_ANOMALY_PROXIMITY_SPAM
-    
-    -- 1. Anti-spam check (prevents any event registration if too frequent)
-    if (current_time - last_spam) < ANTI_SPAM_CD then
-        return nil -- Abort, too soon even for a silent event
-    end
-
-    -- Update anti-spam timer now that we know we're registering SOMETHING
-    if is_damage then 
-        LAST_ANOMALY_DAMAGE_SPAM = current_time 
-    else 
-        LAST_ANOMALY_PROXIMITY_SPAM = current_time 
-    end
-
-    -- 2. Dialogue Cooldown check
-    local dialogue_ready = (current_time - last_time) >= cooldown
-
-    if mode == 0 then -- Mode: On
-        if dialogue_ready then
-            -- Reset the dialogue cooldown timer
-            if is_damage then 
-                LAST_ANOMALY_DAMAGE_COMMENT = current_time 
-            else 
-                LAST_ANOMALY_PROXIMITY_COMMENT = current_time 
-            end
-            return false -- Dialogue requested
-        else
-            return true -- Silent event (anti-spam passed, but dialogue CD not ready)
-        end
-    elseif mode == 2 then -- Mode: Silent
-        return true -- Always silent if anti-spam passed
-    end
-
-    return nil -- Should not reach here if logic is sound (Mode: Off handled at call sites)
-end
+-- Two CooldownManagers replace the 4 LAST_* timer variables and get_silence_status().
+-- Each has its own per-event cooldown; both share ANTI_SPAM_CD.
+local cd_damage    = Cooldown.new({ cooldown_ms = ANOMALY_DAMAGE_COMMENT_CD,    anti_spam_ms = ANTI_SPAM_CD })
+local cd_proximity = Cooldown.new({ cooldown_ms = ANOMALY_PROXIMITY_COMMENT_CD, anti_spam_ms = ANTI_SPAM_CD })
 
 function is_valid_proximity_event(anomaly)
     local player = queries.get_player()
@@ -136,7 +94,7 @@ function actor_on_feeling_anomaly(anomaly)
 
     -- Skip if the anomaly is not close enough OR if player rank is too high
     if is_valid_proximity_event(anomaly) then
-        local is_silent = get_silence_status(mode_proximity, false)
+        local is_silent = cd_proximity:check("default", queries.get_game_time_ms(), mode_proximity)
         if is_silent ~= nil then
             create_anomaly_interaction_event(anomaly_name, false, is_silent)
         end
@@ -159,7 +117,7 @@ function actor_on_hit_callback(obj, amount, local_direction, who, bone_index)
         return
     end
 
-    local is_silent = get_silence_status(mode_damage, true)
+    local is_silent = cd_damage:check("default", queries.get_game_time_ms(), mode_damage)
     if is_silent ~= nil then
         create_anomaly_interaction_event(anomaly_name, true, is_silent)
     end

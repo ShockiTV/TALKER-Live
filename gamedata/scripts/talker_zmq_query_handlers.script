@@ -3,101 +3,27 @@
 -- Queries game state and publishes responses back
 
 package.path = package.path .. ";./bin/lua/?.lua;"
-local logger = require("framework.logger")
+local logger       = require("framework.logger")
 local memory_store = require("domain.repo.memory_store")
-local event_store = require("domain.repo.event_store")
+local event_store  = require("domain.repo.event_store")
 local game_adapter = require("infra.game_adapter")
 local filter_engine = require("infra.query.filter_engine")
 local personalities = require("domain.repo.personalities")
-local backstories = require("domain.repo.backstories")
-local levels = require("domain.repo.levels")
-local timers = require("domain.repo.timers")
+local backstories  = require("domain.repo.backstories")
+local levels       = require("domain.repo.levels")
+local timers       = require("domain.repo.timers")
+local serializer   = require("infra.zmq.serializer")
 
 -- References to ZMQ integration (lazy-loaded)
 local zmq_integration = nil
 
 --------------------------------------------------------------------------------
--- Serialization Helpers (mirror publisher.lua)
+-- Serialization Helpers — delegated to infra/zmq/serializer.lua
 --------------------------------------------------------------------------------
-
---- Convert a Character object to a serializable table.
-local function serialize_character(char)
-    if not char then return nil end
-    return {
-        game_id = tostring(char.game_id),
-        name = char.name,
-        faction = char.faction,
-        experience = char.experience,
-        reputation = char.reputation,
-        personality = char.personality,
-        backstory = char.backstory,
-        weapon = char.weapon,
-        visual_faction = char.visual_faction,
-    }
-end
-
---- Serialize event context, converting any character objects within.
-local function serialize_context(context)
-    if not context then return {} end
-    
-    local result = {}
-    local character_keys = {"victim", "killer", "actor", "spotter", "target", "taunter", "speaker"}
-    
-    for k, v in pairs(context) do
-        -- Check if this is a character field
-        local is_char_key = false
-        for _, key in ipairs(character_keys) do
-            if k == key then is_char_key = true; break end
-        end
-        
-        if is_char_key and type(v) == "table" and v.game_id then
-            result[k] = serialize_character(v)
-        elseif k == "companions" and type(v) == "table" then
-            result[k] = {}
-            for _, char in ipairs(v) do
-                if char and char.game_id then
-                    table.insert(result[k], serialize_character(char))
-                end
-            end
-        else
-            result[k] = v
-        end
-    end
-    
-    return result
-end
-
---- Convert an Event object to a serializable table.
-local function serialize_event(event)
-    if not event then return nil end
-    
-    local witnesses = {}
-    if event.witnesses then
-        for _, w in ipairs(event.witnesses) do
-            table.insert(witnesses, serialize_character(w))
-        end
-    end
-    
-    return {
-        type = event.type,
-        content = event.content,  -- For legacy events
-        context = serialize_context(event.context),
-        game_time_ms = event.game_time_ms,
-        world_context = event.world_context,
-        witnesses = witnesses,
-        flags = event.flags,
-    }
-end
-
---- Serialize a list of events.
-local function serialize_events(events)
-    if not events then return {} end
-    local result = {}
-    for _, event in ipairs(events) do
-        table.insert(result, serialize_event(event))
-    end
-    return result
-end
+local serialize_character = serializer.serialize_character
+local serialize_context   = serializer.serialize_context
+local serialize_event     = serializer.serialize_event
+local serialize_events    = serializer.serialize_events
 
 --------------------------------------------------------------------------------
 -- Response Publishing

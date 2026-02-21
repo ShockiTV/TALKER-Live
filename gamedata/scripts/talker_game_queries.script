@@ -1,38 +1,17 @@
 package.path = package.path .. ";./bin/lua/?.lua;"
-local log = require("framework.logger")
-local config = require("interface.config")
-local timers = require("domain.repo.timers")
+local log          = require("framework.logger")
+local config       = require("interface.config")
+local timers       = require("domain.repo.timers")
+local utils        = require("framework.utils")
+local unique_npcs  = require("domain.data.unique_npcs")
+local mutant_names = require("domain.data.mutant_names")
+local ranks        = require("domain.data.ranks")
+local world_desc   = require("interface.world_description")
 
-function must_exist(obj, func_name)
-    if not obj then
-        error(func_name .. " called with nil object")
-    end
-end
-
--- Execute a function within a protected call and log any errors
-function try(func, ...)
-    local status, result = pcall(func, ...)
-    if not status then
-        log.debug("Error in try: " .. tostring(result))
-        return nil
-    end
-    return result
-end
-
-function join_tables(table1, table2)
-    local result = {}
-    if table1 then
-        for _, value in ipairs(table1) do
-            result[#result+1] = value
-        end
-    end
-    if table2 then
-        for _, value in ipairs(table2) do
-            result[#result+1] = value
-        end
-    end
-    return result
-end
+-- Delegate to framework.utils (kept as globals so other scripts can call them)
+function must_exist(obj, func_name)  return utils.must_exist(obj, func_name)   end
+function try(func, ...)              return utils.try(func, ...)                end
+function join_tables(t1, t2)         return utils.join_tables(t1, t2)          end
 
 function get_game_path()
     return getFS():update_path("$game_config$", "") .. "\\"
@@ -40,19 +19,10 @@ end
 
 -- OBJECTS
 
--- Helper to get consistent formatting for monsters/zombies vs humans in event logs
+-- Helper to get consistent formatting for monsters/zombies vs humans in event logs.
+-- Delegates to domain/data/ranks.lua for pure string formatting.
 function get_character_event_info(char)
-    if not char then return "%s", {"Unknown"} end
-    if char.faction == "Monster" or char.faction == "Zombied" then
-        return "%s (%s)", {char.name, char.faction}
-    else
-        -- Check for disguise (visual_faction)
-        if char.visual_faction then
-             return "%s (%s %s, %s rep) [disguised as %s]", {char.name, char.experience, char.faction, char.reputation, char.visual_faction}
-        else
-            return "%s (%s %s, %s rep)", {char.name, char.experience, char.faction, char.reputation}
-        end
-    end
+    return ranks.format_character_info(char)
 end
 
 function get_technical_name(object)
@@ -182,44 +152,15 @@ function get_name(creature)
     return creature:character_name() or describe_mutant(creature)
 end
 
--- Function to get human-readable names for mutants based on patterns in their technical names
+-- Function to get human-readable names for mutants based on patterns in their technical names.
+-- Pattern data and matching logic delegated to domain/data/mutant_names.lua.
 function describe_mutant(mutant)
     must_exist(mutant, "describe_mutant")
     -- If the object is a stalker, it's not a mutant. Return nil so get_name can use character_name.
     -- This also protects against wrapped character objects that don't have the :section() method.
     if is_stalker(mutant) then return nil end
     local mutant_technical_name = get_technical_name(mutant)
-    -- TODO move to XML or replace entirely with pre-existing function
-    local patternToNameMap = {
-        ["zombie"] = "Zombie",
-        ["rat"] = "Rat",
-        ["tushkano"] = "Tushkano",
-        ["boar"] = "Boar (bulletproof head)", -- or the AI will keep talking about shooting them in the head
-        ["flesh"] = "Flesh (mutant pig, relatively passive)",
-        ["pseudodog"] = "Pseudodog",
-        ["cat"] = "Mutant Cat",
-        ["fracture"] = "Fracture",
-        ["snork"] = "Snork",
-        ["lurker"] = "Lurker",
-        ["bloodsucker"] = "Bloodsucker",
-        ["psy_dog"] = "Psy Dog",
-        ["burer"] = "Burer",
-        ["controller"] = "Controller",
-        ["poltergeist"] = "Poltergeist",
-        ["psysucker"] = "Psysucker",
-        ["chimera"] = "Chimera (extremely dangerous!)",
-        ["gigant"] = "Pseudogiant (extremely dangerous!)",
-        ["karlik"] = "Karlik",
-        ["dog"] = "Dog" -- always check dog last to not pick it over pseudodog or psy_dog
-        -- Add more patterns as needed...
-    }
-
-    for pattern, name in pairs(patternToNameMap) do
-        if string.find(mutant_technical_name, pattern) then
-            return "a " .. name
-        end
-    end
-    return "a " .. mutant_technical_name -- For modded mutants, give the mutant technical name to the AI and hope for the best
+    return mutant_names.describe(mutant_technical_name)
 end
 
 function get_name_by_id(id)
@@ -311,17 +252,7 @@ function get_rank(npc)
 end
 
 function get_rank_value(rank_name)
-    local ranks_map = {
-        ["novice"] = 0,
-        ["trainee"] = 1,
-        ["experienced"] = 2,
-        ["professional"] = 3,
-        ["veteran"] = 4,
-        ["expert"] = 5,
-        ["master"] = 6,
-        ["legend"] = 7
-    }
-    return ranks_map[rank_name] or -1
+    return ranks.get_value(rank_name)
 end
 
 function get_real_player_faction()
@@ -338,32 +269,7 @@ end
 -- REPUTATION
 
 function get_reputation_tier(reputation_value)
-    if not reputation_value then
-        return "Neutral"
-    end
-    if type(reputation_value) ~= "number" then
-         log.error("get_reputation_tier: expected number, got " .. type(reputation_value))
-         return "unknown"
-    end
-    if reputation_value >= 2000 then
-        return "Excellent"
-    elseif reputation_value >= 1500 then
-        return "Brilliant"
-    elseif reputation_value >= 1000 then
-        return "Great"
-    elseif reputation_value >= 500 then
-        return "Good"
-    elseif reputation_value >= -499 then
-        return "Neutral"
-    elseif reputation_value >= -999 then
-        return "Bad"
-    elseif reputation_value >= -1499 then
-        return "Awful"
-    elseif reputation_value >= -1999 then
-        return "Dreary"
-    else
-        return "Terrible"
-    end
+    return ranks.get_reputation_tier(reputation_value)
 end
 
 -- WORLD
@@ -661,213 +567,34 @@ end
 
 
 --------------------------------------------------------------------------------
--- UNIQUE NPCS
+-- UNIQUE NPCS — data now lives in domain/data/unique_npcs.lua
 --------------------------------------------------------------------------------
--- TODO: This would work better as an xml with a key value pair format
-
-
+-- Kept as a global for backward compat; delegate to the domain module.
 function Set(t)
-    local s = {}
-    for _,v in pairs(t) do s[v] = true end
-    return s
+    return utils.Set(t)
 end
 
-local important_npcs = Set {
+-- important_npcs alias preserved so any callers that still use it directly continue to work.
+local important_npcs = unique_npcs.ids
 
-"actor",                                                    -- player
-
-
-    --[[ CORDON ]]--
-"esc_m_trader",                                             -- Sidorovich
-"m_trader",                                                 -- Sidorovich
-"esc_2_12_stalker_nimble",									-- Nimble
-"esc_2_12_stalker_wolf",									-- Wolf
-"esc_2_12_stalker_fanat",									-- Fanatic
-"esc_2_12_stalker_trader", 									-- Sidorovich
-"esc_smart_terrain_5_7_loner_mechanic_stalker", 			-- Xenotech
-"devushka", 												-- Hip
-"esc_main_base_trader_mlr",									-- Loris
-"esc_3_16_military_trader",									-- Major Zhurov
-"army_south_mechan_mlr",									-- Seryoga
-
-    --[[ GREAT SWAMPS ]]--
-
-"mar_smart_terrain_doc_doctor",								-- Doctor
-"mar_smart_terrain_base_stalker_leader_marsh",				-- Cold
-"mar_base_stalker_tech",									-- Novikov
-"mar_base_owl_stalker_trader",								-- Spore
-"mar_smart_terrain_base_doctor",							-- Professor Kalancha
-"guid_marsh_mlr",											-- Ivan Trodnik
-"mar_base_stalker_barmen",									-- Librarian
-
-    --[[ DARKSCAPE ]]--
-
-"dasc_tech_mlr",											-- Polymer
-"dasc_trade_mlr",											-- Cutter
-"ds_domik_isg_leader",										-- Major Hernandez
-
-    --[[ GARBAGE ]]--
-"stalker_oleksandr_chernenko", 								-- Captain Oleksandr Chernenko, Western Goods Flea Market trader
-"hunter_gar_trader",										-- Butcher
-
-    --[[ AGROPROM ]]--
-
-"agr_smart_terrain_1_6_near_2_military_colonel_kovalski",	-- Major Kuznetsov
-"agr_1_6_medic_army_mlr",									-- Rogovets
-"agr_smart_terrain_1_6_army_trader_stalker",				-- Sergeant Spooner
-"agr_1_6_barman_army_mlr",									-- Commander
-"agr_smart_terrain_1_6_army_mechanic_stalker",				-- Lieutenant Kirilov
-
-    --[[ AGROPROM UNDERGROUND ]]--
-
-"agr_u_bandit_boss",										-- Reefer
-
-    --[[ DARK VALLEY ]]--
-
-"zat_b7_bandit_boss_sultan",								-- Sultan
-"val_smart_terrain_7_3_bandit_mechanic_stalker",			-- Limpid
-"guid_dv_mal_mlr",											-- Pug
-"val_smart_terrain_7_4_bandit_trader_stalker",				-- Olivius
-
-    --[[ ROSTOK ]]--
-
-"bar_visitors_barman_stalker_trader",						-- Barkeep
-"bar_visitors_zhorik_stalker_guard2",						-- Zhorik
-"bar_visitors_garik_stalker_guard",							-- Garik
-"bar_informator_mlr",										-- Snitch
-"guid_bar_stalker_navigator",								-- Navigator
-"bar_arena_manager",										-- Arnie
-"bar_arena_guard",											-- Liolik
-"bar_dolg_leader",											-- General Voronin
-"bar_dolg_general_petrenko_stalker", 						-- Colonel Petrenko
-"bar_dolg_medic", 											-- Aspirin
-"bar_visitors_stalker_mechanic",							-- Mangun
-"bar_zastava_2_commander",									-- Sergeant Kitsenko
-"bar_duty_security_squad_leader",							-- Captain Gavrilenko
-
-    --[[ TRUCK CEMETERY ]]--
-
-"stalker_duty_girl",										-- Anna from Duty Expansion
-
-
-    --[[ YANTAR ]]--
-
-"yan_stalker_sakharov", 									-- Professor Sakharov
-"mechanic_army_yan_mlr", 									-- Peregrine
-"yan_povar_army_mlr", 										-- Spirit
-"yan_ecolog_kruglov",										-- Professor Kruglov
-"yan_ecolog_semenov",										-- Professor Semenov
-
-    --[[ ARMY WAREHOUSES ]]--
-
-"mil_smart_terrain_7_7_freedom_leader_stalker", 			-- Lukash
-"mil_freedom_medic", 										-- Solid
-"mil_smart_terrain_7_10_freedom_trader_stalker", 			-- Skinflint
-"mil_smart_terrain_7_7_freedom_mechanic_stalker", 			-- Screw
-"mil_freedom_guid", 										-- Leshiy
-"stalker_gatekeeper", 										-- Gatekeeper
-
-    --[[ DEAD CITY ]]--
-
-"cit_killers_merc_mechanic_stalker", 						-- Hog
-"cit_killers_merc_trader_stalker", 							-- Dushman
-"ds_killer_guide_main_base", 								-- Leopard
-"cit_killers_merc_barman_mlr", 								-- Aslan
-"cit_killers_merc_medic_stalker", 							-- Surgeon
-
-    --[[ RED FOREST ]]--
-
-"red_forester_tech", 										-- Forester
-"red_greh_trader",											-- Stribog
-"red_greh_tech",											-- Dazhbog
-
-    --[[ DESERTED HOSPITAL ]]--
-
-"kat_greh_sabaoth", 										-- Chernobog and variants
-"gen_greh_sabaoth",
-"sar_greh_sabaoth",
-
-    --[[ JUPITER ]]--
-
-"jup_b220_trapper", 										-- Trapper
-"jup_a6_stalker_barmen", 									-- Hawaiian
-"guid_jup_stalker_garik", 									-- Garry
-"jup_a6_stalker_medik", 									-- Bonesetter
-"zat_a2_stalker_mechanic", 									-- Cardan
-"jup_b217_stalker_tech", 									-- Nitro
-"jup_a6_freedom_trader_ashot", 								-- Ashot
-"jup_a6_freedom_leader", 									-- Loki
-"jup_b6_scientist_tech", 									-- Tukarev
-"jup_b6_scientist_nuclear_physicist", 						-- Professor Hermann
-"jup_b6_scientist_biochemist", 								-- Professor Ozersky
-"jup_depo_isg_leader",										-- Major Hernandez
-"jup_cont_mech_bandit",										-- Nile
-"jup_cont_trader_bandit",									-- Klenov
-"jup_depo_isg_tech",										-- Lieutenant Maus
-
-    --[[ ZATON ]]--
-
-"zat_stancia_mech_merc", 									-- Kolin
-"zat_stancia_trader_merc", 									-- Vector
-"zat_a2_stalker_nimble", 									-- Nimble
-"zat_b30_owl_stalker_trader", 								-- Owl
-"zat_tech_mlr", 											-- Spleen
-"zat_b22_stalker_medic", 									-- Axel
-"zat_a2_stalker_barmen", 									-- Beard
-"zat_b18_noah", 											-- Noah
-"guid_zan_stalker_locman", 									-- Pilot
-"zat_b106_stalker_gonta",									-- Gonta
-"zat_b106_stalker_garmata", 								-- Garmata
-"zat_b106_stalker_crab", 									-- Crab
-"army_degtyarev_jup",                                      	-- Colonel Degtyarev and variants
-"army_degtyarev",
-"stalker_rogue",											-- Rogue and variants
-"stalker_rogue_ms",
-"stalker_rogue_oa",
-"zat_b7_stalker_victim_1",									-- Spartacus
-
-    --[[ OUTSKIRTS ]]--
-"stalker_western_goods_trader",  							-- Williams 'Ashes' Heades, Wester Goods trader
-"pri_monolith_monolith_trader_stalker", 					-- Krolik
-"lider_monolith_haron", 									-- Charon
-"pri_monolith_monolith_mechanic_stalker", 					-- Cleric
-"monolith_eidolon", 										-- Eidolon
-"guid_pri_a15_mlr", 										-- Tourist
-"trader_pri_a15_mlr", 										-- Cashier
-"pri_medic_stalker", 										-- Yar
-"pri_a16_mech_mlr",											-- Yar, variant 
-"jup_b19_freedom_yar",										-- Yar, another variant
-"merc_pri_a18_mech_mlr", 									-- Trunk
-"pri_special_trader_mlr", 									-- Meeker
-"merc_pri_grifon_mlr", 										-- Griffin
-"mechanic_monolith_kbo", 									-- Bracer
-"trader_monolith_kbo", 										-- Olivar
-"stalker_stitch", 											-- Stitch and variants
-"stalker_stitch_ms",
-"stalker_stitch_oa",
-"lost_stalker_strelok", 									-- Strelok and variants
-"stalker_strelok_hb",
-"stalker_strelok_oa",
-"lazarus_stalker",
-
-}
+-- NPC ID list extracted to bin/lua/domain/data/unique_npcs.lua
 
 function is_unique_character_by_id(npc_id)
     local npc = try(get_obj_by_id, npc_id) -- Use try to avoid error on nil
-    
+
     if npc then
         if is_player(npc) then return true end
         if not (is_stalker(npc) or is_trader(npc)) then return false end
         local technical_name = get_technical_name(npc)
-        return important_npcs[technical_name] ~= nil
+        return unique_npcs.is_unique(technical_name)
     end
 
     -- Fallback for offline characters
     local se_obj = alife():object(tonumber(npc_id))
     if se_obj and IsStalker(nil, se_obj:clsid()) then
-         -- For server objects, use section_name()
+        -- For server objects, use section_name()
         local technical_name = se_obj:section_name()
-        return important_npcs[technical_name] ~= nil
+        return unique_npcs.is_unique(technical_name)
     end
 
     return false
@@ -875,8 +602,9 @@ end
 
 function get_unique_character_personality(npc_id)
     local npc = get_obj_by_id(npc_id)
+    if not npc then return nil end
     local technical_name = get_technical_name(npc)
-    if important_npcs[technical_name] == nil then return nil end
+    if not unique_npcs.is_unique(technical_name) then return nil end
 end
 
 --------------------------------------------------------------------------------
@@ -890,73 +618,38 @@ function get_time_scope(EventDate, scope)
 end
 
 
--- Function to get the current time as a string representing the time phase of the day
+-- Delegates to interface/world_description.lua (pure string assembly)
 function describe_current_time()
     local hrs = get_time_scope(game.get_game_time(), 4)
-    if hrs < 6 then
-        return "night"
-    elseif hrs < 10 then
-        return "morning"
-    elseif hrs < 15 then
-        return "noon"
-    elseif hrs < 20 then
-        return "evening"
-    else
-        return "night" -- Assuming hrs >= 20 falls into night
-    end
+    return world_desc.time_of_day(hrs)
 end
 
--- Returns "ONGOING EMISSION" if an emission is ongoing, "ONGOING PSI STORM" if a psi storm is ongoing, and "" otherwise
 function describe_emission()
-	if is_psy_storm_ongoing() then
-		return "ongoing psy storm"
-	end
-	if is_surge_ongoing() then
-		return "ongoing emission"
-	end
-	return ""
+    return world_desc.describe_emission(is_psy_storm_ongoing(), is_surge_ongoing())
 end
 
 function describe_weather()
-    -- todo better descriptions, see the gossip generator
     local weather_manager = level_weathers.get_weather_manager()
-    local weather_description = weather_manager:get_curr_weather()
-    -- if 'partly' translate to partially cloudy
-    if weather_description == "partly" then
-        weather_description = "partially cloudy"
-    end
-    -- override weather_description with ongoing emission or psi storm if applicable
-    weather_description = describe_emission() ~= "" and "an " .. describe_emission() or weather_description
-    return weather_description
+    local raw_weather     = weather_manager:get_curr_weather()
+    return world_desc.describe_weather(raw_weather, describe_emission())
 end
 
-function describe_shelter(speaker, listener) -- only really works for the player, but we assume they are with them for this
+function describe_shelter(speaker, listener)
     if not is_player(speaker) and not is_player(listener) then return "" end
-    local rain_factor = level.rain_factor()
-    local rain_exposure =  level.rain_hemi()
-    if rain_factor > 0.2 and rain_exposure < 0.1 then return "and sheltering inside" end
-    return ""
+    return world_desc.describe_shelter(level.rain_factor(), level.rain_hemi())
 end
 
 function describe_world(speaker, listener)
-    local weather_description = describe_weather()
     local location_name = get_nearby_smart_terrain_name(speaker) or get_location_name()
-    location_name = string.gsub(location_name, "%.", ",")
-    local time_description = describe_current_time()
-    local shelter_description = describe_shelter(speaker, listener)
-    
-    -- Campfire context
-    local campfire_status = get_nearby_campfire_status(speaker)
-    local campfire_context = ""
-    if campfire_status == "lit" then
-        campfire_context = ", next to a lit campfire"
-    elseif campfire_status == "unlit" then
-        campfire_context = ", next to an unlit campfire"
-    end
-
-    local formattedString = string.format("In %s at %s %sduring %s weather%s.", location_name, time_description, shelter_description, weather_description, campfire_context)
-    log.info("Dialogue Context: " .. formattedString)
-    return formattedString
+    local result = world_desc.build_description({
+        location    = location_name,
+        time_of_day = describe_current_time(),
+        weather     = describe_weather(),
+        shelter     = describe_shelter(speaker, listener),
+        campfire    = get_nearby_campfire_status(speaker),
+    })
+    log.info("Dialogue Context: " .. result)
+    return result
 end
 
 

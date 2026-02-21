@@ -19,8 +19,8 @@ The Lua codebase follows clean architecture with strict layer separation:
 | Layer | Path | Purpose |
 |-------|------|---------|
 | Application | `bin/lua/app/` | Orchestrates event registration (e.g., `talker.lua`) |
-| Domain | `bin/lua/domain/` | Core entities (`Character`, `Event`) and repositories (`memory_store`, `event_store`, `personalities`, `backstories`) |
-| Framework | `bin/lua/framework/` | Utilities (logger, inspect) - no game dependencies |
+| Domain | `bin/lua/domain/` | Core entities (`Character`, `Event`), repositories (`memory_store`, `event_store`), domain data tables (`domain/data/`), and domain services (`domain/service/`) |
+| Framework | `bin/lua/framework/` | Utilities (logger, inspect, `utils.lua`) — no game dependencies |
 | Infrastructure | `bin/lua/infra/` | External integrations: HTTP, ZMQ, AI utilities, STALKER game data |
 | Interface | `bin/lua/interface/` | Bridge layer (`config.lua` reads MCM settings, `interface.lua` exposes public API) |
 
@@ -336,11 +336,20 @@ Edit files in `talker_service/src/talker_service/prompts/`:
 - [`bin/lua/domain/model/event.lua`](bin/lua/domain/model/event.lua) - Event entity and TEMPLATES
 - [`bin/lua/domain/model/event_types.lua`](bin/lua/domain/model/event_types.lua) - EventType enum
 - [`bin/lua/domain/repo/memory_store.lua`](bin/lua/domain/repo/memory_store.lua) - Memory storage
+- [`bin/lua/domain/data/unique_npcs.lua`](bin/lua/domain/data/unique_npcs.lua) - Set of ~130 story NPC IDs; `is_unique(name)` predicate
+- [`bin/lua/domain/data/mutant_names.lua`](bin/lua/domain/data/mutant_names.lua) - Ordered pattern→display-name map; `describe(tech_name)` → `"a DisplayName"`
+- [`bin/lua/domain/data/ranks.lua`](bin/lua/domain/data/ranks.lua) - Rank values, reputation tiers, `format_character_info(char)` formatting
+- [`bin/lua/domain/service/cooldown.lua`](bin/lua/domain/service/cooldown.lua) - Generic `CooldownManager` used by all 5 trigger scripts; supports named slots + anti-spam
+- [`bin/lua/domain/service/importance.lua`](bin/lua/domain/service/importance.lua) - Pure `is_important_person(flags)` predicate
+- [`bin/lua/infra/zmq/serializer.lua`](bin/lua/infra/zmq/serializer.lua) - Wire-format serialization (character, context, event, events list)
+- [`bin/lua/interface/world_description.lua`](bin/lua/interface/world_description.lua) - Pure string assembly for world context (`build_description`, `time_of_day`, etc.)
+- [`bin/lua/framework/utils.lua`](bin/lua/framework/utils.lua) - Common utilities: `must_exist`, `try`, `join_tables`, `Set`, `shuffle`, `safely`, `array_iter`
 - [`bin/lua/interface/config.lua`](bin/lua/interface/config.lua) - MCM config getters, default settings
 - [`bin/lua/interface/trigger.lua`](bin/lua/interface/trigger.lua) - Event triggering API
-- [`gamedata/scripts/talker_game_queries.script`](gamedata/scripts/talker_game_queries.script) - Game state queries
+- [`gamedata/scripts/talker_game_queries.script`](gamedata/scripts/talker_game_queries.script) - Game state queries (delegates extracted logic to `bin/lua/` modules)
 - [`gamedata/scripts/talker_zmq_integration.script`](gamedata/scripts/talker_zmq_integration.script) - ZMQ lifecycle, event publishing
 - [`gamedata/scripts/talker_zmq_command_handlers.script`](gamedata/scripts/talker_zmq_command_handlers.script) - Handles commands from Python
+- [`gamedata/scripts/talker_zmq_query_handlers.script`](gamedata/scripts/talker_zmq_query_handlers.script) - State query handlers (serialization delegated to `infra.zmq.serializer`)
 
 ### Python (AI Processing)
 - [`talker_service/src/talker_service/__main__.py`](talker_service/src/talker_service/__main__.py) - FastAPI app and ZMQ router

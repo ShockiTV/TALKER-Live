@@ -1,8 +1,10 @@
 package.path = package.path .. ";./bin/lua/?.lua;"
-local game = require("infra.game_adapter")
-local trigger = require("interface.trigger")
-local log = require("framework.logger")
-local mcm = talker_mcm
+local game       = require("infra.game_adapter")
+local trigger    = require("interface.trigger")
+local log        = require("framework.logger")
+local Cooldown   = require("domain.service.cooldown")
+local importance = require("domain.service.importance")
+local mcm        = talker_mcm
 -- Game interfaces
 local queries = talker_game_queries
 
@@ -15,31 +17,9 @@ local mode_npc = tonumber(mcm.get("enable_trigger_death_npc") or "0")
 local DEATH_COOLDOWN_CD_PLAYER = mcm.get("death_cooldown_player") * 1000 -- default 90 seconds cooldown to prevent spam
 local DEATH_COOLDOWN_CD_NPC = mcm.get("death_cooldown_npc") * 1000 -- default 90 seconds cooldown to prevent spam
 
--- Cooldown tracking variables
-local LAST_DEATH_TIME_PLAYER = 0
-local LAST_DEATH_TIME_NPC = 0
-
--- Helper to determine if an event should be silent based on MCM mode and cooldown
--- Mode: 0 = On, 1 = Off, 2 = Silent
-local function get_silence_status(mode, is_player)
-    if mode == 2 then return true end -- Silent mode is always silent
-    
-    local current_time = queries.get_game_time_ms()
-    local cooldown = is_player and DEATH_COOLDOWN_CD_PLAYER or DEATH_COOLDOWN_CD_NPC
-    local last_time = is_player and LAST_DEATH_TIME_PLAYER or LAST_DEATH_TIME_NPC
-    
-    if (current_time - last_time) < cooldown then
-        return true -- On cooldown, so silent
-    end
-    
-    -- Not on cooldown and mode is 0 (On), so update timer and speak
-    if is_player then 
-        LAST_DEATH_TIME_PLAYER = current_time 
-    else 
-        LAST_DEATH_TIME_NPC = current_time 
-    end
-    return false
-end
+-- CooldownManagers replace the old LAST_DEATH_TIME_PLAYER/NPC variables and get_silence_status()
+local cd_player = Cooldown.new({ cooldown_ms = DEATH_COOLDOWN_CD_PLAYER })
+local cd_npc    = Cooldown.new({ cooldown_ms = DEATH_COOLDOWN_CD_NPC })
 --------------------------------------------------------------------------------------------
 -- CALLBACK
 --------------------------------------------------------------------------------------------
@@ -67,14 +47,12 @@ function on_creature_death(victim_obj, killer_obj)
     -- decide if a character is important
     local function is_important_person(char_obj, char_data)
         if not char_obj or not char_data then return false end
-        -- Kills by player or companion are always important
-        if queries.is_player(char_obj) or queries.is_companion(char_obj) then return true end
-        -- Unique characters are always important
-        if queries.is_unique_character_by_id(char_obj:id()) then return true end
-        -- High ranked NPCs also count as important
-        local rank = string.lower(char_data.experience or "")
-        if rank == "master" or rank == "legend" then return true end
-        return false
+        return importance.is_important_person({
+            is_player    = queries.is_player(char_obj),
+            is_companion = queries.is_companion(char_obj),
+            is_unique    = queries.is_unique_character_by_id(char_obj:id()),
+            rank         = char_data.experience,
+        })
     end
     
     -- Important events always generate dialogue, non-important events use base dialogue chance (default 25%)
@@ -91,7 +69,8 @@ function on_creature_death(victim_obj, killer_obj)
     local flags = { important_death = important_death }
     
     -- Determine if this should be a silent event based on mode and cooldown
-    flags.is_silent = get_silence_status(mode, is_player)
+    local cd = is_player and cd_player or cd_npc
+    flags.is_silent = cd:check("default", queries.get_game_time_ms(), mode)
 
     -- Create typed event context
     local context = {
