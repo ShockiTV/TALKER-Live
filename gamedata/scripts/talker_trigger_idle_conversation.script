@@ -9,6 +9,7 @@ local log = require("framework.logger")
 local config = require("interface.config")
 local mcm = talker_mcm
 local event_store = require("domain.repo.event_store")
+local timers = require("domain.repo.timers")
 
 -- Import game interface modules
 local queries = talker_game_queries
@@ -165,29 +166,18 @@ local function safe_on_every_10_seconds()
 end
 
 -- keep track of a timer and only do a real check every 10 seconds
-local last_check_time_ms = 0
 local CHECK_INTERVAL_MS = 10 * 1000
 local function on_every_ms()
-    if queries.get_game_time_ms() - last_check_time_ms < CHECK_INTERVAL_MS then return end
-    last_check_time_ms = queries.get_game_time_ms()
+    if queries.get_game_time_ms() - timers.get_idle_last_check_time() < CHECK_INTERVAL_MS then return end
+    timers.set_idle_last_check_time(queries.get_game_time_ms())
     safe_on_every_10_seconds()
 end
 
 function on_game_start()
-    RegisterScriptCallback("save_state", save_state)
-    RegisterScriptCallback("load_state", load_state)
-    RegisterScriptCallback("actor_on_update", on_every_ms)
-end
-
-function save_state(data)
-    data.talker_idle_last_check_time_ms = last_check_time_ms
-end
-
-function load_state(data)
-    last_check_time_ms = data.talker_idle_last_check_time_ms or 0
     -- Reset the idle conversation cooldown to the current game time upon loading.
     -- This prevents an idle conversation from firing immediately after loading a save.
     last_idle_conversation_time_ms = queries.get_game_time_ms()
+    RegisterScriptCallback("actor_on_update", on_every_ms)
 end
 
 function is_loaded()
