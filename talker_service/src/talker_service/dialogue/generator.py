@@ -312,10 +312,17 @@ class DialogueGenerator:
             # Gather all story IDs for alive check
             story_ids = get_all_story_ids()
             
-            # Single batch query for all needed state
+            # Single batch query for all needed state.
+            # store.memories is queried first so its last_update_time_ms can be
+            # $ref'd by the store.events filter in the same roundtrip.
             batch = (
                 BatchQuery()
                 .add("mem", "store.memories", params={"character_id": speaker_id})
+                .add("events", "store.events",
+                     filter={
+                         "game_time_ms": {"$gt": BatchQuery.ref("mem", "last_update_time_ms")},
+                         "witnesses": {"$elemMatch": {"game_id": speaker_id}},
+                     })
                 .add("char", "query.character", params={"id": speaker_id})
                 .add("world", "query.world")
             )
@@ -324,8 +331,15 @@ class DialogueGenerator:
             
             result = await self.state.execute_batch(batch)
             
-            # Parse results
-            memory_ctx = MemoryContext.from_dict(result["mem"])
+            # Manually construct MemoryContext from separate mem + events results
+            mem_data = result["mem"]
+            events_data = result["events"] if result.ok("events") else []
+            new_events = [Event.from_dict(e) for e in events_data] if isinstance(events_data, list) else []
+            memory_ctx = MemoryContext(
+                narrative=mem_data.get("narrative"),
+                last_update_time_ms=mem_data.get("last_update_time_ms", 0),
+                new_events=new_events,
+            )
             character = Character.from_dict(result["char"])
             
             # Check if memory compression needed (run in background)

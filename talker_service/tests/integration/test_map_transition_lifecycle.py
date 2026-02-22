@@ -183,8 +183,7 @@ class TestMapTransitionLifecycle:
         MEMORY_RESPONSE = """
         {
             "narrative": "Hip has been travelling with Marked One for a few days.",
-            "last_update_time_ms": 2500000,
-            "new_events": []
+            "last_update_time_ms": 2500000
         }
         """
         

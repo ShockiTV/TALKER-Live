@@ -246,18 +246,16 @@ resource_registry["store.events"] = function(query)
     return serialized
 end
 
---- store.memories: Returns memory context for a character
+--- store.memories: Returns narrative and last update time for a character
 resource_registry["store.memories"] = function(query)
     local character_id = query.params and query.params.character_id
     if not character_id then
         error("store.memories requires params.character_id")
     end
-    local context = memory_store:get_memory_context(character_id)
+    local mem = memory_store:get_narrative(character_id)
     return {
-        character_id = character_id,
-        narrative = context.narrative,
-        last_update_time_ms = context.last_update_time_ms,
-        new_events = serialize_events(context.new_events),
+        narrative = mem and mem.narrative or nil,
+        last_update_time_ms = mem and mem.last_update_time_ms or 0,
     }
 end
 

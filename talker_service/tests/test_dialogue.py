@@ -134,12 +134,14 @@ class TestExtractSpeakerId:
 
 
 def _make_batch_result(
-    mem=None, char=None, world=None, alive=None,
+    mem=None, events=None, char=None, world=None, alive=None,
 ):
     """Build a BatchResult from optional data dicts."""
     results = {}
     if mem is not None:
         results["mem"] = {"ok": True, "data": mem}
+    if events is not None:
+        results["events"] = {"ok": True, "data": events}
     if char is not None:
         results["char"] = {"ok": True, "data": char}
     if world is not None:
@@ -165,7 +167,8 @@ class TestDialogueGenerator:
         state = AsyncMock()
         # Default execute_batch returns sensible empty data
         state.execute_batch = AsyncMock(return_value=_make_batch_result(
-            mem={"narrative": None, "last_update_time_ms": 0, "new_events": []},
+            mem={"narrative": None, "last_update_time_ms": 0},
+            events=[],
             char={"game_id": "123", "name": "Hip", "faction": "stalker",
                   "experience": "Experienced", "reputation": 0,
                   "personality": "", "backstory": "", "weapon": ""},
@@ -215,7 +218,8 @@ class TestDialogueGenerator:
         
         # Set up batch result for the speaker's state queries
         mock_state.execute_batch = AsyncMock(return_value=_make_batch_result(
-            mem={"narrative": None, "last_update_time_ms": 0, "new_events": []},
+            mem={"narrative": None, "last_update_time_ms": 0},
+            events=[],
             char={"game_id": "123", "name": "Hip", "faction": "stalker",
                   "experience": "Experienced", "reputation": "Good",
                   "personality": "", "backstory": "", "weapon": ""},
@@ -288,7 +292,8 @@ class TestDialogueGenerator:
         
         # Set up batch result for the speaker's state queries
         mock_state.execute_batch = AsyncMock(return_value=_make_batch_result(
-            mem={"narrative": None, "last_update_time_ms": 0, "new_events": []},
+            mem={"narrative": None, "last_update_time_ms": 0},
+            events=[],
             char={"game_id": "456", "name": "Wolf", "faction": "stalker",
                   "experience": "Veteran", "reputation": "Good",
                   "personality": "", "backstory": "", "weapon": ""},

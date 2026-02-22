@@ -33,11 +33,13 @@ class MockStateClient:
         character_json: str,
         scene_json: str,
         characters_alive_json: str,
+        events_json: str = "[]",
     ):
         self.memory_response = json.loads(memory_json)
         self.character_response = json.loads(character_json)
         self.scene_response = json.loads(scene_json)
         self.characters_alive_response = json.loads(characters_alive_json)
+        self.events_response = json.loads(events_json)
         # Record requests as JSON-serializable dicts
         self.requests: list[dict] = []
 
@@ -61,6 +63,9 @@ class MockStateClient:
                         "args": {"character_id": params["id"]}
                     })
                     results[qid] = {"ok": True, "data": self.character_response}
+                elif resource == "store.events":
+                    # Return events data without recording (internal detail)
+                    results[qid] = {"ok": True, "data": self.events_response}
                 elif resource == "query.world":
                     self.requests.append({
                         "method": "query_world_context",
@@ -151,6 +156,7 @@ async def run_lifecycle(
     memory_json: str,
     character_json: str,
     llm_responses: list[str],
+    events_json: str = "[]",
 ) -> LifecycleSnapshot:
     """Run full event lifecycle and return snapshot.
 
@@ -161,9 +167,10 @@ async def run_lifecycle(
         input_event_json:      Full input payload JSON (with "event" and "is_important" keys)
         scene_json:            Mock scene/world context response JSON
         characters_alive_json: Mock characters-alive response JSON ({"alive": {...}})
-        memory_json:           Mock memory store response JSON
+        memory_json:           Mock memory store response JSON (narrative + last_update_time_ms)
         character_json:        Mock character detail response JSON
         llm_responses:         Ordered list of mock LLM response strings
+        events_json:           Mock store.events response JSON (list of event dicts, default [])
 
     Returns:
         LifecycleSnapshot with all recorded state requests, LLM requests, and publishes
@@ -175,6 +182,7 @@ async def run_lifecycle(
         character_json=character_json,
         scene_json=scene_json,
         characters_alive_json=characters_alive_json,
+        events_json=events_json,
     )
 
     publisher = MockPublisher()
