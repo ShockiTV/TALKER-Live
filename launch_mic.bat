@@ -65,17 +65,21 @@ echo.
 echo 1. Gemini via API Proxy
 echo 2. Whisper Local
 echo 3. Whisper API (OpenAI)
+echo 4. Whisper Local  with TTS
+echo 5. Whisper API    with TTS
 echo.
-echo 4. Back
+echo 6. Back
 echo.
-set /p pchoice="Enter your choice (1-4): "
+set /p pchoice="Enter your choice (1-6): "
 
 if not '%pchoice%'=='' set pchoice=%pchoice:~0,1%
 
 if '%pchoice%'=='1' goto py_gemini
 if '%pchoice%'=='2' goto py_whisper_local
 if '%pchoice%'=='3' goto py_whisper_api
-if '%pchoice%'=='4' goto menu
+if '%pchoice%'=='4' goto py_whisper_local_tts
+if '%pchoice%'=='5' goto py_whisper_api_tts
+if '%pchoice%'=='6' goto menu
 goto python_menu
 
 :py_setup
@@ -122,6 +126,22 @@ goto py_setup
 :py_whisper_api_run
 echo Launching Python mic with Whisper API...
 start "TALKER Mic (Python) - Whisper API" /D "%~dp0mic_python\python" cmd /k ".venv\Scripts\python.exe main.py whisper_api"
+goto end
+
+:py_whisper_local_tts
+set py_target=py_whisper_local_tts_run
+goto py_setup
+:py_whisper_local_tts_run
+echo Launching Python mic with Whisper Local + TTS...
+start "TALKER Mic (Python) - Whisper Local + TTS" /D "%~dp0mic_python\python" cmd /k ".venv\Scripts\python.exe main.py whisper_local --tts"
+goto end
+
+:py_whisper_api_tts
+set py_target=py_whisper_api_tts_run
+goto py_setup
+:py_whisper_api_tts_run
+echo Launching Python mic with Whisper API + TTS...
+start "TALKER Mic (Python) - Whisper API + TTS" /D "%~dp0mic_python\python" cmd /k ".venv\Scripts\python.exe main.py whisper_api --tts"
 goto end
 
 :no_exe

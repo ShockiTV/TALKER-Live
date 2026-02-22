@@ -64,6 +64,16 @@
     <string id="ui_mcm_lst_gemini-proxy">
         <text>Gemini Proxy</text>
     </string>
+    <!-- TTS -->
+    <string id="ui_mcm_talker_enable_tts_title">
+        <text>Text-to-Speech (TTS)</text>
+    </string>
+    <string id="ui_mcm_talker_enable_tts_description">
+        <text>Read NPC dialogue aloud via mic_python. Requires mic service launched with --tts flag.</text>
+    </string>
+    <string id="ui_mcm_talker_enable_tts">
+        <text>Enable TTS</text>
+    </string>
     <!-- Input options -->
     <string id="ui_mcm_talker_input_option_title">
         <text>Input Method</text>

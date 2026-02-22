@@ -51,6 +51,7 @@ end
 -- Safe no-op stubs for engine callbacks / time events
 CreateTimeEvent       = CreateTimeEvent       or function() end
 ResetTimeEvent        = ResetTimeEvent        or function() end
+RemoveTimeEvent       = RemoveTimeEvent       or function() end
 RegisterScriptCallback = RegisterScriptCallback or function() end
 
 -- Safe stub for ini_file (legacy; should no longer be called after migration)

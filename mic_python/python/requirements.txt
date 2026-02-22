@@ -6,3 +6,4 @@ pyzmq
 httpx
 faster-whisper
 requests
+pocket-tts

@@ -247,6 +247,16 @@ function get_faction(npc)
     return faction
 end
 
+-- Returns the voice theme ID for an NPC, e.g. "stalker_1", "bandit_3".
+-- Extracted from npc:sound_prefix() which gives e.g. "characters_voice\human\stalker_1\".
+function get_sound_prefix(npc)
+    local raw = try(function() return npc:sound_prefix() end)
+    if not raw or raw == "" then return nil end
+    -- Strip trailing separators then grab the last path component
+    raw = raw:gsub("[/\\]+$", "")
+    return raw:match("[^/\\]+$") or nil
+end
+
 function get_rank(npc)
     return try(ranks.get_obj_rank_name, npc) or ""
 end

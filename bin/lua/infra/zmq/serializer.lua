@@ -13,7 +13,7 @@ local M = {}
 -- @return      Flat table with string game_id, or nil if char is nil
 function M.serialize_character(char)
     if not char then return nil end
-    return {
+    local result = {
         game_id       = tostring(char.game_id),
         name          = char.name,
         faction       = char.faction,
@@ -24,6 +24,7 @@ function M.serialize_character(char)
         weapon        = char.weapon,
         visual_faction = char.visual_faction,
     }
+    return result
 end
 
 --- Serialize an event context table, recursively serializing any Character objects.
