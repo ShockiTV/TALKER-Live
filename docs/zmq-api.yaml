@@ -315,3 +315,38 @@ messages:
       data:          { type: object, description: "Response payload (present on success)" }
       error:         { type: string, description: "Error message (present on failure, mutually exclusive with data)" }
       timestamp:     { type: int }
+
+  # ── Mic IPC (Lua → mic_python) ─────────────────────────────────────────
+  # Lua PUB :5555 → mic_python SUB (mic.* filter)
+  # No envelope wrapper — mic_python uses bare "<topic> <json>" wire format.
+
+  mic.start:
+    direction: lua→mic_python
+    description: "Command mic_python to start recording and transcribing"
+    note: "No envelope wrapper. mic_python uses simple peer wire format: '<topic> <json-payload>'."
+    payload:
+      lang:   { type: string, nullable: true, description: "ISO-639-1 language code, or null for auto-detect" }
+      prompt: { type: string, description: "Transcription hint (nearby NPC names, STALKER setting context)" }
+
+  mic.stop:
+    direction: lua→mic_python
+    description: "Command mic_python to cancel the current recording"
+    payload: {}
+
+  # ── Mic IPC (mic_python → Lua) ───────────────────────────────────────
+  # mic_python PUB :5557 → Lua mic SUB
+  # No envelope wrapper — bare "<topic> <json>" wire format.
+  # bridge.lua handles via poll_commands() second SUB socket.
+
+  mic.status:
+    direction: mic_python→lua
+    description: "mic_python reports the current recording phase"
+    note: "No envelope wrapper. Simple peer wire format."
+    payload:
+      status: { type: string, required: true, enum: ["LISTENING", "TRANSCRIBING"], description: "Current mic phase" }
+
+  mic.result:
+    direction: mic_python→lua
+    description: "mic_python delivers the final transcription"
+    payload:
+      text: { type: string, required: true, description: "Transcribed text. Empty string on failure." }

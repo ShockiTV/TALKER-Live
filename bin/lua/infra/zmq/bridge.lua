@@ -16,8 +16,9 @@ local bridge = {}
 -- State
 local zmq_lib = nil
 local zmq_ctx = nil
-local zmq_pub_socket = nil   -- For publishing events (PUB, bind :5555)
-local zmq_sub_socket = nil   -- For receiving commands (SUB, connect :5556)
+local zmq_pub_socket = nil      -- For publishing events (PUB, bind :5555)
+local zmq_sub_socket = nil      -- For receiving commands from talker_service (SUB, connect :5556)
+local zmq_mic_sub_socket = nil  -- For receiving mic_python messages (SUB, connect :5557)
 local is_available = false
 local is_initialized = false
 
@@ -36,8 +37,9 @@ local command_handlers = {}
 
 -- Configuration (can be overridden via init)
 local config = {
-    pub_endpoint = "tcp://*:5555",      -- Lua PUB, Python SUB
-    sub_endpoint = "tcp://127.0.0.1:5556",  -- Python PUB, Lua SUB
+    pub_endpoint      = "tcp://*:5555",           -- Lua PUB, Python SUB
+    sub_endpoint      = "tcp://127.0.0.1:5556",   -- talker_service PUB, Lua SUB
+    mic_sub_endpoint  = "tcp://127.0.0.1:5557",   -- mic_python PUB, Lua SUB
     enabled = true,
 }
 
@@ -171,12 +173,47 @@ local function init_sub_socket()
     return true
 end
 
+--- Create and configure the mic SUB socket for receiving mic_python messages.
+local function init_mic_sub_socket()
+    zmq_mic_sub_socket = zmq_lib.zmq_socket(zmq_ctx, ZMQ_SUB)
+    if zmq_mic_sub_socket == nil then
+        logger.error("Failed to create ZMQ mic SUB socket: " .. get_zmq_error())
+        return false
+    end
+
+    -- Set linger to 0 for fast shutdown
+    local linger = ffi.new("int[1]", 0)
+    zmq_lib.zmq_setsockopt(zmq_mic_sub_socket, ZMQ_LINGER, linger, ffi.sizeof("int"))
+
+    -- Subscribe to mic.* topics only
+    local filter = "mic."
+    local rc = zmq_lib.zmq_setsockopt(zmq_mic_sub_socket, ZMQ_SUBSCRIBE, filter, #filter)
+    if rc ~= 0 then
+        logger.error("Failed to set ZMQ mic SUB subscription: " .. get_zmq_error())
+        zmq_lib.zmq_close(zmq_mic_sub_socket)
+        zmq_mic_sub_socket = nil
+        return false
+    end
+
+    -- Connect to mic_python PUB endpoint
+    rc = zmq_lib.zmq_connect(zmq_mic_sub_socket, config.mic_sub_endpoint)
+    if rc ~= 0 then
+        logger.error("Failed to connect ZMQ mic SUB socket to " .. config.mic_sub_endpoint .. ": " .. get_zmq_error())
+        zmq_lib.zmq_close(zmq_mic_sub_socket)
+        zmq_mic_sub_socket = nil
+        return false
+    end
+
+    logger.info("ZMQ mic SUB socket connected to " .. config.mic_sub_endpoint)
+    return true
+end
+
 --------------------------------------------------------------------------------
 -- Public API
 --------------------------------------------------------------------------------
 
 --- Initialize the ZMQ bridge.
--- @param opts Optional configuration table with 'pub_endpoint', 'sub_endpoint', 'enabled' fields
+-- @param opts Optional configuration table with 'pub_endpoint', 'sub_endpoint', 'mic_sub_endpoint', 'enabled' fields
 -- @return true if initialization successful, false otherwise
 function bridge.init(opts)
     if is_initialized then
@@ -191,6 +228,7 @@ function bridge.init(opts)
         if opts.endpoint then config.pub_endpoint = opts.endpoint end  -- Legacy support
         if opts.pub_endpoint then config.pub_endpoint = opts.pub_endpoint end
         if opts.sub_endpoint then config.sub_endpoint = opts.sub_endpoint end
+        if opts.mic_sub_endpoint then config.mic_sub_endpoint = opts.mic_sub_endpoint end
         if opts.enabled ~= nil then config.enabled = opts.enabled end
     end
     
@@ -230,10 +268,19 @@ function bridge.init(opts)
         logger.warn("SUB socket initialization failed - command receiving disabled")
         -- Continue anyway, PUB socket works
     end
-    
+
+    -- Initialize mic SUB socket (optional - doesn't fail init if unavailable)
+    if not init_mic_sub_socket() then
+        logger.warn("Mic SUB socket initialization failed - mic_python receiving disabled")
+        -- Continue anyway
+    end
+
     logger.info("ZMQ bridge initialized - PUB on " .. config.pub_endpoint)
     if zmq_sub_socket then
         logger.info("ZMQ bridge SUB connected to " .. config.sub_endpoint)
+    end
+    if zmq_mic_sub_socket then
+        logger.info("ZMQ mic SUB connected to " .. config.mic_sub_endpoint)
     end
     is_available = true
     
@@ -376,6 +423,55 @@ function bridge.poll_commands()
         end
     end
     
+    -- Poll mic SUB socket for mic_python messages (mic.status, mic.result)
+    -- mic_python uses simple wire format: "<topic> <json>" without envelope wrapper.
+    -- The existing payload = message.payload or message fallback handles this correctly.
+    if zmq_mic_sub_socket then
+        for _ = 1, 10 do
+            local rc = zmq_lib.zmq_recv(zmq_mic_sub_socket, recv_buf, 65535, ZMQ_DONTWAIT)
+
+            if rc < 0 then
+                local errno = zmq_lib.zmq_errno()
+                if errno ~= EAGAIN then
+                    logger.debug("poll_commands: mic recv error errno=%d", errno)
+                end
+                break
+            end
+
+            if rc > 0 then
+                local raw_msg = ffi.string(recv_buf, rc)
+                logger.info("poll_commands: mic message (%d bytes): %s", rc, raw_msg:sub(1, 100))
+
+                local space_idx = raw_msg:find(" ")
+                if space_idx then
+                    local topic    = raw_msg:sub(1, space_idx - 1)
+                    local json_str = raw_msg:sub(space_idx + 1)
+
+                    local ok, message = pcall(json.decode, json_str)
+                    if ok and message then
+                        local payload = message.payload or message
+
+                        local handler = command_handlers[topic]
+                        if handler then
+                            local ok2, err = pcall(handler, topic, payload)
+                            if not ok2 then
+                                logger.error("Handler error for mic topic '%s': %s", topic, tostring(err))
+                            end
+                        else
+                            logger.debug("No handler for mic topic: " .. topic)
+                        end
+
+                        messages_processed = messages_processed + 1
+                    else
+                        logger.warn("Failed to decode mic message JSON: " .. tostring(message))
+                    end
+                else
+                    logger.warn("Invalid mic message format (no space): " .. raw_msg:sub(1, 50))
+                end
+            end
+        end
+    end
+
     return messages_processed
 end
 
@@ -399,7 +495,13 @@ function bridge.shutdown()
     
     logger.info("Shutting down ZMQ bridge...")
     
-    -- Close SUB socket first
+    -- Close mic SUB socket
+    if zmq_mic_sub_socket and zmq_lib then
+        zmq_lib.zmq_close(zmq_mic_sub_socket)
+        zmq_mic_sub_socket = nil
+    end
+
+    -- Close primary SUB socket
     if zmq_sub_socket and zmq_lib then
         zmq_lib.zmq_close(zmq_sub_socket)
         zmq_sub_socket = nil
@@ -429,12 +531,14 @@ end
 -- @return Configuration table
 function bridge.get_config()
     return {
-        pub_endpoint = config.pub_endpoint,
-        sub_endpoint = config.sub_endpoint,
-        enabled = config.enabled,
-        is_available = is_available,
-        is_initialized = is_initialized,
-        can_receive = zmq_sub_socket ~= nil,
+        pub_endpoint     = config.pub_endpoint,
+        sub_endpoint     = config.sub_endpoint,
+        mic_sub_endpoint = config.mic_sub_endpoint,
+        enabled          = config.enabled,
+        is_available     = is_available,
+        is_initialized   = is_initialized,
+        can_receive      = zmq_sub_socket ~= nil,
+        can_receive_mic  = zmq_mic_sub_socket ~= nil,
     }
 end
 

@@ -99,9 +99,10 @@ class ZMQRouter:
                     try:
                         message = raw_bytes.decode("utf-8")
                     except UnicodeDecodeError:
-                        # Try latin-1 as fallback (accepts any byte sequence)
+                        # STALKER uses CP1251 internally; latin-1 accepts any byte sequence
+                        # and preserves round-trip fidelity for downstream string handling.
                         message = raw_bytes.decode("latin-1")
-                        logger.warning("Message contained non-UTF-8 bytes, decoded with latin-1")
+                        logger.debug("Message decoded with latin-1 (non-UTF-8 bytes, likely CP1251)")
                     await self._process_message(message)
                 except zmq.Again:
                     # Timeout - just continue loop to check self.running
@@ -155,7 +156,10 @@ class ZMQRouter:
                 except Exception as e:
                     logger.error(f"Handler error for {topic}: {e}")
             else:
-                logger.warning(f"No handler for topic: {topic}")
+                # mic.* topics belong to mic_python service — silently ignore them.
+                # Warn for everything else so genuinely missing handlers don't go unnoticed.
+                if not topic.startswith("mic."):
+                    logger.warning(f"No handler for topic: {topic}")
                 
         except Exception as e:
             logger.error(f"Message processing error: {e}")

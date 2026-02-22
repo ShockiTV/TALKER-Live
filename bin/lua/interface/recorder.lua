@@ -1,69 +1,68 @@
 -- recorder.lua
--- this module is responsible for the logic needed to record the player's dialogue.
--- it interacts with the microphone module which handles more pure microphone related logic
+-- Manages the player recording session.
+-- Calls mic.start(prompt, callbacks) — no polling loop needed with ZMQ.
+-- mic.status ZMQ push refreshes HUD; mic.result delivers the transcription.
 
--- function recorder.to get the names of nearby characters
 package.path = package.path .. ";./bin/lua/?.lua"
-local logger = require("framework.logger")
+local logger       = require("framework.logger")
 local game_adapter = require("infra.game_adapter")
-local mic = require("infra.mic.microphone")
-local json = require("infra.HTTP.json")
+local engine       = require("interface.engine")
+local mic          = require("infra.mic.microphone")
+local json         = require("infra.HTTP.json")
 
 local recorder = {}
 
 local function get_names_of_nearby_characters()
-	logger.info("get_names_of_nearby_characters")
-	local nearby_characters = game_adapter.get_characters_near_player()
-	local names = {}
-	for _, character in ipairs(nearby_characters) do
-		table.insert(names, character.name)
-	end
-	return names
+    logger.info("get_names_of_nearby_characters")
+    local nearby_characters = game_adapter.get_characters_near_player()
+    local names = {}
+    for _, character in ipairs(nearby_characters) do
+        table.insert(names, character.name)
+    end
+    return names
 end
 
--- Create a simple prompt for whisper transcription
+-- Create a simple prompt for the transcription provider
 local function create_transcription_prompt(names)
-	logger.info("Creating transcription prompt")
-	local prompt = "STALKER games setting, nearby characters are: "
-	for i, name in ipairs(names) do
-		prompt = prompt .. name
-		if i < #names then
-			prompt = prompt .. ", "
-		end
-	end
-	return prompt
+    logger.info("Creating transcription prompt")
+    local prompt = "STALKER games setting, nearby characters are: "
+    for i, name in ipairs(names) do
+        prompt = prompt .. name
+        if i < #names then
+            prompt = prompt .. ", "
+        end
+    end
+    return prompt
 end
 
--- function recorder.to record the player's dialogue
+--- Start a recording session.
+-- @param callback  Function called with the transcribed text when recording is complete.
 function recorder.start(callback)
-	logger.info("Listening for player dialogue...")
-	mic.stop()
-	mic.clear_transcription()
-	-- Get names of nearby characters to enhance transcription accuracy
-	local names = get_names_of_nearby_characters()
-	local prompt = create_transcription_prompt(names)
+    logger.info("Listening for player dialogue...")
+    mic.stop()  -- cancel any prior session
 
-	mic.start(prompt)
+    local names  = get_names_of_nearby_characters()
+    local prompt = create_transcription_prompt(names)
 
-	-- Asynchronously check for the transcription result
-	game_adapter.repeat_until_true(0.1, function()
-		if not mic.is_mic_on() then
-			return true
-		end -- stop looping
-		game_adapter.display_to_player(mic.get_status(), 0.1)
-		local dialogue = mic.get_transcription()
+    -- Show initial status immediately; each mic.status ZMQ push will refresh it.
+    -- Use a long duration so the text persists across the whole recording phase.
+    engine.display_hud_message("LISTENING", 15)
 
-		mic.clear_transcription()
-		if not dialogue then
-			return false
-		end -- continue looping
-		dialogue = json.utf8_to_codepage(dialogue)
-		mic.stop()
-		if callback then
-			callback(dialogue)
-		end
-		return true -- stop looping
-	end)
+    mic.start(prompt, {
+        -- ZMQ push: new phase started — refresh HUD for up to 15 more seconds.
+        on_status = function(status)
+            engine.display_hud_message(status, 15)
+        end,
+        -- ZMQ push: result delivered — no loop to clean up.
+        on_result = function(text)
+            if text and text ~= "" then
+                text = json.utf8_to_codepage(text)
+                if callback then
+                    callback(text)
+                end
+            end
+        end,
+    })
 end
 
 return recorder

@@ -170,12 +170,14 @@ async def _handle_idle_event(event: GameEventMessage) -> None:
         elif isinstance(event.context, dict):
             context_dict = event.context
     
-    # Get the speaker from context
+    # Get the speaker from context — idle events use context.speaker, others use context.actor
     speaker_id = None
-    actor = context_dict.get("actor")
-    if actor and isinstance(actor, dict):
-        speaker_id = str(actor.get("game_id"))
-    
+    for key in ("speaker", "actor"):
+        char = context_dict.get(key)
+        if char and isinstance(char, dict):
+            speaker_id = str(char.get("game_id"))
+            break
+
     if not speaker_id:
         logger.error("Idle event has no valid speaker")
         return
@@ -285,6 +287,14 @@ async def handle_heartbeat(payload: dict[str, Any]) -> None:
                 f"Heartbeat received: alive={msg.alive}, "
                 f"game_time={msg.game_time_ms}"
             )
+
+        # If we haven't received a config sync yet, re-request one.
+        # This handles the case where the service started while the game was
+        # paused/in menu and the initial config.request went unanswered.
+        from ..handlers.config import config_mirror
+        if not config_mirror.is_synced and _publisher:
+            logger.info("Config not yet synced — re-requesting config sync via heartbeat")
+            await _publisher.publish("config.request", {"reason": "heartbeat_no_sync"})
         
         # Check retry queue for heartbeat gap (Lua recovered from pause)
         if _retry_queue and _dialogue_generator:
@@ -292,6 +302,10 @@ async def handle_heartbeat(payload: dict[str, Any]) -> None:
             if should_flush:
                 logger.info("Flushing retry queue after heartbeat gap")
                 _retry_queue.flush(_dialogue_generator)
+                # Also re-request config in case the service was restarted during the gap
+                if _publisher:
+                    logger.info("Re-requesting config sync after heartbeat gap recovery")
+                    await _publisher.publish("config.request", {"reason": "heartbeat_gap_recovery"})
         
         # Send heartbeat acknowledgement back to Lua so it knows we're alive
         if _publisher:

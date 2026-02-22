@@ -415,15 +415,22 @@ resource_registry["query.world"] = function(query)
     end
 
     local game_time = game.get_game_time()
-    local time_obj = {
-        Y = game_time:year(),
-        M = game_time:month(),
-        D = game_time:day(),
-        h = game_time:hour(),
-        m = game_time:minute(),
-        s = game_time:second(),
-        ms = game_time:millisecond(),
-    }
+    local time_obj
+    local ok, err = pcall(function()
+        time_obj = {
+            Y  = game_time:year(),
+            M  = game_time:month(),
+            D  = game_time:day(),
+            h  = game_time:hour(),
+            m  = game_time:minute(),
+            s  = game_time:second(),
+            ms = game_time:millisecond(),
+        }
+    end)
+    if not ok then
+        -- Game clock not ready yet (CTime methods not yet bound); return a placeholder
+        time_obj = { Y = 0, M = 0, D = 0, h = 0, m = 0, s = 0, ms = 0 }
+    end
 
     local brain_scorcher_disabled = has_alife_info and has_alife_info("bar_deactivate_radar_done") or false
     local miracle_machine_disabled = has_alife_info and has_alife_info("yan_kill_brain_done") or false

@@ -1,2 +1,0 @@
-[console_scripts]
-talker-service = talker_service.__main__:main

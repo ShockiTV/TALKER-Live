@@ -20,6 +20,7 @@ class OpenAIClient(BaseLLMClient):
     def __init__(
         self,
         api_key: str | None = None,
+        model: str | None = None,
         timeout: float = 60.0,
         max_retries: int = 3,
     ):
@@ -27,11 +28,13 @@ class OpenAIClient(BaseLLMClient):
         
         Args:
             api_key: OpenAI API key (falls back to file/env)
+            model: Default model to use (falls back to DEFAULT_MODEL)
             timeout: Request timeout in seconds
             max_retries: Max retries on rate limit
         """
         super().__init__(timeout=timeout)
         self.api_key = api_key or self._load_api_key()
+        self.default_model = model or self.DEFAULT_MODEL
         self.max_retries = max_retries
         
         if not self.api_key:
@@ -81,7 +84,7 @@ class OpenAIClient(BaseLLMClient):
         timeout = self._get_timeout(opts)
         
         request_body = {
-            "model": opts.model or self.DEFAULT_MODEL,
+            "model": opts.model or self.default_model,
             "messages": [m.to_dict() for m in messages],
             "temperature": opts.temperature,
         }

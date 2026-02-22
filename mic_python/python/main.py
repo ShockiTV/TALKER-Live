@@ -1,171 +1,149 @@
-import os
-from pathlib import Path
 import sys
 import time
 import logging
-import tempfile
+import json
+import importlib
 
-from watchdog.events import FileSystemEventHandler
-from watchdog.observers import Observer
+import zmq
 
-from files import read_file, write_to_file
 from recorder import Recorder
 from banner import print_banner
-import importlib
 
 ####################################################################################################
 # CONFIG
 ####################################################################################################
 
-# Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
     handlers=[
-        logging.StreamHandler(sys.stdout),              # console
-        logging.FileHandler("talker.log", encoding="utf-8")  # persistent log
+        logging.StreamHandler(sys.stdout),
+        logging.FileHandler("talker.log", encoding="utf-8"),
     ],
 )
 
-# Get the system's temporary directory
-TEMP_DIR = tempfile.gettempdir()
+LUA_PUB_PORT = 5555   # Lua PUB → mic_python SUB (subscribe to mic.* topics)
+MIC_PUB_PORT = 5557   # mic_python PUB → Lua SUB (publish mic.status / mic.result)
+RECV_TIMEOUT_MS = 100
+AUDIO_FILE = "talker_audio.ogg"
 
-# File paths in the temporary directory
-COMMAND_FILE = os.path.join(TEMP_DIR, 'talker_mic_io_commands')
-TRANSCRIPTION_FILE = os.path.join(TEMP_DIR, 'talker_mic_io_transcription')
-AUDIO_FILE = os.path.join(TEMP_DIR, 'talker_audio.ogg')
+####################################################################################################
+# HELPERS
+####################################################################################################
 
-# Commands
-COMMANDS = {
-    'LISTENING': 'LISTENING',
-    'TRANSCRIBING': 'TRANSCRIBING',
-    'START'       : 'START-',   # syntax: START-<lang>-<prompt>
-    'STOP': 'STOP',
-    'DONE': 'DONE'
-}
+def publish(pub_socket: zmq.Socket, topic: str, payload: dict) -> None:
+    """Publish a message using the simple wire format: '<topic> <json-payload>'."""
+    msg = topic + " " + json.dumps(payload)
+    pub_socket.send_string(msg)
+    logging.debug("Published: %s", msg[:120])
+
+
+def record_session(
+    recorder: Recorder,
+    pub_socket: zmq.Socket,
+    transcribe_func,
+    lang: "str | None",
+    prompt: str,
+) -> None:
+    """Record audio, transcribe, then publish mic.status and mic.result."""
+    publish(pub_socket, "mic.status", {"status": "LISTENING"})
+    recorder.start_recording()
+    while recorder.is_recording():
+        time.sleep(0.1)
+
+    publish(pub_socket, "mic.status", {"status": "TRANSCRIBING"})
+    try:
+        text = transcribe_func(AUDIO_FILE, prompt=prompt, lang=lang)
+    except Exception as exc:
+        logging.error("Transcription failed: %s", exc)
+        text = ""
+    publish(pub_socket, "mic.result", {"text": text})
 
 ####################################################################################################
 # MAIN
 ####################################################################################################
 
-def main():
+def main() -> None:
+    print("-" * 50)
+    print_banner("TALKER")
+    print("-" * 50)
+
+    # Determine transcription provider from command-line argument
+    provider = "gemini_proxy"
+    if len(sys.argv) > 1:
+        arg = sys.argv[1]
+        if arg in ("whisper_local", "whisper_api", "gemini_proxy"):
+            provider = arg
+    logging.info("Using transcription provider: %s", provider)
+
+    # Load provider module
+    transcription_module = importlib.import_module(provider)
+    load_api_key = getattr(transcription_module, "load_openai_api_key")
+    transcribe_audio_file = getattr(transcription_module, "transcribe_audio_file")
+    load_api_key()
+
+    recorder = Recorder(AUDIO_FILE)
+
+    # ZMQ setup
+    ctx = zmq.Context()
+    sub = ctx.socket(zmq.SUB)
+    sub.connect(f"tcp://127.0.0.1:{LUA_PUB_PORT}")
+    sub.setsockopt(zmq.SUBSCRIBE, b"mic.")
+    sub.setsockopt(zmq.RCVTIMEO, RECV_TIMEOUT_MS)
+    pub = ctx.socket(zmq.PUB)
+    pub.bind(f"tcp://*:{MIC_PUB_PORT}")
+
+    logging.info("ZMQ SUB connected to tcp://127.0.0.1:%d (filter: mic.*)", LUA_PUB_PORT)
+    logging.info("ZMQ PUB bound on tcp://*:%d", MIC_PUB_PORT)
+    print("You can now use the in-game key to talk.")
+
     try:
-        print("-"*50)
-        print_banner("TALKER")
-        print("-"*50)
-
-        # Determine the provider from command-line arguments
-        provider = "gemini_proxy"  # Default provider
-        if len(sys.argv) > 1:
-            provider_arg = sys.argv[1]
-            if provider_arg in ["whisper_local", "whisper_api", "gemini_proxy"]:
-                provider = provider_arg
-        
-        # Dynamically import the selected provider
-        transcription_module = importlib.import_module(provider)
-        load_api_key = getattr(transcription_module, "load_openai_api_key")
-        transcribe_audio_file_func = getattr(transcription_module, "transcribe_audio_file")
-
-        load_api_key()
-        recorder = Recorder(AUDIO_FILE)
-        Path(COMMAND_FILE).touch()
-
-        handler  = CommandHandler(recorder)
-        observer = Observer()
-        observer.schedule(handler, TEMP_DIR, recursive=False)
-        observer.start()
-
-        logging.info("Observer running, watching %s", COMMAND_FILE)
-        print("You can now use the in-game key to talk.")
         while True:
-            time.sleep(1)
+            try:
+                raw = sub.recv_string()
+            except zmq.Again:
+                # No message within timeout — keep polling
+                continue
+
+            # Parse wire format: "<topic> <json-payload>"
+            space = raw.find(" ")
+            if space < 0:
+                logging.warning("Invalid message (no space separator): %s", raw[:80])
+                continue
+
+            topic = raw[:space]
+            json_str = raw[space + 1:]
+            try:
+                payload = json.loads(json_str)
+            except Exception:
+                logging.warning("Failed to parse JSON payload: %s", json_str[:80])
+                payload = {}
+
+            logging.info("Received topic=%s", topic)
+
+            if topic == "mic.start":
+                lang = payload.get("lang") or None
+                prompt = payload.get("prompt") or ""
+                record_session(recorder, pub, transcribe_audio_file, lang, prompt)
+            elif topic == "mic.stop":
+                if recorder.is_recording():
+                    logging.info("Stopping recording on mic.stop command.")
+                    recorder.stop_recording()
+            else:
+                logging.debug("Unhandled topic: %s", topic)
 
     except KeyboardInterrupt:
         logging.info("User interrupt.")
     except Exception:
         logging.exception("Unhandled error.")
     finally:
-        try:
-            observer.stop(); observer.join()
-        except NameError:
-            pass
+        if recorder.is_recording():
+            recorder.stop_recording()
+        sub.close()
+        pub.close()
+        ctx.term()
         logging.info("Shutdown complete.")
 
 
-####################################################################################################
-# START COMMAND
-####################################################################################################
-
-DEFAULT_LANG = None            # let Whisper auto-detect unless user supplies code
-
-def parse_start_line(line: str):
-    """Extract (lang, prompt) from 'START-...'."""
-    payload = line[len(COMMANDS['START']):]          # after START-
-    if len(payload) >= 3 and payload[2] == '-':
-        lang = payload[:2]
-        prompt = payload[3:]
-    else:
-        lang  = DEFAULT_LANG
-        prompt= payload
-    return lang, prompt
-
-
-
-####################################################################################################
-# COMMAND HANDLER
-####################################################################################################
-class CommandHandler(FileSystemEventHandler):
-    def __init__(self, recorder: Recorder):
-        self.recorder = recorder
-
-    def on_modified(self, event):
-        try:
-            if os.path.abspath(event.src_path) == os.path.abspath(COMMAND_FILE):
-                self._handle_command()
-        except Exception as e:
-            logging.warning("Error handling update: %s", e)
-
-    # ─────────────── core ────────────────
-    def _handle_command(self):
-        raw = read_file(COMMAND_FILE)
-        if raw.startswith(COMMANDS['START']):
-            lang, prompt = parse_start_line(raw)
-            self._record_session(prompt, lang)
-        elif raw.strip() == COMMANDS['STOP']:
-            self.recorder.stop_recording()
-
-    def _record_session(self, prompt: str = '', language: str | None = DEFAULT_LANG):
-        try:
-            # The provider is already determined in the main function, so we can reuse it here.
-            provider = "gemini_proxy"  # Default provider
-            if len(sys.argv) > 1:
-                provider_arg = sys.argv[1]
-                if provider_arg in ["whisper_local", "whisper_api", "gemini_proxy"]:
-                    provider = provider_arg
-            
-            # Dynamically import the selected provider
-            transcription_module = importlib.import_module(provider)
-            transcribe_audio_file_func = getattr(transcription_module, "transcribe_audio_file")
-
-            write_to_file(COMMAND_FILE, COMMANDS['LISTENING'])
-            self.recorder.start_recording()
-            while self.recorder.is_recording():
-                time.sleep(0.1)
-
-            write_to_file(COMMAND_FILE, COMMANDS['TRANSCRIBING'])
-            text = transcribe_audio_file_func(AUDIO_FILE, prompt=prompt, lang=language)
-            write_to_file(TRANSCRIPTION_FILE, text)
-            write_to_file(COMMAND_FILE, COMMANDS['DONE'])
-
-        except Exception as e:
-            logging.error("Recording session failed: %s", e)
-            write_to_file(COMMAND_FILE, COMMANDS['ERROR'])
-
-
-
-
-
-
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

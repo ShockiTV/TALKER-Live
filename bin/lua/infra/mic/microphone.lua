@@ -1,95 +1,69 @@
--- this module represents the microphone and transcription process to the inner application
--- it interacts with a script that truly controls the microphone
--- interaction is done via 2 files in the temp folder, one to send commands and one to receive transcriptions
+﻿-- microphone.lua
+-- Manages the microphone and transcription process via ZMQ.
+-- Sends mic.start / mic.stop commands to mic_python via the ZMQ bridge.
+-- ZMQ handlers for mic.status and mic.result are registered per recording session
+-- and passed as callbacks to callers (e.g. recorder.lua).
+
+package.path = package.path .. ";./bin/lua/?.lua;"
 
 local mic = {}
 
--- Import necessary modules
-local file_io = require("infra.file_io")
-local config = require('interface.config')
-
--- File paths in the temporary directory (must match Python script)
-local COMMAND_FILE = "/talker_mic_io_commands"
-local TRANSCRIPTION_FILE = "/talker_mic_io_transcription"
-
--- Commands (must match Python script)
-local COMMANDS = {
-    LISTENING = "LISTENING",
-    START = "START",
-    STOP = "STOP",
-    TRANSCRIBING = "TRANSCRIBING",
-    DONE = "DONE"
-}
+local bridge = require("infra.zmq.bridge")
+local config  = require("interface.config")
+local logger  = require("framework.logger")
 
 -- Internal state
 local mic_on = false
 
--- Function to write to the command file
-local function send_to_microphone(contents)
-    file_io.override_temp(COMMAND_FILE, contents)
-end
-
--- Function to read from the transcription file
-local function read_transcription()
-    return file_io.read_temp(TRANSCRIPTION_FILE)
-end
-
--- Check if the microphone is currently on
+--- Returns true if a recording session is currently active.
 function mic.is_mic_on()
     return mic_on
 end
 
--- Get the latest transcription, if available
-function mic.get_transcription()
-    local transcription = read_transcription()
-    if transcription and transcription ~= "" then
-        return transcription
-    else
-        return nil
-    end
-end
-
--- Clear the transcription file
-function mic.clear_transcription()
-    file_io.override_temp(TRANSCRIPTION_FILE, "")
-end
-
--- Start recording with an optional transcription prompt
-function mic.start(transcription_prompt)
-    if mic_on then return end          -- already recording
+--- Start recording.
+-- Publishes mic.start to mic_python and registers per-session ZMQ handlers.
+-- @param transcription_prompt  Hint string forwarded to the transcription provider.
+-- @param opts Table with optional callbacks:
+--   opts.on_status(status_str)  Called when mic.status is received ("LISTENING" | "TRANSCRIBING").
+--   opts.on_result(text_str)    Called once when mic.result is received; handlers are then cleaned up.
+function mic.start(transcription_prompt, opts)
+    if mic_on then return end
+    local lang_code = config.language_short()
     mic_on = true
 
-    -- convert long name from config.language() → ISO-639-1 code
-    local lang_code = config.language_short()
+    -- Register per-session ZMQ handlers that fire the caller's callbacks.
+    bridge.register_handler("mic.status", function(topic, payload)
+        if opts and opts.on_status then
+            opts.on_status(payload.status or "")
+        end
+    end)
 
-    -- build “START-<lang>-<prompt>”
-    send_to_microphone(string.format("%s-%s-%s",
-        COMMANDS.START,                -- already ends with '-'
-        lang_code,
-        transcription_prompt or ""))
+    bridge.register_handler("mic.result", function(topic, payload)
+        mic_on = false
+        bridge.unregister_handler("mic.status")
+        bridge.unregister_handler("mic.result")
+        if opts and opts.on_result then
+            opts.on_result(payload.text or "")
+        end
+    end)
+
+    bridge.publish("mic.start", {
+        lang   = lang_code,
+        prompt = transcription_prompt or "",
+    })
+
+    logger.info("mic.start published (lang=%s)", tostring(lang_code))
 end
 
--- Stop recording
+--- Stop recording early (cancellation).
+-- Publishes mic.stop to mic_python and cleans up session handlers.
 function mic.stop()
-    if not mic_on then
-        return -- Not recording
-    end
+    if not mic_on then return end
     mic_on = false
-    send_to_microphone(COMMANDS.STOP)
-end
-
--- Read file to see if the script responded
-function mic.check_if_listening()
-    return file_io.read_temp(COMMAND_FILE) == COMMANDS.LISTENING
-end
-
-function mic.get_status()
-    local status = file_io.read_temp(COMMAND_FILE)
-    -- if starts with START, replace with LISTENING
-    if status and status:sub(1, #COMMANDS.START) == COMMANDS.START then
-        status =  COMMANDS.LISTENING
-    end
-    return status
+    bridge.unregister_handler("mic.status")
+    bridge.unregister_handler("mic.result")
+    bridge.publish("mic.stop", {})
+    logger.info("mic.stop published")
 end
 
 return mic

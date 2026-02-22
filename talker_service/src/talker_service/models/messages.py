@@ -2,7 +2,7 @@
 
 from datetime import datetime
 from typing import Any, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class BaseMessage(BaseModel):
@@ -19,10 +19,21 @@ class CharacterData(BaseModel):
     name: str
     faction: Optional[str] = None
     experience: Optional[str] = None  # Rank name
-    reputation: Optional[str] = None
+    reputation: int = 0
     personality: Optional[str] = None
     backstory: Optional[str] = None
     weapon: Optional[str] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def empty_str_to_none(cls, values: Any) -> Any:
+        """Lua sends '' for missing optional strings; normalise to None."""
+        if isinstance(values, dict):
+            str_fields = {"faction", "experience", "personality", "backstory", "weapon"}
+            for field in str_fields:
+                if values.get(field) == "":
+                    values[field] = None
+        return values
 
 
 class EventContext(BaseModel):

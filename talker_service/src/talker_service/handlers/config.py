@@ -43,14 +43,40 @@ class ConfigMirror:
             from ..llm.factory import clear_client_cache
             clear_client_cache()
             logger.info(f"LLM config changed: method={old_config.model_method}->{self._config.model_method}, model={old_config.model_name}->{self._config.model_name}")
-        
+
         # Notify callbacks
         for callback in self._callbacks:
             try:
                 callback(self._config)
             except Exception as e:
                 logger.error(f"Config change callback error: {e}")
-    
+
+    def sync(self, payload: dict[str, Any]) -> None:
+        """Apply a full config sync from the game.
+
+        Unlike update(), this always clears the LLM client cache so that any
+        client created before the first sync (using defaults) is discarded.
+
+        Args:
+            payload: Full config dictionary from Lua
+        """
+        self._config = MCMConfig.from_lua_payload(payload)
+        self._received_sync = True
+
+        from ..llm.factory import clear_client_cache
+        clear_client_cache()
+        logger.info(
+            f"Config sync applied — LLM cache cleared. "
+            f"method={self._config.model_method}, model={self._config.model_name!r}"
+        )
+
+        # Notify callbacks
+        for callback in self._callbacks:
+            try:
+                callback(self._config)
+            except Exception as e:
+                logger.error(f"Config change callback error: {e}")
+
     def get(self, key: str, default: Any = None) -> Any:
         """Get a config value by key.
         
@@ -109,9 +135,13 @@ async def handle_config_update(payload: dict[str, Any]) -> None:
 
 async def handle_config_sync(payload: dict[str, Any]) -> None:
     """Handle config.sync message (full config on game load).
-    
+
+    Always clears the LLM client cache so any client instantiated before
+    the first sync (using service defaults) is replaced with one using
+    the actual game config.
+
     Args:
         payload: Full config dictionary from Lua
     """
     logger.info("Received config sync from game (full config)")
-    config_mirror.update(payload)
+    config_mirror.sync(payload)

@@ -101,7 +101,11 @@ function M.error(message, ...)
 	-- Guard: only display to player if game_adapter is available (not in test env)
 	local ok, game_adapter = pcall(require, "infra.game_adapter")
 	if ok and game_adapter and game_adapter.display_error_to_player then
-		pcall(game_adapter.display_error_to_player, "ERROR: " .. message)
+		local args = { ... }
+		local inspected = {}
+		for i = 1, select("#", ...) do inspected[i] = tostring(args[i]) end
+		local formatted = #inspected > 0 and string.format(message, unpack(inspected)) or message
+		pcall(game_adapter.display_error_to_player, "ERROR: " .. formatted)
 	end
 end
 
