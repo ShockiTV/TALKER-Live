@@ -12,14 +12,14 @@
             "name": "Wolf",
             "faction": "stalker",
             "experience": "Veteran",
-            "reputation": "750"
+            "reputation": 750
           },
           "victim": {
             "game_id": 67890,
             "name": "Bandit_001",
             "faction": "bandit",
             "experience": "Experienced",
-            "reputation": "-300"
+            "reputation": -300
           }
         },
         "game_time_ms": 2000000,
@@ -29,7 +29,7 @@
             "name": "Wolf",
             "faction": "stalker",
             "experience": "Veteran",
-            "reputation": "750",
+            "reputation": 750,
             "personality": "gruff_but_fair"
           },
           {
@@ -37,7 +37,7 @@
             "name": "Petruha",
             "faction": "stalker",
             "experience": "Experienced",
-            "reputation": "0",
+            "reputation": 0,
             "personality": "generic.15"
           }
         ],

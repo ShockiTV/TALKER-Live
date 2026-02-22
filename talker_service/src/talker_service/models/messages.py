@@ -23,6 +23,7 @@ class CharacterData(BaseModel):
     personality: Optional[str] = None
     backstory: Optional[str] = None
     weapon: Optional[str] = None
+    visual_faction: Optional[str] = None
 
     @model_validator(mode="before")
     @classmethod

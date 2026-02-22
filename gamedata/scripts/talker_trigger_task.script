@@ -14,25 +14,6 @@ local EventType = trigger.EventType
 local script_name = "TALKER Trigger Task"
 local original_task_callback = nil
 
--- Faction name mapping from technical to display names
-local faction_map = {
-    killer = "Mercenary",
-    dolg = "Duty",
-    freedom = "Freedom",
-    bandit = "Bandit",
-    monolith = "Monolith",
-    stalker = "stalker",
-    csky = "Clear Sky",
-    ecolog = "Ecolog",
-    army = "Army",
-    renegade = "Renegade",
-    trader = "Trader",
-    greh = "Sin",
-    isg = "ISG",
-    zombied = "Zombied",
-    monster = "Monster"
-}
-
 local TASK_COOLDOWN_CD = mcm.get("task_cooldown") * 1000 -- default 40 seconds cooldown
 local ANTI_SPAM_CD = mcm.get("anti_spam_cd") * 1000
 local mode_task = tonumber(mcm.get("enable_trigger_task") or "0")
@@ -151,9 +132,6 @@ function on_task_completed_event(tsk, cached_info)
     if ranks and ranks.get_se_obj_rank_name then
          task_giver_character.experience = ranks.get_se_obj_rank_name(server_entity)
     end
-
-    -- Convert faction technical name to display name
-    task_giver_character.faction = faction_map[task_giver_character.faction] or task_giver_character.faction
 
     -- Task Title from task object
     local task_title = tsk:get_title()

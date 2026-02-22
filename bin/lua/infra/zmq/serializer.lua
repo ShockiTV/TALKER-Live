@@ -35,7 +35,7 @@ function M.serialize_context(context)
     if not context then return {} end
 
     local result = {}
-    local character_keys = { "victim", "killer", "actor", "spotter", "target", "taunter", "speaker" }
+    local character_keys = { "victim", "killer", "actor", "spotter", "target", "taunter", "speaker", "task_giver" }
 
     for k, v in pairs(context) do
         -- Test whether this key holds a Character object
