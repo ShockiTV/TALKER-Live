@@ -229,12 +229,26 @@ context: |
 
   ### Lua Tests
 
-  - **Run tests**: `lua5.1.exe tests/<path>/test_<module>.lua` (uses LuaUnit)
-    - Note: Use `lua5.1.exe`, not `lua` (which may not be in PATH)
-    - Example: `lua5.1.exe tests/entities/test_event.lua`
+  **IMPORTANT**: Always use the `lua-tests` MCP server tools to run Lua tests — do NOT call `lua5.1` directly in the terminal.
+
+  Available MCP tools (`lua-tests` server):
+  - `list_tests` — discover all `test_*.lua` files (optionally filter by `path`)
+  - `run_tests` — run tests by path/pattern; accepts `path`, `pattern`, `fail_fast`, `include_live`
+  - `run_single_test` — run one test file with full output (`file` parameter)
+  - `get_last_run_results` — read results from the most recent run
+
+  Examples:
+  - All tests: `run_tests {}` (no args)
+  - By subdirectory: `run_tests { path: "tests/domain/" }`
+  - By pattern: `run_tests { pattern: "serializer" }`
+  - Single file: `run_single_test { file: "tests/domain/data/test_mutant_names.lua" }`
+  - List tests: `list_tests { path: "tests/domain/" }`
+
+  **Manual fallback** (if MCP unavailable): `lua5.1.exe tests/<path>/test_<module>.lua`
+  - Note: Use `lua5.1.exe`, not `lua` (which may not be in PATH)
   - Test structure mirrors source: `tests/domain/`, `tests/infra/`, `tests/entities/`, etc.
   - Use mocks from `tests/mocks/` (mock_characters, mock_game_adapter, mock_REST)
-  - Live integration tests in `tests/live/` (require actual LLM API keys)
+  - Live integration tests in `tests/live/` (require actual LLM API keys; excluded by default from MCP tools)
 
   ### Python Tests (talker_service)
 
@@ -417,9 +431,25 @@ context: |
 
   ### Running Tests
 
+  #### Lua Tests (`lua-tests` MCP server)
+
+  **IMPORTANT**: Always use the `lua-tests` MCP server tools to run Lua tests — do NOT call `lua5.1` directly in the terminal.
+
+  - `list_tests` — discover all `test_*.lua` files (optionally filter by `path`)
+  - `run_tests` — run tests by path/pattern; accepts `path`, `pattern`, `fail_fast`, `include_live`
+  - `run_single_test` — run one test file with full output
+  - `get_last_run_results` — read results from the most recent run
+
+  Examples:
+  - All tests: `run_tests {}` (no args)
+  - By subdirectory: `run_tests { path: "tests/domain/" }`
+  - By pattern: `run_tests { pattern: "serializer" }`
+  - Single file: `run_single_test { file: "tests/domain/data/test_mutant_names.lua" }`
+
+  #### Python Tests (`talker-tests` MCP server)
+
   **IMPORTANT**: Always use MCP tools to run Python tests — never call `python`, `pytest`, or `activate` in the terminal.
 
-  Available MCP tools (`talker-tests` server):
   - `list_tests` — discover all test node IDs (optionally filter by `path`)
   - `run_tests` — run a test path/pattern; accepts `path`, `pattern`, `verbose`, `fail_fast`
   - `run_single_test` — run one test by full node ID with detailed traceback

@@ -6,6 +6,10 @@
             "env": {
                 "PYTHONPATH": "f:/GAMMA/mods/TALKER-Expanded/talker_service/src"
             }
+        },
+        "lua-tests": {
+            "command": "f:/GAMMA/mods/TALKER-Expanded/talker_service/.venv/Scripts/python.exe",
+            "args": ["f:/GAMMA/mods/TALKER-Expanded/mcp_lua_test_runner.py"]
         }
     }
 }
