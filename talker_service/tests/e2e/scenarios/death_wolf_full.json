@@ -51,31 +51,33 @@
     "state.query.memories": {
       "response": {
         "narrative": "Wolf had been patrolling the Cordon for three days.",
-        "last_update_time_ms": 1000000,
-        "new_events": [
-          {
-            "type": "callout",
-            "context": {
-              "spotter": {
-                "game_id": 12345,
-                "name": "Wolf",
-                "faction": "stalker",
-                "experience": "Veteran",
-                "reputation": 750
-              },
-              "target": {
-                "game_id": 99999,
-                "name": "Bloodsucker",
-                "faction": "monster",
-                "experience": "Experienced",
-                "reputation": 0
-              }
-            },
-            "game_time_ms": 1500000,
-            "flags": {}
-          }
-        ]
+        "last_update_time_ms": 1000000
       }
+    },
+    "state.query.events": {
+      "response": [
+        {
+          "type": "callout",
+          "context": {
+            "spotter": {
+              "game_id": 12345,
+              "name": "Wolf",
+              "faction": "stalker",
+              "experience": "Veteran",
+              "reputation": 750
+            },
+            "target": {
+              "game_id": 99999,
+              "name": "Bloodsucker",
+              "faction": "monster",
+              "experience": "Experienced",
+              "reputation": 0
+            }
+          },
+          "game_time_ms": 1500000,
+          "flags": {}
+        }
+      ]
     },
     "state.query.character": {
       "response": {
@@ -267,6 +269,7 @@
         "payload": {
           "queries": [
             {"id": "mem", "resource": "store.memories", "params": {"character_id": "12345"}},
+            {"id": "events", "resource": "store.events", "filter": {"game_time_ms": {"$gt": "$ref:mem.last_update_time_ms"}, "witnesses": {"$elemMatch": {"game_id": "12345"}}}},
             {"id": "char", "resource": "query.character", "params": {"id": "12345"}},
             {"id": "world", "resource": "query.world"},
             {"id": "alive", "resource": "query.characters_alive", "params": {"ids": "__ANY_LIST__"}}

@@ -114,31 +114,37 @@ class TestDeathLifecycle:
         MEMORY_RESPONSE = """
         {
             "narrative": "Wolf had been patrolling the Cordon for three days.",
-            "last_update_time_ms": 1000000,
-            "new_events": [
-                {
-                    "type": "CALLOUT",
-                    "context": {
-                        "spotter": {
-                            "game_id": 12345,
-                            "name": "Wolf",
-                            "faction": "stalker",
-                            "experience": "Veteran",
-                            "reputation": 750
-                        },
-                        "target": {
-                            "game_id": 99999,
-                            "name": "Bloodsucker",
-                            "faction": "monster",
-                            "experience": "Experienced",
-                            "reputation": 0
-                        }
-                    },
-                    "game_time_ms": 1500000,
-                    "flags": {}
-                }
-            ]
+            "last_update_time_ms": 1000000
         }
+        """
+
+        # =====================================================================
+        # 5b) EVENTS QUERY RESPONSE (events witnessed by Wolf since last update)
+        # =====================================================================
+        EVENTS_RESPONSE = """
+        [
+            {
+                "type": "CALLOUT",
+                "context": {
+                    "spotter": {
+                        "game_id": 12345,
+                        "name": "Wolf",
+                        "faction": "stalker",
+                        "experience": "Veteran",
+                        "reputation": 750
+                    },
+                    "target": {
+                        "game_id": 99999,
+                        "name": "Bloodsucker",
+                        "faction": "monster",
+                        "experience": "Experienced",
+                        "reputation": 0
+                    }
+                },
+                "game_time_ms": 1500000,
+                "flags": {}
+            }
+        ]
         """
 
         # =====================================================================
@@ -234,6 +240,7 @@ class TestDeathLifecycle:
             memory_json=MEMORY_RESPONSE,
             character_json=CHARACTER_RESPONSE,
             llm_responses=[LLM_SPEAKER_RESPONSE, LLM_DIALOGUE_RESPONSE],
+            events_json=EVENTS_RESPONSE,
         )
 
         # =====================================================================

@@ -39,7 +39,7 @@ _SCENE = json.dumps({
     "brain_scorcher_disabled": False,
     "miracle_machine_disabled": False,
 })
-_EMPTY_MEMORY = json.dumps({"narrative": None, "last_update_time_ms": 0, "new_events": []})
+_EMPTY_MEMORY = json.dumps({"narrative": None, "last_update_time_ms": 0})
 _EMPTY_ALIVE = json.dumps({"alive": {}})
 
 

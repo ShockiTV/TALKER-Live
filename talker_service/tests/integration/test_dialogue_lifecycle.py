@@ -41,7 +41,6 @@ _SCENE = json.dumps({
 _EMPTY_MEMORY = json.dumps({
     "narrative": None,
     "last_update_time_ms": 0,
-    "new_events": []
 })
 
 _EMPTY_ALIVE = json.dumps({"alive": {}})

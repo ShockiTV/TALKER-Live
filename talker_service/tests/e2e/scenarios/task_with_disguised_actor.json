@@ -39,9 +39,11 @@
     "state.query.memories": {
       "response": {
         "narrative": null,
-        "last_update_time_ms": 0,
-        "new_events": []
+        "last_update_time_ms": 0
       }
+    },
+    "state.query.events": {
+      "response": []
     },
     "state.query.character": {
       "response": {
@@ -114,6 +116,7 @@
         "payload": {
           "queries": [
             {"id": "mem", "resource": "store.memories", "params": {"character_id": "44444"}},
+            {"id": "events", "resource": "store.events", "filter": {"game_time_ms": {"$gt": "$ref:mem.last_update_time_ms"}, "witnesses": {"$elemMatch": {"game_id": "44444"}}}},
             {"id": "char", "resource": "query.character", "params": {"id": "44444"}},
             {"id": "world", "resource": "query.world"},
             {"id": "alive", "resource": "query.characters_alive", "params": {"ids": "__ANY_LIST__"}}

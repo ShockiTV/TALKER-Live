@@ -1,7 +1,5 @@
-local Event = require("domain.model.event")
 -- memory_store:lua
 package.path = package.path .. ";./bin/lua/?.lua;"
-local event_store = require("domain.repo.event_store")
 local logger = require("framework.logger")
 
 -- Version for memory store save data format
@@ -103,29 +101,7 @@ function memory_store:load_save_data(saved_data)
 	narrative_memories = migrate_legacy_data(saved_data)
 end
 
--- local functions
-local function create_memory(content, game_time_ms)
-	return {
-		content = content,
-		game_time_ms = game_time_ms,
-	}
-end
-
 -- main module
-function memory_store:get_memories(character_id)
-	local memories = {}
-	local events = event_store:get_all_events()
-	for i, event in ipairs(events) do
-		if Event.was_witnessed_by(event, character_id) then
-			table.insert(memories, event)
-		end
-	end
-	table.sort(memories, function(a, b)
-		return a.game_time_ms < b.game_time_ms
-	end)
-	return memories
-end
-
 function memory_store:update_narrative(character_id, new_narrative, last_event_time_ms)
 	narrative_memories[character_id] = {
 		narrative = new_narrative,
@@ -149,51 +125,6 @@ function memory_store:get_narrative(character_id)
 	return narrative_memories[character_id]
 end
 
-function memory_store:get_new_events(character_id)
-	if not character_id then
-		error("memory_store:get_new_events: No character id provided")
-	end
-
-	local last_update_time = 0
-	local mem_struct = narrative_memories[character_id]
-	if mem_struct then
-		last_update_time = mem_struct.last_update_time_ms or 0
-	end
-
-	-- Use event_store:get_events_since for efficient retrieval
-	local events = event_store:get_events_since(last_update_time)
-	local uncompressed_memories = {}
-
-	for i = 1, #events do
-		local event = events[i]
-		-- nil check
-		if event and Event.was_witnessed_by(event, character_id) then
-			table.insert(uncompressed_memories, event)
-		end
-	end
-
-	table.sort(uncompressed_memories, function(a, b)
-		return a.game_time_ms < b.game_time_ms
-	end)
-	return uncompressed_memories
-end
-
--- gets new and compressed memories ready for dialogue generation
--- Returns the full context for prompts: { narrative = ..., new_events = ... }
-function memory_store:get_memory_context(character_id)
-	local mem_struct = narrative_memories[character_id]
-	local new_events = memory_store:get_new_events(character_id)
-
-	return {
-		narrative = mem_struct and mem_struct.narrative or nil,
-		last_update_time_ms = mem_struct and mem_struct.last_update_time_ms or 0,
-		new_events = new_events,
-	}
-end
-
 -- for mocks
 
-function memory_store:insert_mocks(mock_event_store)
-	event_store = mock_event_store
-end
 return memory_store

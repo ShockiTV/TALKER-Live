@@ -40,38 +40,6 @@ function testAddMemoryForCharacter()
     luaunit.assertEquals(narrative.last_update_time_ms, 0)
 end
 
--- Test getting memories for a character based on witnessed events
-function testGetMemoriesForCharacterId()
-    event_store:clear()
-    memory_store:clear()
-    -- Create events with witnesses
-    local event1 = create_mock_event(1000, {{game_id = 'char_1'}, {game_id = 'char_2'}})
-    local event2 = create_mock_event(2000, {{game_id = 'char_2'}})
-    local event3 = create_mock_event(3000, {{game_id = 'char_1'}, {game_id = 'char_3'}})
-
-    event_store:store_event(event1)
-    event_store:store_event(event2)
-    event_store:store_event(event3)
-
-    local memories_char1 = memory_store:get_memories('char_1')
-
-    luaunit.assertEquals(#memories_char1, 2)
-    luaunit.assertEquals(memories_char1[1], event1)
-    luaunit.assertEquals(memories_char1[2], event3)
-
-    local memories_char2 = memory_store:get_memories('char_2')
-    luaunit.assertEquals(#memories_char2, 2)
-    luaunit.assertEquals(memories_char2[1], event1)
-    luaunit.assertEquals(memories_char2[2], event2)
-
-    local memories_char3 = memory_store:get_memories('char_3')
-    luaunit.assertEquals(#memories_char3, 1)
-    luaunit.assertEquals(memories_char3[1], event3)
-
-    local memories_char4 = memory_store:get_memories('char_4')
-    luaunit.assertEquals(#memories_char4, 0)
-end
-
 -- Test updating a narrative multiple times (last write wins)
 function testGetCompressedMemories()
     memory_store:clear()
@@ -87,63 +55,6 @@ function testGetCompressedMemories()
     luaunit.assertEquals(narrative.last_update_time_ms, 2)
 end
 
--- Test getting new events since last narrative update
-function testGetUncompressedMemoriesSinceLastCompression()
-    memory_store:clear()
-    event_store:clear()
-    local character_1 = {game_id = 'char_1'}
-
-    -- Set narrative with last update at time 1600
-    memory_store:update_narrative(character_1.game_id, 'Compressed summary', 1600)
-
-    -- Store events: two before and two after last update time
-    local event1 = create_mock_event(1000, {character_1})
-    local event2 = create_mock_event(1600, {character_1})
-    local event3 = create_mock_event(2500, {character_1})
-    local event4 = create_mock_event(3000, {character_1})
-
-    event_store:store_event(event1)
-    event_store:store_event(event2)
-    event_store:store_event(event3)
-    event_store:store_event(event4)
-
-    local new_events = memory_store:get_new_events(character_1.game_id)
-
-    -- Only events after last_update_time_ms=1600 should be included
-    luaunit.assertEquals(#new_events, 2)
-    luaunit.assertEquals(new_events[1], event3, 'first event wrong')
-    luaunit.assertEquals(new_events[2], event4, 'second event wrong')
-end
-
--- Test getting full memory context for dialogue generation
-function testGetAllMemories()
-    print("testing get all memories")
-    memory_store:clear()
-    event_store:clear()
-    local character_1 = {game_id = 'char_1'}
-
-    -- Set up narrative with last update at time 1600
-    memory_store:update_narrative(character_1.game_id, 'Compressed narrative', 1600)
-
-    -- Store events; only those after 1600 should be in new_events
-    local event1 = create_mock_event(1000, {character_1})
-    local event2 = create_mock_event(1600, {character_1})
-    local event3 = create_mock_event(2500, {character_1})
-    local event4 = create_mock_event(3000, {character_1})
-
-    event_store:store_event(event1)
-    event_store:store_event(event2)
-    event_store:store_event(event3)
-    event_store:store_event(event4)
-
-    local context = memory_store:get_memory_context(character_1.game_id)
-    luaunit.assertNotNil(context)
-    luaunit.assertEquals(context.narrative, 'Compressed narrative')
-    luaunit.assertEquals(context.last_update_time_ms, 1600)
-    luaunit.assertEquals(#context.new_events, 2)
-    luaunit.assertEquals(context.new_events[1], event3, 'first new event wrong')
-    luaunit.assertEquals(context.new_events[2], event4, 'second new event wrong')
-end
 
 -- ============================================================================
 -- Memory Store Versioning Tests
