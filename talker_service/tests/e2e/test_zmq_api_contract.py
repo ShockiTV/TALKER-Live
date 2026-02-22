@@ -77,11 +77,16 @@ class TestCharacterType:
 class TestEventType:
     """Scenario: Event type matches typed event structure."""
 
+    # Canonical source: bin/lua/domain/model/event_types.lua
+    # To add a type: (1) add it to EventType in that Lua file, (2) update
+    # docs/zmq-api.yaml enum, (3) add it here.
+    # WARNING: 'action' is a context *field* on ARTIFACT/TASK events, not an
+    # event type. Do not add it to this list.
     EXPECTED_ENUM = [
         "death", "dialogue", "callout", "taunt", "artifact", "anomaly",
         "map_transition", "emission", "injury", "sleep", "task",
         "weapon_jam", "reload", "idle",
-    ]
+    ]  # 14 types — must match EventType in event_types.lua exactly
 
     def test_event_type_exists(self, types):
         assert "Event" in types

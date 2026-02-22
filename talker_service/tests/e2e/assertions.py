@@ -10,8 +10,8 @@ def assert_scenario(result: RunResult, scenario: dict) -> None:
     """Assert RunResult matches all declared expected keys in the scenario.
 
     Keys not present in scenario["expected"] are not asserted.
-    llm_mocks entries with a 'request' field are asserted against the
-    corresponding HTTP call body (by index).
+    All llm_mocks entries MUST include a 'request' field — asserted against
+    the corresponding HTTP call body (by index). Missing 'request' is a test error.
     """
     expected = scenario.get("expected", {})
 
@@ -63,17 +63,22 @@ def _assert_state_queries(actual: list[dict], expected: list[dict]) -> None:
 
 
 def _assert_llm_mock_requests(http_calls, llm_mocks: list[dict]) -> None:
-    """Assert each llm_mock's 'request' body matches the corresponding HTTP call."""
-    for i, mock in enumerate(llm_mocks):
-        if "request" not in mock:
-            continue
-        assert i < len(http_calls), (
-            f"LLM mock {i} declares a 'request', but only {len(http_calls)} HTTP call(s) were made."
+    """Assert each llm_mock's 'request' body matches the corresponding HTTP call.
+
+    'request' is REQUIRED on every llm_mocks entry — missing it is a test error.
+    """
+    assert len(http_calls) == len(llm_mocks), (
+        f"Expected {len(llm_mocks)} HTTP call(s) (matching llm_mocks), got {len(http_calls)}."
+    )
+    for i, (call, mock) in enumerate(zip(http_calls, llm_mocks)):
+        assert "request" in mock, (
+            f"llm_mocks[{i}] is missing a 'request' field — "
+            f"all scenario llm_mocks entries must declare expected request bodies."
         )
-        assert http_calls[i].body == mock["request"], (
+        assert call.body == mock["request"], (
             f"LLM mock {i}: request body mismatch.\n"
             f"Expected: {mock['request']}\n"
-            f"Actual:   {http_calls[i].body}"
+            f"Actual:   {call.body}"
         )
 
 
