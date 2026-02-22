@@ -39,7 +39,7 @@ types:
     name:           { type: string, required: true }
     faction:        { type: string, default: "stalker" }
     experience:     { type: string, description: "Rank: Novice, Trainee, Experienced, Professional, Veteran, Expert, Master, Legend" }
-    reputation:     { type: any, description: "Reputation value. String or int depending on source." }
+    reputation:     { type: integer, description: "Reputation value as a numeric score." }
     personality:    { type: string, description: "Personality trait ID or comma-separated traits" }
     backstory:      { type: string, description: "Backstory text or backstory ID" }
     weapon:         { type: string }
@@ -75,7 +75,8 @@ types:
     emission_type:  { type: string, enum: [emission, psi_storm] }
     status:         { type: string, enum: [starting, ending] }
     task_name:      { type: string }
-    task_giver:     { type: string }
+    task_status:    { type: string, description: "Status of the task (completed, failed, updated, etc.)" }
+    task_giver:     { $ref: Character, description: "Character who gave the task (technical faction ID, no display-name conversion)" }
     instruction:    { type: string }
     source_event:   { type: object }
     # Array fields

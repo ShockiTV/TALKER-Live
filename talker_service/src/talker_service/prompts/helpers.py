@@ -329,10 +329,13 @@ def _format_typed_event(event: Event) -> str:
     elif event_type == "TASK":
         task_status = ctx.get("task_status", "updated")
         task_name = ctx.get("task_name", "a task")
-        
+        task_giver = _char_from_context(ctx.get("task_giver"))
+
+        giver_part = f" for {describe_character(task_giver)}" if task_giver else ""
+
         if actor:
-            return f"{describe_character(actor)} {task_status} task: {task_name}"
-        return f"Task {task_status}: {task_name}"
+            return f"{describe_character(actor)} {task_status} task: {task_name}{giver_part}"
+        return f"Task {task_status}: {task_name}{giver_part}"
     
     elif event_type == "WEAPON_JAM":
         if actor:

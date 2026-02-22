@@ -220,6 +220,42 @@ class TestDescribeEvent:
         assert "[COMPRESSED MEMORY]" in desc
         assert "no narrative available" in desc
 
+    def test_describe_task_event_with_giver(self):
+        """Task event with task_giver shows giver name and resolved faction display name."""
+        actor = Character(game_id="1", name="Player", faction="stalker", experience="Veteran", reputation=500)
+        task_giver = Character(game_id="2", name="General Voronin", faction="dolg", experience="Master", reputation=2000)
+        event = Event(
+            type="TASK",
+            context={
+                "actor": actor.__dict__,
+                "task_status": "completed",
+                "task_name": "Patrol the Garbage",
+                "task_giver": task_giver.__dict__,
+            },
+            game_time_ms=1000,
+        )
+        desc = describe_event(event)
+        assert "Patrol the Garbage" in desc
+        assert "General Voronin" in desc
+        assert "Duty" in desc  # technical "dolg" resolved to display "Duty"
+
+    def test_describe_task_event_without_giver(self):
+        """Task event without task_giver omits giver part gracefully."""
+        actor = Character(game_id="1", name="Player", faction="stalker", experience="Veteran", reputation=500)
+        event = Event(
+            type="TASK",
+            context={
+                "actor": actor.__dict__,
+                "task_status": "completed",
+                "task_name": "Find the artifact",
+            },
+            game_time_ms=1000,
+        )
+        desc = describe_event(event)
+        assert "Find the artifact" in desc
+        assert "completed" in desc
+        assert " for " not in desc  # No giver part appended
+
 
 class TestDescribeMapTransitionEvent:
     """Tests for MAP_TRANSITION event formatting with technical IDs."""
@@ -576,6 +612,82 @@ class TestCreateDialogueRequestPrompt:
         content = " ".join(m.content for m in messages)
         # Should not have NEWS section when context is empty
         assert "DYNAMIC WORLD STATE" not in content
+
+
+class TestDialoguePromptDisguise:
+    """Tests for disguise awareness injection in dialogue prompts."""
+
+    def _make_speaker(self):
+        return Character(
+            game_id="123",
+            name="Wolf",
+            faction="stalker",
+            experience="Veteran",
+            reputation=500,
+        )
+
+    def _make_disguised_event(self):
+        """Event with an actor wearing a disguise (visual_faction set)."""
+        actor = Character(
+            game_id="1",
+            name="Player",
+            faction="stalker",
+            experience="Veteran",
+            reputation=500,
+            visual_faction="dolg",  # disguised as Duty
+        )
+        return Event(
+            type="TASK",
+            context={"actor": actor.__dict__, "task_status": "completed", "task_name": "Some task"},
+            game_time_ms=1000,
+        )
+
+    def _all_content(self, messages):
+        return " ".join(m.content for m in messages)
+
+    def test_dialogue_prompt_disguise_non_companion(self):
+        """Non-companion: DISGUISE CONTEXT injected with non-companion (didn't know) instructions."""
+        memory_context = MemoryContext(new_events=[self._make_disguised_event()])
+        messages, _ = create_dialogue_request_prompt(
+            self._make_speaker(), memory_context, is_companion=False
+        )
+        content = self._all_content(messages)
+        assert "## DISGUISE CONTEXT" in content
+        assert "DISGUISE NOTATION" in content
+        assert "did NOT know" in content
+
+    def test_dialogue_prompt_disguise_companion(self):
+        """Companion: DISGUISE CONTEXT injected with companion-aware (knew about disguise) instructions."""
+        memory_context = MemoryContext(new_events=[self._make_disguised_event()])
+        messages, _ = create_dialogue_request_prompt(
+            self._make_speaker(), memory_context, is_companion=True
+        )
+        content = self._all_content(messages)
+        assert "## DISGUISE CONTEXT" in content
+        assert "DISGUISE AWARENESS (COMPANION)" in content
+        assert "aware of the disguise" in content
+
+    def test_dialogue_prompt_no_disguise_no_section(self):
+        """Events without disguise should not inject DISGUISE CONTEXT section."""
+        actor = Character(
+            game_id="1",
+            name="Player",
+            faction="stalker",
+            experience="Veteran",
+            reputation=500,
+            visual_faction=None,  # no disguise
+        )
+        event = Event(
+            type="TASK",
+            context={"actor": actor.__dict__, "task_status": "completed", "task_name": "Some task"},
+            game_time_ms=1000,
+        )
+        memory_context = MemoryContext(new_events=[event])
+        messages, _ = create_dialogue_request_prompt(
+            self._make_speaker(), memory_context, is_companion=False
+        )
+        content = self._all_content(messages)
+        assert "## DISGUISE CONTEXT" not in content
 
 
 class TestCreateCompressMemoriesPrompt:

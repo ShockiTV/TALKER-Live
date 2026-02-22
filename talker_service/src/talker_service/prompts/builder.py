@@ -373,15 +373,37 @@ def create_dialogue_request_prompt(
     messages.append(Message.system("## Events\n\n<EVENTS>\n"))
     
     # Current events
+    event_texts: list[str] = []
     if not new_events:
         messages.append(Message.system("### CURRENT EVENTS\n(No new events)\n"))
     else:
         messages.append(Message.system("### CURRENT EVENTS\n(from oldest to newest):\n"))
         for item in new_events:
             content = describe_prompt_item(item)
+            event_texts.append(content)
             messages.append(Message.user(content))
     
     messages.append(Message.system("</EVENTS>\n\n"))
+
+    # Inject disguise awareness instructions when any event mentions a disguise
+    has_disguise = any("[disguised as" in t for t in event_texts)
+    if has_disguise:
+        if is_companion:
+            disguise_note = (
+                "### DISGUISE AWARENESS (COMPANION):\n"
+                " - If an event mentions someone '[disguised as X]', you (as their companion) were aware of the disguise at the time.\n"
+                "   You may refer to it explicitly (e.g., 'you were disguised as Duty when we spoke to the guards').\n"
+                "### DISGUISE NOTATION:\n"
+                " - If an event mentions someone '[disguised as X]', preserve this information but phrase it from your perspective as someone who knew it was a disguise."
+            )
+        else:
+            disguise_note = (
+                "### DISGUISE NOTATION:\n"
+                " - If an event mentions someone '[disguised as X]', you did NOT know it was a disguise at the time.\n"
+                "   Treat the person by their apparent (disguised) faction, not their true faction."
+            )
+        messages.append(Message.system(f"## DISGUISE CONTEXT\n\n{disguise_note}"))
+
     messages.append(Message.system("</CONTEXT>\n\n"))
     
     # Context guidelines

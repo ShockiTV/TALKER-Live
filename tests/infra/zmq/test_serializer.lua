@@ -79,7 +79,7 @@ function testSerializeContext_nil()
 end
 
 function testSerializeContext_characterKeysAreSerialized()
-    local char_keys = { "victim", "killer", "actor", "spotter", "target", "taunter", "speaker" }
+    local char_keys = { "victim", "killer", "actor", "spotter", "target", "taunter", "speaker", "task_giver" }
     for _, key in ipairs(char_keys) do
         local ctx = { [key] = make_char({ game_id = 1 }) }
         local result = serializer.serialize_context(ctx)
@@ -104,6 +104,28 @@ function testSerializeContext_companionsArray()
     luaunit.assertEquals(#result.companions, 2)
     luaunit.assertEquals(result.companions[1].game_id, "10")
     luaunit.assertEquals(result.companions[2].game_id, "20")
+end
+
+function testSerializeContext_taskGiver_factionPreservedAsIs()
+    -- task_giver is a plain table with technical faction ID (e.g. "dolg")
+    -- It should be serialized as a character with faction preserved unchanged (not converted to display name)
+    local task_giver = {
+        game_id    = 555,
+        name       = "General Voronin",
+        faction    = "dolg",      -- technical ID, must NOT become "Duty"
+        experience = "Master",
+        reputation = "Revered",
+    }
+    local ctx = { task_giver = task_giver }
+    local result = serializer.serialize_context(ctx)
+    luaunit.assertNotNil(result.task_giver, "task_giver should be serialized as a character")
+    luaunit.assertEquals(type(result.task_giver.game_id), "string")
+    luaunit.assertEquals(result.task_giver.game_id, "555")
+    luaunit.assertEquals(result.task_giver.faction, "dolg",   "faction must be technical ID, not display name")
+    luaunit.assertEquals(result.task_giver.name,    "General Voronin")
+    -- nil personality/backstory must be absent (not set to nil key)
+    luaunit.assertNil(result.task_giver.personality)
+    luaunit.assertNil(result.task_giver.backstory)
 end
 
 function testSerializeContext_fieldWithoutGameId_notSerialized()

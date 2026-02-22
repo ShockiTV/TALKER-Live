@@ -10,6 +10,8 @@ def assert_scenario(result: RunResult, scenario: dict) -> None:
     """Assert RunResult matches all declared expected keys in the scenario.
 
     Keys not present in scenario["expected"] are not asserted.
+    llm_mocks entries with a 'request' field are asserted against the
+    corresponding HTTP call body (by index).
     """
     expected = scenario.get("expected", {})
 
@@ -18,6 +20,8 @@ def assert_scenario(result: RunResult, scenario: dict) -> None:
 
     if "http_calls" in expected:
         _assert_http_calls(result.http_calls, expected["http_calls"])
+
+    _assert_llm_mock_requests(result.http_calls, scenario.get("llm_mocks", []))
 
     if "zmq_published" in expected:
         _assert_zmq_published(result.zmq_published, expected["zmq_published"])
@@ -55,6 +59,21 @@ def _assert_state_queries(actual: list[dict], expected: list[dict]) -> None:
             f"State query {i} ({act['topic']}): payload mismatch.\n"
             f"Expected: {exp['payload']}\n"
             f"Actual:   {act['payload']}"
+        )
+
+
+def _assert_llm_mock_requests(http_calls, llm_mocks: list[dict]) -> None:
+    """Assert each llm_mock's 'request' body matches the corresponding HTTP call."""
+    for i, mock in enumerate(llm_mocks):
+        if "request" not in mock:
+            continue
+        assert i < len(http_calls), (
+            f"LLM mock {i} declares a 'request', but only {len(http_calls)} HTTP call(s) were made."
+        )
+        assert http_calls[i].body == mock["request"], (
+            f"LLM mock {i}: request body mismatch.\n"
+            f"Expected: {mock['request']}\n"
+            f"Actual:   {http_calls[i].body}"
         )
 
 
