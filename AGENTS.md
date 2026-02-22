@@ -269,11 +269,27 @@ await _handle_event_async(event)
 ## Testing
 
 ### Lua Tests
-- **Run**: `lua5.1.exe tests/<path>/test_<module>.lua` (uses LuaUnit)
+**IMPORTANT**: Always use the `lua-tests` MCP server tools to run Lua tests — do NOT call `lua5.1` directly in the terminal.
+
+| MCP Tool | Purpose |
+|----------|---------|
+| `list_tests` | Discover all `test_*.lua` files (optionally filter by `path`) |
+| `run_tests` | Run tests by path/pattern; accepts `path`, `pattern`, `fail_fast`, `include_live` |
+| `run_single_test` | Run one test file with full output |
+| `get_last_run_results` | Read results from the most recent run |
+
+**Examples**:
+- All tests: `run_tests {}` (no args)
+- By subdirectory: `run_tests { path: "tests/domain/" }`
+- By pattern: `run_tests { pattern: "serializer" }`
+- Single file: `run_single_test { file: "tests/domain/data/test_mutant_names.lua" }`
+- List tests: `list_tests { path: "tests/domain/" }`
+
+**Manual fallback** (if MCP unavailable): `lua5.1.exe tests/<path>/test_<module>.lua`
 - Note: Use `lua5.1.exe`, not `lua` (which may not be in PATH)
 - Test structure mirrors source: `tests/domain/`, `tests/infra/`, `tests/entities/`, etc.
 - Use mocks from `tests/mocks/` (mock_characters, mock_game_adapter, mock_REST)
-- Live integration tests in `tests/live/` (require actual LLM API keys)
+- Live integration tests in `tests/live/` (require actual LLM API keys; excluded by default from MCP tools)
 
 ### Python Tests
 **IMPORTANT**: Always use the `talker-tests` MCP server tools to run Python tests — do NOT call `python`, `pytest`, or `.venv` directly in the terminal.
