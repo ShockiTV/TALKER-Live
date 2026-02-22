@@ -86,8 +86,12 @@ types:
     type:
       type: string
       required: true
+      # CANONICAL SOURCE: bin/lua/domain/model/event_types.lua
+      # Adding a type here requires adding it to EventType in that file first.
+      # NOTE: 'action' is a context *field* (e.g. ARTIFACT.context.action = "pickup"),
+      # NOT an event type — do not add it here.
       enum: [death, dialogue, callout, taunt, artifact, anomaly, map_transition, emission, injury, sleep, task, weapon_jam, reload, idle]
-      description: "EventType enum value (lowercase)"
+      description: "EventType enum value (lowercase) — 14 types total"
     context:        { $ref: EventContext }
     game_time_ms:   { type: int, description: "Game time in milliseconds" }
     world_context:  { type: string, description: "Legacy location/time description string" }

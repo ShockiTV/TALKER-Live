@@ -1,220 +1,133 @@
 package.path = package.path .. ';./bin/lua/?.lua;./bin/lua/*/?.lua'
+require("tests.test_bootstrap")
 local luaunit = require('tests.utils.luaunit')
 
--- Mocks for game mod code
-local game_api = {}
-local mic = {}
-local async = {}
-local event_creator = {}
-local DIK_keys = { DIK_LMENU = "left_alt_key" }
+-- ── Mock dependencies before loading the script ─────────────────────────────
 
--- Mock implementations
-function game_api.get_player()
-    return { name = "Player1", position = { x = 0, y = 0, z = 0 } }
+-- The speak key is MCM-configurable via config.speak_key(). Tests use a
+-- symbolic constant so no test ever references an actual key name.
+local CONFIGURED_SPEAK_KEY = "DIK_ENTER"
+
+local mock_config = {}
+function mock_config.speak_key()      return CONFIGURED_SPEAK_KEY end
+function mock_config.is_mic_enabled() return true end
+setmetatable(mock_config, { __index = function() return function() end end })
+
+local recorder_calls = {}
+local mock_recorder = {}
+function mock_recorder.start(callback)
+    table.insert(recorder_calls, { fn = "start", callback = callback })
 end
 
-function game_api.get_nearby_characters(player)
-    return {
-        { name = "NPC1" },
-        { name = "NPC2" },
-        { name = "NPC3" },
-    }
+local trigger_calls = {}
+local mock_trigger = {}
+function mock_trigger.talker_player_speaks(dialogue)
+    table.insert(trigger_calls, { fn = "talker_player_speaks", dialogue = dialogue })
+end
+function mock_trigger.talker_player_whispers(dialogue)
+    table.insert(trigger_calls, { fn = "talker_player_whispers", dialogue = dialogue })
+end
+setmetatable(mock_trigger, { __index = function() return function() end end })
+
+package.loaded["interface.config"]   = mock_config
+package.loaded["interface.recorder"] = mock_recorder
+package.loaded["interface.trigger"]  = mock_trigger
+
+-- talker_whisper_state is an engine global set up by test_bootstrap as {}.
+talker_whisper_state = { is_whisper_active = function() return false end }
+
+-- Override bootstrap's is_player_alive stub.
+talker_game_queries.is_player_alive = function() return true end
+
+-- Load the actual script under test.
+package.path = package.path .. ';./gamedata/scripts/?.script'
+
+-- Intercept RegisterScriptCallback to capture the key-press handler.
+local captured_key_handler = nil
+RegisterScriptCallback = function(event, fn)
+    if event == "on_key_press" then captured_key_handler = fn end
 end
 
-function game_api.get_name(character)
-    return character.name
+require('talker_input_mic')
+on_game_start()  -- triggers RegisterScriptCallback("on_key_press", ...)
+
+-- ── Helpers ──────────────────────────────────────────────────────────────────
+
+local function reset()
+    recorder_calls = {}
+    trigger_calls  = {}
+    talker_game_queries.is_player_alive   = function() return true end
+    talker_whisper_state.is_whisper_active = function() return false end
+    mock_config.speak_key      = function() return CONFIGURED_SPEAK_KEY end
+    mock_config.is_mic_enabled = function() return true end
 end
 
-function game_api.is_player_alive()
-    return true
+local function press(key)
+    captured_key_handler(key)
 end
 
-mic.active = false
-mic.prompt = nil
-mic.transcription = nil
-
-
-
-
-function mic.is_mic_on()
-    return mic.active
+-- ── Tests ────────────────────────────────────────────
+function testIsLoaded()
+    luaunit.assertTrue(is_loaded())
 end
 
-function mic.start(prompt)
-    mic.active = true
-    mic.prompt = prompt
+function testConfiguredSpeakKeyStartsRecorder()
+    reset()
+    press(CONFIGURED_SPEAK_KEY)
+    luaunit.assertEquals(#recorder_calls, 1)
+    luaunit.assertEquals(recorder_calls[1].fn, "start")
 end
 
-function mic.stop()
-    mic.active = false
-    mic.prompt = nil
+function testWrongKeyIsNoop()
+    reset()
+    press("DIK_SPACE")
+    luaunit.assertEquals(#recorder_calls, 0)
 end
 
-function mic.get_transcription()
-    return mic.transcription
+function testMicDisabledIsNoop()
+    reset()
+    mock_config.is_mic_enabled = function() return false end
+    press(CONFIGURED_SPEAK_KEY)
+    luaunit.assertEquals(#recorder_calls, 0)
 end
 
-function async.repeat_until_true(interval, func)
-    -- For testing purposes, call the function immediately
-    func()
+function testDeadPlayerIsNoop()
+    reset()
+    talker_game_queries.is_player_alive = function() return false end
+    press(CONFIGURED_SPEAK_KEY)
+    luaunit.assertEquals(#recorder_calls, 0)
 end
 
-local function table_to_args(table_input)
-    local args = {}
-    for key, value in pairs(table_input) do
-        table.insert(args, value)
-    end
-    return unpack(args)
+function testTranscriptionFiresPlayerSpeaks()
+    reset()
+    press(CONFIGURED_SPEAK_KEY)
+    luaunit.assertEquals(#recorder_calls, 1)
+    recorder_calls[1].callback("Hello Zone")
+    luaunit.assertEquals(#trigger_calls, 1)
+    luaunit.assertEquals(trigger_calls[1].fn, "talker_player_speaks")
+    luaunit.assertEquals(trigger_calls[1].dialogue, "Hello Zone")
 end
 
-event_creator.last_event = nil
-
-function event_creator.register_game_event_near_player(event_string, args)
-    event_creator.last_event = string.format(event_string, table_to_args(args))
+function testTranscriptionInWhisperModeFiresPlayerWhispers()
+    reset()
+    talker_whisper_state.is_whisper_active = function() return true end
+    press(CONFIGURED_SPEAK_KEY)
+    recorder_calls[1].callback("Quiet words")
+    luaunit.assertEquals(#trigger_calls, 1)
+    luaunit.assertEquals(trigger_calls[1].fn, "talker_player_whispers")
+    luaunit.assertEquals(trigger_calls[1].dialogue, "Quiet words")
 end
 
--- Import the module under test, replacing dependencies with mocks
-local left_alt = DIK_keys.DIK_LMENU
-
-local function get_names_of_nearby_characters()
-    local player_obj = game_api.get_player()
-    local nearby_characters = game_api.get_nearby_characters(player_obj)
-    local names = {}
-    for _, character in ipairs(nearby_characters) do
-        table.insert(names, game_api.get_name(character))
-    end
-    return names
+function testDifferentConfiguredKeyRespected()
+    -- Changing the MCM speak key binding should work without any code changes.
+    reset()
+    mock_config.speak_key = function() return "DIK_F5" end
+    press("DIK_F5")
+    luaunit.assertEquals(#recorder_calls, 1)
+    -- The previously-configured key no longer works.
+    recorder_calls = {}
+    press(CONFIGURED_SPEAK_KEY)
+    luaunit.assertEquals(#recorder_calls, 0)
 end
-
-function create_transcription_prompt(list_of_names)
-    local prompt = "START-STALKER setting, nearby characters are, "
-    for i, name in ipairs(list_of_names) do
-        prompt = prompt .. name
-        if i < #list_of_names then
-            prompt = prompt .. ", "
-        end
-    end
-    return prompt
-end
-
-local function toggle_mic()
-    if mic.is_mic_on() then
-        mic.stop()
-    else
-        local names = get_names_of_nearby_characters()
-        local prompt = create_transcription_prompt(names)
-        mic.start(prompt)
-    end
-end
-
-local function player_character_speaks(dialogue)
-    local player_name = game_api.get_name(game_api.get_player())
-    event_creator.register_game_event_near_player("%s said: %s", {player_name, dialogue})
-end
-
-local function on_key_press(key)
-    if key ~= left_alt or not game_api.is_player_alive() then return end
-    toggle_mic()
-    async.repeat_until_true(0.1, function()
-        local dialogue = mic.get_transcription()
-        if dialogue then
-            player_character_speaks(dialogue)
-            return true
-        end
-    end)
-end
-
-function testGetNamesOfNearbyCharacters()
-    local expected_names = {"NPC1", "NPC2", "NPC3"}
-    local names = get_names_of_nearby_characters()
-    luaunit.assertEquals(names, expected_names)
-end
-
-function testCreateTranscriptionPrompt()
-    local names = {"NPC1", "NPC2", "NPC3"}
-    local expected_prompt = "START-STALKER setting, nearby characters are, NPC1, NPC2, NPC3"
-    local prompt = create_transcription_prompt(names)
-    luaunit.assertEquals(prompt, expected_prompt)
-end
-
-function testToggleMicWhenOff()
-    mic.active = false
-    mic.prompt = nil
-    toggle_mic()
-    luaunit.assertTrue(mic.is_mic_on())
-    local expected_prompt = "START-STALKER setting, nearby characters are, NPC1, NPC2, NPC3"
-    luaunit.assertEquals(mic.prompt, expected_prompt)
-end
-
-function testToggleMicWhenOn()
-    mic.active = true
-    mic.prompt = "Existing Prompt"
-    toggle_mic()
-    luaunit.assertFalse(mic.is_mic_on())
-    luaunit.assertNil(mic.prompt)
-end
-
-function testRegisterPlayerSpeakEvent()
-    local dialogue = "Hello there!"
-    player_character_speaks(dialogue)
-    local expected_event = "Player1 said: Hello there!"
-    luaunit.assertEquals(event_creator.last_event, expected_event)
-end
-
-function testOnKeyPressWithLeftAltAndPlayerAlive()
-    mic.active = false
-    mic.transcription = "Test dialogue"
-    event_creator.last_event = nil
-
-    on_key_press(left_alt)
-
-    -- Mic should be toggled on
-    luaunit.assertTrue(mic.is_mic_on())
-
-    -- Mic prompt should be set correctly
-    local expected_prompt = "START-STALKER setting, nearby characters are, NPC1, NPC2, NPC3"
-    luaunit.assertEquals(mic.prompt, expected_prompt)
-
-    -- Since async.repeat_until_true calls the function immediately, the event should be registered
-    local expected_event = "Player1 said: Test dialogue"
-    luaunit.assertEquals(event_creator.last_event, expected_event)
-end
-
-function testOnKeyPressWithNonLeftAltKey()
-    mic.active = false
-    mic.transcription = nil
-    event_creator.last_event = nil
-
-    on_key_press("other_key")
-
-    -- Mic should not be toggled
-    luaunit.assertFalse(mic.is_mic_on())
-    luaunit.assertNil(mic.prompt)
-    luaunit.assertNil(event_creator.last_event)
-end
-
-function testOnKeyPressWhenPlayerDead()
-    mic.active = false
-    mic.transcription = nil
-    event_creator.last_event = nil
-
-    -- Mock player is dead
-    function game_api.is_player_alive()
-        return false
-    end
-
-    on_key_press(left_alt)
-
-    -- Mic should not be toggled
-    luaunit.assertFalse(mic.is_mic_on())
-    luaunit.assertNil(mic.prompt)
-    luaunit.assertNil(event_creator.last_event)
-
-    -- Restore player alive status for other tests
-    function game_api.is_player_alive()
-        return true
-    end
-end
-
 
 os.exit(luaunit.LuaUnit.run())

@@ -1,28 +1,20 @@
 {
-  "description": "T1: DEATH + Full scene + Dead leader (General Voronin) + Narrative memory. Wolf kills Bandit_001 in Cordon.",
-
+  "description": "IDLE event: Wolf is idle nearby, auto-selected as the single witness/speaker.",
   "input": {
     "topic": "game.event",
     "payload": {
       "event": {
-        "type": "death",
+        "type": "idle",
         "context": {
-          "killer": {
+          "actor": {
             "game_id": 12345,
             "name": "Wolf",
             "faction": "stalker",
             "experience": "Veteran",
             "reputation": 750
-          },
-          "victim": {
-            "game_id": 67890,
-            "name": "Bandit_001",
-            "faction": "bandit",
-            "experience": "Experienced",
-            "reputation": -300
           }
         },
-        "game_time_ms": 2000000,
+        "game_time_ms": 43200000,
         "witnesses": [
           {
             "game_id": 12345,
@@ -31,14 +23,6 @@
             "experience": "Veteran",
             "reputation": 750,
             "personality": "gruff_but_fair"
-          },
-          {
-            "game_id": 11111,
-            "name": "Petruha",
-            "faction": "stalker",
-            "experience": "Experienced",
-            "reputation": 0,
-            "personality": "generic.15"
           }
         ],
         "flags": {}
@@ -46,35 +30,12 @@
       "is_important": true
     }
   },
-
   "state_mocks": {
     "state.query.memories": {
       "response": {
-        "narrative": "Wolf had been patrolling the Cordon for three days.",
-        "last_update_time_ms": 1000000,
-        "new_events": [
-          {
-            "type": "callout",
-            "context": {
-              "spotter": {
-                "game_id": 12345,
-                "name": "Wolf",
-                "faction": "stalker",
-                "experience": "Veteran",
-                "reputation": 750
-              },
-              "target": {
-                "game_id": 99999,
-                "name": "Bloodsucker",
-                "faction": "monster",
-                "experience": "Experienced",
-                "reputation": 0
-              }
-            },
-            "game_time_ms": 1500000,
-            "flags": {}
-          }
-        ]
+        "narrative": null,
+        "last_update_time_ms": 0,
+        "new_events": []
       }
     },
     "state.query.character": {
@@ -87,85 +48,38 @@
         "personality": "gruff_but_fair",
         "backstory": "veteran_stalker",
         "weapon": "AK-74",
-        "visual_faction": "stalker"
+        "visual_faction": null
       }
     },
     "state.query.world": {
       "response": {
         "loc": "l01_escape",
-        "poi": "Rookie Village",
-        "time": {"Y": 2012, "M": 6, "D": 15, "h": 14, "m": 30, "s": 0, "ms": 0},
-        "weather": "clear",
+        "poi": null,
+        "time": {
+          "Y": 2012,
+          "M": 6,
+          "D": 15,
+          "h": 12,
+          "m": 0,
+          "s": 0,
+          "ms": 0
+        },
+        "weather": "overcast",
         "emission": false,
         "psy_storm": false,
         "sheltering": false,
-        "campfire": null,
+        "campfire": "escape_campfire",
         "brain_scorcher_disabled": false,
         "miracle_machine_disabled": false
       }
     },
     "state.query": {
-      "response": {
-        "agr_smart_terrain_1_6_near_2_military_colonel_kovalski": true,
-        "bar_dolg_leader": false,
-        "mil_smart_terrain_7_7_freedom_leader_stalker": true,
-        "mar_smart_terrain_base_stalker_leader_marsh": true,
-        "yan_stalker_sakharov": true,
-        "cit_killers_merc_trader_stalker": true,
-        "zat_b7_bandit_boss_sultan": true,
-        "lider_monolith_haron": true,
-        "kat_greh_sabaoth": true,
-        "gen_greh_sabaoth": true,
-        "sar_greh_sabaoth": true,
-        "ds_domik_isg_leader": true,
-        "jup_depo_isg_leader": true,
-        "esc_m_trader": true,
-        "m_trader": true,
-        "esc_2_12_stalker_trader": true,
-        "esc_2_12_stalker_wolf": true,
-        "esc_2_12_stalker_fanat": true,
-        "devushka": true
-      }
+      "response": {}
     }
   },
-
   "llm_mocks": [
     {
-      "response": "{\"id\": 12345}",
-      "request": {
-        "model": "gpt-4o-mini",
-        "messages": [
-          {
-            "role": "system",
-            "content": "# CORE DIRECTIVE: SPEAKER ID SELECTION ENGINE\n\nYou are a Speaker ID Selection Engine. Your task is to identify the next speaker based on events and the conversation flow.\n\n## INSTRUCTIONS:\n1. Analyze the `CANDIDATES` and `EVENTS` sections to see who was addressed or who would logically react based on their traits.\n2. Return ONLY a valid JSON object with the 'id' of the selected speaker.\n\n\nExample Output: { \"id\": 123 }\n3. Do not include markdown formatting (like ```json)."
-          },
-          {
-            "role": "system",
-            "content": "## CANDIDATES (in order of distance): <CANDIDATES>\n\n[ID: 12345] Wolf, a Veteran rank member of the Loner faction, [ID: 11111] Petruha, a Experienced rank member of the Loner faction\n\n</CANDIDATES>"
-          },
-          {
-            "role": "system",
-            "content": "## CURRENT EVENTS (oldest to newest):\n\n<EVENTS>\n"
-          },
-          {
-            "role": "user",
-            "content": "Wolf (Veteran, Loner, Reputation: 750) killed Bandit_001 (Experienced, Bandit, Reputation: -300)"
-          },
-          {
-            "role": "system",
-            "content": "</EVENTS>"
-          },
-          {
-            "role": "system",
-            "content": "## FINAL INSTRUCTION: Return ONLY the JSON object containing the speaker ID of the most likely next speaker. Do not provide **ANY** analysis, reasoning, or explanation."
-          }
-        ],
-        "temperature": 0.3,
-        "max_tokens": 50
-      }
-    },
-    {
-      "response": "Another bandit down. Good riddance.",
+      "response": "You new around here? Don't get comfortable \u00e2\u20ac\u201d the Zone has a way of surprising you.",
       "request": {
         "model": "gpt-4o-mini",
         "messages": [
@@ -211,15 +125,11 @@
           },
           {
             "role": "system",
-            "content": "## CURRENT LOCATION\n\nLocation: Cordon (near Rookie Village)\nTime: afternoon\nWeather: clear\n"
+            "content": "## CURRENT LOCATION\n\nLocation: Cordon\nTime: afternoon\nWeather: overcast\n"
           },
           {
             "role": "system",
-            "content": "## DYNAMIC WORLD STATE / NEWS\n\nGeneral Voronin, leader of Duty, is dead.\n\nThe Military and Loners have an uneasy truce in Cordon. The Military controls the southern checkpoint but allows stalkers through as long as they don't cause trouble.\n"
-          },
-          {
-            "role": "system",
-            "content": "## LONG-TERM MEMORIES\n\n<MEMORIES>\nWolf had been patrolling the Cordon for three days.\n</MEMORIES>"
+            "content": "## DYNAMIC WORLD STATE / NEWS\n\nThe Military and Loners have an uneasy truce in Cordon. The Military controls the southern checkpoint but allows stalkers through as long as they don't cause trouble.\n"
           },
           {
             "role": "system",
@@ -231,11 +141,7 @@
           },
           {
             "role": "user",
-            "content": "Wolf (Veteran, Loner, Reputation: 750) spotted Bloodsucker (Monster)"
-          },
-          {
-            "role": "user",
-            "content": "Wolf (Veteran, Loner, Reputation: 750) killed Bandit_001 (Experienced, Bandit, Reputation: -300)"
+            "content": "Wolf (Veteran, Loner, Reputation: 750) is nearby and available for conversation"
           },
           {
             "role": "system",
@@ -247,7 +153,7 @@
           },
           {
             "role": "system",
-            "content": "## `CONTEXT` SECTION: USE GUIDELINES\n\n0. **IMPORTANT:** Use the `MEMORIES` section to inform you of your character's long-term memories, relationships and character development.\n1. **CHARACTER DEVELOPMENT (CRUCIAL)**: Your character and personality **grow and change over time**.\n2. **SUBTLETY:** Use the `CONTEXT` section to **SUBTLY** inform your response.\n3. Use any 'TIME GAP' event to help establish a timeline.\n4. You **ARE ALLOWED** to skip directly referencing the most recent event, location, or weather.\n5. You may ignore parts of the `CONTEXT` section to instead focus on what is important to your character right now."
+            "content": "## `CONTEXT` SECTION: USE GUIDELINES\n\n1. **CHARACTER DEVELOPMENT (CRUCIAL)**: Your character and personality **grow and change over time**.\n2. **SUBTLETY:** Use the `CONTEXT` section to **SUBTLY** inform your response.\n3. Use any 'TIME GAP' event to help establish a timeline.\n4. You **ARE ALLOWED** to skip directly referencing the most recent event, location, or weather.\n5. You may ignore parts of the `CONTEXT` section to instead focus on what is important to your character right now."
           },
           {
             "role": "system",
@@ -259,17 +165,37 @@
       }
     }
   ],
-
   "expected": {
     "state_queries": [
       {
         "topic": "state.query.batch",
         "payload": {
           "queries": [
-            {"id": "mem", "resource": "store.memories", "params": {"character_id": "12345"}},
-            {"id": "char", "resource": "query.character", "params": {"id": "12345"}},
-            {"id": "world", "resource": "query.world"},
-            {"id": "alive", "resource": "query.characters_alive", "params": {"ids": "__ANY_LIST__"}}
+            {
+              "id": "mem",
+              "resource": "store.memories",
+              "params": {
+                "character_id": "12345"
+              }
+            },
+            {
+              "id": "char",
+              "resource": "query.character",
+              "params": {
+                "id": "12345"
+              }
+            },
+            {
+              "id": "world",
+              "resource": "query.world"
+            },
+            {
+              "id": "alive",
+              "resource": "query.characters_alive",
+              "params": {
+                "ids": "__ANY_LIST__"
+              }
+            }
           ]
         }
       }
@@ -279,7 +205,7 @@
         "topic": "dialogue.display",
         "payload": {
           "speaker_id": "12345",
-          "dialogue": "Another bandit down. Good riddance.",
+          "dialogue": "You new around here? Don't get comfortable \u00e2\u20ac\u201d the Zone has a way of surprising you.",
           "create_event": true,
           "event_context": {
             "world_context": null

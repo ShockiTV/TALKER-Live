@@ -1,4 +1,4 @@
-﻿-- microphone.lua
+-- microphone.lua
 -- Manages the microphone and transcription process via ZMQ.
 -- Sends mic.start / mic.stop commands to mic_python via the ZMQ bridge.
 -- ZMQ handlers for mic.status and mic.result are registered per recording session
