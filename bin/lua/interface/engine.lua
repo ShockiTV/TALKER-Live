@@ -55,6 +55,13 @@ function M.get_faction(obj)
     return q and q.get_faction(obj) or nil
 end
 
+--- Returns the voice theme ID for an NPC from its sound_prefix, e.g. "stalker_1".
+--- Returns nil if the object is not loaded or has no sound prefix.
+function M.get_sound_prefix(obj)
+    local q = get_q()
+    return q and q.get_sound_prefix(obj) or nil
+end
+
 function M.get_rank(obj)
     local q = get_q()
     return q and q.get_rank(obj) or "0"
@@ -316,6 +323,12 @@ end
 function M.reset_time_event(event_id, action_id)
     if ResetTimeEvent then
         ResetTimeEvent(event_id, action_id)
+    end
+end
+
+function M.remove_time_event(event_id, action_id)
+    if RemoveTimeEvent then
+        RemoveTimeEvent(event_id, action_id)
     end
 end
 

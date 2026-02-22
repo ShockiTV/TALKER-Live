@@ -48,7 +48,7 @@ function load_state(saved_data)
     if (saved_data.backstories) then
         backstories_store.load_save_data(saved_data.backstories)
     end
-    
+
     -- Load levels store (with legacy migration bridge)
     if saved_data.levels then
         levels_store.load_save_data(saved_data.levels)

@@ -48,9 +48,14 @@ mic_python/python/talker_audio.ogg
 openAi_API_KEY.key
 openai_api_key.txt
 talker.log
+# Generated voice model files (baked from .wav sources via export_voices.bat)
+mic_python/voices/**/*.ogg
+mic_python/voices/**/*.wav
+mic_python/voices/**/*.safetensors
 *.key
 .env
 .venv/
+.venv_df/
 **/__pycache__/
 **/.test_artifacts/
 **/.pytest_cache/

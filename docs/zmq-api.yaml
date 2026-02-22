@@ -351,3 +351,29 @@ messages:
     description: "mic_python delivers the final transcription"
     payload:
       text: { type: string, required: true, description: "Transcribed text. Empty string on failure." }
+
+  # ── TTS IPC (Lua → mic_python) ───────────────────────────────────────────────
+  # Lua PUB :5555 → mic_python SUB (tts.* filter, only when --tts active)
+
+  tts.speak:
+    direction: lua→mic_python
+    description: "Command mic_python to synthesise and play a TTS audio line"
+    payload:
+      voice_id:   { type: string, required: true, description: "Voice theme ID derived from npc:sound_prefix() (e.g. 'stalker_1', 'dolg_3'). Matches folder name under mic_python/voices/. Falls back to faction pool from voice_data.lua if engine lookup fails." }
+      text:       { type: string, required: true, description: "Dialogue text to synthesise" }
+      speaker_id: { type: string, required: true, description: "NPC game_id (echoed back in tts.started/tts.done)" }
+
+  # ── TTS IPC (mic_python → Lua) ───────────────────────────────────────────────
+  # mic_python PUB :5557 → Lua mic SUB (tts.* topics picked up by bridge.lua)
+
+  tts.started:
+    direction: mic_python→lua
+    description: "mic_python has begun playing the TTS audio for an NPC line. Lua should display HUD subtitle now."
+    payload:
+      speaker_id: { type: string, required: true, description: "NPC game_id, echoed from tts.speak" }
+
+  tts.done:
+    direction: mic_python→lua
+    description: "mic_python has finished playing the TTS audio line. Lua dequeues item and sends the next one."
+    payload:
+      speaker_id: { type: string, required: true, description: "NPC game_id, echoed from tts.speak" }

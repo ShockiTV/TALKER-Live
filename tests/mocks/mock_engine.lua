@@ -63,6 +63,10 @@ function M.get_faction(obj)
     return _get("get_faction", obj and obj.faction or "unknown")
 end
 
+function M.get_sound_prefix(obj)
+    return _get("get_sound_prefix", obj and obj.sound_prefix or nil)
+end
+
 function M.get_rank(obj)
     return _get("get_rank", "2")
 end
@@ -274,6 +278,10 @@ function M.create_time_event(event_id, action_id, delay, func)
 end
 
 function M.reset_time_event(event_id, action_id)
+    -- no-op
+end
+
+function M.remove_time_event(event_id, action_id)
     -- no-op
 end
 

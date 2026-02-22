@@ -195,6 +195,10 @@ local function init_mic_sub_socket()
         return false
     end
 
+    -- Also subscribe to tts.* topics (mic_python publishes tts.started / tts.done)
+    local tts_filter = "tts."
+    zmq_lib.zmq_setsockopt(zmq_mic_sub_socket, ZMQ_SUBSCRIBE, tts_filter, #tts_filter)
+
     -- Connect to mic_python PUB endpoint
     rc = zmq_lib.zmq_connect(zmq_mic_sub_socket, config.mic_sub_endpoint)
     if rc ~= 0 then

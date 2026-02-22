@@ -72,7 +72,25 @@ function on_mcm_load()
                 },
                 name = "ui_mcm_talker_voice_provider"
             },
- 
+            -- TTS (Text-to-Speech)
+            {
+                id = "enable_tts_title",
+                type = "desc",
+                clr = {200, 200, 255, 200},
+                text = "ui_mcm_talker_enable_tts_title"
+            },
+            {
+                id = "enable_tts_description",
+                type = "desc",
+                text = "ui_mcm_talker_enable_tts_description"
+            },
+            {
+                id = "enable_tts",
+                type = "check",
+                val = 1,
+                def = false,
+            },
+
             -- Language Selection
             {
                 id = "language",

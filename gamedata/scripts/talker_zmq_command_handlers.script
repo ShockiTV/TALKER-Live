@@ -9,9 +9,17 @@ local memory_store = require("domain.repo.memory_store")
 local event_store = require("domain.repo.event_store")
 local Event = require("domain.model.event")
 local EventType = require("domain.model.event_types")
+local config = require("interface.config")
+local engine = require("interface.engine")
 
 -- References to ZMQ integration (lazy-loaded)
 local zmq_integration = nil
+
+-- TTS state
+local TTS_QUEUE_MAX    = 5
+local tts_queue        = {}   -- items: { voice_id, text, speaker_id, dialogue, event_context, create_event }
+local tts_pending_item = nil  -- item currently being played
+local tts_timeout_id   = "talker_tts_timeout"
 
 --------------------------------------------------------------------------------
 -- Helpers
@@ -29,83 +37,159 @@ local function get_queries()
 end
 
 --------------------------------------------------------------------------------
+-- TTS Queue Helpers
+--------------------------------------------------------------------------------
+
+-- Publish the next TTS item from the queue to mic_python.
+-- Stores it as tts_pending_item and starts the 30-second safety timeout.
+local function publish_next_tts()
+    if #tts_queue == 0 then return end
+
+    local item = tts_queue[1]  -- peek head (will be removed in handle_tts_done)
+    tts_pending_item = item
+
+    -- Publish tts.speak to mic_python via bridge
+    local ok, err = pcall(function()
+        local bridge = require("infra.zmq.bridge")
+        bridge.publish("tts.speak", {
+            voice_id   = item.voice_id or "",
+            text       = item.text or "",
+            speaker_id = item.speaker_id or "",
+        })
+    end)
+    if not ok then
+        logger.error("Failed to publish tts.speak: %s", err)
+        -- Skip this item on publish failure
+        table.remove(tts_queue, 1)
+        tts_pending_item = nil
+        publish_next_tts()
+        return
+    end
+
+    logger.debug("Published tts.speak for speaker=%s, voice=%s", item.speaker_id, item.voice_id)
+
+    -- Start 30-second safety timeout
+    engine.create_time_event(tts_timeout_id, tts_timeout_id, 30, function()
+        if tts_pending_item then
+            logger.warn("TTS timeout: tts.started not received within 30s, skipping item (speaker=%s)",
+                tts_pending_item.speaker_id)
+            table.remove(tts_queue, 1)
+            tts_pending_item = nil
+            publish_next_tts()
+        end
+        return true  -- one-shot
+    end)
+end
+
+-- Actually display the dialogue HUD for an item.
+local function display_dialogue_for_item(item)
+    if not item then return end
+    local ok, err = pcall(function()
+        game_adapter.display_dialogue(item.speaker_id, item.dialogue or "")
+    end)
+    if not ok then
+        logger.error("Failed to display dialogue in TTS flow: %s", err)
+    end
+end
+
+--------------------------------------------------------------------------------
 -- Command Handlers
 --------------------------------------------------------------------------------
 
+--- Helper: create and store a dialogue event.
+local function _create_dialogue_event(speaker_id, dialogue, event_context, create_event)
+    if not create_event then return end
+    local ok, err = pcall(function()
+        local queries = get_queries()
+        local current_time = queries and queries.get_game_time_ms() or os.time() * 1000
+
+        local speaker_char = game_adapter.get_character_by_id(speaker_id)
+        if not speaker_char then
+            logger.warn("Could not get speaker character for event creation")
+            return
+        end
+
+        local player    = game_adapter.get_player_character()
+        local witnesses = { speaker_char }
+        if player then table.insert(witnesses, player) end
+
+        local context = { speaker = speaker_char, text = dialogue }
+        for k, v in pairs(event_context) do context[k] = v end
+
+        local dialogue_event = Event.create(
+            EventType.DIALOGUE,
+            context,
+            current_time,
+            witnesses,
+            { is_silent = true }
+        )
+        event_store:store_event(dialogue_event)
+        logger.debug("Created dialogue event for speaker %s", speaker_id)
+    end)
+    if not ok then
+        logger.error("Failed to create dialogue event: %s", err)
+    end
+end
+
 --- Handler for dialogue.display command
--- Displays dialogue from a speaker to the player
+-- When TTS is enabled: push to tts_queue and dispatch to mic_python.
+-- HUD text is shown only after tts.started is received.
+-- When TTS is disabled: immediate display (original behaviour).
 local function handle_dialogue_display(topic, payload)
-    local speaker_id = payload.speaker_id
-    local dialogue = payload.dialogue
-    local create_event = payload.create_event ~= false  -- Default true
+    local speaker_id    = payload.speaker_id
+    local dialogue      = payload.dialogue
+    local create_event  = payload.create_event ~= false  -- Default true
     local event_context = payload.event_context or {}
-    
+
     logger.info("Handling dialogue.display for speaker: %s", speaker_id)
-    
+
     if not speaker_id or not dialogue then
         logger.error("dialogue.display requires speaker_id and dialogue")
         return
     end
-    
-    -- Display the dialogue
-    local ok, err = pcall(function()
-        game_adapter.display_dialogue(speaker_id, dialogue)
-    end)
-    
-    if not ok then
-        logger.error("Failed to display dialogue: %s", err)
-        return
+
+    -- Determine voice_id from payload, or resolve via engine sound prefix
+    local voice_id = payload.voice_id
+    if not voice_id or voice_id == "" then
+        local obj = engine.get_obj_by_id(speaker_id)
+        voice_id = (obj and engine.get_sound_prefix(obj)) or ""
     end
-    
-    -- Create and store dialogue event if requested
-    if create_event then
-        local ok2, err2 = pcall(function()
-            local queries = get_queries()
-            local current_time = queries and queries.get_game_time_ms() or os.time() * 1000
-            
-            -- Get speaker character for witnesses
-            local speaker_char = game_adapter.get_character_by_id(speaker_id)
-            if not speaker_char then
-                logger.warn("Could not get speaker character for event creation")
-                return
-            end
-            
-            -- Get player character
-            local player = game_adapter.get_player_character()
-            
-            -- Build witnesses list
-            local witnesses = { speaker_char }
-            if player then
-                table.insert(witnesses, player)
-            end
-            
-            -- Create the dialogue event
-            local context = {
-                speaker = speaker_char,
-                text = dialogue,
-            }
-            
-            -- Merge any additional context
-            for k, v in pairs(event_context) do
-                context[k] = v
-            end
-            
-            local dialogue_event = Event.create(
-                EventType.DIALOGUE,
-                context,
-                current_time,
-                witnesses,
-                { is_silent = true }  -- Don't trigger another dialogue from this
-            )
-            
-            -- Store the event
-            event_store:store_event(dialogue_event)
-            logger.debug("Created dialogue event for speaker %s", speaker_id)
-        end)
-        
-        if not ok2 then
-            logger.error("Failed to create dialogue event: %s", err2)
+
+    if config.tts_enabled() then
+        -- TTS path: queue the item
+        if #tts_queue >= TTS_QUEUE_MAX then
+            logger.warn("TTS queue full (max %d), dropping dialogue for speaker %s", TTS_QUEUE_MAX, speaker_id)
+            return
         end
+
+        local queue_was_empty = (#tts_queue == 0) and (tts_pending_item == nil)
+
+        table.insert(tts_queue, {
+            voice_id      = voice_id,
+            text          = dialogue,
+            speaker_id    = speaker_id,
+            dialogue      = dialogue,
+            event_context = event_context,
+            create_event  = create_event,
+        })
+
+        logger.debug("Queued TTS item for speaker=%s (queue size now %d)", speaker_id, #tts_queue)
+
+        if queue_was_empty then
+            publish_next_tts()
+        end
+    else
+        -- Non-TTS path: immediate display (original behaviour)
+        local ok, err = pcall(function()
+            game_adapter.display_dialogue(speaker_id, dialogue)
+        end)
+
+        if not ok then
+            logger.error("Failed to display dialogue: %s", err)
+            return
+        end
+
+        _create_dialogue_event(speaker_id, dialogue, event_context, create_event)
     end
 end
 
@@ -208,6 +292,43 @@ local function handle_heartbeat_ack(topic, payload)
     end
 end
 
+--- Handler for tts.started — mic_python has begun playing the NPC voice.
+-- Cancel the safety timeout and show the HUD dialogue text.
+local function handle_tts_started(topic, payload)
+    logger.debug("Received tts.started from mic_python (speaker=%s)", payload.speaker_id or "?")
+
+    -- Cancel 30-second safety timeout
+    engine.remove_time_event(tts_timeout_id, tts_timeout_id)
+
+    -- Display HUD text for the pending item
+    if tts_pending_item then
+        display_dialogue_for_item(tts_pending_item)
+        _create_dialogue_event(
+            tts_pending_item.speaker_id,
+            tts_pending_item.dialogue,
+            tts_pending_item.event_context,
+            tts_pending_item.create_event
+        )
+    else
+        logger.warn("tts.started received but no pending TTS item")
+    end
+end
+
+--- Handler for tts.done — mic_python has finished playing the NPC voice.
+-- Remove the completed item from the queue and play the next one if any.
+local function handle_tts_done(topic, payload)
+    logger.debug("Received tts.done from mic_python (speaker=%s)", payload.speaker_id or "?")
+
+    if #tts_queue > 0 then
+        table.remove(tts_queue, 1)
+    end
+    tts_pending_item = nil
+
+    if #tts_queue > 0 then
+        publish_next_tts()
+    end
+end
+
 --------------------------------------------------------------------------------
 -- Registration
 --------------------------------------------------------------------------------
@@ -226,6 +347,8 @@ local function register_handlers()
     zmq.register_command_handler("event.store", handle_event_store)
     zmq.register_command_handler("config.request", handle_config_request)
     zmq.register_command_handler("service.heartbeat.ack", handle_heartbeat_ack)
+    zmq.register_command_handler("tts.started", handle_tts_started)
+    zmq.register_command_handler("tts.done", handle_tts_done)
     
     logger.info("ZMQ command handlers registered successfully")
     return true
