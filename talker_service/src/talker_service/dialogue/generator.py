@@ -231,11 +231,20 @@ class DialogueGenerator:
             logger.debug("No non-player witnesses")
             return None
         
-        # Filter by cooldown
-        available = self.speakers.filter_by_cooldown(candidates, current_time_ms)
-        if not available:
-            logger.debug("All speakers on cooldown")
-            return None
+        # Player-directed events (is_dialogue flag) bypass cooldown so the NPC
+        # always responds when the player explicitly speaks to them.
+        flags = event.get("flags", {})
+        is_player_directed = flags.get("is_dialogue", False)
+
+        if is_player_directed:
+            available = candidates
+            logger.debug("Player-directed event — skipping cooldown filter")
+        else:
+            # Filter by cooldown
+            available = self.speakers.filter_by_cooldown(candidates, current_time_ms)
+            if not available:
+                logger.debug("All speakers on cooldown")
+                return None
         
         # If only one speaker, return them directly
         if len(available) == 1:

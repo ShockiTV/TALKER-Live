@@ -94,7 +94,6 @@ local function handle_dialogue_display(topic, payload)
                 EventType.DIALOGUE,
                 context,
                 current_time,
-                event_context.world_context or queries and queries.describe_world(speaker_char, player) or "",
                 witnesses,
                 { is_silent = true }  -- Don't trigger another dialogue from this
             )
