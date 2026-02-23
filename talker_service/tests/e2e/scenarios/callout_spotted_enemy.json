@@ -164,7 +164,7 @@
           },
           {
             "role": "system",
-            "content": "## CHARACTER ANCHOR (CORE IDENTITY)\n\n### CHARACTER ANCHOR USE GUIDELINES:\n0. **INTERNAL MONOLOGUE VS EXTERNAL ACTION:** Your traits define your **MINDSET**. They do **NOT** require you to narrate the action.\n1. **SUBTLETY:** The 'DEFINING CHARACTER TRAIT/BACKSTORY' should inform your characterisation subtly. Do not explicitly reference it in every response.\n2. **PRIORITY:** Your individual personality always takes precedence over general faction traits.\n3. AVOID talking about your weapon unless directly asked about it, or you have a **GOOD** reason to do so.\n\n### CHARACTER DETAILS:\n<CHARACTER>\n### NAME: Wolf\n### RANK: Veteran\n### FACTION: Loner\n### FACTION DESCRIPTION: Independent stalkers (Loners) who survive in the Zone through scavenging, artifact hunting, and odd jobs. No central leadership, just mutual aid.\n### BACKSTORY ANCHOR/DEFINING CHARACTER TRAIT (IMPORTANT): 'veteran_stalker'\n### PERSONALITY: You are gruff_but_fair.\n### CURRENT REPUTATION: 750\n### CURRENT WEAPON: You are wielding a AK-74\n</CHARACTER>"
+            "content": "## CHARACTER ANCHOR (CORE IDENTITY)\n\n### CHARACTER ANCHOR USE GUIDELINES:\n0. **INTERNAL MONOLOGUE VS EXTERNAL ACTION:** Your traits define your **MINDSET**. They do **NOT** require you to narrate the action.\n1. **SUBTLETY:** The 'DEFINING CHARACTER TRAIT/BACKSTORY' should inform your characterisation subtly. Do not explicitly reference it in every response.\n2. **PRIORITY:** Your individual personality always takes precedence over general faction traits.\n3. AVOID talking about your weapon unless directly asked about it, or you have a **GOOD** reason to do so.\n\n### CHARACTER DETAILS:\n<CHARACTER>\n### NAME: Wolf\n### RANK: Veteran\n### FACTION: Loner\n### FACTION DESCRIPTION: Independent stalkers (Loners) who survive in the Zone through scavenging, artifact hunting, and odd jobs. No central leadership, just mutual aid.\n### CURRENT REPUTATION: 750\n### CURRENT WEAPON: You are wielding a AK-74\n</CHARACTER>"
           },
           {
             "role": "system",
@@ -223,6 +223,23 @@
         "payload": {
           "queries": [
             {
+              "id": "personality",
+              "resource": "store.personalities",
+              "params": {
+                "target": [
+                  "12345",
+                  "11111"
+                ]
+              }
+            }
+          ]
+        }
+      },
+      {
+        "topic": "state.query.batch",
+        "payload": {
+          "queries": [
+            {
               "id": "mem",
               "resource": "store.memories",
               "params": {
@@ -233,8 +250,14 @@
               "id": "events",
               "resource": "store.events",
               "filter": {
-                "game_time_ms": {"$gt": "$ref:mem.last_update_time_ms"},
-                "witnesses": {"$elemMatch": {"game_id": "12345"}}
+                "game_time_ms": {
+                  "$gt": "$ref:mem.last_update_time_ms"
+                },
+                "witnesses": {
+                  "$elemMatch": {
+                    "game_id": "12345"
+                  }
+                }
               }
             },
             {
@@ -247,6 +270,24 @@
             {
               "id": "world",
               "resource": "query.world"
+            },
+            {
+              "id": "personality",
+              "resource": "store.personalities",
+              "params": {
+                "target": [
+                  "12345"
+                ]
+              }
+            },
+            {
+              "id": "backstory",
+              "resource": "store.backstories",
+              "params": {
+                "target": [
+                  "12345"
+                ]
+              }
             },
             {
               "id": "alive",

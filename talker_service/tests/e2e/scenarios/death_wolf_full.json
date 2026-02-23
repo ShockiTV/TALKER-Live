@@ -1,6 +1,5 @@
 {
   "description": "T1: DEATH + Full scene + Dead leader (General Voronin) + Narrative memory. Wolf kills Bandit_001 in Cordon.",
-
   "input": {
     "topic": "game.event",
     "payload": {
@@ -46,7 +45,6 @@
       "is_important": true
     }
   },
-
   "state_mocks": {
     "state.query.memories": {
       "response": {
@@ -96,7 +94,15 @@
       "response": {
         "loc": "l01_escape",
         "poi": "Rookie Village",
-        "time": {"Y": 2012, "M": 6, "D": 15, "h": 14, "m": 30, "s": 0, "ms": 0},
+        "time": {
+          "Y": 2012,
+          "M": 6,
+          "D": 15,
+          "h": 14,
+          "m": 30,
+          "s": 0,
+          "ms": 0
+        },
         "weather": "clear",
         "emission": false,
         "psy_storm": false,
@@ -130,7 +136,6 @@
       }
     }
   },
-
   "llm_mocks": [
     {
       "response": "{\"id\": 12345}",
@@ -201,7 +206,7 @@
           },
           {
             "role": "system",
-            "content": "## CHARACTER ANCHOR (CORE IDENTITY)\n\n### CHARACTER ANCHOR USE GUIDELINES:\n0. **INTERNAL MONOLOGUE VS EXTERNAL ACTION:** Your traits define your **MINDSET**. They do **NOT** require you to narrate the action.\n1. **SUBTLETY:** The 'DEFINING CHARACTER TRAIT/BACKSTORY' should inform your characterisation subtly. Do not explicitly reference it in every response.\n2. **PRIORITY:** Your individual personality always takes precedence over general faction traits.\n3. AVOID talking about your weapon unless directly asked about it, or you have a **GOOD** reason to do so.\n\n### CHARACTER DETAILS:\n<CHARACTER>\n### NAME: Wolf\n### RANK: Veteran\n### FACTION: Loner\n### FACTION DESCRIPTION: Independent stalkers (Loners) who survive in the Zone through scavenging, artifact hunting, and odd jobs. No central leadership, just mutual aid.\n### BACKSTORY ANCHOR/DEFINING CHARACTER TRAIT (IMPORTANT): 'veteran_stalker'\n### PERSONALITY: You are gruff_but_fair.\n### CURRENT REPUTATION: 750\n### CURRENT WEAPON: You are wielding a AK-74\n</CHARACTER>"
+            "content": "## CHARACTER ANCHOR (CORE IDENTITY)\n\n### CHARACTER ANCHOR USE GUIDELINES:\n0. **INTERNAL MONOLOGUE VS EXTERNAL ACTION:** Your traits define your **MINDSET**. They do **NOT** require you to narrate the action.\n1. **SUBTLETY:** The 'DEFINING CHARACTER TRAIT/BACKSTORY' should inform your characterisation subtly. Do not explicitly reference it in every response.\n2. **PRIORITY:** Your individual personality always takes precedence over general faction traits.\n3. AVOID talking about your weapon unless directly asked about it, or you have a **GOOD** reason to do so.\n\n### CHARACTER DETAILS:\n<CHARACTER>\n### NAME: Wolf\n### RANK: Veteran\n### FACTION: Loner\n### FACTION DESCRIPTION: Independent stalkers (Loners) who survive in the Zone through scavenging, artifact hunting, and odd jobs. No central leadership, just mutual aid.\n### CURRENT REPUTATION: 750\n### CURRENT WEAPON: You are wielding a AK-74\n</CHARACTER>"
           },
           {
             "role": "system",
@@ -261,18 +266,86 @@
       }
     }
   ],
-
   "expected": {
     "state_queries": [
       {
         "topic": "state.query.batch",
         "payload": {
           "queries": [
-            {"id": "mem", "resource": "store.memories", "params": {"character_id": "12345"}},
-            {"id": "events", "resource": "store.events", "filter": {"game_time_ms": {"$gt": "$ref:mem.last_update_time_ms"}, "witnesses": {"$elemMatch": {"game_id": "12345"}}}},
-            {"id": "char", "resource": "query.character", "params": {"id": "12345"}},
-            {"id": "world", "resource": "query.world"},
-            {"id": "alive", "resource": "query.characters_alive", "params": {"ids": "__ANY_LIST__"}}
+            {
+              "id": "personality",
+              "resource": "store.personalities",
+              "params": {
+                "target": [
+                  "12345",
+                  "11111"
+                ]
+              }
+            }
+          ]
+        }
+      },
+      {
+        "topic": "state.query.batch",
+        "payload": {
+          "queries": [
+            {
+              "id": "mem",
+              "resource": "store.memories",
+              "params": {
+                "character_id": "12345"
+              }
+            },
+            {
+              "id": "events",
+              "resource": "store.events",
+              "filter": {
+                "game_time_ms": {
+                  "$gt": "$ref:mem.last_update_time_ms"
+                },
+                "witnesses": {
+                  "$elemMatch": {
+                    "game_id": "12345"
+                  }
+                }
+              }
+            },
+            {
+              "id": "char",
+              "resource": "query.character",
+              "params": {
+                "id": "12345"
+              }
+            },
+            {
+              "id": "world",
+              "resource": "query.world"
+            },
+            {
+              "id": "personality",
+              "resource": "store.personalities",
+              "params": {
+                "target": [
+                  "12345"
+                ]
+              }
+            },
+            {
+              "id": "backstory",
+              "resource": "store.backstories",
+              "params": {
+                "target": [
+                  "12345"
+                ]
+              }
+            },
+            {
+              "id": "alive",
+              "resource": "query.characters_alive",
+              "params": {
+                "ids": "__ANY_LIST__"
+              }
+            }
           ]
         }
       }

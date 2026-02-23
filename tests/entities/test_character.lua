@@ -16,18 +16,5 @@ function testCharacterCreation()
     luaunit.assertEquals(char.faction, "Warrior")
 end
 
--- Test Character description method with dynamic personality incorporation
-function testCharacterDescription()
-    local char = Character.new(1, "John Doe", "Veteran", "Warrior")
-
-    -- Get the description from the character object
-    local description = Character.describe(char)
-
-    -- Description format: "John Doe, a Veteran rank member of the Warrior faction who is <personality>"
-    luaunit.assertStrContains(description, "John Doe")
-    luaunit.assertStrContains(description, "Veteran")
-    luaunit.assertStrContains(description, "Warrior")
-end
-
 -- Run tests
 os.exit(luaunit.LuaUnit.run())

@@ -40,8 +40,6 @@ types:
     faction:        { type: string, default: "stalker" }
     experience:     { type: string, description: "Rank: Novice, Trainee, Experienced, Professional, Veteran, Expert, Master, Legend" }
     reputation:     { type: integer, description: "Reputation value as a numeric score." }
-    personality:    { type: string, description: "Personality trait ID or comma-separated traits" }
-    backstory:      { type: string, description: "Backstory text or backstory ID" }
     weapon:         { type: string }
     visual_faction: { type: string, description: "Disguise faction if disguised, null otherwise" }
     story_id:       { type: string, description: "Story ID for notable character matching" }

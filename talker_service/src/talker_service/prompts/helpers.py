@@ -76,7 +76,7 @@ def describe_character(char: Character) -> str:
     return " ".join(parts)
 
 
-def describe_character_for_speaker(char: Character) -> str:
+def describe_character_for_speaker(char: Character, personality: str = "") -> str:
     """Format character description for speaker selection (personality, no reputation).
     
     Matches Lua fork's Character.describe() format used for speaker candidates.
@@ -85,6 +85,7 @@ def describe_character_for_speaker(char: Character) -> str:
     
     Args:
         char: Character to describe
+        personality: Optional personality string
         
     Returns:
         Formatted string like "Wolf, a Veteran rank member of the Loner faction who is cynical"
@@ -101,13 +102,13 @@ def describe_character_for_speaker(char: Character) -> str:
     
     # Add personality if available
     # Try resolve_personality for "faction.key" format, else use raw value with underscores cleaned
-    if char.personality:
-        resolved = resolve_personality(char.personality)
+    if personality:
+        resolved = resolve_personality(personality)
         if resolved:
             personality_text = resolved
         else:
             # Raw text: replace underscores with spaces
-            personality_text = char.personality.replace("_", " ")
+            personality_text = personality.replace("_", " ")
         description += f" who is {personality_text}"
     
     # Add weapon if available
@@ -117,7 +118,7 @@ def describe_character_for_speaker(char: Character) -> str:
     return description
 
 
-def describe_character_with_id(char: Character) -> str:
+def describe_character_with_id(char: Character, personality: str = "") -> str:
     """Format character with ID for speaker selection.
     
     Uses describe_character_for_speaker to include personality (not reputation)
@@ -125,11 +126,12 @@ def describe_character_with_id(char: Character) -> str:
     
     Args:
         char: Character to describe
+        personality: Optional personality string
         
     Returns:
         Formatted string like "[ID: 123] Wolf, a Veteran rank member of the Loner faction who is cynical"
     """
-    return f"[ID: {char.game_id}] {describe_character_for_speaker(char)}"
+    return f"[ID: {char.game_id}] {describe_character_for_speaker(char, personality)}"
 
 
 def _format_visit_count(count: int) -> str:

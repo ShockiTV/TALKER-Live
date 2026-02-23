@@ -252,6 +252,14 @@ class DialogueGenerator:
         
         # Use LLM to pick speaker
         try:
+            # Fetch personalities for all available candidates
+            candidate_ids = [str(w.get("game_id", "")) for w in available]
+            personalities_query = BatchQuery().add(
+                "personality", "store.personalities", params={"target": candidate_ids}
+            )
+            personalities_response = await self.state.execute_batch(personalities_query)
+            personalities = personalities_response["personality"] if personalities_response.ok("personality") else {}
+
             # Convert witnesses from dicts to Character objects
             prompt_witnesses = [
                 Character(
@@ -260,7 +268,6 @@ class DialogueGenerator:
                     faction=w.get("faction", "stalker"),
                     experience=w.get("experience", "Experienced"),
                     reputation=w.get("reputation", 0),
-                    personality=w.get("personality", ""),
                 )
                 for w in available
             ]
@@ -268,7 +275,7 @@ class DialogueGenerator:
             # Build recent events list (use event as single item for now)
             prompt_events = [Event.from_dict(event)]
             
-            prompt_messages = create_pick_speaker_prompt(prompt_events, prompt_witnesses)
+            prompt_messages = create_pick_speaker_prompt(prompt_events, prompt_witnesses, personalities=personalities)
             messages = [Message(role=m.role, content=m.content) for m in prompt_messages]
             
             response = await self.llm.complete(
@@ -325,6 +332,8 @@ class DialogueGenerator:
                      })
                 .add("char", "query.character", params={"id": speaker_id})
                 .add("world", "query.world")
+                .add("personality", "store.personalities", params={"target": [speaker_id]})
+                .add("backstory", "store.backstories", params={"target": [speaker_id]})
             )
             if story_ids:
                 batch.add("alive", "query.characters_alive", params={"ids": story_ids})
@@ -390,10 +399,18 @@ class DialogueGenerator:
                 ],
             )
             
+            # Extract personality and backstory
+            personalities = result["personality"] if result.ok("personality") else {}
+            backstories = result["backstory"] if result.ok("backstory") else {}
+            speaker_personality = personalities.get(speaker_id, "")
+            speaker_backstory = backstories.get(speaker_id, "")
+            
             # Build dialogue prompt with scene and world context
             prompt_messages, timestamp_to_delete = create_dialogue_request_prompt(
                 character,
                 prompt_memory,
+                speaker_personality=speaker_personality,
+                speaker_backstory=speaker_backstory,
                 scene_context=scene_context,
                 world_state_context=world_state_context,
             )
