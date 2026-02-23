@@ -234,6 +234,26 @@ end
 
 local resource_registry = {}
 
+--- Helper: Extract character IDs from a query filter.
+-- Looks for `character_id` in the filter, handling both direct string matches
+-- and `$in` array queries. Used to determine which characters need lazy generation.
+-- @param query table  The sub-query containing the filter
+-- @return table  Array of character IDs (as strings)
+local function extract_character_ids_from_query(query)
+    local ids = {}
+    if query.filter and query.filter.character_id then
+        local cid = query.filter.character_id
+        if type(cid) == "string" then
+            ids[#ids + 1] = cid
+        elseif type(cid) == "table" and cid["$in"] and type(cid["$in"]) == "table" then
+            for _, id in ipairs(cid["$in"]) do
+                ids[#ids + 1] = tostring(id)
+            end
+        end
+    end
+    return ids
+end
+
 --- store.events: Provides iterator over event_store with index pre-scan
 resource_registry["store.events"] = function(query)
     local iter = create_events_iterator(query.filter)
@@ -261,6 +281,17 @@ end
 
 --- store.personalities: Iterates personality mappings as collection
 resource_registry["store.personalities"] = function(query)
+    -- Lazy generation for requested IDs
+    local requested_ids = extract_character_ids_from_query(query)
+    for _, char_id in ipairs(requested_ids) do
+        if not personalities.get_all_mappings()[char_id] then
+            local char = game_adapter.get_character_by_id(char_id)
+            if char then
+                personalities.get_personality(char)
+            end
+        end
+    end
+
     local mappings = personalities.get_all_mappings()
     local collection = {}
     for char_id, personality_id in pairs(mappings) do
@@ -275,6 +306,17 @@ end
 
 --- store.backstories: Iterates backstory mappings as collection
 resource_registry["store.backstories"] = function(query)
+    -- Lazy generation for requested IDs
+    local requested_ids = extract_character_ids_from_query(query)
+    for _, char_id in ipairs(requested_ids) do
+        if not backstories.get_all_mappings()[char_id] then
+            local char = game_adapter.get_character_by_id(char_id)
+            if char then
+                backstories.get_backstory(char)
+            end
+        end
+    end
+
     local mappings = backstories.get_all_mappings()
     local collection = {}
     for char_id, backstory_id in pairs(mappings) do

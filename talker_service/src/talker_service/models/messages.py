@@ -20,8 +20,6 @@ class CharacterData(BaseModel):
     faction: Optional[str] = None
     experience: Optional[str] = None  # Rank name
     reputation: int = 0
-    personality: Optional[str] = None
-    backstory: Optional[str] = None
     weapon: Optional[str] = None
     visual_faction: Optional[str] = None
 
@@ -30,7 +28,7 @@ class CharacterData(BaseModel):
     def empty_str_to_none(cls, values: Any) -> Any:
         """Lua sends '' for missing optional strings; normalise to None."""
         if isinstance(values, dict):
-            str_fields = {"faction", "experience", "personality", "backstory", "weapon"}
+            str_fields = {"faction", "experience", "weapon"}
             for field in str_fields:
                 if values.get(field) == "":
                     values[field] = None

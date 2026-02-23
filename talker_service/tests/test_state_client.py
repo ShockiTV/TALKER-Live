@@ -28,8 +28,6 @@ class TestCharacterModel:
             "faction": "stalker",
             "experience": "Experienced",
             "reputation": "Good",
-            "personality": "curious and friendly",
-            "backstory": "A young stalker seeking knowledge",
             "weapon": "AK-74",
             "visual_faction": None,
         }
@@ -41,7 +39,6 @@ class TestCharacterModel:
         assert char.faction == "stalker"
         assert char.experience == "Experienced"
         assert char.reputation == "Good"
-        assert char.personality == "curious and friendly"
     
     def test_from_dict_minimal(self):
         """Test creating Character from minimal dict with defaults."""

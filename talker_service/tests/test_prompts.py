@@ -53,14 +53,10 @@ class TestCharacter:
             "faction": "stalker",
             "experience": "Expert",
             "reputation": 1000,
-            "personality": "gruff veteran",
-            "backstory": "former military",
         }
         char = Character.from_dict(data)
         assert char.game_id == "456"
         assert char.name == "Wolf"
-        assert char.personality == "gruff veteran"
-        assert char.backstory == "former military"
     
     def test_character_from_dict_with_missing_fields(self):
         data = {"game_id": "1", "name": "Unknown"}
@@ -496,8 +492,6 @@ class TestCreateDialogueRequestPrompt:
             faction="stalker",
             experience="Veteran",
             reputation=500,
-            personality="friendly",
-            backstory="former medic",
         )
         memory_context = MemoryContext(
             narrative="Hip met the player in Cordon.",
@@ -505,7 +499,9 @@ class TestCreateDialogueRequestPrompt:
             last_update_time_ms=500,
         )
         
-        messages, timestamp = create_dialogue_request_prompt(speaker, memory_context)
+        messages, timestamp = create_dialogue_request_prompt(
+            speaker, memory_context, speaker_personality="friendly", speaker_backstory="former medic"
+        )
         
         assert len(messages) > 0
         assert all(isinstance(m, Message) for m in messages)
@@ -521,7 +517,9 @@ class TestCreateDialogueRequestPrompt:
         )
         memory_context = MemoryContext(new_events=[idle_event])
         
-        messages, timestamp = create_dialogue_request_prompt(speaker, memory_context)
+        messages, timestamp = create_dialogue_request_prompt(
+            speaker, memory_context, speaker_personality="friendly", speaker_backstory="former medic"
+        )
         
         assert timestamp == 5000  # Should mark for deletion
     
@@ -532,12 +530,12 @@ class TestCreateDialogueRequestPrompt:
             faction="stalker",
             experience="Veteran",
             reputation=500,
-            personality="friendly",
-            backstory="former medic",
         )
         memory_context = MemoryContext()
         
-        messages, _ = create_dialogue_request_prompt(speaker, memory_context)
+        messages, _ = create_dialogue_request_prompt(
+            speaker, memory_context, speaker_personality="friendly", speaker_backstory="former medic"
+        )
         
         # Find the character section
         content = " ".join(m.content for m in messages)

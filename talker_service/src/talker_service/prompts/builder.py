@@ -89,6 +89,7 @@ KNOWLEDGE_FAMILIARITY = """## KNOWLEDGE AND FAMILIARITY
 def create_pick_speaker_prompt(
     recent_events: list[Event],
     witnesses: list[Character],
+    personalities: dict[str, str] = None,
     mid_term_memory: Optional[str] = None
 ) -> list[Message]:
     """Create prompt for picking the next speaker.
@@ -96,6 +97,7 @@ def create_pick_speaker_prompt(
     Args:
         recent_events: List of recent events (will use last 8)
         witnesses: List of potential speakers
+        personalities: Dictionary mapping character IDs to personality strings
         mid_term_memory: Optional mid-term memory context
         
     Returns:
@@ -109,6 +111,8 @@ def create_pick_speaker_prompt(
     if not recent_events:
         raise ValueError("No recent events provided")
     
+    personalities = personalities or {}
+    
     logger.debug(f"Creating pick_speaker_prompt with {len(recent_events)} events, {len(witnesses)} witnesses")
     
     # Keep only the 8 most recent events
@@ -117,7 +121,8 @@ def create_pick_speaker_prompt(
     # Build candidate descriptions
     candidate_descriptions = []
     for char in witnesses:
-        desc = describe_character_with_id(char)
+        personality = personalities.get(str(char.game_id), "")
+        desc = describe_character_with_id(char, personality)
         candidate_descriptions.append(desc)
     candidates_text = ", ".join(candidate_descriptions)
     
@@ -164,6 +169,8 @@ def create_pick_speaker_prompt(
 def create_dialogue_request_prompt(
     speaker: Character,
     memory_context: MemoryContext,
+    speaker_personality: str = "",
+    speaker_backstory: str = "",
     player_name: str = "the user",
     action_descriptions: bool = False,
     is_companion: bool = False,
@@ -262,13 +269,13 @@ def create_dialogue_request_prompt(
     speaker_info = f"### NAME: {speaker.name}\n### RANK: {speaker.experience}\n### FACTION: {faction_display}"
     if faction_desc:
         speaker_info += f"\n### FACTION DESCRIPTION: {faction_desc}"
-    if speaker.backstory:
+    if speaker_backstory:
         # Resolve backstory ID to localized text (with backwards compat for full text)
-        backstory_text = resolve_backstory(speaker.backstory) or speaker.backstory
+        backstory_text = resolve_backstory(speaker_backstory) or speaker_backstory
         speaker_info += f"\n### BACKSTORY ANCHOR/DEFINING CHARACTER TRAIT (IMPORTANT): '{backstory_text}'"
-    if speaker.personality:
+    if speaker_personality:
         # Resolve personality ID to localized text (with backwards compat for full text)
-        personality_text = resolve_personality(speaker.personality) or speaker.personality
+        personality_text = resolve_personality(speaker_personality) or speaker_personality
         speaker_info += f"\n### PERSONALITY: You are {personality_text}."
     if speaker.reputation is not None:
         speaker_info += f"\n### CURRENT REPUTATION: {speaker.reputation}"
@@ -509,6 +516,7 @@ def create_update_narrative_prompt(
     speaker: Character,
     current_narrative: Optional[str],
     new_events: list[Event],
+    speaker_backstory: str = "",
     player_name: str = "the user",
     last_update_time_ms: int = 0
 ) -> list[Message]:
@@ -543,8 +551,8 @@ def create_update_narrative_prompt(
     )
     if faction_desc:
         identity_intro += f"\n### FACTION DESCRIPTION: {faction_desc}"
-    if speaker.backstory:
-        identity_intro += f"\n### BACKSTORY ANCHOR/DEFINING CHARACTER TRAIT (IMPORTANT): '{speaker.backstory}'\n"
+    if speaker_backstory:
+        identity_intro += f"\n### BACKSTORY ANCHOR/DEFINING CHARACTER TRAIT (IMPORTANT): '{speaker_backstory}'\n"
     
     messages = []
     

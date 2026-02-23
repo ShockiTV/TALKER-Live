@@ -16,8 +16,6 @@ class Character:
     faction: str = "stalker"
     experience: str = "Experienced"  # Rank
     reputation: int = 0
-    personality: str = ""
-    backstory: str = ""
     weapon: str = ""
     visual_faction: str | None = None  # For disguises
     story_id: str | None = None  # Story ID for notable character matching
@@ -31,8 +29,6 @@ class Character:
             faction=data.get("faction", "stalker"),
             experience=data.get("experience", "Experienced"),
             reputation=data.get("reputation", 0),
-            personality=data.get("personality", ""),
-            backstory=data.get("backstory", ""),
             weapon=data.get("weapon", ""),
             visual_faction=data.get("visual_faction"),
             story_id=data.get("story_id"),
