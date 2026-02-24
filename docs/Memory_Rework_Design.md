@@ -291,94 +291,159 @@ This means compression runs whenever events happen near the player, not only dur
 
 ## Retrieval at Prompt Time
 
-### Two-Tier Scoring Model
+### Unified Embedding-Based Scoring
 
-Memory data splits into two types with different scoring strategies. All coefficients are MCM-configurable.
+All memory items — chunks AND raw events — are scored using embedding similarity. `all-MiniLM-L6-v2` is a **sentence** transformer; raw events at 80-150 chars (1-2 sentences) are squarely in its designed input range.
 
-#### Tier 1: Memory Chunks (text, embedded) — Semantic + Recency
+**Performance**: At heavy play (100 raw events + 60 chunks = 160 texts), `sentence-transformers` batch encoding takes ~100-200ms on CPU. Well within the 2-5s LLM call time. Batch encoding is key — one-by-one would be 0.8-1.6s.
 
-Chunks are prose summaries. Their content matters most, with a recency bias:
+#### Chunk Scoring (Tier 1)
 
 ```python
 semantic_w = config.retrieval_semantic_weight   # MCM, default 0.7
-score = semantic_w * cosine_sim(query_vec, chunk_vec) + (1 - semantic_w) * recency_decay(chunk)
+recency = 1 / (1 + hours_since / half_life)
+score = semantic_w * cosine_sim(query_vec, chunk_vec) + (1 - semantic_w) * recency
 ```
 
-- `cosine_sim`: On-the-fly embedding similarity (384d, all-MiniLM-L6-v2). Typical range: 0.2–0.8 for meaningful matches.
-- `recency_decay`: Inverse decay — `1 / (1 + hours_since / half_life)` where `half_life` is configurable (MCM `memory_recency_half_life`, default 12 game-hours)
-- Chunk scores range roughly **0.17–0.86** in practice.
+Chunks are curated prose summaries — their embeddings are high quality and stable. Score range: ~0.17–0.86.
 
-The 0.7/0.3 split ensures semantically relevant old memories can still surface (e.g., a firefight memory from 3 days ago breaking through when another firefight happens).
+#### Raw Event Scoring (Tier 2)
 
-#### Tier 2: Raw Events (structured, no embeddings) — Programmatic Scoring
-
-Raw events are small structured objects. Field matching is instant and deterministic:
+Same embedding formula as chunks, plus small programmatic bonuses for exact matches:
 
 ```python
-type_w     = config.retrieval_raw_type_weight      # MCM, default 0.4
-location_w = config.retrieval_raw_location_weight   # MCM, default 0.2
-recency_w  = config.retrieval_raw_recency_weight    # MCM, default 0.4
-tier_w     = config.retrieval_raw_tier_weight       # MCM, default 0.65
+semantic_w   = config.retrieval_semantic_weight       # MCM, default 0.7
+type_bonus   = config.retrieval_raw_type_bonus        # MCM, default 0.05
+loc_bonus    = config.retrieval_raw_location_bonus    # MCM, default 0.03
+tier_w       = config.retrieval_raw_tier_weight       # MCM, default 0.8
 
-raw_base = 0.0
+sim = cosine_sim(query_vec, embed(describe(evt)))
+recency = 1 / (1 + hours_since / half_life)
+base = semantic_w * sim + (1 - semantic_w) * recency  # same formula as chunks
+
+# Small bonuses for exact field matches (tie-breakers, not primary signal)
 if evt["type"] == current_event["type"]:
-    raw_base += type_w
-if evt["location"] == current_event["location"]:
-    raw_base += location_w
-raw_base += recency_score(evt["timestamp"]) * recency_w
+    base += type_bonus       # +0.05 for same event type
+if evt.get("location") == current_event.get("location"):
+    base += loc_bonus        # +0.03 for same location
 
-score = raw_base * tier_w   # scale into chunk-comparable range
+score = base * tier_w        # slightly prefer chunks over raw events
 ```
 
-No embeddings needed — raw events are too short (~80-150 chars) for good embedding quality anyway. The type + location + recency axes capture the relevant dimensions directly.
+#### Why Tier Weight Still Matters
 
-#### Inter-Tier Balance: Why `tier_weight` Matters
+Even with unified embedding scoring, chunks and raw events aren't equal:
+- **Chunks** are curated summaries (~700-1000 chars) — richer context per prompt slot, more stable embeddings
+- **Raw events** are single lines (~80-150 chars) — noisier embeddings, less context per inclusion
 
-Without scaling, raw events with binary type+location match score up to **1.0**, while the best chunks top out around **0.86**. This means raw events with matching type+location *always* beat chunks, even when embedding similarity confirms the chunk is more relevant.
+The `retrieval_raw_tier_weight` (default **0.8**) says: "given equal semantic relevance, slightly prefer chunks." Higher than the old 0.65 because raw events now earn their score via *real* semantic similarity, not binary field matching — they deserve more credit.
 
-The `retrieval_raw_tier_weight` (default **0.65**) compresses raw scores into the 0–0.65 range so they compete fairly with chunks. Worked examples with `half_life=12h`:
+#### Worked Examples
+
+All examples use `half_life=12h`, `semantic_w=0.7`, `type_bonus=0.05`, `loc_bonus=0.03`, `tier_w=0.8`.
 
 **DEATH trigger at Garbage:**
 
 | Item | Breakdown | Score |
 |------|-----------|-------|
-| Chunk: high sim recent (sim=0.8, 2h) | 0.7×0.8 + 0.3×0.857 | **0.82** |
-| Raw: DEATH at Garbage, 5m ago | (0.4+0.2+0.4×1.0) × 0.65 | **0.65** |
+| Chunk: death summary (sim=0.8, 2h) | 0.7×0.8 + 0.3×0.857 | **0.82** |
+| Raw: "a rookie was killed by bloodsucker" (sim=0.7, 5m, DEATH+Garbage) | (0.7×0.7 + 0.3×1.0 + 0.05+0.03) × 0.8 | **0.70** |
 | Chunk: death memory (sim=0.6, 48h) | 0.7×0.6 + 0.3×0.2 | **0.48** |
-| Raw: DEATH at Cordon, 2h ago | (0.4+0+0.4×0.857) × 0.65 | **0.48** |
-| Raw: ARTIFACT at Garbage, fresh | (0+0.2+0.4×1.0) × 0.65 | **0.39** |
-| Raw: no match, fresh | (0+0+0.4×1.0) × 0.65 | **0.26** |
-| Chunk: low relevance (sim=0.2, old) | 0.7×0.2 + 0.3×0.1 | **0.17** |
-| Raw: no match, old | (0+0+0.4×0.1) × 0.65 | **0.03** |
+| Raw: "found a Moonlight" (sim=0.1, fresh, ARTIFACT+Garbage) | (0.7×0.1 + 0.3×1.0 + 0+0.03) × 0.8 | **0.32** |
+| Raw: unrelated event (sim=0.1, old, no match) | (0.7×0.1 + 0.3×0.1) × 0.8 | **0.08** |
 
 Key behaviors:
-- Highly relevant chunks **beat** raw events (0.82 > 0.65)
-- A relevant death chunk **ties** with a less-relevant raw death (0.48 = 0.48)
-- An irrelevant artifact raw event (0.39) **loses** to the death chunk (0.48)
-- Irrelevant raw events fall to the bottom
+- Highly relevant chunk (0.82) still beats best raw event (0.70)
+- Semantically relevant raw event (sim=0.7) correctly beats irrelevant artifact (0.32)
+- Type/location bonuses provide small nudge but don't dominate
 
-**"Tell me about the emissions" (player chat, DIALOGUE trigger):**
+**"Tell me about the emissions you've survived" (player chat):**
 
 | Item | Breakdown | Score |
 |------|-----------|-------|
-| Raw: DIALOGUE at Garbage, fresh | (0.4+0.2+0.4×1.0) × 0.65 | **0.65** |
-| Chunk: emission story (sim=0.7, 100h) | 0.7×0.7 + 0.3×0.107 | **0.52** |
 | Chunk: emission story (sim=0.8, 100h) | 0.7×0.8 + 0.3×0.107 | **0.59** |
-| Raw: IDLE, no match, fresh | (0+0+0.4×1.0) × 0.65 | **0.26** |
+| Raw: "survived emission, sheltered in tunnel" (sim=0.75, 24h, EMISSION) | (0.7×0.75 + 0.3×0.333 + 0.05) × 0.8 | **0.54** |
+| Raw: "talked to Wolf about supplies" (sim=0.1, fresh, DIALOGUE) | (0.7×0.1 + 0.3×1.0 + 0) × 0.8 | **0.30** |
+| Chunk: unrelated camp story (sim=0.2, 50h) | 0.7×0.2 + 0.3×0.194 | **0.20** |
 
-Recent dialogue raw events still rank high (they ARE useful conversation history), but relevant emission chunks compete closely — especially with high cosine similarity. The emission memory is no longer drowned out 2:1.
+Now the emission chunk (0.59) and emission raw event (0.54) both surface near the top. The irrelevant recent dialogue (0.30) ranks correctly below both. This was **impossible** with the old programmatic scoring — the DIALOGUE raw event would have scored 0.65 via type match alone and drowned out the emission content.
 
 #### Coefficient Defaults Summary
 
 | Coefficient | Default | Rationale |
 |-------------|---------|-----------|
-| `retrieval_semantic_weight` | 0.7 | Embedding similarity dominates for chunks — the whole point of having an embedding model |
-| `retrieval_raw_type_weight` | 0.4 | Same event type is relevant but shouldn't dominate (down from 0.5) |
-| `retrieval_raw_location_weight` | 0.2 | Same location is a weak signal (down from 0.3) — many events happen in the same spot |
-| `retrieval_raw_recency_weight` | 0.4 | Fresh raw events should rank high even without type/location match (up from 0.2) |
-| `retrieval_raw_tier_weight` | 0.65 | Scales raw scores into 0–0.65 range, comparable with chunk scores (0.17–0.86) |
+| `retrieval_semantic_weight` | 0.7 | Embedding similarity is the primary signal for both tiers |
+| `retrieval_raw_type_bonus` | 0.05 | Small nudge for same event type — tie-breaker, not dominant |
+| `retrieval_raw_location_bonus` | 0.03 | Smaller nudge for same location — many events share a spot |
+| `retrieval_raw_tier_weight` | 0.8 | Slightly prefer chunks (richer context, more stable embeddings) |
 
-The raw weights (type + location + recency = 0.4 + 0.2 + 0.4 = 1.0) sum to 1.0 before tier scaling. After tier scaling, a perfect raw event scores 0.65 — below an excellent chunk (0.82) but above a mediocre one (0.38).
+Compared to the old 5-coefficient model, this is simpler (4 coefficients), more principled (semantic similarity drives all scoring), and handles the "player asks a question" case correctly.
+
+---
+
+## Global Events
+
+### Two Categories of Zone-Wide Information
+
+Zone-wide information falls into two distinct categories with different handling:
+
+#### World State Facts → Direct Prompt Injection (No Scoring)
+
+Static facts about the current state of the Zone. Always relevant, never filtered:
+- Leader deaths ("General Voronin is dead")
+- Brain scorcher disabled
+- Faction standings and alliances
+
+These are already handled by `query.characters_alive` and `build_world_context()`, injected into the **DYNAMIC WORLD STATE / NEWS** prompt section. No change needed — this is the correct approach. Facts don't need embedding scoring; they're always included.
+
+#### Witnessed Global Phenomena → Global Events Store (Scored)
+
+Time-bounded experiences every NPC witnesses. These are *memories*, not facts:
+
+| Event | Example `describe()` | Why Global |
+|-------|---------------------|------------|
+| **Emission** | "An emission swept through the Zone" | Everyone experiences it, no specific location |
+| **Psy storm** | "A psy storm hammered the Zone" | Same — zone-wide, time-bounded |
+
+These are the only true "global events" — phenomena NPCs *remember experiencing*, not facts they *know*. An NPC who survived an emission might mention it when asked about danger, but only if the embedding retrieval finds it relevant. Unlike world state facts, these should compete for prompt space via scoring.
+
+### Storage
+
+- Stored in Lua as a **separate** `global_events` list in `memory_store` (not per-NPC)
+- Have **no location** field (`location = nil`)
+- Have their own MCM cap (`memory_global_event_cap`, default 30) with oldest-eviction
+- NOT counted against per-NPC `memory_raw_event_cap`
+- Serialized/persisted alongside other memory data in the save file
+
+### Retrieval Integration
+
+At retrieval time, Python concatenates global events with the NPC's personal raw events before scoring:
+
+```python
+personal_raw = raw_events_store[character_id]
+global_raw = global_events_store  # separate store, shared across all NPCs
+all_raw = personal_raw + global_raw  # both scored with same embedding formula
+```
+
+Since global events have no location, the `loc_bonus` never applies. The `type_bonus` still works (an NPC asked about emissions will get the emission global event boosted via both embedding similarity AND type match).
+
+### Compression Interaction
+
+When an NPC's memories are compressed, relevant global events can be absorbed into their personal mid-term chunks. For example, if an NPC talks about surviving an emission, the compression prompt sees the global emission event plus the NPC's personal raw events, producing a personal chunk like: "survived the emission by sheltering in the tunnel with two rookies."
+
+After compression, the global event is not removed from the global store (other NPCs may still need it). It simply becomes part of this NPC's personal memory narrative.
+
+### Lua-Side Gate
+
+Global events are created by triggers that detect zone-wide phenomena:
+
+```lua
+-- In talker_trigger_emission.script (conceptual):
+local context = { description = "An emission swept through the Zone" }
+trigger.talker_global_event(EventType.EMISSION, context)
+```
+
+A new `trigger.talker_global_event()` function stores to the global list instead of per-NPC raw_events. This is distinct from `trigger.talker_event_near_player()` which only stores for nearby witnesses.
 
 ### Full Retrieval Algorithm
 
@@ -390,78 +455,81 @@ CHARS_PER_TOKEN = 3.5        # conservative for mixed English/Zone jargon
 async def retrieve_memories(
     character_id: str,
     current_event: dict,
-    config: ConfigMirror,           # all MCM settings
+    config: ConfigMirror,
 ):
     char_budget     = config.memory_retrieval_characters     # default 12000
     context_tokens  = config.memory_context_tokens           # default 30000
     half_life       = config.memory_recency_half_life        # default 12
     semantic_w      = config.retrieval_semantic_weight        # default 0.7
-    raw_type_w      = config.retrieval_raw_type_weight       # default 0.4
-    raw_loc_w       = config.retrieval_raw_location_weight   # default 0.2
-    raw_recency_w   = config.retrieval_raw_recency_weight    # default 0.4
-    raw_tier_w      = config.retrieval_raw_tier_weight       # default 0.65
+    raw_type_bonus  = config.retrieval_raw_type_bonus        # default 0.05
+    raw_loc_bonus   = config.retrieval_raw_location_bonus    # default 0.03
+    raw_tier_w      = config.retrieval_raw_tier_weight       # default 0.8
 
-    query_text = describe_event(current_event)
-    query_vec = embed(query_text)
     current_time_ms = current_event["game_time_ms"]
     
     # Token ceiling: how many chars of memory can fit in the model context
     available_tokens = context_tokens - STATIC_PROMPT_TOKENS - OUTPUT_RESERVE_TOKENS
     token_char_limit = int(available_tokens * CHARS_PER_TOKEN)
-    
-    # Effective budget is the stricter of the two constraints
     effective_budget = min(char_budget, token_char_limit)
     
-    # --- Tier 1: Score memory chunks ---
+    # --- Build query embedding ---
+    query_text = describe_event(current_event)
+    query_vec = embed(query_text)   # single embedding for query
+    
+    # --- Collect all texts to batch-embed ---
     chunks = mid_term[character_id] + long_term[character_id]
-    scored_chunks = []
-    for chunk in chunks:
-        chunk_vec = embed(chunk.text)  # on-the-fly
-        sim = cosine_sim(query_vec, chunk_vec)
+    personal_raw = raw_events_store[character_id]
+    global_raw = global_events_store  # shared across all NPCs
+    all_raw = personal_raw + global_raw
+    
+    # Batch-embed everything in one call (~100-200ms for 160 texts)
+    chunk_texts = [c.text for c in chunks]
+    raw_texts = [describe_event(e) for e in all_raw]
+    all_vecs = batch_embed(chunk_texts + raw_texts)  # one batch call
+    chunk_vecs = all_vecs[:len(chunks)]
+    raw_vecs = all_vecs[len(chunks):]
+    
+    # --- Score chunks ---
+    scored = []
+    for i, chunk in enumerate(chunks):
+        sim = cosine_sim(query_vec, chunk_vecs[i])
         hours_since = (current_time_ms - chunk.time_end_ms) / 3_600_000
         recency = 1 / (1 + hours_since / half_life)
         score = semantic_w * sim + (1 - semantic_w) * recency
-        scored_chunks.append((chunk, score))
+        scored.append((chunk, score, "chunk", chunk_texts[i]))
     
-    # --- Tier 2: Score raw events ---
-    raw_events = raw_events_store[character_id]
-    scored_raw = []
-    for evt in raw_events:
-        raw_base = 0.0
-        if evt["type"] == current_event["type"]:
-            raw_base += raw_type_w
-        if evt.get("location") == current_event.get("location"):
-            raw_base += raw_loc_w
+    # --- Score raw events (personal + global, same formula + bonuses) ---
+    for i, evt in enumerate(all_raw):
+        sim = cosine_sim(query_vec, raw_vecs[i])
         hours_since = (current_time_ms - evt["game_time_ms"]) / 3_600_000
-        raw_base += (1 / (1 + hours_since / half_life)) * raw_recency_w
-        score = raw_base * raw_tier_w   # scale into chunk-comparable range
-        scored_raw.append((evt, score))
+        recency = 1 / (1 + hours_since / half_life)
+        base = semantic_w * sim + (1 - semantic_w) * recency
+        
+        # Small bonuses for exact field matches (tie-breakers)
+        if evt.get("type") == current_event.get("type"):
+            base += raw_type_bonus
+        if evt.get("location") and evt["location"] == current_event.get("location"):
+            base += raw_loc_bonus  # global events have no location → no bonus
+        
+        score = base * raw_tier_w
+        scored.append((evt, score, "raw", raw_texts[i]))
     
-    # --- Merge and fill by score until budget exhausted ---
-    all_scored = (
-        [(item, score, "chunk") for item, score in scored_chunks] +
-        [(item, score, "raw") for item, score in scored_raw]
-    )
-    all_scored.sort(key=lambda x: x[1], reverse=True)
+    # --- Fill by score until budget exhausted ---
+    scored.sort(key=lambda x: x[1], reverse=True)
     
-    selected = []           # [(item, score, kind)]
+    selected = []
     chars_used = 0
-    for item, score, kind in all_scored:
-        text = item.text if kind == "chunk" else describe_event(item)
+    for item, score, kind, text in scored:
         if chars_used + len(text) <= effective_budget:
-            selected.append((item, score, kind))
+            selected.append((item, score, kind, text))
             chars_used += len(text)
     
     # Re-sort by time for chronological presentation in prompt
     selected.sort(key=lambda x: get_time(x[0]))
-    return [(item, kind) for item, _, kind in selected]
+    return [(item, kind) for item, _, kind, _ in selected]
 ```
 
-Both constraints are enforced in one place:
-- `memory_retrieval_characters` (default 12,000) — user-friendly knob for memory depth
-- `memory_context_tokens` (default 30,000) — safety cap for small models, converted to a char ceiling
-
-The `effective_budget = min(char_budget, token_char_limit)` means the stricter constraint always wins. On a 30K model with 12K char budget, the char budget dominates (~12K < ~98K token ceiling). On an 8K model, the token ceiling would kick in (~21K chars) — but even then 12K is already under, so the char budget still wins. The token cap only matters if a user cranks `memory_retrieval_characters` very high on a small model.
+Both constraints (`memory_retrieval_characters` and `memory_context_tokens`) are resolved to a single `effective_budget` up front. All scoring uses embeddings with batch encoding for performance.
 
 ### Query Construction
 
@@ -558,7 +626,7 @@ How to migrate existing saves with single narrative blobs to the new chunked for
 Embeddings computed **on-the-fly at retrieval time** in Python. Nothing stored. The embedding model is loaded once when the Python service starts and stays in memory (~90 MB).
 
 ### ~~6. What Serves as Retrieval Query for Non-Chat Triggers?~~ (RESOLVED)
-Answered in the "Query Construction" section above: player chat uses the input text, event triggers use `describe(trigger_event)`, idle/ambient uses description of recent events near the NPC. The raw event scoring tier doesn't use embeddings at all — it uses programmatic type + location + recency scoring.
+Answered in the "Query Construction" section above: player chat uses the input text, event triggers use `describe(trigger_event)`, idle/ambient uses description of recent events near the NPC. All items (chunks AND raw events) are scored via embedding similarity against this query text.
 
 ### ~~7. Raw Event Buffer Safety Cap~~ (RESOLVED)
 Yes — `memory_raw_event_cap` MCM setting (default 100) with oldest-eviction. This is a hard Lua-side cap independent of the soft compression trigger (~1600 chars of describe() text). Only matters if Python service is down for extended periods.
@@ -574,6 +642,7 @@ All memory tuning variables should be exposed in the MCM (Mod Configuration Menu
 | MCM Key | Type | Default | Min | Max | Step | Description |
 |---------|------|---------|-----|-----|------|-------------|
 | `memory_raw_event_cap` | input | 100 | 10 | 200 | — | Max raw events per NPC before oldest-eviction (safety cap when Python unreachable) |
+| `memory_global_event_cap` | input | 30 | 5 | 100 | — | Max global events (emissions, leader deaths) shared across all NPCs |
 | `memory_compression_threshold` | input | 1600 | 500 | 4000 | — | Sum of `describe()` chars in raw_events before compression triggers |
 | `memory_midterm_chunk_size` | input | 700 | 300 | 1200 | — | Target char length for mid-term summary chunks |
 | `memory_longterm_chunk_size` | input | 1000 | 500 | 1500 | — | Target char length for long-term summary chunks |
@@ -585,25 +654,25 @@ All memory tuning variables should be exposed in the MCM (Mod Configuration Menu
 | `memory_recency_half_life` | track | 12 | 2 | 48 | 1 | Game-hours for recency score to halve (inverse decay) |
 | `memory_context_tokens` | input | 30000 | 4000 | 128000 | — | Model context window in tokens (safety cap — look up your model) |
 | `memory_retrieval_characters` | input | 12000 | 2000 | 60000 | — | Character budget for retrieved memories in dialogue prompt |
-| `retrieval_semantic_weight` | track | 0.7 | 0.1 | 0.9 | 0.1 | How much embedding similarity matters vs recency for memory chunks |
-| `retrieval_raw_type_weight` | track | 0.4 | 0.0 | 0.8 | 0.1 | Weight of event-type match in raw event scoring |
-| `retrieval_raw_location_weight` | track | 0.2 | 0.0 | 0.8 | 0.1 | Weight of location match in raw event scoring |
-| `retrieval_raw_recency_weight` | track | 0.4 | 0.0 | 0.8 | 0.1 | Weight of recency in raw event scoring |
-| `retrieval_raw_tier_weight` | track | 0.65 | 0.1 | 1.0 | 0.05 | Global scale factor — how raw event scores compete with chunk scores |
+| `retrieval_semantic_weight` | track | 0.7 | 0.1 | 0.9 | 0.1 | How much embedding similarity matters vs recency (both tiers) |
+| `retrieval_raw_type_bonus` | track | 0.05 | 0.0 | 0.2 | 0.01 | Small score bonus when raw event type matches trigger event type |
+| `retrieval_raw_location_bonus` | track | 0.03 | 0.0 | 0.2 | 0.01 | Small score bonus when raw event location matches trigger location |
+| `retrieval_raw_tier_weight` | track | 0.8 | 0.3 | 1.0 | 0.05 | Global scale factor — how raw event scores compete with chunk scores |
 
 ### Notes
 
 - **Char sizes, not token counts**: Users think in text length, not tokens. The LLM prompt builder converts to tokens internally.
 - **`memory_raw_event_cap`**: Hard safety cap (100) with headroom above the soft compression trigger (~75 events worth of describe() text hits 1600 chars). Only matters if Python service is down for extended periods.
+- **`memory_global_event_cap`** (default 30): Shared pool for zone-wide events (emissions, leader deaths). Small cap because these events are shared — 30 covers months of play. Oldest-eviction when full.
 - **`memory_compression_threshold`**: Higher = fewer, larger summaries, fewer LLM calls. Lower = more frequent, smaller summaries, more calls. The default (1600) produces ~700 char summaries at ~50% compression — centered in the 384d sweet spot.
 - **Chunk size targets are advisory**: The LLM prompt asks for "approximately N characters" — actual output may vary. The system should not reject chunks that are slightly over/under target.
 - **These values feed into Python prompts**: Lua stores them as MCM values, they get synced to Python via `config.sync` / `config.update`, and Python uses them when building compression/compaction prompts.
 - **`memory_context_tokens`** (default 30000): Safety net for the total prompt size. The default of 30K fits all recommended free models (Kimi K2 128K, Qwen3 128K, DeepSeek 128K, Mistral Small 32K). Only Gemma 3 27B (8K, listed as a backup) would need a lower value. Users on 128K models can leave this alone — `memory_retrieval_characters` is the real limiter.
 - **`memory_retrieval_characters`** (default 12000): Controls how much memory content `retrieve_memories` selects. At 12,000 chars (~3,400 tokens), this fits ~15-17 chunks of mixed mid/long-term memory. This is the primary knob for memory depth vs prompt quality. Higher = more context but slower and more diluted; lower = tighter, more focused recall. Even at the default, 12K chars is well under the 30K token context limit, leaving ~85% of the context for static prompt sections and headroom.
-- **Retrieval scoring coefficients**: These control the inter-tier balance between memory chunks and raw events. The defaults are tuned so that: (1) highly relevant chunks beat raw events, (2) a perfect-match fresh raw event (~0.65) is competitive but doesn't dominate, (3) irrelevant raw events fall below relevant chunks. See the "Inter-Tier Balance" section for worked examples. Most users should leave these at defaults.
-  - **`retrieval_semantic_weight`** (0.7): Higher = embedding similarity matters more than recency for chunks. Lower = recent chunks always win.
-  - **`retrieval_raw_tier_weight`** (0.65): The most impactful scoring knob. Lower = chunks strongly favored. Higher (toward 1.0) = raw events dominate. At 0.65, a perfect raw event scores just below an excellent chunk.
-  - **Raw internal weights** (type=0.4, location=0.2, recency=0.4): Summing to 1.0, these control which raw event attributes matter most. Recency at 0.4 (up from original 0.2) ensures fresh events rank high even without type/location match, and stale type matches don't inappropriately dominate.
+- **Retrieval scoring coefficients**: Both tiers now use embedding similarity as the primary signal. The difference is chunks score directly while raw events get small bonuses and a tier weight. Most users should leave these at defaults.
+  - **`retrieval_semantic_weight`** (0.7): Shared by both tiers. Higher = embedding similarity matters more than recency. Lower = recent memories always win.
+  - **`retrieval_raw_tier_weight`** (0.8): Slightly prefers chunks over raw events at equal relevance, because chunks are richer summaries with more stable embeddings. Raised from 0.65 because raw events now earn their score via real semantic similarity, not binary field matching.
+  - **`retrieval_raw_type_bonus`** (0.05) / **`retrieval_raw_location_bonus`** (0.03): Tiny tie-breakers — if two raw events have similar embedding similarity, the one that also matches event type or location gets a small nudge. Not dominant signals.
 
 ### Config Sync
 
