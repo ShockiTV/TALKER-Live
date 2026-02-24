@@ -78,6 +78,14 @@ In the new system:
 
 ### Junk Events: Store Only on Reaction
 
+Event types are classified into three storage categories:
+
+#### Standard Events → Always Per-NPC
+
+Non-junk events (`DEATH`, `INJURY`, `DIALOGUE`, `TAUNT`, `CALLOUT`, etc.) are **always** stored in witnesses' `raw_events` and published to Python, regardless of reaction.
+
+#### Junk Events → Conditional Per-NPC
+
 Junk event types (`ARTIFACT`, `ANOMALY`, `RELOAD`, `WEAPON_JAM`) are **conditionally stored** — only when they produce a reaction.
 
 The reaction check happens entirely in **Lua** (cooldown, proximity, importance — the same gates triggers already have):
@@ -87,11 +95,15 @@ The reaction check happens entirely in **Lua** (cooldown, proximity, importance 
 | Junk + **reaction** | Yes, for all witnesses | Yes — chain continues normally |
 | Junk + **no reaction** | No | No — event discarded entirely |
 
-For comparison, non-junk events (DEATH, INJURY, etc.) are **always** stored in witnesses' raw_events and published, regardless of reaction.
-
 **Why**: If an NPC reacts to finding an artifact, witnesses should remember seeing the find — not just a disconnected dialogue about artifacts. The event's memory value is conditional on whether anyone cared enough to react.
 
 In the current system, junk events count toward the 12-event compression threshold despite contributing zero text to narratives. This is eliminated — junk events that don't produce reactions never enter the memory pipeline at all, and those that do carry proper context.
+
+#### Global Events → Global Store Only, Never Per-NPC
+
+Zone-wide phenomena (`EMISSION`, `PSY_STORM`) go **exclusively** to the shared `global_events` store — they are never written to any NPC's per-witness `raw_events`. Since the global store is already injected into retrieval for every NPC (see [Global Events](#global-events)), storing them per-NPC would be redundant double-counting.
+
+These types use `trigger.talker_global_event()` instead of `trigger.talker_event_near_player()`. The emission trigger, for example, fires once per emission — not once per nearby witness.
 
 ---
 
@@ -443,7 +455,7 @@ local context = { description = "An emission swept through the Zone" }
 trigger.talker_global_event(EventType.EMISSION, context)
 ```
 
-A new `trigger.talker_global_event()` function stores to the global list instead of per-NPC raw_events. This is distinct from `trigger.talker_event_near_player()` which only stores for nearby witnesses.
+A new `trigger.talker_global_event()` function stores to the global list instead of per-NPC `raw_events`. This is the **only** path for `EMISSION` and `PSY_STORM` types — they must never go through `talker_event_near_player()`, which would redundantly write them to per-NPC buffers. The global store already feeds into every NPC's retrieval.
 
 ### Full Retrieval Algorithm
 

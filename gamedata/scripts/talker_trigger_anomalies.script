@@ -54,13 +54,15 @@ end
 -- Function
 ----------------------------------------------------------------------------------------------------
 
-function create_anomaly_interaction_event(anomaly_name, is_damage, is_silent)
+function create_anomaly_interaction_event(section, is_damage, is_silent)
     local player = game.get_player_character()
 
     -- Create typed event context
+    -- anomaly_type holds the technical section name (e.g. "zone_vortex");
+    -- Python resolves it to a display string via texts/anomaly_sections.py
     local context = {
         actor = player,
-        anomaly_type = anomaly_name
+        anomaly_type = section
     }
 
     -- Use new typed event system
@@ -89,14 +91,13 @@ function actor_on_feeling_anomaly(anomaly)
         return
     end
 
-    local anomaly_name = queries.load_xml(section)
-    if anomaly_name == "" then return end -- Not a supported anomaly
+    if not queries.is_anomaly_section(section) then return end -- Not a supported anomaly
 
     -- Skip if the anomaly is not close enough OR if player rank is too high
     if is_valid_proximity_event(anomaly) then
         local is_silent = cd_proximity:check("default", queries.get_game_time_ms(), mode_proximity)
         if is_silent ~= nil then
-            create_anomaly_interaction_event(anomaly_name, false, is_silent)
+            create_anomaly_interaction_event(section, false, is_silent)
         end
     end
 end
@@ -108,18 +109,15 @@ function actor_on_hit_callback(obj, amount, local_direction, who, bone_index)
     
     -- Check if the source of damage is an anomaly we recognize
     local section = who:section()
-    local anomaly_name = queries.load_xml(section)
-    
-    -- If load_xml returns an empty string, it's not in our list of supported anomalies
-    if anomaly_name == "" then return end
-    
+    if not queries.is_anomaly_section(section) then return end -- Not a supported anomaly
+
     if string.find(section, "radioactive") or string.find(section, "radiation") then
         return
     end
 
     local is_silent = cd_damage:check("default", queries.get_game_time_ms(), mode_damage)
     if is_silent ~= nil then
-        create_anomaly_interaction_event(anomaly_name, true, is_silent)
+        create_anomaly_interaction_event(section, true, is_silent)
     end
 end
 

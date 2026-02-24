@@ -95,8 +95,6 @@ class TestSleepLifecycle:
             "faction": "stalker",
             "experience": "Experienced",
             "reputation": 0,
-            "personality": "generic.15",
-            "backstory": "generic",
             "weapon": "Shotgun",
             "visual_faction": None,
         })

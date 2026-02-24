@@ -102,6 +102,18 @@ function on_task_completed_event(tsk, cached_info)
         end
     end
     
+    -- Capture story_id via section_name() — available on all cse_alife_object descendants, never crashes.
+    -- This is the stable identifier used by Python to identify unique NPCs.
+    local story_id = server_entity:section_name()
+
+    -- Safe-access character properties — modded entities / traders may not implement these methods.
+    local char_name = (type(server_entity.character_name) == "function" and server_entity:character_name())
+                      or "Unknown"
+    local char_rank = (type(server_entity.rank) == "function" and server_entity:rank())
+                      or 0
+    local char_community = (type(server_entity.community) == "function" and tostring(server_entity:community()))
+                           or "stalker"
+
     -- Reputation Fetching
     -- Try to get online object first as it has reliable reputation methods
     local rep_val = 0
@@ -122,14 +134,15 @@ function on_task_completed_event(tsk, cached_info)
 
     -- Manually create character info
     local task_giver_character = {
-        name = server_entity:character_name(),
-        experience = server_entity:rank(), -- Returns number
-        faction = tostring(server_entity:community()),
+        story_id   = story_id,
+        name       = char_name,
+        experience = char_rank,
+        faction    = char_community,
         reputation = rep_tier
     }
-    
+
     -- Try to get text rank name
-    if ranks and ranks.get_se_obj_rank_name then
+    if ranks and type(ranks.get_se_obj_rank_name) == "function" then
          task_giver_character.experience = ranks.get_se_obj_rank_name(server_entity)
     end
 

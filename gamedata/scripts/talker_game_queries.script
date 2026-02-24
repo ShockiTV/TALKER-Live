@@ -3,9 +3,10 @@ local log          = require("framework.logger")
 local config       = require("interface.config")
 local timers       = require("domain.repo.timers")
 local utils        = require("framework.utils")
-local unique_npcs  = require("domain.data.unique_npcs")
-local mutant_names = require("domain.data.mutant_names")
-local ranks        = require("domain.data.ranks")
+local unique_npcs       = require("domain.data.unique_npcs")
+local mutant_names      = require("domain.data.mutant_names")
+local ranks             = require("domain.data.ranks")
+local anomaly_sections  = require("domain.data.anomaly_sections")
 local world_desc   = require("interface.world_description")
 
 -- Delegate to framework.utils (kept as globals so other scripts can call them)
@@ -501,6 +502,20 @@ function is_surge_ongoing()
     return surge_manager and surge_manager.is_loaded() and surge_manager.is_started()
 end
 
+
+--------------------------------------------------------------------------------
+-- Anomaly section helpers
+--------------------------------------------------------------------------------
+
+--- Returns true if the section string is a known anomaly section.
+function is_anomaly_section(section)
+    return anomaly_sections.is_anomaly(section)
+end
+
+--- Returns the display name for a known anomaly section, or nil if not found.
+function describe_anomaly_section(section)
+    return anomaly_sections.describe(section)
+end
 
 --------------------------------------------------------------------------------
 -- XML Loading

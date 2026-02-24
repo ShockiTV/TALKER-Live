@@ -8,15 +8,14 @@ local serializer = require('infra.zmq.serializer')
 
 local function make_char(overrides)
     local c = {
-        game_id       = 123,
-        name          = "Wolf",
-        faction       = "Loner",
-        experience    = "veteran",
-        reputation    = "Good",
-        personality   = "loner.1",
-        backstory     = "generic.5",
-        weapon        = "AK-74",
+        game_id        = 123,
+        name           = "Wolf",
+        faction        = "Loner",
+        experience     = "veteran",
+        reputation     = 750,
+        weapon         = "AK-74",
         visual_faction = nil,
+        story_id       = "esc_2_12_stalker_wolf",
     }
     if overrides then
         for k, v in pairs(overrides) do c[k] = v end
@@ -27,7 +26,6 @@ end
 local function make_event(overrides)
     local e = {
         type         = "DEATH",
-        content      = nil,
         context      = {},
         game_time_ms = 500000,
         world_context = "In Cordon at noon during clear weather.",
@@ -59,10 +57,30 @@ function testSerializeCharacter_allFields()
     luaunit.assertEquals(result.name,        "Wolf")
     luaunit.assertEquals(result.faction,     "Loner")
     luaunit.assertEquals(result.experience,  "veteran")
-    luaunit.assertEquals(result.reputation,  "Good")
-    luaunit.assertEquals(result.personality, "loner.1")
-    luaunit.assertEquals(result.backstory,   "generic.5")
+    luaunit.assertEquals(result.reputation,  750)
     luaunit.assertEquals(result.weapon,      "AK-74")
+    luaunit.assertEquals(result.story_id,    "esc_2_12_stalker_wolf")
+end
+
+function testSerializeCharacter_storyIdIncludedInWireFormat()
+    -- story_id must be present in the wire format so Python can identify story NPCs
+    local char   = make_char({ story_id = "bar_dolg_leader" })
+    local result = serializer.serialize_character(char)
+    luaunit.assertEquals(result.story_id, "bar_dolg_leader")
+end
+
+function testSerializeCharacter_storyIdNilWhenAbsent()
+    -- Build a char table without story_id at all — wire format should carry nil (not error)
+    local char = {
+        game_id    = 7,
+        name       = "Generic Stalker",
+        faction    = "Loner",
+        experience = "rookie",
+        reputation = 0,
+        -- no story_id key
+    }
+    local result = serializer.serialize_character(char)
+    luaunit.assertNil(result.story_id)
 end
 
 function testSerializeCharacter_visualFaction()
@@ -89,9 +107,9 @@ function testSerializeContext_characterKeysAreSerialized()
 end
 
 function testSerializeContext_nonCharacterFieldsCopied()
-    local ctx    = { anomaly_type = "gravitational", action = "pickup" }
+    local ctx    = { anomaly_type = "zone_mine_gravitational_weak", action = "pickup" }
     local result = serializer.serialize_context(ctx)
-    luaunit.assertEquals(result.anomaly_type, "gravitational")
+    luaunit.assertEquals(result.anomaly_type, "zone_mine_gravitational_weak")
     luaunit.assertEquals(result.action,        "pickup")
 end
 
@@ -114,7 +132,7 @@ function testSerializeContext_taskGiver_factionPreservedAsIs()
         name       = "General Voronin",
         faction    = "dolg",      -- technical ID, must NOT become "Duty"
         experience = "Master",
-        reputation = "Revered",
+        reputation = 1200,
     }
     local ctx = { task_giver = task_giver }
     local result = serializer.serialize_context(ctx)
@@ -123,9 +141,6 @@ function testSerializeContext_taskGiver_factionPreservedAsIs()
     luaunit.assertEquals(result.task_giver.game_id, "555")
     luaunit.assertEquals(result.task_giver.faction, "dolg",   "faction must be technical ID, not display name")
     luaunit.assertEquals(result.task_giver.name,    "General Voronin")
-    -- nil personality/backstory must be absent (not set to nil key)
-    luaunit.assertNil(result.task_giver.personality)
-    luaunit.assertNil(result.task_giver.backstory)
 end
 
 function testSerializeContext_fieldWithoutGameId_notSerialized()

@@ -197,6 +197,22 @@ function M.load_xml(key)
     return q and q.load_xml(key) or ""
 end
 
+--- Returns true if the section string is a known anomaly section.
+-- @param section  Technical section name (e.g. "zone_buzz_weak"), may be nil
+-- @return         true/false
+function M.is_anomaly_section(section)
+    local q = get_q()
+    return q and q.is_anomaly_section(section) or false
+end
+
+--- Returns the human-readable display name for a known anomaly section, or nil.
+-- @param section  Technical section name (e.g. "zone_vortex"), may be nil
+-- @return         Display name string, or nil if not found
+function M.describe_anomaly_section(section)
+    local q = get_q()
+    return q and q.describe_anomaly_section(section) or nil
+end
+
 function M.load_random_xml(key)
     local q = get_q()
     return q and q.load_random_xml(key) or ""

@@ -109,11 +109,10 @@ class TestDialogueLifecycle:
             "faction": "stalker",
             "experience": "Veteran",
             "reputation": 750,
-            "personality": "gruff_but_fair",
-            "backstory": "veteran_stalker",
             "weapon": "AK-74",
             "visual_faction": None,
         })
+        PERSONALITIES = '{"12345": "gruff_but_fair"}'
 
         LLM_DIALOGUE_RESPONSE = """Always something worth mentioning out there."""
 
@@ -133,6 +132,7 @@ class TestDialogueLifecycle:
             memory_json=_EMPTY_MEMORY,
             character_json=CHARACTER_RESPONSE,
             llm_responses=[LLM_SPEAKER_RESPONSE, LLM_DIALOGUE_RESPONSE],
+            personalities_json=PERSONALITIES,
         )
 
         # Speaker selection + dialogue generation = 2 LLM calls

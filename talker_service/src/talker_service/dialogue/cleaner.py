@@ -39,12 +39,42 @@ def clean_dialogue(text: str) -> str:
     text = re.sub(r'\[[^\]]+\]', '', text)
     text = re.sub(r'\([^)]+\)', '', text)
     
-    # Remove common AI artifacts
+    # Remove common AI artifacts / refusals
+    # Case-insensitive substring matching. Grouped by category for maintainability.
     artifacts = [
+        # Apology patterns
+        "I apologize, but I",
+        "I'm sorry, but I cannot",
+        "I'm sorry, but I can't",
+        "I am sorry, but I",
+        # Inability patterns
         "I cannot assist with that",
-        "I'm sorry, but",
+        "I cannot fulfill",
+        "I cannot generate",
+        "I cannot complete",
+        "I can't assist with",
+        # Policy patterns
+        "safety guidelines",
+        "content guidelines",
+        "ethical guidelines",
+        "usage policies",
+        "use-case policy",
+        "terms of service",
+        # Identity leak patterns
         "As an AI",
         "As a language model",
+        "AI assistant",
+        "openAI",
+        "not programmed",
+        "against my programming",
+        # Content block patterns
+        "prohibited content",
+        "inappropriate content",
+        "Content is not allowed",
+        "Unable to comply",
+        # Deflection patterns
+        "If you have any other inquiries",
+        "I'm sorry, but",
     ]
     for artifact in artifacts:
         if artifact.lower() in text.lower():

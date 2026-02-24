@@ -95,8 +95,6 @@ class TestInjuryLifecycle:
             "faction": "stalker",
             "experience": "Veteran",
             "reputation": 750,
-            "personality": "gruff_but_fair",
-            "backstory": "veteran_stalker",
             "weapon": "AK-74",
             "visual_faction": None,
         })

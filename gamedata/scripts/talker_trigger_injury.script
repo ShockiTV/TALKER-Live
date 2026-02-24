@@ -21,7 +21,17 @@ local cd = Cooldown.new({ cooldown_ms = INJURY_COOLDOWN_CD, on_cooldown = "abort
 
 function actor_on_hit_callback(obj, amount, local_direction, who, bone_index)
     if mode_injury == 1 then return end
-    if db.actor.health >= mcm.get("injury_threshold") then return end
+
+    -- Guard 1: nil hit source (fall damage, environmental hazards)
+    if not who then return end
+
+    -- Guard 2: self-damage (grenades, explosions caused by the player)
+    if who == db.actor then return end
+
+    -- Guard 3: anomaly-sourced damage — handled by talker_trigger_anomalies.script
+    if queries.is_anomaly_section(who:section()) then return end
+
+    if tonumber(db.actor.health) >= (tonumber(mcm.get("injury_threshold")) or 0.4) then return end
 
     local player = game.get_player_character()
     local is_silent = cd:check("default", queries.get_game_time_ms(), mode_injury)

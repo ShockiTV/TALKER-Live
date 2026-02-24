@@ -157,8 +157,6 @@ class TestDeathLifecycle:
             "faction": "stalker",
             "experience": "Veteran",
             "reputation": 750,
-            "personality": "gruff_but_fair",
-            "backstory": "veteran_stalker",
             "weapon": "AK-74",
             "visual_faction": null
         }
@@ -167,6 +165,8 @@ class TestDeathLifecycle:
         # =====================================================================
         # 9) SCENE/WORLD CONTEXT QUERY RESPONSE
         # =====================================================================
+        # Note: personality/backstory come from store.personalities / store.backstories
+        PERSONALITIES = '{"12345": "gruff_but_fair"}'
         SCENE_CONTEXT_RESPONSE = """
         {
             "loc": "l01_escape",
@@ -241,6 +241,7 @@ class TestDeathLifecycle:
             character_json=CHARACTER_RESPONSE,
             llm_responses=[LLM_SPEAKER_RESPONSE, LLM_DIALOGUE_RESPONSE],
             events_json=EVENTS_RESPONSE,
+            personalities_json=PERSONALITIES,
         )
 
         # =====================================================================
