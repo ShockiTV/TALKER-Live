@@ -19,10 +19,9 @@ function M.serialize_character(char)
         faction       = char.faction,
         experience    = char.experience,
         reputation    = char.reputation,
-        personality   = char.personality,
-        backstory     = char.backstory,
         weapon        = char.weapon,
         visual_faction = char.visual_faction,
+        story_id      = char.story_id,
     }
     return result
 end
@@ -77,7 +76,6 @@ function M.serialize_event(event)
 
     return {
         type         = event.type,
-        content      = event.content,      -- legacy field
         context      = M.serialize_context(event.context),
         game_time_ms = event.game_time_ms,
         world_context = event.world_context,

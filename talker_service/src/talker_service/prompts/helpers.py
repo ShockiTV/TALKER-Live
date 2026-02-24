@@ -9,6 +9,7 @@ from .models import Character, Event, NarrativeCue
 from .factions import resolve_faction_name
 from .lookup import resolve_personality
 from texts.locations import get_location_name, get_location_description
+from texts.anomaly_sections import describe_anomaly_section
 
 
 # Type alias for items that can appear in a prompt sequence
@@ -264,11 +265,12 @@ def _format_typed_event(event: Event) -> str:
         return f"Someone {action} {item_name}"
     
     elif event_type == "ANOMALY":
-        anomaly_type = ctx.get("anomaly_type", "an anomaly")
-        
+        anomaly_section = ctx.get("anomaly_type", "")
+        anomaly_desc = describe_anomaly_section(anomaly_section) if anomaly_section else "an anomaly"
+
         if actor:
-            return f"{describe_character(actor)} encountered {anomaly_type}"
-        return f"Someone encountered {anomaly_type}"
+            return f"{describe_character(actor)} encountered {anomaly_desc}"
+        return f"Someone encountered {anomaly_desc}"
     
     elif event_type == "MAP_TRANSITION":
         # Get technical IDs and resolve to human-readable names

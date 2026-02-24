@@ -106,6 +106,64 @@ class TestDialogueCleaner:
         assert clean_dialogue("I'm sorry, but I cannot assist with that.") == ""
         assert clean_dialogue("As an AI language model...") == ""
 
+    def test_clean_returns_empty_for_expanded_rejections(self):
+        """Test that expanded rejection patterns all result in empty string."""
+        rejection_samples = [
+            # Apology patterns
+            "I apologize, but I cannot help with that.",
+            "I'm sorry, but I cannot comply.",
+            "I'm sorry, but I can't generate that content.",
+            "I am sorry, but I must decline.",
+            # Inability patterns
+            "I cannot fulfill this request.",
+            "I cannot generate this type of content.",
+            "I cannot complete this task.",
+            "I can't assist with that kind of dialogue.",
+            # Policy patterns
+            "This violates safety guidelines established by the platform.",
+            "I must follow content guidelines at all times.",
+            "My ethical guidelines prevent me from doing that.",
+            "That goes against our usage policies.",
+            "This falls outside the use-case policy.",
+            "This would violate the terms of service.",
+            # Identity leak patterns
+            "As an AI, I cannot assist with that.",
+            "As a language model, I lack the ability to do that.",
+            "I am an AI assistant and cannot comply.",
+            "This request involves openAI usage restrictions.",
+            "I am not programmed to produce such content.",
+            "That goes against my programming.",
+            # Content block patterns
+            "I cannot produce prohibited content.",
+            "That is inappropriate content.",
+            "Content is not allowed under platform rules.",
+            "Unable to comply with this request.",
+            # Deflection patterns
+            "If you have any other inquiries, I am happy to help.",
+        ]
+        for sample in rejection_samples:
+            assert clean_dialogue(sample) == "", f"Expected empty for: {sample!r}"
+
+    def test_clean_false_positives_pass_through(self):
+        """Test that legitimate dialogue containing partial rejection-like words passes through."""
+        legitimate = [
+            # Contains 'sorry' but not a refusal pattern
+            "I'm sorry for your loss, comrade.",
+            # Contains 'cannot' in a non-refusal context
+            "They cannot stop us now!",
+            # Contains 'guidelines' as a noun but no rejection pattern
+            "The faction follows their own guidelines out here.",
+            # Contains 'content' used normally
+            "Now THAT has some real content to it.",
+            # Contains 'policies' but not a refusal
+            "Their faction enforces strict policies.",
+            # Contains 'programmed' but not a refusal
+            "He looks like he was programmed to kill.",
+        ]
+        for line in legitimate:
+            result = clean_dialogue(line)
+            assert result != "", f"False-positive rejection for legitimate line: {line!r}"
+
 
 class TestExtractSpeakerId:
     """Tests for speaker ID extraction."""

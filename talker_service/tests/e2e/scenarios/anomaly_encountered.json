@@ -1,5 +1,5 @@
 {
-  "description": "ANOMALY event: player encounters a Whirligig; Wolf and Petruha witness, Wolf selected to react.",
+  "description": "ANOMALY event: player encounters a Vortex anomaly; Wolf and Petruha witness, Wolf selected to react.",
   "input": {
     "topic": "game.event",
     "payload": {
@@ -13,7 +13,7 @@
             "experience": "Veteran",
             "reputation": 500
           },
-          "anomaly_type": "Whirligig",
+          "anomaly_type": "zone_vortex",
           "action": "encountered"
         },
         "game_time_ms": 4800000,
@@ -109,7 +109,7 @@
           },
           {
             "role": "user",
-            "content": "Marked One (Veteran, Loner, Reputation: 500) encountered Whirligig"
+            "content": "Marked One (Veteran, Loner, Reputation: 500) encountered a Vortex anomaly (gravitational whirlwind pulling objects inward)."
           },
           {
             "role": "system",
@@ -125,7 +125,7 @@
       }
     },
     {
-      "response": "That Whirligig nearly had you. Watch your footing out there \u00e2\u20ac\u201d bolts first, walk second.",
+      "response": "That Vortex nearly had you. Watch your footing out there \u00e2\u20ac\u201d bolts first, walk second.",
       "request": {
         "model": "gpt-4o-mini",
         "messages": [
@@ -187,7 +187,7 @@
           },
           {
             "role": "user",
-            "content": "Marked One (Veteran, Loner, Reputation: 500) encountered Whirligig"
+            "content": "Marked One (Veteran, Loner, Reputation: 500) encountered a Vortex anomaly (gravitational whirlwind pulling objects inward)."
           },
           {
             "role": "system",
@@ -300,7 +300,7 @@
         "topic": "dialogue.display",
         "payload": {
           "speaker_id": "12345",
-          "dialogue": "That Whirligig nearly had you. Watch your footing out there \u00e2\u20ac\u201d bolts first, walk second.",
+          "dialogue": "That Vortex nearly had you. Watch your footing out there \u00e2\u20ac\u201d bolts first, walk second.",
           "create_event": true,
           "event_context": {
             "world_context": null

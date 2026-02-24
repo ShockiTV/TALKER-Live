@@ -54,8 +54,8 @@ class TestCharacterType:
 
     REQUIRED_FIELDS = ["game_id", "name"]
     OPTIONAL_FIELDS = [
-        "faction", "experience", "reputation", "personality",
-        "backstory", "weapon", "visual_faction", "story_id",
+        "faction", "experience", "reputation",
+        "weapon", "visual_faction", "story_id",
     ]
 
     def test_character_type_exists(self, types):

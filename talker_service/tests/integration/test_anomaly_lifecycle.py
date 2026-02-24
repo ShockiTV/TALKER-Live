@@ -9,10 +9,10 @@ COVERAGE
 
 | Test | Variation | Key Assertions |
 |------|-----------|----------------|
-| test_happy_path | Actor encounters Whirligig, 2 witnesses | Full lifecycle |
-| test_jellyfish_type | anomaly_type="Jellyfish" | uses anomaly_type string |
-| test_springboard_type | anomaly_type="Springboard" | uses anomaly_type string |
-| test_no_actor | No actor in context | "Someone encountered {anomaly}" |
+| test_happy_path | Actor encounters zone_vortex (Vortex), 2 witnesses | Full lifecycle |
+| test_known_section | anomaly_type="zone_mine_electric_weak" | resolves to Electro description |
+| test_unknown_section | anomaly_type="zone_custom_unknown" | falls back to raw section name |
+| test_no_actor | No actor in context | "Someone encountered {resolved}" |
 """
 
 import json
@@ -48,8 +48,8 @@ class TestAnomalyLifecycle:
     """ANOMALY lifecycle tests."""
 
     @pytest.mark.asyncio
-    async def test_happy_path_actor_encounters_whirligig(self):
-        """Player encounters Whirligig; 2 witnesses react, Wolf selected."""
+    async def test_happy_path_actor_encounters_vortex(self):
+        """Player encounters zone_vortex; 2 witnesses react, Wolf selected."""
 
         INPUT_EVENT = """
         {
@@ -63,7 +63,7 @@ class TestAnomalyLifecycle:
                         "experience": "Veteran",
                         "reputation": 500
                     },
-                    "anomaly_type": "Whirligig"
+                    "anomaly_type": "zone_vortex"
                 },
                 "game_time_ms": 5000000,
                 "witnesses": [
@@ -104,7 +104,7 @@ class TestAnomalyLifecycle:
             "visual_faction": None,
         })
 
-        LLM_DIALOGUE_RESPONSE = """Watch your step — that Whirligig nearly had you."""
+        LLM_DIALOGUE_RESPONSE = """Watch your step — that Vortex nearly had you."""
 
         snapshot = await run_lifecycle(
             input_event_json=INPUT_EVENT,
@@ -123,13 +123,13 @@ class TestAnomalyLifecycle:
             json.dumps([
                 {
                     "messages": [
-                        {"role": "user", "content_patterns": ["encountered Whirligig"]}
+                        {"role": "user", "content_patterns": ["encountered a Vortex anomaly"]}
                     ],
                     "options": {"temperature": 0.3, "max_tokens": 50}
                 },
                 {
                     "messages": [
-                        {"role": "user", "content_patterns": ["encountered Whirligig"]}
+                        {"role": "user", "content_patterns": ["encountered a Vortex anomaly"]}
                     ],
                     "options": {"temperature": 0.8, "max_tokens": 200}
                 }
@@ -149,26 +149,32 @@ class TestAnomalyDescribeEvent:
             }
         return {"type": "ANOMALY", "context": ctx, "game_time_ms": 0, "flags": {}}
 
-    def test_whirligig(self):
-        """anomaly_type used verbatim in description."""
-        event = Event.from_dict(self._make_event("Whirligig"))
+    def test_known_section_vortex(self):
+        """Known section resolved to human-readable description."""
+        event = Event.from_dict(self._make_event("zone_vortex"))
         result = describe_event(event)
-        assert result == "Wolf (Veteran, Loner, Reputation: 750) encountered Whirligig"
+        assert result == "Wolf (Veteran, Loner, Reputation: 750) encountered a Vortex anomaly (gravitational whirlwind pulling objects inward)."
 
-    def test_jellyfish(self):
-        """Jellyfish anomaly type works correctly."""
-        event = Event.from_dict(self._make_event("Jellyfish"))
+    def test_known_section_electric(self):
+        """Known section resolved to Electro description."""
+        event = Event.from_dict(self._make_event("zone_mine_electric_weak"))
         result = describe_event(event)
-        assert result == "Wolf (Veteran, Loner, Reputation: 750) encountered Jellyfish"
+        assert result == "Wolf (Veteran, Loner, Reputation: 750) encountered an Electro anomaly (electrical field discharging lightning)."
 
-    def test_springboard(self):
-        """Springboard anomaly type works correctly."""
-        event = Event.from_dict(self._make_event("Springboard"))
+    def test_unknown_section_fallback(self):
+        """Unknown section falls back to raw section name."""
+        event = Event.from_dict(self._make_event("zone_custom_unknown"))
         result = describe_event(event)
-        assert result == "Wolf (Veteran, Loner, Reputation: 750) encountered Springboard"
+        assert result == "Wolf (Veteran, Loner, Reputation: 750) encountered zone_custom_unknown"
 
     def test_no_actor(self):
-        """Missing actor falls back: 'Someone encountered {anomaly_type}'."""
-        event = Event.from_dict(self._make_event("Electro", with_actor=False))
+        """Missing actor falls back: 'Someone encountered {resolved}'."""
+        event = Event.from_dict(self._make_event("zone_mine_electric_weak", with_actor=False))
         result = describe_event(event)
-        assert result == "Someone encountered Electro"
+        assert result == "Someone encountered an Electro anomaly (electrical field discharging lightning)."
+
+    def test_empty_anomaly_type(self):
+        """Missing/empty anomaly_type falls back to generic 'an anomaly'."""
+        event = Event.from_dict(self._make_event("", with_actor=False))
+        result = describe_event(event)
+        assert result == "Someone encountered an anomaly"

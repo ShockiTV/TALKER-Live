@@ -34,12 +34,16 @@ class MockStateClient:
         scene_json: str,
         characters_alive_json: str,
         events_json: str = "[]",
+        personalities_json: str = "{}",
+        backstories_json: str = "{}",
     ):
         self.memory_response = json.loads(memory_json)
         self.character_response = json.loads(character_json)
         self.scene_response = json.loads(scene_json)
         self.characters_alive_response = json.loads(characters_alive_json)
         self.events_response = json.loads(events_json)
+        self.personalities_response = json.loads(personalities_json)
+        self.backstories_response = json.loads(backstories_json)
         # Record requests as JSON-serializable dicts
         self.requests: list[dict] = []
 
@@ -80,6 +84,14 @@ class MockStateClient:
                     })
                     alive_data = self.characters_alive_response.get("alive", {})
                     results[qid] = {"ok": True, "data": alive_data}
+                elif resource == "store.personalities":
+                    target_ids = [str(i) for i in params.get("target", [])]
+                    data = {k: v for k, v in self.personalities_response.items() if k in target_ids}
+                    results[qid] = {"ok": True, "data": data}
+                elif resource == "store.backstories":
+                    target_ids = [str(i) for i in params.get("target", [])]
+                    data = {k: v for k, v in self.backstories_response.items() if k in target_ids}
+                    results[qid] = {"ok": True, "data": data}
                 else:
                     results[qid] = {"ok": False, "error": f"unknown resource: {resource}"}
             except Exception as e:
@@ -157,6 +169,8 @@ async def run_lifecycle(
     character_json: str,
     llm_responses: list[str],
     events_json: str = "[]",
+    personalities_json: str = "{}",
+    backstories_json: str = "{}",
 ) -> LifecycleSnapshot:
     """Run full event lifecycle and return snapshot.
 
@@ -183,6 +197,8 @@ async def run_lifecycle(
         scene_json=scene_json,
         characters_alive_json=characters_alive_json,
         events_json=events_json,
+        personalities_json=personalities_json,
+        backstories_json=backstories_json,
     )
 
     publisher = MockPublisher()

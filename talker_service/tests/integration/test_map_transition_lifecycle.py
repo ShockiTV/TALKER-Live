@@ -207,12 +207,12 @@ class TestMapTransitionLifecycle:
             "faction": "stalker",
             "experience": "Experienced",
             "reputation": 200,
-            "personality": "curious_explorer",
-            "backstory": "former_student",
             "weapon": "MP5",
             "visual_faction": "stalker"
         }
         """
+        PERSONALITIES = '{"11111": "curious_explorer"}'
+        BACKSTORIES = '{"11111": "former_student"}'
         
         # =====================================================================
         # 8) SCENE/WORLD CONTEXT QUERY REQUEST
@@ -353,6 +353,8 @@ class TestMapTransitionLifecycle:
             memory_json=MEMORY_RESPONSE,
             character_json=CHARACTER_RESPONSE,
             llm_responses=[LLM_SPEAKER_RESPONSE, LLM_DIALOGUE_RESPONSE],
+            personalities_json=PERSONALITIES,
+            backstories_json=BACKSTORIES,
         )
         
         # =====================================================================

@@ -99,8 +99,6 @@ class TestTaskLifecycle:
             "faction": "stalker",
             "experience": "Veteran",
             "reputation": 1000,
-            "personality": "barkeep",
-            "backstory": "unique",
             "weapon": None,
             "visual_faction": None,
         })
