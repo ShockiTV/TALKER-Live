@@ -235,7 +235,7 @@
         }
       }
     ],
-    "zmq_published": [
+    "ws_published": [
       {
         "topic": "dialogue.display",
         "payload": {

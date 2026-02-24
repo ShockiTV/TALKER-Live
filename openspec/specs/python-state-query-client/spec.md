@@ -2,31 +2,23 @@
 
 ## Purpose
 
-Python client for requesting state from Lua stores via ZMQ, using the batch query protocol (`state.query.batch`) for all state fetching in a single roundtrip.
+Python client for requesting state from Lua stores via WebSocket, using the batch query protocol (`state.query.batch`) for all state fetching in a single roundtrip.
 
 ## Requirements
 
-### Requirement: State Query Client Class
-
-The system MUST provide `StateQueryClient` class. `execute_batch()` is the primary API for fetching state from Lua. Individual `query_*` methods have been removed in favor of batch queries.
-
-#### Scenario: execute_batch is the primary API
-- **WHEN** code needs to fetch state from Lua
-- **THEN** it SHALL use `execute_batch()` with a `BatchQuery`
-- **AND** results SHALL be accessible via the returned `BatchResult`
-
 ### Requirement: execute_batch method
 
-The `StateQueryClient` SHALL provide `async execute_batch(batch: BatchQuery) -> BatchResult` that sends a single ZMQ message on topic `state.query.batch` and awaits a correlated `state.response`.
+The `StateQueryClient` SHALL provide `async execute_batch(batch: BatchQuery) -> BatchResult` that sends a single message on topic `state.query.batch` and awaits a correlated `state.response`. The message SHALL be sent via `WSRouter.publish()` with the request ID in the `r` field of the envelope. The response is resolved when `WSRouter` receives a frame with the matching `r` field and sets the corresponding `asyncio.Future`.
 
 #### Scenario: Batch execution sends single message
 - **WHEN** `execute_batch(batch)` is called with 4 sub-queries
-- **THEN** exactly one ZMQ message SHALL be published
-- **AND** one correlated response SHALL be awaited
+- **THEN** exactly one WS frame SHALL be sent with `t = "state.query.batch"` and a unique `r` field
+- **AND** one correlated response SHALL be awaited via the `r` field future
 
 #### Scenario: Batch timeout raises StateQueryTimeout
-- **WHEN** batch response is not received within timeout
+- **WHEN** the batch response is not received within the configured timeout
 - **THEN** `StateQueryTimeout` SHALL be raised with topic `"state.query.batch"`
+- **AND** the pending future SHALL be cancelled and removed from `pending_requests`
 
 ### Requirement: Request-Response Correlation
 

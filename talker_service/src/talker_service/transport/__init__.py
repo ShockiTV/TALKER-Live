@@ -1,5 +1,5 @@
-"""Transport layer for ZMQ communication."""
+"""Transport layer for WebSocket communication."""
 
-from .router import ZMQRouter
+from .ws_router import WSRouter
 
-__all__ = ["ZMQRouter"]
+__all__ = ["WSRouter"]

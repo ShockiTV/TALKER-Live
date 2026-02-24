@@ -1,8 +1,8 @@
-"""Tests for state query client and models."""
+"""Tests for state query client and models (WSRouter transport)."""
 
 import asyncio
 import pytest
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, call
 
 from talker_service.state import (
     StateQueryClient,
@@ -181,11 +181,11 @@ class TestWorldContextModel:
 
 
 class TestStateQueryClient:
-    """Tests for StateQueryClient."""
+    """Tests for StateQueryClient with WSRouter."""
     
     @pytest.fixture
     def mock_router(self):
-        """Create a mock router for testing."""
+        """Create a mock WSRouter for testing."""
         router = MagicMock()
         router.publish = AsyncMock(return_value=True)
         router.create_request = MagicMock()
@@ -212,6 +212,28 @@ class TestStateQueryClient:
         assert result["character_id"] == "123"
         assert result["narrative"] == "Test narrative"
         mock_router.publish.assert_called_once()
+        # Verify r field is passed to publish
+        _, kwargs = mock_router.publish.call_args
+        assert "r" in kwargs
+    
+    @pytest.mark.asyncio
+    async def test_publish_uses_r_field(self, mock_router):
+        """Verify publish is called with r=request_id for WSRouter envelope routing."""
+        response_future = asyncio.get_event_loop().create_future()
+        response_future.set_result({"data": {"ok": True}})
+        mock_router.create_request.return_value = response_future
+        
+        client = StateQueryClient(mock_router, timeout=5.0)
+        await client._send_query("state.query.world", {"key": "val"})
+        
+        # create_request should be called with some request_id and timeout
+        mock_router.create_request.assert_called_once()
+        req_id = mock_router.create_request.call_args[0][0]
+        
+        # publish should pass that same request_id as r kwarg
+        mock_router.publish.assert_called_once()
+        _, kwargs = mock_router.publish.call_args
+        assert kwargs["r"] == req_id
     
     @pytest.mark.asyncio
     async def test_query_publish_failure(self, mock_router):

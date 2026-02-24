@@ -1,36 +1,34 @@
-"""E2e test harness — wires ZMQRouter + LuaSimulator + DialogueGenerator.
+"""E2e test harness — wires WSRouter + LuaSimulator + DialogueGenerator.
 
-Uses inproc:// ZMQ transport (no OS socket permissions needed) and respx for
-HTTP interception.  All external payloads are captured for deep assertion.
+Uses a MockWebSocket (in-memory asyncio queues, no TCP ports needed) and
+respx for HTTP interception.  All external payloads are captured for deep
+assertion.
 
-Startup order (critical for inproc://):
-  1. Create shared zmq.asyncio.Context
-  2. Create LuaSimulator (binds inproc://lua-to-python FIRST)
-  3. Create ZMQRouter with shared context
-  4. Start lua_sim.start() background task
-  5. Start router.run() background task (connects to inproc://lua-to-python,
-     binds inproc://python-to-lua)
-  6. Wait a tick so both tasks are running
+Startup order:
+  1. Create WSRouter (auth disabled)
+  2. Create MockWebSocket + LuaSimulator
+  3. Start WSRouter.websocket_endpoint(mock_ws) as background task
+  4. Start LuaSimulator background poll loop
+  5. Wait a tick so both tasks are running
 """
 
 import asyncio
 import json
-import os
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Any
 
 import httpx
 import respx
-import zmq.asyncio
+from fastapi import WebSocketDisconnect
 
-from talker_service.transport.router import ZMQRouter
+from talker_service.transport.ws_router import WSRouter
 from talker_service.state.client import StateQueryClient
 from talker_service.dialogue.generator import DialogueGenerator
 from talker_service.llm.openai_client import OpenAIClient
 from talker_service.handlers import events as event_handlers
 
 from .lua_simulator import LuaSimulator
+from .mock_websocket import MockWebSocket
 
 
 # Default timeout for waiting on dialogue.display to arrive
@@ -50,7 +48,7 @@ class RunResult:
     """state.query.* messages sent by the service, request_id stripped."""
     http_calls: list[HttpCall] = field(default_factory=list)
     """HTTP requests captured by respx."""
-    zmq_published: list[dict] = field(default_factory=list)
+    ws_published: list[dict] = field(default_factory=list)
     """Non-state-query messages published by the service to Lua."""
 
 
@@ -58,33 +56,26 @@ class E2eHarness:
     """Wires and runs a single e2e scenario.
 
     Create via the pytest fixture in conftest.py.  Do not reuse across tests —
-    each test gets a fresh harness with a fresh ZMQ context.
+    each test gets a fresh harness with a fresh MockWebSocket.
     """
 
     def __init__(self) -> None:
-        self._ctx: zmq.asyncio.Context | None = None
-        self._router: ZMQRouter | None = None
+        self._router: WSRouter | None = None
+        self._mock_ws: MockWebSocket | None = None
         self._lua_sim: LuaSimulator | None = None
         self._generator: DialogueGenerator | None = None
-        self._router_task: asyncio.Task | None = None
+        self._ws_task: asyncio.Task | None = None
         self._started = False
         self.last_result: RunResult | None = None
 
     async def _setup(self, state_mocks: dict) -> None:
         """Internal setup called once per scenario."""
-        self._ctx = zmq.asyncio.Context()
+        # WSRouter with auth explicitly disabled (empty tokens dict)
+        self._router = WSRouter(tokens={})
 
-        # LuaSimulator must bind first (inproc:// requires bind before connect
-        # in older libzmq; with libzmq 4.x it's also fine the other way, but
-        # explicit ordering is safer)
-        self._lua_sim = LuaSimulator(self._ctx, state_mocks=state_mocks)
-
-        # ZMQRouter uses the shared context, connects to lua-to-python, binds python-to-lua
-        self._router = ZMQRouter(
-            sub_endpoint="inproc://lua-to-python",
-            pub_endpoint="inproc://python-to-lua",
-            context=self._ctx,
-        )
+        # MockWebSocket bridges LuaSimulator ↔ WSRouter via asyncio queues
+        self._mock_ws = MockWebSocket()
+        self._lua_sim = LuaSimulator(self._mock_ws, state_mocks=state_mocks)
 
         # Wire up production handlers exactly as __main__.py does
         state_client = StateQueryClient(router=self._router, timeout=5.0)
@@ -106,9 +97,14 @@ class E2eHarness:
         # Register handlers on router
         self._router.on("game.event", event_handlers.handle_game_event)
 
-        # Start background tasks
+        # Start WSRouter endpoint task (reads from MockWebSocket)
+        self._ws_task = asyncio.create_task(
+            self._router.websocket_endpoint(self._mock_ws),
+            name="ws-endpoint",
+        )
+
+        # Start LuaSimulator poll loop
         await self._lua_sim.start()
-        self._router_task = asyncio.create_task(self._router.run(), name="zmq-router")
 
         # Yield to event loop so both tasks start running
         await asyncio.sleep(0.05)
@@ -183,7 +179,7 @@ class E2eHarness:
         # State queries: received_from_service entries where topic starts with state.query.
         # Strip request_id (non-deterministic UUID) before asserting.
         state_queries = []
-        zmq_published = []
+        ws_published = []
 
         for entry in self._lua_sim.received_from_service:
             topic = entry["topic"]
@@ -194,7 +190,7 @@ class E2eHarness:
                 state_queries.append({"topic": topic, "payload": payload})
             elif topic != "state.response":
                 # Everything else (dialogue.display, memory.update, etc.)
-                zmq_published.append({"topic": topic, "payload": payload})
+                ws_published.append({"topic": topic, "payload": payload})
 
         # HTTP calls: parse exact request body from respx
         http_calls = []
@@ -205,7 +201,7 @@ class E2eHarness:
         return RunResult(
             state_queries=state_queries,
             http_calls=http_calls,
-            zmq_published=zmq_published,
+            ws_published=ws_published,
         )
 
     async def shutdown(self) -> None:
@@ -217,20 +213,21 @@ class E2eHarness:
         event_handlers.set_dialogue_generator(None)
         event_handlers.set_publisher(None)
 
-        if self._router_task and not self._router_task.done():
-            self._router_task.cancel()
+        # Signal MockWebSocket to disconnect (breaks WSRouter receive loop)
+        if self._mock_ws:
+            self._mock_ws.disconnect()
+
+        if self._ws_task and not self._ws_task.done():
+            self._ws_task.cancel()
             try:
-                await self._router_task
+                await self._ws_task
             except (asyncio.CancelledError, Exception):
                 pass
 
         if self._router:
-            await self._router.shutdown()
+            await self._router.stop()
 
         if self._lua_sim:
             self._lua_sim.close()
-
-        if self._ctx:
-            self._ctx.term()
 
         self._started = False

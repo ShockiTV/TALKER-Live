@@ -109,7 +109,7 @@ I took their basic code for reloading personalities from [issue#40](https://gith
    launch_talker_service.bat
    ```
 3. **Launch the game** and load a save
-4. **Verify connection**: Open `http://localhost:8080/health` in a browser
+4. **Verify connection**: Open `http://localhost:5557/health` in a browser
 
 ### Requirements
 

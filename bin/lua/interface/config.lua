@@ -145,27 +145,22 @@ function c.is_gemini()
 	return false
 end
 
--- ZMQ / Python Service configuration
--- Note: ZMQ and Python AI are always enabled (no longer configurable)
+-- WebSocket / Python Service configuration
 
-function c.zmq_port()
-	return tonumber(cfg("zmq_port"))
+function c.ws_host()
+	return cfg("ws_host") or "127.0.0.1"
 end
 
-function c.zmq_endpoint()
-	return "tcp://*:" .. c.zmq_port()
+function c.ws_port()
+	return tonumber(cfg("ws_port"))
 end
 
-function c.zmq_command_port()
-	return tonumber(cfg("zmq_command_port"))
+function c.mic_ws_port()
+	return tonumber(cfg("mic_ws_port"))
 end
 
-function c.zmq_command_endpoint()
-	return "tcp://127.0.0.1:" .. c.zmq_command_port()
-end
-
-function c.zmq_heartbeat_interval()
-	return tonumber(cfg("zmq_heartbeat_interval"))
+function c.ws_token()
+	return cfg("ws_token") or ""
 end
 
 function c.llm_timeout()
@@ -212,9 +207,9 @@ function c.get_all_config()
 		npc_speak_distance      = cfg("npc_speak_distance"),
 		time_gap                = cfg("time_gap"),
 
-		-- ZMQ settings
-		zmq_port                = tonumber(cfg("zmq_port")),
-		zmq_heartbeat_interval  = tonumber(cfg("zmq_heartbeat_interval")),
+		-- WebSocket settings
+		ws_host                 = cfg("ws_host"),
+		ws_port                 = tonumber(cfg("ws_port")),
 		llm_timeout             = tonumber(cfg("llm_timeout")),
 		state_query_timeout     = tonumber(cfg("state_query_timeout")),
 

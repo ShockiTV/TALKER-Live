@@ -339,36 +339,54 @@ function on_mcm_load()
                     {"3", "logging_Both"},
                 },
             },
-            -- ZMQ / Python Service Configuration
+            -- Python Service Configuration
             {
-                id = "zmq_title",
+                id = "service_title",
                 type = "slide",
                 link = "ui_options_slider_player",
-                text = "ui_mcm_talker_zmq_title",
+                text = "ui_mcm_talker_service_title",
                 size = {512, 50},
                 spacing = 20
             },
             {
-                id = "zmq_port_title",
+                id = "ws_host_title",
                 type = "desc",
                 clr = {200, 200, 255, 200},
-                text = "ui_mcm_talker_zmq_port_title"
+                text = "ui_mcm_talker_ws_host_title"
             },
             {
-                id = "zmq_port",
+                id = "ws_host",
+                type = "input",
+                val = 0,
+                def = "127.0.0.1",
+            },
+            {
+                id = "ws_port_title",
+                type = "desc",
+                clr = {200, 200, 255, 200},
+                text = "ui_mcm_talker_ws_port_title"
+            },
+            {
+                id = "ws_port",
                 type = "input",
                 val = 2,
                 min = 1024,
                 max = 65535,
-                def = 5555,
+                def = 5557,
             },
             {
-                id = "zmq_heartbeat_interval",
+                id = "mic_ws_port_title",
+                type = "desc",
+                clr = {200, 200, 255, 200},
+                text = "ui_mcm_talker_mic_ws_port_title"
+            },
+            {
+                id = "mic_ws_port",
                 type = "input",
                 val = 2,
-                min = 1,
-                max = 60,
-                def = 5,
+                min = 1024,
+                max = 65535,
+                def = 5558,
             },
             {
                 id = "llm_timeout_title",
@@ -461,8 +479,9 @@ local defaults = {
     ["npc_speak_distance"] = 30,
     ["time_gap"] = 12,
     ["debug_logging"] = 2,
-    ["zmq_port"] = 5555,
-    ["zmq_heartbeat_interval"] = 5,
+    ["ws_host"] = "127.0.0.1",
+    ["ws_port"] = 5557,
+    ["mic_ws_port"] = 5558,
     ["llm_timeout"] = 60,
     ["state_query_timeout"] = 30,
 }

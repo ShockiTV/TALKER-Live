@@ -23,8 +23,8 @@ def assert_scenario(result: RunResult, scenario: dict) -> None:
 
     _assert_llm_mock_requests(result.http_calls, scenario.get("llm_mocks", []))
 
-    if "zmq_published" in expected:
-        _assert_zmq_published(result.zmq_published, expected["zmq_published"])
+    if "ws_published" in expected:
+        _assert_ws_published(result.ws_published, expected["ws_published"])
 
 
 def _deep_match(actual, expected):
@@ -97,17 +97,17 @@ def _assert_http_calls(actual, expected: list[dict]) -> None:
         )
 
 
-def _assert_zmq_published(actual: list[dict], expected: list[dict]) -> None:
+def _assert_ws_published(actual: list[dict], expected: list[dict]) -> None:
     assert len(actual) == len(expected), (
-        f"Expected {len(expected)} ZMQ publishes, got {len(actual)}.\n"
+        f"Expected {len(expected)} WS publishes, got {len(actual)}.\n"
         f"Actual topics: {[e['topic'] for e in actual]}"
     )
     for i, (act, exp) in enumerate(zip(actual, expected)):
         assert act["topic"] == exp["topic"], (
-            f"ZMQ publish {i}: topic mismatch — got {act['topic']!r}, expected {exp['topic']!r}"
+            f"WS publish {i}: topic mismatch — got {act['topic']!r}, expected {exp['topic']!r}"
         )
         assert act["payload"] == exp["payload"], (
-            f"ZMQ publish {i} ({act['topic']}): payload mismatch.\n"
+            f"WS publish {i} ({act['topic']}): payload mismatch.\n"
             f"Expected: {exp['payload']}\n"
             f"Actual:   {act['payload']}"
         )

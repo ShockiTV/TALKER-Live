@@ -1,4 +1,4 @@
-"""State query client for requesting game state from Lua via ZMQ."""
+"""State query client for requesting game state from Lua via WebSocket."""
 
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ class StateQueryTimeout(TimeoutError):
     specific type.
     
     Attributes:
-        topic: The ZMQ query topic that timed out (e.g. "state.query.memories").
+        topic: The query topic that timed out (e.g. "state.query.memories").
         character_id: The character_id parameter if the query was character-specific.
     """
 
@@ -36,17 +36,18 @@ class StateQueryTimeout(TimeoutError):
 
 
 class StateQueryClient:
-    """Client for querying game state from Lua via ZMQ.
+    """Client for querying game state from Lua via WebSocket.
     
     Uses request/response pattern with request_id correlation.
-    Publishes query to Lua, waits for response on state.response topic.
+    Publishes query with ``r`` field; response resolved via WSRouter's
+    ``r``-field short-circuit.
     """
     
     def __init__(self, router, timeout: float = 30.0):
         """Initialize state query client.
         
         Args:
-            router: ZMQRouter instance with publish capability
+            router: WSRouter instance with publish and create_request capability
             timeout: Default timeout for queries in seconds
         """
         self.router = router
@@ -88,7 +89,7 @@ class StateQueryClient:
             **params
         }
         
-        success = await self.router.publish(topic, payload)
+        success = await self.router.publish(topic, payload, r=request_id)
         if not success:
             raise ConnectionError(f"Failed to publish query to {topic}")
         
@@ -115,11 +116,11 @@ class StateQueryClient:
         *,
         timeout: float | None = None,
     ) -> BatchResult:
-        """Execute a batch query against Lua in a single ZMQ roundtrip.
+        """Execute a batch query against Lua in a single WS roundtrip.
 
-        Publishes a ``state.query.batch`` message containing all sub-queries,
-        waits for a correlated ``state.response``, and wraps the per-query
-        results in a :class:`BatchResult`.
+        Publishes a ``state.query.batch`` message containing all sub-queries
+        with the request ID in the ``r`` field.  The response is resolved
+        when ``WSRouter`` receives a frame with the matching ``r``.
 
         Args:
             batch: A :class:`BatchQuery` with at least one sub-query.
@@ -130,7 +131,7 @@ class StateQueryClient:
 
         Raises:
             StateQueryTimeout: If Lua does not respond within the timeout.
-            ConnectionError: If the ZMQ publish fails.
+            ConnectionError: If the WS publish fails.
             ValueError: If the batch has invalid $ref ordering.
         """
         queries = batch.build()  # validates $ref ordering
@@ -144,7 +145,7 @@ class StateQueryClient:
             "queries": queries,
         }
 
-        success = await self.router.publish("state.query.batch", payload)
+        success = await self.router.publish("state.query.batch", payload, r=request_id)
         if not success:
             raise ConnectionError("Failed to publish batch query")
 

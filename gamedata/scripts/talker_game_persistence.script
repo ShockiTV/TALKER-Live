@@ -9,14 +9,14 @@ local levels_store = require("domain.repo.levels")
 local timers_store = require("domain.repo.timers")
 local log = require("framework.logger")
 
--- ZMQ integration reference (lazy-loaded)
-local zmq_integration = nil
+-- WS integration reference (lazy-loaded)
+local ws_integration = nil
 
-local function get_zmq_integration()
-    if zmq_integration == nil then
-        zmq_integration = talker_zmq_integration or false
+local function get_ws_integration()
+    if ws_integration == nil then
+        ws_integration = talker_ws_integration or false
     end
-    return zmq_integration
+    return ws_integration
 end
 
 -- Save the data
@@ -77,12 +77,12 @@ function load_state(saved_data)
         timers_store.load_save_data(nil)
     end
     
-    -- Trigger ZMQ config sync after a 2-second delay (allows MCM to fully initialize)
-    CreateTimeEvent("talker_persistence_zmq", "config_sync", 2, function()
-        local zmq = get_zmq_integration()
-        if zmq and zmq.publish_config_sync then
-            log.info("Persistence: Triggering ZMQ config sync after load")
-            zmq.publish_config_sync()
+    -- Trigger WS config sync after a 2-second delay (allows MCM to fully initialize)
+    CreateTimeEvent("talker_persistence_ws", "config_sync", 2, function()
+        local ws = get_ws_integration()
+        if ws and ws.publish_config_sync then
+            log.info("Persistence: Triggering WS config sync after load")
+            ws.publish_config_sync()
         end
         return true -- One-shot timer
     end)

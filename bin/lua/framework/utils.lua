@@ -2,7 +2,7 @@
 -- Common utility functions with zero dependencies on engine globals, domain modules, or infrastructure.
 -- Extracted from gamedata/scripts/ (must_exist, try, join_tables, Set from talker_game_queries;
 -- shuffle from talker_trigger_idle_conversation; safely from talker_game_commands;
--- array_iter from talker_zmq_query_handlers).
+-- array_iter from talker_ws_query_handlers).
 local M = {}
 
 --- Raises an error if obj is nil.

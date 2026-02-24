@@ -28,7 +28,7 @@ JUNK_EVENT_TYPES = {
 def _char_from_context(value: Any) -> Character | None:
     """Extract Character from context value.
     
-    Handles both dict (from ZMQ payload) and Character object (from state query).
+    Handles both dict (from WS payload) and Character object (from state query).
     
     Args:
         value: Context value that may be a Character or dict

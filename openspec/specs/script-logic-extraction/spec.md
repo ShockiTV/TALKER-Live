@@ -66,9 +66,9 @@ Trigger scripts with `get_silence_status()` functions SHALL replace inline coold
 - **THEN** it uses a CooldownManager with anti-spam and slots "damage", "proximity"
 - **AND** the behavior matches the original
 
-### Requirement: ZMQ query handlers delegate serialization
+### Requirement: WS query handlers delegate serialization
 
-`talker_zmq_query_handlers.script` SHALL use `infra.zmq.serializer` instead of inline serialization functions.
+`talker_ws_query_handlers.script` SHALL use `infra.ws.serializer` instead of inline serialization functions.
 
 #### Scenario: Query handler uses serializer module
 - **WHEN** a state query response is built
@@ -78,6 +78,29 @@ Trigger scripts with `get_silence_status()` functions SHALL replace inline coold
 #### Scenario: Wire format unchanged
 - **WHEN** the query handler builds a response using the serializer module
 - **THEN** the JSON output is byte-identical to the previous inline serialization
+
+### Requirement: Integration script delegates lifecycle to service-channel
+
+`talker_ws_integration.script` SHALL be the only game callback file for WS lifecycle. It SHALL register time events that call `service_channel.tick()` and `mic_channel.tick()` (via engine facade), display HUD status, and handle game load/unload events. It SHALL NOT contain connection logic, message parsing, backoff, or WS socket operations.
+
+#### Scenario: Script registers tick timer
+- **WHEN** the game actor spawns (`actor_on_update` or equivalent)
+- **THEN** a time event is registered that calls `talker_ws_integration.talker_service_tick()` at ~5ms interval
+- **AND** `talker_service_tick()` delegates to `infra.service.channel.tick()`
+
+#### Scenario: Script displays status via HUD
+- **WHEN** `service_channel.get_status()` changes to `"connected"`
+- **THEN** the script calls `engine.set_hud_message("Service: Connected")`
+- **AND** no connection logic is performed in the script itself
+
+#### Scenario: Script triggers config.sync on game load
+- **WHEN** the game fires the `on_game_load` callback
+- **THEN** the script calls `service_channel.publish("config.sync", config.get_full_config())`
+
+#### Scenario: Script shuts down channels on game unload
+- **WHEN** the game fires the `on_game_unload` callback
+- **THEN** the script calls `service_channel.shutdown()`
+- **AND** the script calls `mic_channel.shutdown()`
 
 ### Requirement: Utility functions replaced with framework/utils
 
@@ -120,7 +143,7 @@ Scripts that define utility functions (`must_exist`, `try`, `join_tables`, `Set`
 
 ### Requirement: No behavioral changes
 
-After script refactoring, the observable behavior SHALL be identical. Events SHALL be created with the same data, cooldowns SHALL trigger at the same thresholds, and ZMQ messages SHALL have the same wire format.
+After script refactoring, the observable behavior SHALL be identical. Events SHALL be created with the same data, cooldowns SHALL trigger at the same thresholds, and messages SHALL have the same wire format.
 
 #### Scenario: Death event unchanged
 - **WHEN** a creature dies near the player in-game

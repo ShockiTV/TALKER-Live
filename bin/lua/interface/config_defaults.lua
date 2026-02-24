@@ -26,10 +26,11 @@ local defaults = {
     npc_speak_distance      = 30,
     time_gap                = 4,
 
-    -- ZMQ / service
-    zmq_port                = 5555,
-    zmq_command_port        = 5556,
-    zmq_heartbeat_interval  = 5,
+    -- WebSocket / service
+    ws_host                 = "127.0.0.1",
+    ws_port                 = 5557,
+    mic_ws_port             = 5558,
+    ws_token                = "",
     llm_timeout             = 60,
     state_query_timeout     = 30,
 
