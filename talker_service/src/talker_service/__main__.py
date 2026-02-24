@@ -5,11 +5,11 @@ import signal
 from contextlib import asynccontextmanager
 
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, WebSocket
 from loguru import logger
 
 from .config import settings
-from .transport.router import ZMQRouter
+from .transport.ws_router import WSRouter
 from .handlers import events as event_handlers
 from .handlers import config as config_handlers
 from .dialogue import DialogueGenerator, SpeakerSelector
@@ -19,24 +19,19 @@ from .llm import get_llm_client
 
 
 # Global instances
-zmq_router: ZMQRouter | None = None
+ws_router: WSRouter | None = None
 dialogue_generator: DialogueGenerator | None = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Manage application lifespan - startup and shutdown."""
-    global zmq_router, dialogue_generator
+    global ws_router, dialogue_generator
     
     # Startup
-    logger.info("Starting TALKER Service v0.3.0 (Phase 2 - AI Processing)")
-    logger.info(f"Connecting to Lua PUB at {settings.lua_pub_endpoint}")
-    logger.info(f"Binding PUB socket at {settings.service_pub_endpoint}")
+    logger.info("Starting TALKER Service v0.4.0 (WebSocket transport)")
     
-    zmq_router = ZMQRouter(
-        sub_endpoint=settings.lua_pub_endpoint,
-        pub_endpoint=settings.service_pub_endpoint,
-    )
+    ws_router = WSRouter()
     
     # Initialize dialogue generation components
     logger.info("Initializing dialogue generation pipeline...")
@@ -56,7 +51,7 @@ async def lifespan(app: FastAPI):
     
     # Create state query client
     state_client = StateQueryClient(
-        router=zmq_router,
+        router=ws_router,
         timeout=settings.state_query_timeout,
     )
     
@@ -70,48 +65,40 @@ async def lifespan(app: FastAPI):
     dialogue_generator = DialogueGenerator(
         llm_client=get_current_llm_client,  # Pass factory, not client
         state_client=state_client,
-        publisher=zmq_router,
+        publisher=ws_router,
         llm_timeout=settings.llm_timeout,
         retry_queue=retry_queue,
     )
     
     # Inject generator into event handlers
     event_handlers.set_dialogue_generator(dialogue_generator)
-    event_handlers.set_publisher(zmq_router)  # For heartbeat acks
+    event_handlers.set_publisher(ws_router)  # For heartbeat acks
     event_handlers.set_retry_queue(retry_queue)
     
     # Register handlers
-    zmq_router.on("game.event", event_handlers.handle_game_event)
-    zmq_router.on("player.dialogue", event_handlers.handle_player_dialogue)
-    zmq_router.on("player.whisper", event_handlers.handle_player_whisper)
-    zmq_router.on("config.update", config_handlers.handle_config_update)
-    zmq_router.on("config.sync", config_handlers.handle_config_sync)
-    zmq_router.on("system.heartbeat", event_handlers.handle_heartbeat)
+    ws_router.on("game.event", event_handlers.handle_game_event)
+    ws_router.on("player.dialogue", event_handlers.handle_player_dialogue)
+    ws_router.on("player.whisper", event_handlers.handle_player_whisper)
+    ws_router.on("config.update", config_handlers.handle_config_update)
+    ws_router.on("config.sync", config_handlers.handle_config_sync)
+    ws_router.on("system.heartbeat", event_handlers.handle_heartbeat)
     
-    # Start ZMQ router in background
-    router_task = asyncio.create_task(zmq_router.run())
-    
-    # Request config sync from Lua (for recovery after restart)
+    # Request config sync from Lua once a client connects
     async def request_config_sync():
-        await asyncio.sleep(1.0)  # Wait for router to connect
+        await asyncio.sleep(2.0)  # Wait for game client to connect
         logger.info("Requesting config sync from Lua...")
-        await zmq_router.publish("config.request", {"reason": "service_startup"})
+        await ws_router.publish("config.request", {"reason": "service_startup"})
     
     asyncio.create_task(request_config_sync())
     
-    logger.info("TALKER Service started successfully")
+    logger.info("TALKER Service started — waiting for WebSocket connections on /ws")
     
     yield
     
     # Shutdown
     logger.info("Shutting down TALKER Service...")
-    if zmq_router:
-        await zmq_router.shutdown()
-    router_task.cancel()
-    try:
-        await router_task
-    except asyncio.CancelledError:
-        pass
+    if ws_router:
+        await ws_router.shutdown()
     logger.info("TALKER Service stopped")
 
 
@@ -119,9 +106,16 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="TALKER Service",
     description="Python compute service for TALKER Expanded mod",
-    version="0.3.0",
+    version="0.4.0",
     lifespan=lifespan,
 )
+
+
+@app.websocket("/ws")
+async def websocket_route(websocket: WebSocket):
+    """WebSocket endpoint — delegates to WSRouter."""
+    if ws_router:
+        await ws_router.websocket_endpoint(websocket)
 
 
 @app.get("/health")
@@ -129,7 +123,7 @@ async def health_check():
     """Health check endpoint."""
     return {
         "status": "ok",
-        "zmq_connected": zmq_router.is_connected if zmq_router else False,
+        "ws_connected": ws_router.is_connected if ws_router else False,
         "last_heartbeat": event_handlers.get_last_heartbeat(),
     }
 
@@ -154,8 +148,8 @@ def main():
     # Run with uvicorn
     uvicorn.run(
         app,
-        host=settings.http_host,
-        port=settings.http_port,
+        host=settings.ws_host,
+        port=settings.ws_port,
         log_level=settings.log_level.lower(),
     )
 

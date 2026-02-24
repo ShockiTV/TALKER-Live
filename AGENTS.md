@@ -8,7 +8,7 @@ This is a **dual-codebase project**:
 - **Lua** (game integration) - Runs inside the STALKER: Anomaly game engine
 - **Python** (AI processing & microphone input) - Runs as a standalone service
 
-**Phase 2+ Architecture**: AI dialogue generation is handled by the Python service, NOT Lua. The game (Lua) stores events and sends them via ZeroMQ to Python, which handles LLM calls, speaker selection, and memory compression.
+**Phase 2+ Architecture**: AI dialogue generation is handled by the Python service, NOT Lua. The game (Lua) stores events and sends them via WebSocket to Python, which handles LLM calls, speaker selection, and memory compression.
 
 ## Architecture
 
@@ -21,7 +21,7 @@ The Lua codebase follows clean architecture with strict layer separation:
 | Application | `bin/lua/app/` | Orchestrates event registration (e.g., `talker.lua`) |
 | Domain | `bin/lua/domain/` | Core entities (`Character`, `Event`), repositories (`memory_store`, `event_store`), domain data tables (`domain/data/`), and domain services (`domain/service/`) |
 | Framework | `bin/lua/framework/` | Utilities (logger, inspect, `utils.lua`) — no game dependencies |
-| Infrastructure | `bin/lua/infra/` | External integrations: HTTP, ZMQ, AI utilities, STALKER game data |
+| Infrastructure | `bin/lua/infra/` | External integrations: HTTP, WebSocket, AI utilities, STALKER game data |
 | Interface | `bin/lua/interface/` | Bridge layer (`config.lua` reads MCM settings, `interface.lua` exposes public API) |
 
 **Critical Rule**: `bin/lua/` code must NEVER directly call STALKER game APIs - always go through `talker_game_*` adapters in `gamedata/scripts/`.
@@ -32,7 +32,7 @@ The Lua codebase follows clean architecture with strict layer separation:
 - `talker_trigger_*.script` - Event triggers (death, injury, artifact, etc.)
 - `talker_listener_*.script` - Event listeners that register events with the talker system
 - `talker_input_*.script` - Player input handlers (chatbox, microphone)
-- `talker_zmq_*.script` - ZMQ integration (query handlers, command handlers)
+- `talker_ws_*.script` - WebSocket integration (query handlers, command handlers)
 - `talker_mcm.script` - MCM (Mod Configuration Menu) UI
 
 ### Python Service Architecture (`talker_service/`)
@@ -41,10 +41,10 @@ The Lua codebase follows clean architecture with strict layer separation:
 talker_service/
 ├── run.py                      # Entry point (Windows asyncio fix)
 ├── src/talker_service/
-│   ├── __main__.py             # FastAPI app + ZMQ router lifecycle
+│   ├── __main__.py             # FastAPI app + WebSocket router lifecycle
 │   ├── config.py               # Service configuration (pydantic-settings)
 │   ├── models/
-│   │   ├── messages.py         # Pydantic schemas for ZMQ messages
+│   │   ├── messages.py         # Pydantic schemas for WS messages
 │   │   └── config.py           # MCM config mirror schema
 │   ├── llm/                    # LLM client implementations
 │   │   ├── factory.py          # get_llm_client(model_method, ...)
@@ -71,10 +71,10 @@ talker_service/
 │   │   ├── speaker.py          # SpeakerSelector
 │   │   └── cleaner.py          # Response cleaning utilities
 │   ├── state/                  # Game state queries
-│   │   ├── client.py           # StateQueryClient (ZMQ request/response)
+│   │   ├── client.py           # StateQueryClient (WS request/response)
 │   │   └── models.py           # State query models
 │   ├── transport/
-│   │   └── router.py           # ZMQRouter (bidirectional PUB/SUB)
+│   │   └── ws_router.py        # WSRouter (FastAPI WebSocket endpoint)
 │   └── handlers/
 │       ├── events.py           # Game event handlers (triggers dialogue)
 │       └── config.py           # ConfigMirror class
@@ -86,26 +86,25 @@ talker_service/
 ```
 Lua (Game)                          Python (Service)
     │                                     │
-    │  ZMQ PUB (5555)  ─────────────────► │  SUB
+    │  WebSocket (5557)  ◄──────────────► │  /ws
+    │  JSON envelopes: {t, p, r, ts}      │
     │  game.event, player.dialogue, etc.  │
-    │                                     │
-    │  ZMQ SUB (5556)  ◄────────────────  │  PUB
     │  dialogue.display, memory.update    │
     │                                     │
-    │  HTTP 8080/health  ───────────────► │  FastAPI
+    │  HTTP 5557/health  ───────────────► │  FastAPI
 ```
 
 ## Technologies
 
 ### Lua Stack
 - **Language**: Lua 5.1 (LuaJIT in STALKER Anomaly)
-- **Message Queue**: ZeroMQ via LuaJIT FFI to libzmq.dll
+- **Transport**: WebSocket via pollnet.dll (LuaJIT FFI)
 - **Serialization**: Custom JSON library (`bin/lua/infra/HTTP/json.lua`)
 
 ### Python Stack
 - **Language**: Python 3.10+
 - **Web Framework**: FastAPI + Uvicorn
-- **Message Queue**: pyzmq (ZeroMQ)
+- **Transport**: WebSocket (FastAPI native)
 - **Data Validation**: Pydantic v2 + pydantic-settings
 - **Logging**: loguru
 - **Configuration**: python-dotenv
@@ -123,8 +122,8 @@ Lua (Game)                          Python (Service)
 Events flow through the system:
 ```
 Game → Trigger → trigger.talker_event_near_player() → Listener →
-talker.register_event() → Event Store → ZMQ → Python → AI Dialogue →
-ZMQ → Lua → Display
+talker.register_event() → Event Store → WS → Python → AI Dialogue →
+WS → Lua → Display
 ```
 
 **Creating typed events** (preferred):
@@ -150,9 +149,10 @@ trigger.talker_event_near_player(EventType.DEATH, context, true, { is_silent = f
 
 Compression triggers when event count exceeds `COMPRESSION_THRESHOLD` (12 events).
 
-### 3. ZMQ Communication Pattern
+### 3. WebSocket Communication Pattern
 
-All messages use: `<topic> <json-payload>`
+All messages use JSON envelopes: `{"t": "<topic>", "p": <payload>, "ts": <ms>}`.  
+Request/response messages include an `"r"` field for correlation.
 
 **Lua → Python Topics**:
 | Topic | Purpose |
@@ -300,7 +300,7 @@ await _handle_event_async(event)
 | `run_tests` | Run tests by path/pattern; accepts `path`, `pattern`, `verbose`, `fail_fast` |
 | `run_single_test` | Run one test by full node ID with detailed traceback |
 | `get_last_run_results` | Read results from the most recent run |
-| `get_captured_payloads` | Inspect ZMQ/HTTP wire payloads from e2e tests |
+| `get_captured_payloads` | Inspect WS/HTTP wire payloads from e2e tests |
 | `get_test_source` | Read source of a specific test function |
 
 **Examples**:
@@ -342,8 +342,8 @@ Edit files in `talker_service/src/talker_service/prompts/`:
 
 **Python side**:
 - Check `talker_service/logs/talker_service.log`
-- Use health endpoint: `http://localhost:8080/health`
-- Use debug endpoint: `http://localhost:8080/debug/config`
+- Use health endpoint: `http://localhost:5557/health`
+- Use debug endpoint: `http://localhost:5557/debug/config`
 
 ## Critical Files to Reference
 
@@ -357,30 +357,30 @@ Edit files in `talker_service/src/talker_service/prompts/`:
 - [`bin/lua/domain/data/ranks.lua`](bin/lua/domain/data/ranks.lua) - Rank values, reputation tiers, `format_character_info(char)` formatting
 - [`bin/lua/domain/service/cooldown.lua`](bin/lua/domain/service/cooldown.lua) - Generic `CooldownManager` used by all 5 trigger scripts; supports named slots + anti-spam
 - [`bin/lua/domain/service/importance.lua`](bin/lua/domain/service/importance.lua) - Pure `is_important_person(flags)` predicate
-- [`bin/lua/infra/zmq/serializer.lua`](bin/lua/infra/zmq/serializer.lua) - Wire-format serialization (character, context, event, events list)
+- [`bin/lua/infra/ws/serializer.lua`](bin/lua/infra/ws/serializer.lua) - Wire-format serialization (character, context, event, events list)
 - [`bin/lua/interface/world_description.lua`](bin/lua/interface/world_description.lua) - Pure string assembly for world context (`build_description`, `time_of_day`, etc.)
 - [`bin/lua/framework/utils.lua`](bin/lua/framework/utils.lua) - Common utilities: `must_exist`, `try`, `join_tables`, `Set`, `shuffle`, `safely`, `array_iter`
 - [`bin/lua/interface/config.lua`](bin/lua/interface/config.lua) - MCM config getters, default settings
 - [`bin/lua/interface/trigger.lua`](bin/lua/interface/trigger.lua) - Event triggering API
 - [`gamedata/scripts/talker_game_queries.script`](gamedata/scripts/talker_game_queries.script) - Game state queries (delegates extracted logic to `bin/lua/` modules)
-- [`gamedata/scripts/talker_zmq_integration.script`](gamedata/scripts/talker_zmq_integration.script) - ZMQ lifecycle, event publishing
-- [`gamedata/scripts/talker_zmq_command_handlers.script`](gamedata/scripts/talker_zmq_command_handlers.script) - Handles commands from Python
-- [`gamedata/scripts/talker_zmq_query_handlers.script`](gamedata/scripts/talker_zmq_query_handlers.script) - State query handlers (serialization delegated to `infra.zmq.serializer`)
+- [`gamedata/scripts/talker_ws_integration.script`](gamedata/scripts/talker_ws_integration.script) - WebSocket lifecycle, event publishing
+- [`gamedata/scripts/talker_ws_command_handlers.script`](gamedata/scripts/talker_ws_command_handlers.script) - Handles commands from Python
+- [`gamedata/scripts/talker_ws_query_handlers.script`](gamedata/scripts/talker_ws_query_handlers.script) - State query handlers (serialization delegated to `infra.ws.serializer`)
 
 ### Python (AI Processing)
-- [`talker_service/src/talker_service/__main__.py`](talker_service/src/talker_service/__main__.py) - FastAPI app and ZMQ router
+- [`talker_service/src/talker_service/__main__.py`](talker_service/src/talker_service/__main__.py) - FastAPI app and WebSocket router
 - [`talker_service/src/talker_service/dialogue/generator.py`](talker_service/src/talker_service/dialogue/generator.py) - Dialogue generation orchestrator
 - [`talker_service/src/talker_service/dialogue/speaker.py`](talker_service/src/talker_service/dialogue/speaker.py) - Speaker selection
 - [`talker_service/src/talker_service/prompts/dialogue.py`](talker_service/src/talker_service/prompts/dialogue.py) - Dialogue prompt building
 - [`talker_service/src/talker_service/prompts/memory.py`](talker_service/src/talker_service/prompts/memory.py) - Memory compression prompts
 - [`talker_service/src/talker_service/llm/factory.py`](talker_service/src/talker_service/llm/factory.py) - LLM client factory
-- [`talker_service/src/talker_service/transport/router.py`](talker_service/src/talker_service/transport/router.py) - ZMQ router
+- [`talker_service/src/talker_service/transport/ws_router.py`](talker_service/src/talker_service/transport/ws_router.py) - WebSocket router
 - [`talker_service/src/talker_service/handlers/events.py`](talker_service/src/talker_service/handlers/events.py) - Event handlers
 - [`talker_service/src/talker_service/state/client.py`](talker_service/src/talker_service/state/client.py) - State query client
 
 ### Documentation
 - [`docs/Python_Service_Setup.md`](docs/Python_Service_Setup.md) - Detailed setup instructions
-- [`docs/zmq-api.yaml`](docs/zmq-api.yaml) - ZMQ API contract (single source of truth for wire protocol)
+- [`docs/ws-api.yaml`](docs/ws-api.yaml) - WS API contract (single source of truth for wire protocol)
 - [`docs/Memory_Compression.md`](docs/Memory_Compression.md) - Memory system documentation
 
 ## External Documentation

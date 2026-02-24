@@ -6,8 +6,8 @@ local game_adapter = require("infra.game_adapter")
 local talker = {}
 
 --- Register an event in the store.
--- The Python service handles all AI dialogue generation via ZMQ.
--- This function only stores events - Python receives them via the ZMQ publisher.
+-- The Python service handles all AI dialogue generation via WebSocket.
+-- This function only stores events - Python receives them via the WS publisher.
 function talker.register_event(event, is_important)
 	logger.info("talker.register_event")
 	event_store:store_event(event)
@@ -18,8 +18,8 @@ function talker.register_event(event, is_important)
 		return
 	end
 
-	-- Python service receives events via ZMQ and handles dialogue generation
-	logger.info("Event stored - dialogue generation handled by Python service via ZMQ")
+	-- Python service receives events via WS and handles dialogue generation
+	logger.info("Event stored - dialogue generation handled by Python service via WS")
 end
 
 -- for mocking

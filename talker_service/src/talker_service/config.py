@@ -13,13 +13,10 @@ class Settings(BaseSettings):
         extra="ignore",
     )
     
-    # ZMQ Settings
-    lua_pub_endpoint: str = "tcp://127.0.0.1:5555"  # Lua PUB -> Python SUB
-    service_pub_endpoint: str = "tcp://*:5556"     # Python PUB -> Lua SUB
-    
-    # FastAPI Settings
-    http_host: str = "127.0.0.1"
-    http_port: int = 8080
+    # WebSocket Settings
+    ws_host: str = "127.0.0.1"
+    ws_port: int = 5557  # Service WS + HTTP endpoint (game client connects here)
+    talker_tokens: str = ""  # TALKER_TOKENS override (name:token,...)
     
     # Logging
     log_level: str = "INFO"

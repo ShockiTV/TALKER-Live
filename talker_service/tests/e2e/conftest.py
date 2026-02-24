@@ -7,7 +7,6 @@ from pathlib import Path
 import jsonschema
 import pytest
 
-from .harness import E2eHarness
 from .scenario_loader import discover_scenarios, load_scenario, scenario_id
 from .schema_compiler import compile_schema
 
@@ -17,11 +16,11 @@ pytestmark = pytest.mark.timeout(30)
 
 # ── Schema validation at collection time ──────────────────────
 
-_SCHEMA_PATH = Path(__file__).resolve().parents[3] / "docs" / "zmq-api.yaml"
+_SCHEMA_PATH = Path(__file__).resolve().parents[3] / "docs" / "ws-api.yaml"
 
 
 def _validate_scenario(scenario: dict, compiled: dict, path: Path) -> list[str]:
-    """Validate one scenario against the compiled ZMQ schema.
+    """Validate one scenario against the compiled WS schema.
 
     Returns a list of human-readable error strings (empty == valid).
     """
@@ -50,13 +49,13 @@ def _validate_scenario(scenario: dict, compiled: dict, path: Path) -> list[str]:
         if resp_schema and "response" in mock_data:
             _check(mock_data["response"], resp_schema, f"state_mocks.{mock_topic}")
 
-    # 3. expected.zmq_published[].payload
-    for i, pub in enumerate(scenario.get("expected", {}).get("zmq_published", [])):
+    # 3. expected.ws_published[].payload
+    for i, pub in enumerate(scenario.get("expected", {}).get("ws_published", [])):
         t = pub.get("topic")
         if t and t in compiled:
             pub_schema = compiled[t].get("payload")
             if pub_schema:
-                _check(pub["payload"], pub_schema, f"expected.zmq_published[{i}] ({t})")
+                _check(pub["payload"], pub_schema, f"expected.ws_published[{i}] ({t})")
 
     # 4. expected.state_queries[].payload
     for i, sq in enumerate(scenario.get("expected", {}).get("state_queries", [])):
@@ -70,9 +69,9 @@ def _validate_scenario(scenario: dict, compiled: dict, path: Path) -> list[str]:
 
 
 def pytest_collection_modifyitems(config, items):
-    """Validate all scenario files against the ZMQ API schema during collection.
+    """Validate all scenario files against the WS API schema during collection.
 
-    Runs once at collection time — before any ZMQ sockets or event loops spin up.
+    Runs once at collection time — before any sockets or event loops spin up.
     Any validation error causes an immediate, clear failure.
     """
     if not _SCHEMA_PATH.exists():
@@ -89,13 +88,15 @@ def pytest_collection_modifyitems(config, items):
             all_errors.extend(errs)
 
     if all_errors:
-        msg = "Scenario files failed ZMQ schema validation:\n" + "\n".join(all_errors)
+        msg = "Scenario files failed WS schema validation:\n" + "\n".join(all_errors)
         pytest.exit(msg, returncode=1)
 
 
 @pytest.fixture
 async def e2e_harness():
     """Provide a fresh E2eHarness per test, tear down after."""
+    from .harness import E2eHarness
+
     harness = E2eHarness()
     yield harness
     await harness.shutdown()
@@ -106,7 +107,7 @@ def pytest_runtest_makereport(item, call):
     if call.when != "call":
         return
 
-    harness: E2eHarness | None = None
+    harness = None
     for fixture_name in item.fixturenames:
         if fixture_name == "e2e_harness":
             harness = item.funcargs.get("e2e_harness")
@@ -134,7 +135,7 @@ def pytest_runtest_makereport(item, call):
         existing[test_id] = {
             "state_queries": result.state_queries,
             "http_calls": [dataclasses.asdict(c) for c in result.http_calls],
-            "zmq_published": result.zmq_published,
+            "ws_published": result.ws_published,
         }
     elif harness._lua_sim is not None:
         # Fallback: reconstruct from lua_sim records (no HTTP calls available)
@@ -148,7 +149,7 @@ def pytest_runtest_makereport(item, call):
                 if e["topic"] == "state.query" or e["topic"].startswith("state.query.")
             ],
             "http_calls": [],
-            "zmq_published": [
+            "ws_published": [
                 e
                 for e in harness._lua_sim.received_from_service
                 if e["topic"] != "state.response"

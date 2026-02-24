@@ -1,61 +1,48 @@
-"""LuaSimulator — simulates the Lua ZMQ bridge for e2e tests.
+"""LuaSimulator — simulates the Lua WebSocket client for e2e tests.
 
-Uses inproc:// transport (same zmq.asyncio.Context as ZMQRouter).
+Uses a MockWebSocket (in-memory asyncio queues, same process as WSRouter).
 No TCP ports, no OS socket permissions required.
 
-Socket topology (from Lua's perspective):
-  LuaSimulator.PUB  binds   inproc://lua-to-python  ← ZMQRouter.SUB connects here
-  LuaSimulator.SUB  connects inproc://python-to-lua  ← ZMQRouter.PUB binds here
+Communication topology:
+  LuaSimulator → MockWebSocket._incoming → WSRouter.receive_text()
+  WSRouter.send_text() → MockWebSocket._outgoing → LuaSimulator.receive()
 
-Bind order: LuaSimulator must be created BEFORE ZMQRouter.run() is called so
-the inproc://lua-to-python endpoint exists before the router connects to it.
-With pyzmq>=25 (libzmq 4.x) connect-before-bind is also supported for inproc,
-but explicit ordering avoids any edge cases.
+All messages use the JSON envelope format: ``{"t": topic, "p": payload, "ts": ms}``.
+State query responses include the ``r`` field for request-id correlation.
 """
 
 import asyncio
 import json
+import time
 from typing import Any
 
-import zmq
-import zmq.asyncio
 from loguru import logger
+
+from .mock_websocket import MockWebSocket
 
 
 class LuaSimulator:
-    """Simulates Lua's ZMQ bridge in-process for e2e tests.
+    """Simulates Lua's WebSocket client in-process for e2e tests.
 
-    Binds the PUB socket (lua-to-python direction) and connects the SUB socket
-    (python-to-lua direction).  A background poll loop receives messages from
-    the service, auto-responds to state.query.* topics using configured mocks,
-    and fires done_event when dialogue.display arrives.
+    Sends JSON envelopes through the MockWebSocket and receives envelopes
+    published by the service.  A background poll loop auto-responds to
+    state.query.* topics using configured mocks and fires ``done_event``
+    when ``dialogue.display`` arrives.
     """
 
     def __init__(
         self,
-        context: zmq.asyncio.Context,
+        mock_ws: MockWebSocket,
         state_mocks: dict[str, dict] | None = None,
     ):
         """
         Args:
-            context: Shared ZMQ context (must be the same instance as ZMQRouter's).
+            mock_ws: Shared MockWebSocket (same instance passed to WSRouter).
             state_mocks: Dict keyed by state.query topic (e.g. "state.query.memories")
                          mapping to {"response": {...}} — the data to return.
         """
-        self._ctx = context
+        self._ws = mock_ws
         self._state_mocks: dict[str, dict] = state_mocks or {}
-
-        # PUB: we publish events TO Python (lua-to-python direction)
-        self._pub: zmq.asyncio.Socket = context.socket(zmq.PUB)
-        self._pub.setsockopt(zmq.LINGER, 0)
-        self._pub.bind("inproc://lua-to-python")
-
-        # SUB: we receive commands FROM Python (python-to-lua direction)
-        self._sub: zmq.asyncio.Socket = context.socket(zmq.SUB)
-        self._sub.setsockopt(zmq.LINGER, 0)
-        self._sub.setsockopt(zmq.RCVTIMEO, 20)  # 20 ms poll interval
-        self._sub.connect("inproc://python-to-lua")
-        self._sub.setsockopt_string(zmq.SUBSCRIBE, "")
 
         # Records — structured objects, not raw wire strings
         self.published_to_service: list[dict] = []    # what we sent
@@ -71,10 +58,14 @@ class LuaSimulator:
     async def publish(self, topic: str, payload: dict[str, Any]) -> None:
         """Publish a message to the service (Lua → Python direction).
 
-        Serializes payload to wire format "{topic} {json}" internally.
+        Serializes to JSON envelope ``{"t": topic, "p": payload, "ts": ms}``.
         """
-        wire = f"{topic} {json.dumps(payload)}"
-        await self._pub.send_string(wire)
+        envelope = {
+            "t": topic,
+            "p": payload,
+            "ts": int(time.time() * 1000),
+        }
+        await self._ws.inject(json.dumps(envelope))
         self.published_to_service.append({"topic": topic, "payload": payload})
         logger.debug(f"LuaSimulator → service: {topic}")
 
@@ -82,32 +73,35 @@ class LuaSimulator:
         """Receive messages from the service and dispatch them."""
         while True:
             try:
-                raw_bytes = await self._sub.recv()
-                raw = raw_bytes.decode("utf-8")
-                space = raw.find(" ")
-                if space == -1:
-                    logger.warning(f"LuaSimulator: malformed message: {raw[:80]}")
+                raw = await self._ws.receive(timeout=0.02)
+                if raw is None:
+                    # No message available — yield and retry
+                    await asyncio.sleep(0)
                     continue
 
-                topic = raw[:space]
                 try:
-                    payload = json.loads(raw[space + 1:])
+                    data = json.loads(raw)
                 except json.JSONDecodeError as exc:
-                    logger.warning(f"LuaSimulator: JSON decode error on {topic}: {exc}")
+                    logger.warning(f"LuaSimulator: JSON decode error: {exc}")
                     continue
+
+                topic = data.get("t")
+                if not topic:
+                    logger.warning(f"LuaSimulator: envelope missing 't': {raw[:80]}")
+                    continue
+
+                payload = data.get("p", {})
+                r = data.get("r")
 
                 self.received_from_service.append({"topic": topic, "payload": payload})
                 logger.debug(f"LuaSimulator ← service: {topic}")
 
                 if topic == "state.query" or topic.startswith("state.query."):
-                    await self._respond_to_state_query(topic, payload)
+                    await self._respond_to_state_query(topic, payload, r)
 
                 if topic == "dialogue.display":
                     self.done_event.set()
 
-            except zmq.Again:
-                # Poll timeout — yield to event loop, check for cancellation
-                await asyncio.sleep(0)
             except asyncio.CancelledError:
                 break
             except Exception as exc:
@@ -124,9 +118,15 @@ class LuaSimulator:
         "query.characters_nearby": "state.query.nearby",
     }
 
-    async def _respond_to_state_query(self, topic: str, payload: dict[str, Any]) -> None:
-        """Auto-respond to a state.query.* message using configured mocks."""
-        request_id = payload.get("request_id")
+    async def _respond_to_state_query(
+        self, topic: str, payload: dict[str, Any], r: str | None
+    ) -> None:
+        """Auto-respond to a state.query.* message using configured mocks.
+
+        The ``r`` field from the incoming envelope is echoed back so
+        ``WSRouter`` can resolve the pending future.
+        """
+        request_id = payload.get("request_id") or r
         if not request_id:
             logger.warning(f"LuaSimulator: state query with no request_id on {topic}")
             return
@@ -141,12 +141,17 @@ class LuaSimulator:
             logger.warning(f"LuaSimulator: no mock configured for {topic}")
             return
 
-        response = {
+        response_payload = {
             "request_id": request_id,
             "data": mock.get("response", {}),
         }
-        wire = f"state.response {json.dumps(response)}"
-        await self._pub.send_string(wire)
+        envelope = {
+            "t": "state.response",
+            "p": response_payload,
+            "r": request_id,
+            "ts": int(time.time() * 1000),
+        }
+        await self._ws.inject(json.dumps(envelope))
         logger.debug(f"LuaSimulator: responded to {topic} (request_id={request_id})")
 
     async def _respond_to_batch_query(
@@ -169,20 +174,23 @@ class LuaSimulator:
                 continue
             results[qid] = {"ok": True, "data": mock.get("response", {})}
 
-        response = {
+        response_payload = {
             "request_id": request_id,
             "data": {"results": results},
         }
-        wire = f"state.response {json.dumps(response)}"
-        await self._pub.send_string(wire)
+        envelope = {
+            "t": "state.response",
+            "p": response_payload,
+            "r": request_id,
+            "ts": int(time.time() * 1000),
+        }
+        await self._ws.inject(json.dumps(envelope))
         logger.debug(
             f"LuaSimulator: responded to batch query ({len(queries)} sub-queries, "
             f"request_id={request_id})"
         )
 
     def close(self) -> None:
-        """Cancel poll task and close sockets. Does NOT terminate the shared context."""
+        """Cancel poll task. Does NOT close the MockWebSocket."""
         if self._poll_task and not self._poll_task.done():
             self._poll_task.cancel()
-        self._sub.close()
-        self._pub.close()

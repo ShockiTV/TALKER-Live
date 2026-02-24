@@ -201,7 +201,7 @@ async def list_tools() -> list[types.Tool]:
             description=(
                 "Read wire-level payloads captured during the last e2e test run "
                 "(.test_artifacts/last_run/payloads.json). "
-                "Includes state_queries, http_calls, and zmq_published per test."
+                "Includes state_queries, http_calls, and ws_published per test."
             ),
             inputSchema={
                 "type": "object",

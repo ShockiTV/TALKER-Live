@@ -6,7 +6,9 @@ import importlib
 import threading
 from collections import deque
 
-import zmq
+import asyncio
+
+import websockets
 
 from recorder import Recorder
 from banner import print_banner
@@ -24,104 +26,99 @@ logging.basicConfig(
     ],
 )
 
-LUA_PUB_PORT  = 5555   # Lua PUB → mic_python SUB (subscribe to mic.* / tts.* topics)
-MIC_PUB_PORT  = 5557   # mic_python PUB → Lua SUB (publish mic.status / mic.result / tts.*)
-RECV_TIMEOUT_MS = 100
+MIC_WS_PORT = 5558  # mic_python WS server ← Lua mic channel connects here
 AUDIO_FILE = "talker_audio.ogg"
 
 ####################################################################################################
-# STATE MACHINE + TASK QUEUE
+# TTS QUEUE
 ####################################################################################################
 
-# States
-IDLE        = "IDLE"
-STT_ACTIVE  = "STT_ACTIVE"
-TTS_ACTIVE  = "TTS_ACTIVE"
 
+class TTSQueue:
+    """FIFO queue for TTS playback tasks.
 
-class TaskQueue:
-    """FIFO task queue with an IDLE / STT_ACTIVE / TTS_ACTIVE state machine.
-
-    Only one audio task (STT or TTS) runs at a time.  New tasks are queued
-    when busy and automatically started when the current task finishes.
+    Only one TTS task plays at a time.  New tasks are queued and automatically
+    started when the current one finishes.  STT is handled independently on its
+    own thread so recording always works — even during TTS playback.
     """
 
     def __init__(self):
         self._queue: deque = deque()
-        self._state: str = IDLE
+        self._busy: bool = False
         self._lock = threading.Lock()
 
     @property
-    def state(self) -> str:
-        return self._state
+    def busy(self) -> bool:
+        return self._busy
 
     def submit(self, task: dict) -> None:
-        """Submit a task.  Starts immediately when IDLE, queues otherwise."""
+        """Submit a TTS task.  Starts immediately when idle, queues otherwise."""
         with self._lock:
-            if self._state == IDLE:
-                new_state = STT_ACTIVE if task["type"] == "stt" else TTS_ACTIVE
-                self._state = new_state
+            if not self._busy:
+                self._busy = True
                 threading.Thread(target=self._execute, args=(task,), daemon=True).start()
             else:
                 self._queue.append(task)
                 logging.debug(
-                    "Task queued (%s) — currently %s, queue depth %d",
-                    task["type"],
-                    self._state,
+                    "TTS task queued — queue depth %d",
                     len(self._queue),
                 )
 
     def _execute(self, task: dict) -> None:
         try:
-            if task["type"] == "stt":
-                _run_stt_task(task)
-            elif task["type"] == "tts":
-                _run_tts_task(task)
-            else:
-                logging.warning("Unknown task type: %s", task.get("type"))
+            _run_tts_task(task)
         except Exception:
-            logging.exception("Unhandled error executing task: %s", task.get("type"))
+            logging.exception("Unhandled error executing TTS task")
         finally:
             with self._lock:
                 if self._queue:
                     next_task = self._queue.popleft()
-                    self._state = STT_ACTIVE if next_task["type"] == "stt" else TTS_ACTIVE
                     threading.Thread(target=self._execute, args=(next_task,), daemon=True).start()
                 else:
-                    self._state = IDLE
+                    self._busy = False
 
 
 ####################################################################################################
 # STT HELPERS
 ####################################################################################################
 
-def publish(pub_socket: zmq.Socket, topic: str, payload: dict) -> None:
-    """Publish a message using the simple wire format: '<topic> <json-payload>'."""
-    msg = topic + " " + json.dumps(payload)
-    pub_socket.send_string(msg)
-    logging.debug("Published: %s", msg[:120])
+# ── WebSocket connection state ──────────────────────────────────────────────────
+
+_ws_connection = None   # The single connected game-client WebSocket
+_event_loop    = None   # asyncio loop reference (for thread→async sends)
+
+
+def publish(topic: str, payload: dict) -> None:
+    """Send a JSON envelope {t, p, ts} to the connected game client via WebSocket."""
+    if _ws_connection is None:
+        logging.warning("No WS client connected — dropping: %s", topic)
+        return
+    envelope = json.dumps({"t": topic, "p": payload, "ts": int(time.time() * 1000)})
+    try:
+        asyncio.run_coroutine_threadsafe(_ws_connection.send(envelope), _event_loop)
+    except Exception:
+        logging.warning("Failed to send WS message: %s", topic)
 
 
 def _run_stt_task(task: dict) -> None:
     """Execute a speech-to-text recording task."""
-    recorder: Recorder  = task["recorder"]
-    pub_socket           = task["pub"]
+    recorder: Recorder   = task["recorder"]
     transcribe_func      = task["transcribe"]
-    lang: "str | None"  = task.get("lang")
-    prompt: str         = task.get("prompt", "")
+    lang: "str | None"   = task.get("lang")
+    prompt: str          = task.get("prompt", "")
 
-    publish(pub_socket, "mic.status", {"status": "LISTENING"})
+    publish("mic.status", {"status": "LISTENING"})
     recorder.start_recording()
     while recorder.is_recording():
         time.sleep(0.1)
 
-    publish(pub_socket, "mic.status", {"status": "TRANSCRIBING"})
+    publish("mic.status", {"status": "TRANSCRIBING"})
     try:
         text = transcribe_func(AUDIO_FILE, prompt=prompt, lang=lang)
     except Exception as exc:
         logging.error("Transcription failed: %s", exc)
         text = ""
-    publish(pub_socket, "mic.result", {"text": text})
+    publish("mic.result", {"text": text})
 
 
 ####################################################################################################
@@ -188,18 +185,17 @@ def play_tts(text: str, voice_state: object, model: object) -> None:
 
 def _run_tts_task(task: dict) -> None:
     """Execute a TTS playback task."""
-    pub_socket  = task["pub"]
     voice_state = task["voice_state"]
     text: str   = task["text"]
     speaker_id: str = task.get("speaker_id", "")
 
-    publish(pub_socket, "tts.started", {"speaker_id": speaker_id})
+    publish("tts.started", {"speaker_id": speaker_id})
     try:
         play_tts(text, voice_state, task["model"])
     except Exception as exc:
         logging.error("TTS playback failed: %s", exc)
     finally:
-        publish(pub_socket, "tts.done", {"speaker_id": speaker_id})
+        publish("tts.done", {"speaker_id": speaker_id})
 
 
 ####################################################################################################
@@ -247,123 +243,117 @@ def main() -> None:
                 "Add .wav files to mic_python/voices/ and run export_voices.bat."
             )
 
-    # ── ZMQ setup ───────────────────────────────────────────
-    ctx = zmq.Context()
-    sub = ctx.socket(zmq.SUB)
-    sub.connect(f"tcp://127.0.0.1:{LUA_PUB_PORT}")
-    sub.setsockopt(zmq.SUBSCRIBE, b"mic.")
-    if tts_enabled:
-        sub.setsockopt(zmq.SUBSCRIBE, b"tts.")
-    sub.setsockopt(zmq.RCVTIMEO, RECV_TIMEOUT_MS)
-    pub = ctx.socket(zmq.PUB)
-    pub.bind(f"tcp://*:{MIC_PUB_PORT}")
+    # ── TTS queue + STT lock ────────────────────────────────
+    tts_queue = TTSQueue()
+    _stt_lock = threading.Lock()
 
-    logging.info(
-        "ZMQ SUB connected to tcp://127.0.0.1:%d (filter: mic.%s)",
-        LUA_PUB_PORT,
-        ", tts." if tts_enabled else "",
-    )
-    logging.info("ZMQ PUB bound on tcp://*:%d", MIC_PUB_PORT)
-    if tts_enabled:
-        print("TTS enabled — NPCs will speak their dialogue aloud.")
-    else:
-        print("You can now use the in-game key to talk.")
+    # ── Message handler ─────────────────────────────────────
+    def handle_message(topic: str, payload: dict) -> None:
+        """Route an incoming WS message by topic."""
+        logging.info("Received topic=%s", topic)
 
-    # ── Task queue / state machine ──────────────────────────
-    task_queue = TaskQueue()
+        if topic == "mic.start":
+            lang = payload.get("lang") or None
+            prompt = payload.get("prompt") or ""
 
-    try:
-        while True:
-            try:
-                raw_bytes = sub.recv()
+            def _stt_thread():
+                with _stt_lock:
+                    _run_stt_task({
+                        "recorder":   recorder,
+                        "transcribe": transcribe_audio_file,
+                        "lang":       lang,
+                        "prompt":     prompt,
+                    })
+
+            threading.Thread(target=_stt_thread, daemon=True).start()
+
+        elif topic == "mic.stop":
+            if recorder.is_recording():
+                logging.info("Stopping recording on mic.stop command.")
+                recorder.stop_recording()
+
+        elif topic == "tts.speak" and tts_enabled:
+            voice_id   = payload.get("voice_id", "")
+            text       = payload.get("text", "")
+            speaker_id = payload.get("speaker_id", "")
+            logging.info("tts.speak  speaker=%s  voice=%s  text=%.60s",
+                         speaker_id, voice_id or "(none)", text)
+
+            if not text:
+                logging.warning("tts.speak received with empty text — skipping")
+                publish("tts.done", {"speaker_id": speaker_id})
+                return
+
+            voice_state = voice_cache.get(voice_id)
+            if voice_state is None:
+                if voice_cache:
+                    fallback_id = next(iter(voice_cache))
+                    logging.warning(
+                        "voice_id '%s' not in cache — falling back to '%s'",
+                        voice_id,
+                        fallback_id,
+                    )
+                    voice_state = voice_cache[fallback_id]
+                else:
+                    logging.error("tts.speak: voice cache empty, cannot play TTS")
+                    publish("tts.done", {"speaker_id": speaker_id})
+                    return
+
+            tts_queue.submit({
+                "model":       tts_model,
+                "voice_state": voice_state,
+                "text":        text,
+                "speaker_id":  speaker_id,
+            })
+
+        else:
+            logging.debug("Unhandled topic: %s", topic)
+
+    # ── WebSocket handler ───────────────────────────────────
+    async def ws_handler(websocket):
+        global _ws_connection
+        if _ws_connection is not None:
+            await websocket.close(4000, "Only one connection allowed")
+            logging.warning("Rejected second WS connection")
+            return
+
+        _ws_connection = websocket
+        logging.info("Game client connected")
+        try:
+            async for raw in websocket:
                 try:
-                    raw = raw_bytes.decode("utf-8")
-                except UnicodeDecodeError:
-                    raw = raw_bytes.decode("latin-1")
-            except zmq.Again:
-                # No message within timeout — keep polling
-                continue
-
-            # Parse wire format: "<topic> <json-payload>"
-            space = raw.find(" ")
-            if space < 0:
-                logging.warning("Invalid message (no space separator): %s", raw[:80])
-                continue
-
-            topic = raw[:space]
-            json_str = raw[space + 1:]
-            try:
-                payload = json.loads(json_str)
-            except Exception:
-                logging.warning("Failed to parse JSON payload: %s", json_str[:80])
-                payload = {}
-
-            # Lua's bridge.publish wraps the data in {"topic":..., "payload":{...}}
-            # Unwrap if present (same pattern as talker_service router)
-            payload = payload.get("payload", payload)
-
-            logging.info("Received topic=%s", topic)
-
-            # ── mic.start ───────────────────────────────────
-            if topic == "mic.start":
-                lang = payload.get("lang") or None
-                prompt = payload.get("prompt") or ""
-                task_queue.submit({
-                    "type":       "stt",
-                    "recorder":   recorder,
-                    "pub":        pub,
-                    "transcribe": transcribe_audio_file,
-                    "lang":       lang,
-                    "prompt":     prompt,
-                })
-
-            # ── mic.stop ────────────────────────────────────
-            elif topic == "mic.stop":
-                if recorder.is_recording():
-                    logging.info("Stopping recording on mic.stop command.")
-                    recorder.stop_recording()
-
-            # ── tts.speak ───────────────────────────────────
-            elif topic == "tts.speak" and tts_enabled:
-                voice_id   = payload.get("voice_id", "")
-                text       = payload.get("text", "")
-                speaker_id = payload.get("speaker_id", "")
-                logging.info("tts.speak  speaker=%s  voice=%s  text=%.60s",
-                             speaker_id, voice_id or "(none)", text)
-
-                if not text:
-                    logging.warning("tts.speak received with empty text — skipping")
-                    publish(pub, "tts.done", {"speaker_id": speaker_id})
+                    envelope = json.loads(raw)
+                except (json.JSONDecodeError, TypeError):
+                    logging.warning("Malformed WS frame: %s", str(raw)[:80])
                     continue
 
-                # Look up voice in cache (fallback to first available)
-                voice_state = voice_cache.get(voice_id)
-                if voice_state is None:
-                    if voice_cache:
-                        fallback_id = next(iter(voice_cache))
-                        logging.warning(
-                            "voice_id '%s' not in cache — falling back to '%s'",
-                            voice_id,
-                            fallback_id,
-                        )
-                        voice_state = voice_cache[fallback_id]
-                    else:
-                        logging.error("tts.speak: voice cache empty, cannot play TTS")
-                        publish(pub, "tts.done", {"speaker_id": speaker_id})
-                        continue
+                topic = envelope.get("t")
+                payload = envelope.get("p", {})
+                if not topic:
+                    logging.warning("WS frame missing 't' field")
+                    continue
 
-                task_queue.submit({
-                    "type":        "tts",
-                    "pub":         pub,
-                    "model":       tts_model,
-                    "voice_state": voice_state,
-                    "text":        text,
-                    "speaker_id":  speaker_id,
-                })
+                handle_message(topic, payload)
+        except websockets.ConnectionClosed:
+            logging.info("Game client disconnected")
+        finally:
+            _ws_connection = None
 
+    # ── Launch ──────────────────────────────────────────────
+    async def run_server():
+        global _event_loop
+        _event_loop = asyncio.get_running_loop()
+
+        async with websockets.serve(ws_handler, "0.0.0.0", MIC_WS_PORT):
+            logging.info("WS server listening on ws://0.0.0.0:%d", MIC_WS_PORT)
+            if tts_enabled:
+                print("TTS enabled — NPCs will speak their dialogue aloud.")
             else:
-                logging.debug("Unhandled topic: %s", topic)
+                print("You can now use the in-game key to talk.")
+            await asyncio.Future()  # run forever
 
+    try:
+        asyncio.run(run_server())
     except KeyboardInterrupt:
         logging.info("User interrupt.")
     except Exception:
@@ -371,9 +361,6 @@ def main() -> None:
     finally:
         if recorder.is_recording():
             recorder.stop_recording()
-        sub.close()
-        pub.close()
-        ctx.term()
         logging.info("Shutdown complete.")
 
 

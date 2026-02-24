@@ -6,32 +6,32 @@ local Event = require("domain.model.event")
 local EventType = require("domain.model.event_types")
 local engine = require("interface.engine")
 
--- zmq_integration may be nil if not loaded yet
+-- ws_integration may be nil if not loaded yet
 ---@diagnostic disable-next-line: undefined-global
-local zmq_integration = talker_zmq_integration
+local ws_integration = talker_ws_integration
 
 local m = {}
 
 ----------------------------------------------------------------------------------------------------
--- ZMQ PUBLISHING (Parallel to existing event flow)
+-- EVENT PUBLISHING (via WebSocket)
 ----------------------------------------------------------------------------------------------------
 
--- Safely publish event to ZMQ if integration is available
-local function zmq_publish_event(event, important)
-	if zmq_integration and zmq_integration.publish_game_event then
-		local ok, err = pcall(zmq_integration.publish_game_event, event, important)
+-- Safely publish event to Python service if WS integration is available
+local function ws_publish_event(event, important)
+	if ws_integration and ws_integration.publish_game_event then
+		local ok, err = pcall(ws_integration.publish_game_event, event, important)
 		if not ok then
-			log.debug("ZMQ publish failed: " .. tostring(err))
+			log.debug("WS publish failed: " .. tostring(err))
 		end
 	end
 end
 
--- Safely publish player dialogue to ZMQ
-local function zmq_publish_player_dialogue(text, context)
-	if zmq_integration and zmq_integration.publish_player_dialogue then
-		local ok, err = pcall(zmq_integration.publish_player_dialogue, text, context)
+-- Safely publish player dialogue to Python service
+local function ws_publish_player_dialogue(text, context)
+	if ws_integration and ws_integration.publish_player_dialogue then
+		local ok, err = pcall(ws_integration.publish_player_dialogue, text, context)
 		if not ok then
-			log.debug("ZMQ player dialogue publish failed: " .. tostring(err))
+			log.debug("WS player dialogue publish failed: " .. tostring(err))
 		end
 	end
 end
@@ -51,8 +51,8 @@ local function register_typed_event_internal(event_type, context, witnesses, imp
 	local new_event = Event.create(event_type, context, game_time, witnesses, flags)
 	log.debug("New typed event: %s", new_event)
 
-	-- PARALLEL: Publish to ZMQ (fire-and-forget, won't block)
-	zmq_publish_event(new_event, important)
+	-- Publish to Python service (fire-and-forget, won't block)
+	ws_publish_event(new_event, important)
 
 	-- Existing flow: register with talker (triggers AI dialogue generation)
 	talker.register_event(new_event, important)
@@ -84,8 +84,8 @@ function m.player_character_speaks(dialogue)
 	log.info("Registering player speak event. Player said: " .. dialogue)
 	local player = game_adapter.get_player_character()
 
-	-- PARALLEL: Publish player dialogue to ZMQ
-	zmq_publish_player_dialogue(dialogue, { speaker = player })
+	-- Publish player dialogue to Python service
+	ws_publish_player_dialogue(dialogue, { speaker = player })
 
 	-- Create typed DIALOGUE event
 	local context = {

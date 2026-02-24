@@ -3,20 +3,19 @@ local luaunit = require('tests.utils.luaunit')
 
 -- ── Mock dependencies before loading microphone ─────────────────────────────
 
-local bridge_calls = {}  -- records publish/register/unregister calls
-local registered_handlers = {}
+local publish_calls = {}   -- records publish(topic, payload) calls
+local session_on_status = nil
+local session_on_result = nil
+local session_count = 0
 
-local mock_bridge = {}
-function mock_bridge.publish(topic, payload)
-    table.insert(bridge_calls, { fn = "publish", topic = topic, payload = payload })
+local mock_channel = {}
+function mock_channel.publish(topic, payload)
+    table.insert(publish_calls, { topic = topic, payload = payload })
 end
-function mock_bridge.register_handler(topic, fn)
-    table.insert(bridge_calls, { fn = "register_handler", topic = topic })
-    registered_handlers[topic] = fn
-end
-function mock_bridge.unregister_handler(topic)
-    table.insert(bridge_calls, { fn = "unregister_handler", topic = topic })
-    registered_handlers[topic] = nil
+function mock_channel.start_session(on_status, on_result)
+    session_count = session_count + 1
+    session_on_status = on_status
+    session_on_result = on_result
 end
 
 local mock_config = {}
@@ -27,7 +26,7 @@ function mock_logger.info(...) end
 function mock_logger.debug(...) end
 function mock_logger.error(...) end
 
-package.preload["infra.zmq.bridge"]  = function() return mock_bridge end
+package.preload["infra.mic.channel"]  = function() return mock_channel end
 package.preload["interface.config"]  = function() return mock_config end
 package.preload["framework.logger"]  = function() return mock_logger end
 
@@ -36,19 +35,22 @@ local mic = require('infra.mic.microphone')
 -- ── Helpers ──────────────────────────────────────────────────────────────────
 
 local function reset()
-    bridge_calls = {}
-    registered_handlers = {}
+    publish_calls = {}
+    session_on_status = nil
+    session_on_result = nil
+    session_count = 0
     -- Force internal mic_on state off by calling stop if on
     if mic.is_mic_on() then
         mic.stop()
-        bridge_calls = {}
+        publish_calls = {}
+        session_count = 0
     end
 end
 
 local function published_topics()
     local topics = {}
-    for _, c in ipairs(bridge_calls) do
-        if c.fn == "publish" then table.insert(topics, c.topic) end
+    for _, c in ipairs(publish_calls) do
+        table.insert(topics, c.topic)
     end
     return topics
 end
@@ -75,27 +77,30 @@ function testStartPublishesPromptAndLang()
     reset()
     mic.start("hello world")
     local pub
-    for _, c in ipairs(bridge_calls) do
-        if c.fn == "publish" and c.topic == "mic.start" then pub = c end
+    for _, c in ipairs(publish_calls) do
+        if c.topic == "mic.start" then pub = c end
     end
     luaunit.assertNotNil(pub)
     luaunit.assertEquals(pub.payload.prompt, "hello world")
     luaunit.assertEquals(pub.payload.lang, "en")
 end
 
-function testStartRegistersHandlers()
+function testStartRegistersSession()
     reset()
     mic.start("prompt")
-    luaunit.assertNotNil(registered_handlers["mic.status"])
-    luaunit.assertNotNil(registered_handlers["mic.result"])
+    luaunit.assertNotNil(session_on_status)
+    luaunit.assertNotNil(session_on_result)
+    luaunit.assertEquals(session_count, 1)
 end
 
 function testStartWhenAlreadyOnIsNoop()
     reset()
     mic.start("first")
-    bridge_calls = {}
+    publish_calls = {}
+    session_count = 0
     mic.start("second")  -- should be ignored
-    luaunit.assertEquals(#bridge_calls, 0)
+    luaunit.assertEquals(#publish_calls, 0)
+    luaunit.assertEquals(session_count, 0)
     luaunit.assertTrue(mic.is_mic_on())
 end
 
@@ -109,24 +114,16 @@ end
 function testStopPublishesMicStop()
     reset()
     mic.start("prompt")
-    bridge_calls = {}
+    publish_calls = {}
     mic.stop()
     luaunit.assertItemsEquals(published_topics(), { "mic.stop" })
-end
-
-function testStopUnregistersHandlers()
-    reset()
-    mic.start("prompt")
-    mic.stop()
-    luaunit.assertNil(registered_handlers["mic.status"])
-    luaunit.assertNil(registered_handlers["mic.result"])
 end
 
 function testStopWhenAlreadyOffIsNoop()
     reset()
     luaunit.assertFalse(mic.is_mic_on())
     mic.stop()
-    luaunit.assertEquals(#bridge_calls, 0)
+    luaunit.assertEquals(#publish_calls, 0)
 end
 
 function testOnResultCallbackFiredAndMicTurnedOff()
@@ -135,9 +132,8 @@ function testOnResultCallbackFiredAndMicTurnedOff()
     mic.start("prompt", {
         on_result = function(text) received_text = text end
     })
-    local handler = registered_handlers["mic.result"]
-    luaunit.assertNotNil(handler)
-    handler("mic.result", { text = "Hello Zone" })
+    luaunit.assertNotNil(session_on_result)
+    session_on_result("Hello Zone")
     luaunit.assertEquals(received_text, "Hello Zone")
     luaunit.assertFalse(mic.is_mic_on())
 end
@@ -148,9 +144,8 @@ function testOnStatusCallbackFired()
     mic.start("prompt", {
         on_status = function(s) received_status = s end
     })
-    local handler = registered_handlers["mic.status"]
-    luaunit.assertNotNil(handler)
-    handler("mic.status", { status = "LISTENING" })
+    luaunit.assertNotNil(session_on_status)
+    session_on_status("LISTENING")
     luaunit.assertEquals(received_status, "LISTENING")
     luaunit.assertTrue(mic.is_mic_on())
 end

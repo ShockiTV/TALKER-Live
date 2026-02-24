@@ -1,0 +1,341 @@
+-- TALKER WebSocket Integration Script
+-- Replaces talker_zmq_integration.script
+-- Drives service_channel.tick() and mic_channel.tick() via game timer,
+-- shows HUD status notifications, and exposes the public publishing API.
+
+package.path = package.path .. ";./bin/lua/?.lua;"
+local logger  = require("framework.logger")
+local config  = require("interface.config")
+
+-- Lazy-loaded WS channels
+local service_channel = nil
+local mic_channel     = nil
+local is_initialized  = false
+
+local tick_timer_id     = "talker_ws_tick"
+
+-- Service status tracking (for HUD notifications)
+local last_known_status   = "disconnected"
+local notified_disconnect = false
+local SERVICE_TIMEOUT_SECONDS = 15
+
+--------------------------------------------------------------------------------
+-- Helpers
+--------------------------------------------------------------------------------
+
+local function safe_require(module_name)
+    local ok, mod = pcall(require, module_name)
+    if ok then
+        return mod
+    else
+        logger.debug("Could not load module: " .. module_name .. " - " .. tostring(mod))
+        return nil
+    end
+end
+
+local function get_ws_url()
+    -- Build WS URL from config.  Defaults: ws://127.0.0.1:5557/ws
+    local host = config.ws_host and config.ws_host() or "127.0.0.1"
+    local port = config.ws_port and config.ws_port() or 5557
+    local url  = "ws://" .. host .. ":" .. tostring(port) .. "/ws"
+
+    -- Append token if configured
+    local token = config.ws_token and config.ws_token() or nil
+    if token and token ~= "" then
+        url = url .. "?token=" .. token
+    end
+    return url
+end
+
+local function get_mic_url()
+    local host = config.ws_host and config.ws_host() or "127.0.0.1"
+    local port = config.mic_ws_port and config.mic_ws_port() or 5558
+    local url  = "ws://" .. host .. ":" .. tostring(port) .. "/ws"
+    local token = config.ws_token and config.ws_token() or nil
+    if token and token ~= "" then
+        url = url .. "?token=" .. token
+    end
+    return url
+end
+
+--------------------------------------------------------------------------------
+-- Initialization
+--------------------------------------------------------------------------------
+
+local function init_channels()
+    if is_initialized then
+        return service_channel ~= nil
+    end
+    is_initialized = true
+
+    service_channel = safe_require("infra.service.channel")
+    if not service_channel then
+        logger.warn("service_channel module not available - WS integration disabled")
+        return false
+    end
+
+    mic_channel = safe_require("infra.mic.channel")
+    -- mic_channel is optional (only needed for microphone)
+
+    service_channel.init(get_ws_url())
+    if mic_channel then
+        mic_channel.init(get_mic_url())
+    end
+
+    -- On reconnect, resend full config sync
+    service_channel.set_on_reconnect(function()
+        logger.info("WS reconnected - sending config sync")
+        publish_config_sync()
+    end)
+
+    logger.info("WS channels initialized (service=%s)", get_ws_url())
+    start_tick_timer()
+    return true
+end
+
+local function shutdown_channels()
+    stop_tick_timer()
+    if service_channel then
+        service_channel.shutdown()
+    end
+    if mic_channel then
+        mic_channel.shutdown()
+    end
+    service_channel  = nil
+    mic_channel      = nil
+    is_initialized   = false
+end
+
+--------------------------------------------------------------------------------
+-- Tick Timer — drives both channels
+--------------------------------------------------------------------------------
+
+local function tick()
+    if service_channel then
+        service_channel.tick()
+    end
+    if mic_channel then
+        mic_channel.tick()
+    end
+    return false -- continue timer
+end
+
+function start_tick_timer()
+    local interval = 0.05  -- 50ms (20 ticks/sec) — responsive without being wasteful
+    CreateTimeEvent(tick_timer_id, tick_timer_id, interval, function()
+        tick()
+        ResetTimeEvent(tick_timer_id, tick_timer_id, interval)
+        return false
+    end)
+end
+
+function stop_tick_timer()
+    RemoveTimeEvent(tick_timer_id, tick_timer_id)
+end
+
+
+
+--------------------------------------------------------------------------------
+-- Service Status Notifications
+--------------------------------------------------------------------------------
+
+local function show_service_disconnected_notification()
+    if db and db.actor then
+        local msg = game.translate_string("ui_mcm_talker_service_disconnected")
+        if msg == "ui_mcm_talker_service_disconnected" then
+            msg = "TALKER: Python service not responding. AI dialogue disabled."
+        end
+        actor_menu.set_msg(1, msg, 7)
+        logger.warn("Python service disconnected - showed HUD notification")
+    end
+end
+
+local function show_service_reconnected_notification()
+    if db and db.actor then
+        local msg = game.translate_string("ui_mcm_talker_service_reconnected")
+        if msg == "ui_mcm_talker_service_reconnected" then
+            msg = "TALKER: Python service reconnected. AI dialogue restored."
+        end
+        actor_menu.set_msg(1, msg, 5)
+        logger.info("Python service reconnected - showed HUD notification")
+    end
+end
+
+local function update_status_notifications()
+    if not service_channel then return end
+
+    local status = service_channel.get_status()
+    if status ~= last_known_status then
+        if last_known_status == "connected" and status ~= "connected" then
+            -- Just disconnected
+            if not notified_disconnect then
+                show_service_disconnected_notification()
+                notified_disconnect = true
+            end
+        elseif status == "connected" and last_known_status ~= "connected" then
+            -- Just reconnected
+            if notified_disconnect then
+                show_service_reconnected_notification()
+                notified_disconnect = false
+            end
+        end
+        last_known_status = status
+    end
+end
+
+--------------------------------------------------------------------------------
+-- Command Handler Registration (for command/query handler scripts)
+--------------------------------------------------------------------------------
+
+--- Register a handler for receiving commands from Python.
+-- Delegates to service_channel.on(topic, handler).
+-- @param topic   string    Topic (e.g. "dialogue.display")
+-- @param handler function  fn(payload, request_id)
+function register_command_handler(topic, handler)
+    if not init_channels() then
+        logger.warn("Cannot register command handler - WS not initialized")
+        return false
+    end
+    service_channel.on(topic, handler)
+    return true
+end
+
+--------------------------------------------------------------------------------
+-- Public API (for use by other scripts)
+--------------------------------------------------------------------------------
+
+--- Get the service channel module (for scripts that need direct access).
+function get_service_channel()
+    if not init_channels() then return nil end
+    return service_channel
+end
+
+--- Get the mic channel module (for scripts that need direct access).
+function get_mic_channel()
+    if not init_channels() then return nil end
+    return mic_channel
+end
+
+function publish_game_event(event, is_important)
+    if not init_channels() then return false end
+
+    if service_channel.get_status() ~= "connected" then
+        -- Queue will hold it, but warn if offline
+        logger.debug("WS not connected - event queued")
+    end
+
+    -- Use the serializer to transform the event for the wire
+    local serializer = require("infra.ws.serializer")
+    local payload = serializer.serialize_event(event)
+    payload.is_important = is_important
+
+    service_channel.publish("game.event", payload)
+    return true
+end
+
+function publish_player_dialogue(text, context)
+    if not init_channels() then return false end
+
+    local serializer = require("infra.ws.serializer")
+    local payload = {
+        text = text,
+        context = context and serializer.serialize_context(context) or {},
+    }
+    service_channel.publish("player.dialogue", payload)
+    return true
+end
+
+function publish_player_whisper(text, target)
+    if not init_channels() then return false end
+
+    local serializer = require("infra.ws.serializer")
+    local payload = {
+        text = text,
+    }
+    if target then
+        payload.target = serializer.serialize_character(target)
+    end
+    service_channel.publish("player.whisper", payload)
+    return true
+end
+
+function publish_config_update(key, value)
+    if not init_channels() then return false end
+    service_channel.publish("config.update", { key = key, value = value })
+    return true
+end
+
+function publish_config_sync()
+    if not init_channels() then return false end
+    local all_config = config.get_all_config()
+    service_channel.publish("config.sync", all_config)
+    return true
+end
+
+function is_ws_connected()
+    return service_channel ~= nil and service_channel.get_status() == "connected"
+end
+
+--------------------------------------------------------------------------------
+-- Game Callbacks
+--------------------------------------------------------------------------------
+
+local function on_game_load()
+    logger.info("WS integration: on_game_load")
+
+    if init_channels() then
+        -- Send full config sync after a short delay
+        CreateTimeEvent("ws_config_sync", "initial_sync", 2, function()
+            publish_config_sync()
+            return true -- one-shot
+        end)
+    end
+end
+
+local function on_game_save()
+    -- Placeholder for future save-time logic (heartbeat removed per design)
+end
+
+local function on_game_end()
+    logger.info("WS integration: on_game_end")
+    shutdown_channels()
+end
+
+local function on_mcm_changed()
+    logger.debug("WS integration: MCM settings changed")
+    publish_config_sync()
+end
+
+-- Periodic status update (runs inside tick)
+local status_check_counter = 0
+local STATUS_CHECK_INTERVAL = 100 -- every 100 ticks ≈ 5s
+
+local original_tick = tick
+tick = function()
+    original_tick()
+    status_check_counter = status_check_counter + 1
+    if status_check_counter >= STATUS_CHECK_INTERVAL then
+        status_check_counter = 0
+        update_status_notifications()
+    end
+end
+
+--------------------------------------------------------------------------------
+-- Registration
+--------------------------------------------------------------------------------
+
+function on_game_start()
+    RegisterScriptCallback("on_game_load", on_game_load)
+    RegisterScriptCallback("save_state", on_game_save)
+    RegisterScriptCallback("actor_on_net_destroy", on_game_end)
+
+    if ui_mcm and ui_mcm.register_callback then
+        ui_mcm.register_callback("talker", on_mcm_changed)
+    end
+
+    logger.info("WS integration script registered")
+end
+
+function is_loaded()
+    return true
+end

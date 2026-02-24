@@ -2,7 +2,7 @@ numpy
 openai
 sounddevice
 soundfile
-pyzmq
+websockets
 httpx
 faster-whisper
 requests

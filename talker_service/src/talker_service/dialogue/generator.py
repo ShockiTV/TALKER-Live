@@ -29,6 +29,29 @@ from ..state.models import SceneContext
 COMPRESSION_THRESHOLD = 12
 
 
+def _normalize_store_map(data: Any, id_key: str, value_key: str) -> dict[str, str]:
+    """Convert Lua store query results (list of dicts) to a {id: value} dict.
+
+    Lua ``store.personalities`` returns ``[{character_id, personality_id}, ...]``
+    and ``store.backstories`` returns ``[{character_id, backstory_id}, ...]``.
+    Python code expects ``{character_id: personality_id}`` style dicts.
+
+    If *data* is already a dict it is returned as-is for backwards compat.
+    """
+    if isinstance(data, dict):
+        return data
+    if isinstance(data, list):
+        result: dict[str, str] = {}
+        for item in data:
+            if isinstance(item, dict):
+                cid = str(item.get(id_key, ""))
+                val = item.get(value_key, "")
+                if cid:
+                    result[cid] = val
+        return result
+    return {}
+
+
 class StateQueryProtocol(Protocol):
     """Protocol for state query client."""
     
@@ -258,7 +281,8 @@ class DialogueGenerator:
                 "personality", "store.personalities", params={"target": candidate_ids}
             )
             personalities_response = await self.state.execute_batch(personalities_query)
-            personalities = personalities_response["personality"] if personalities_response.ok("personality") else {}
+            raw_personalities = personalities_response["personality"] if personalities_response.ok("personality") else {}
+            personalities = _normalize_store_map(raw_personalities, "character_id", "personality_id")
 
             # Convert witnesses from dicts to Character objects
             prompt_witnesses = [
@@ -399,9 +423,11 @@ class DialogueGenerator:
                 ],
             )
             
-            # Extract personality and backstory
-            personalities = result["personality"] if result.ok("personality") else {}
-            backstories = result["backstory"] if result.ok("backstory") else {}
+            # Extract personality and backstory (Lua returns list-of-dicts)
+            raw_personalities = result["personality"] if result.ok("personality") else {}
+            raw_backstories = result["backstory"] if result.ok("backstory") else {}
+            personalities = _normalize_store_map(raw_personalities, "character_id", "personality_id")
+            backstories = _normalize_store_map(raw_backstories, "character_id", "backstory_id")
             speaker_personality = personalities.get(speaker_id, "")
             speaker_backstory = backstories.get(speaker_id, "")
             

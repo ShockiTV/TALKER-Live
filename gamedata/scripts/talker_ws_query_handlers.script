@@ -1,0 +1,498 @@
+-- TALKER WebSocket Query Handlers
+-- Replaces talker_zmq_query_handlers.script
+-- Handles state queries from Python service via WebSocket.
+-- Responds via service_channel.publish() with the r-field echoed back
+-- so WSRouter can resolve the pending future.
+
+package.path = package.path .. ";./bin/lua/?.lua;"
+local logger        = require("framework.logger")
+local memory_store  = require("domain.repo.memory_store")
+local event_store   = require("domain.repo.event_store")
+local game_adapter  = require("infra.game_adapter")
+local filter_engine = require("infra.query.filter_engine")
+local personalities = require("domain.repo.personalities")
+local backstories   = require("domain.repo.backstories")
+local levels        = require("domain.repo.levels")
+local timers        = require("domain.repo.timers")
+local serializer    = require("infra.ws.serializer")
+
+-- Serialization helpers (delegated to infra/ws/serializer.lua)
+local serialize_character = serializer.serialize_character
+local serialize_context   = serializer.serialize_context
+local serialize_event     = serializer.serialize_event
+local serialize_events    = serializer.serialize_events
+
+-- References
+local ws_integration = nil
+
+local function get_ws_integration()
+    if ws_integration == nil then
+        ws_integration = talker_ws_integration or false
+    end
+    return ws_integration
+end
+
+--------------------------------------------------------------------------------
+-- Helpers: Story Object / Alive Checks (unchanged from ZMQ version)
+--------------------------------------------------------------------------------
+
+local function get_story_object(id)
+    local sobj = alife():story_object(id)
+    if sobj then
+        return sobj
+    end
+
+    if _G.story_objects and _G.story_objects.object_id_by_story_id then
+        local numeric_id = _G.story_objects.object_id_by_story_id[id]
+        if numeric_id then
+            return alife():object(numeric_id)
+        end
+    end
+
+    return nil
+end
+
+local function is_sobj_alive(sobj)
+    if not sobj then
+        return false
+    end
+
+    if type(sobj.alive) == "function" then
+        return sobj:alive()
+    end
+
+    if sobj:clsid() == clsid.online_offline_group_s then
+        local npc_count = 0
+        if type(sobj.npc_count) == "function" then
+            npc_count = sobj:npc_count()
+        else
+            npc_count = sobj.npc_count or 0
+        end
+        return npc_count > 0
+    end
+
+    return true
+end
+
+--------------------------------------------------------------------------------
+-- Event Iterator with Binary-Search Pre-Scan
+--------------------------------------------------------------------------------
+
+local function create_events_iterator(filter)
+    local start_ms = nil
+    local inclusive = false
+
+    if filter and filter.game_time_ms and type(filter.game_time_ms) == "table" then
+        if filter.game_time_ms["$gt"] then
+            start_ms = filter.game_time_ms["$gt"]
+            inclusive = false
+        elseif filter.game_time_ms["$gte"] then
+            start_ms = filter.game_time_ms["$gte"]
+            inclusive = true
+        end
+    end
+
+    local sorted_keys = event_store.sorted_keys
+    local events = event_store.events
+    local i
+
+    if start_ms then
+        local low, high = 1, #sorted_keys
+        while low <= high do
+            local mid = math.floor((low + high) / 2)
+            if sorted_keys[mid] < start_ms then
+                low = mid + 1
+            else
+                high = mid - 1
+            end
+        end
+        i = low
+        if not inclusive then
+            while i <= #sorted_keys and sorted_keys[i] == start_ms do
+                i = i + 1
+            end
+        end
+    else
+        i = 1
+    end
+
+    return function()
+        if i > #sorted_keys then return nil end
+        local key = sorted_keys[i]
+        i = i + 1
+        return events[key]
+    end
+end
+
+local function apply_pipeline_and_projection(source_iter, query)
+    local results = filter_engine.execute_pipeline(
+        source_iter,
+        query.filter,
+        query.sort,
+        query.limit
+    )
+
+    if query.fields and #query.fields > 0 then
+        local projected = {}
+        for idx, doc in ipairs(results) do
+            projected[idx] = filter_engine.apply_projection(doc, query.fields)
+        end
+        return projected
+    end
+    return results
+end
+
+local function array_iter(arr)
+    local i = 0
+    return function()
+        i = i + 1
+        return arr[i]
+    end
+end
+
+--------------------------------------------------------------------------------
+-- Resource Resolvers
+--------------------------------------------------------------------------------
+
+local resource_registry = {}
+
+local function extract_character_ids_from_query(query)
+    local ids = {}
+    if query.filter and query.filter.character_id then
+        local cid = query.filter.character_id
+        if type(cid) == "string" then
+            ids[#ids + 1] = cid
+        elseif type(cid) == "table" and cid["$in"] and type(cid["$in"]) == "table" then
+            for _, id in ipairs(cid["$in"]) do
+                ids[#ids + 1] = tostring(id)
+            end
+        end
+    end
+    return ids
+end
+
+resource_registry["store.events"] = function(query)
+    local iter = create_events_iterator(query.filter)
+    local results = apply_pipeline_and_projection(iter, query)
+    local serialized = {}
+    for _, event in ipairs(results) do
+        serialized[#serialized + 1] = serialize_event(event)
+    end
+    return serialized
+end
+
+resource_registry["store.memories"] = function(query)
+    local character_id = query.params and query.params.character_id
+    if not character_id then
+        error("store.memories requires params.character_id")
+    end
+    local mem = memory_store:get_narrative(character_id)
+    return {
+        narrative = mem and mem.narrative or nil,
+        last_update_time_ms = mem and mem.last_update_time_ms or 0,
+    }
+end
+
+resource_registry["store.personalities"] = function(query)
+    local requested_ids = extract_character_ids_from_query(query)
+    for _, char_id in ipairs(requested_ids) do
+        if not personalities.get_all_mappings()[char_id] then
+            local char = game_adapter.get_character_by_id(char_id)
+            if char then
+                personalities.get_personality(char)
+            end
+        end
+    end
+
+    local mappings = personalities.get_all_mappings()
+    local collection = {}
+    for char_id, personality_id in pairs(mappings) do
+        collection[#collection + 1] = {
+            character_id = tostring(char_id),
+            personality_id = personality_id,
+        }
+    end
+    local iter = array_iter(collection)
+    return apply_pipeline_and_projection(iter, query)
+end
+
+resource_registry["store.backstories"] = function(query)
+    local requested_ids = extract_character_ids_from_query(query)
+    for _, char_id in ipairs(requested_ids) do
+        if not backstories.get_all_mappings()[char_id] then
+            local char = game_adapter.get_character_by_id(char_id)
+            if char then
+                backstories.get_backstory(char)
+            end
+        end
+    end
+
+    local mappings = backstories.get_all_mappings()
+    local collection = {}
+    for char_id, backstory_id in pairs(mappings) do
+        collection[#collection + 1] = {
+            character_id = tostring(char_id),
+            backstory_id = backstory_id,
+        }
+    end
+    local iter = array_iter(collection)
+    return apply_pipeline_and_projection(iter, query)
+end
+
+resource_registry["store.levels"] = function(query)
+    if query.params and query.params.level_id then
+        local level_id = query.params.level_id
+        local visits = levels.get_all_visits()
+        local entry = visits[level_id]
+        if entry then
+            return {
+                level_id = level_id,
+                count = entry.count,
+                log = entry.log,
+            }
+        else
+            return { level_id = level_id, count = 0, log = {} }
+        end
+    end
+
+    local visits = levels.get_all_visits()
+    local collection = {}
+    for level_id, entry in pairs(visits) do
+        collection[#collection + 1] = {
+            level_id = level_id,
+            count = entry.count,
+            log = entry.log,
+        }
+    end
+    local iter = array_iter(collection)
+    return apply_pipeline_and_projection(iter, query)
+end
+
+resource_registry["store.timers"] = function(query)
+    return {
+        game_time_accumulator = timers.get_game_time_accumulator(),
+        idle_last_check_time = timers.get_idle_last_check_time(),
+    }
+end
+
+resource_registry["query.character"] = function(query)
+    local id = query.params and query.params.id
+    if not id then
+        error("query.character requires params.id")
+    end
+    local char = game_adapter.get_character_by_id(id)
+    if not char then
+        error("Character not found: " .. tostring(id))
+    end
+    local result = serialize_character(char)
+    if query.fields and #query.fields > 0 then
+        return filter_engine.apply_projection(result, query.fields)
+    end
+    return result
+end
+
+resource_registry["query.characters_nearby"] = function(query)
+    local queries_mod = talker_game_queries
+    if not queries_mod then
+        error("talker_game_queries not available")
+    end
+
+    local center_obj = nil
+    if query.params and query.params.center_id then
+        center_obj = queries_mod.get_obj_by_id(query.params.center_id)
+    else
+        center_obj = queries_mod.get_player()
+    end
+    if not center_obj then
+        error("Could not find center object")
+    end
+
+    local radius = (query.params and query.params.radius) or 50
+    local nearby = game_adapter.get_characters_near(center_obj, radius)
+
+    local serialized = {}
+    for _, char in ipairs(nearby or {}) do
+        serialized[#serialized + 1] = serialize_character(char)
+    end
+
+    if query.filter or query.sort or query.limit then
+        local iter = array_iter(serialized)
+        serialized = apply_pipeline_and_projection(iter, query)
+    elseif query.fields and #query.fields > 0 then
+        local projected = {}
+        for idx, doc in ipairs(serialized) do
+            projected[idx] = filter_engine.apply_projection(doc, query.fields)
+        end
+        serialized = projected
+    end
+
+    return serialized
+end
+
+resource_registry["query.characters_alive"] = function(query)
+    local ids = query.params and query.params.ids
+    if not ids then
+        error("query.characters_alive requires params.ids")
+    end
+
+    local alive_status = {}
+    for _, id in ipairs(ids) do
+        local sobj = get_story_object(id)
+        if sobj then
+            alive_status[id] = is_sobj_alive(sobj)
+        else
+            alive_status[id] = false
+        end
+    end
+    return alive_status
+end
+
+resource_registry["query.world"] = function(query)
+    local queries_mod = talker_game_queries
+    if not queries_mod then
+        error("talker_game_queries not available")
+    end
+
+    local game_time = game.get_game_time()
+    local time_obj
+    local ok, err = pcall(function()
+        time_obj = {
+            Y  = game_time:year(),
+            M  = game_time:month(),
+            D  = game_time:day(),
+            h  = game_time:hour(),
+            m  = game_time:minute(),
+            s  = game_time:second(),
+            ms = game_time:millisecond(),
+        }
+    end)
+    if not ok then
+        time_obj = { Y = 0, M = 0, D = 0, h = 0, m = 0, s = 0, ms = 0 }
+    end
+
+    local brain_scorcher_disabled = has_alife_info and has_alife_info("bar_deactivate_radar_done") or false
+    local miracle_machine_disabled = has_alife_info and has_alife_info("yan_kill_brain_done") or false
+
+    local result = {
+        loc = queries_mod.get_location_technical_name(),
+        poi = queries_mod.get_nearby_smart_terrain_name(),
+        time = time_obj,
+        weather = queries_mod.describe_weather(),
+        emission = queries_mod.is_emission_active and queries_mod.is_emission_active() or false,
+        psy_storm = queries_mod.is_psy_storm_active and queries_mod.is_psy_storm_active() or false,
+        sheltering = queries_mod.is_player_sheltering and queries_mod.is_player_sheltering() or false,
+        campfire = queries_mod.get_nearby_campfire_state and queries_mod.get_nearby_campfire_state() or nil,
+        brain_scorcher_disabled = brain_scorcher_disabled,
+        miracle_machine_disabled = miracle_machine_disabled,
+    }
+
+    if query.fields and #query.fields > 0 then
+        return filter_engine.apply_projection(result, query.fields)
+    end
+    return result
+end
+
+--------------------------------------------------------------------------------
+-- Batch Dispatcher
+--------------------------------------------------------------------------------
+
+--- Handle a batch query request.
+-- The handler receives (payload, request_r) where request_r is the r-field
+-- from the incoming WS envelope (set by Python's StateQueryClient).
+-- The response is published with the same r-field so WSRouter resolves the future.
+local function handle_batch_query(payload, request_r)
+    local request_id  = payload.request_id  -- Also in payload for backward compat
+    local sub_queries = payload.queries or {}
+
+    logger.debug("Handling batch query with %d sub-queries (r=%s, request_id=%s)",
+        #sub_queries, tostring(request_r), tostring(request_id))
+
+    local results = {}
+
+    for _, query in ipairs(sub_queries) do
+        local qid = query.id
+        local resource = query.resource
+
+        -- Resolve $ref strings in filter and params
+        if query.filter then
+            local _, ref_err = filter_engine.resolve_refs(query.filter, results)
+            if ref_err then
+                results[qid] = { ok = false, error = ref_err }
+                goto continue
+            end
+        end
+        if query.params then
+            local _, ref_err = filter_engine.resolve_refs(query.params, results)
+            if ref_err then
+                results[qid] = { ok = false, error = ref_err }
+                goto continue
+            end
+        end
+
+        local resolver = resource_registry[resource]
+        if not resolver then
+            results[qid] = { ok = false, error = "unknown resource: " .. tostring(resource) }
+            goto continue
+        end
+
+        local ok, data = pcall(resolver, query)
+        if ok then
+            results[qid] = { ok = true, data = data }
+        else
+            results[qid] = { ok = false, error = tostring(data) }
+        end
+
+        ::continue::
+    end
+
+    -- Publish batch response with the r-field echoed back
+    local ws = get_ws_integration()
+    local channel = ws and ws.get_service_channel and ws.get_service_channel()
+    if channel then
+        local response_payload = {
+            request_id = request_id or request_r,
+            results    = results,
+            timestamp  = os.time() * 1000,
+        }
+        channel.publish("state.response", response_payload, request_r)
+    else
+        logger.warn("Service channel not available for batch response")
+    end
+end
+
+--------------------------------------------------------------------------------
+-- Registration
+--------------------------------------------------------------------------------
+
+local function register_handlers()
+    local ws = get_ws_integration()
+    if not ws or not ws.register_command_handler then
+        logger.warn("WS integration not available - query handlers not registered")
+        return false
+    end
+
+    logger.info("Registering WS query handlers...")
+    ws.register_command_handler("state.query.batch", handle_batch_query)
+    logger.info("WS query handlers registered successfully")
+    return true
+end
+
+--------------------------------------------------------------------------------
+-- Game Callbacks
+--------------------------------------------------------------------------------
+
+local function on_game_load()
+    CreateTimeEvent("talker_ws_query_handlers", "register", 3, function()
+        register_handlers()
+        return true
+    end)
+end
+
+function on_game_start()
+    RegisterScriptCallback("on_game_load", on_game_load)
+    logger.info("WS query handlers script loaded")
+end
+
+function is_loaded()
+    return true
+end

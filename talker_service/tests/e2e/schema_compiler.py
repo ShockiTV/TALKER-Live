@@ -1,4 +1,4 @@
-"""Compile docs/zmq-api.yaml into JSON Schema dicts for validation.
+"""Compile docs/ws-api.yaml into JSON Schema dicts for validation.
 
 Public API
 ----------
@@ -157,12 +157,12 @@ def _compile_payload_section(
 # ── Public API ──────────────────────────────────────────────────
 
 def compile_schema(yaml_path: str | Path | None = None) -> dict[str, dict[str, Any]]:
-    """Load ``docs/zmq-api.yaml`` and compile to JSON Schema dicts.
+    """Load ``docs/ws-api.yaml`` and compile to JSON Schema dicts.
 
     Parameters
     ----------
     yaml_path : path-like, optional
-        Explicit path.  Defaults to ``<project_root>/docs/zmq-api.yaml``.
+        Explicit path.  Defaults to ``<project_root>/docs/ws-api.yaml``.
 
     Returns
     -------
@@ -176,10 +176,10 @@ def compile_schema(yaml_path: str | Path | None = None) -> dict[str, dict[str, A
         here = Path(__file__).resolve()
         project_root = here
         for _ in range(10):
-            if (project_root / "docs" / "zmq-api.yaml").exists():
+            if (project_root / "docs" / "ws-api.yaml").exists():
                 break
             project_root = project_root.parent
-        yaml_path = project_root / "docs" / "zmq-api.yaml"
+        yaml_path = project_root / "docs" / "ws-api.yaml"
 
     yaml_path = Path(yaml_path)
     with open(yaml_path, "r", encoding="utf-8") as f:

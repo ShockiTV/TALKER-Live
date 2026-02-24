@@ -7,7 +7,7 @@ local luaunit = require("tests.utils.luaunit")
 local fe = require("infra.query.filter_engine")
 
 --------------------------------------------------------------------------------
--- Simulate resource resolver patterns (mirrors talker_zmq_query_handlers)
+-- Simulate resource resolver patterns (mirrors talker_ws_query_handlers)
 --------------------------------------------------------------------------------
 
 -- Helper: create an iterator from an array

@@ -1,7 +1,7 @@
-"""Tests for the zmq-schema-validation spec — validates the schema compiler.
+"""Tests for the ws-schema-validation — validates the schema compiler.
 
 Each test maps to a spec scenario from:
-  openspec/changes/zmq-api-schema/specs/zmq-schema-validation/spec.md
+  openspec/changes/zmq-api-schema/specs/ws-schema-validation/spec.md
 """
 
 from pathlib import Path
@@ -11,7 +11,7 @@ import pytest
 
 from .schema_compiler import compile_schema
 
-_SCHEMA_PATH = Path(__file__).resolve().parents[3] / "docs" / "zmq-api.yaml"
+_SCHEMA_PATH = Path(__file__).resolve().parents[3] / "docs" / "ws-api.yaml"
 
 
 @pytest.fixture(scope="module")
@@ -262,8 +262,8 @@ class TestDeathWolfFullScenario:
         assert "response" in mock
         assert "loc" in mock["response"]
 
-    def test_expected_zmq_published_valid(self, compiled, scenario):
-        for pub in scenario["expected"]["zmq_published"]:
+    def test_expected_ws_published_valid(self, compiled, scenario):
+        for pub in scenario["expected"]["ws_published"]:
             topic = pub["topic"]
             schema = compiled[topic]["payload"]
             jsonschema.validate(pub["payload"], schema)

@@ -1,7 +1,7 @@
 -- recorder.lua
 -- Manages the player recording session.
--- Calls mic.start(prompt, callbacks) — no polling loop needed with ZMQ.
--- mic.status ZMQ push refreshes HUD; mic.result delivers the transcription.
+-- Calls mic.start(prompt, callbacks) — mic channel pushes status updates.
+-- mic.status refreshes HUD; mic.result delivers the transcription.
 
 package.path = package.path .. ";./bin/lua/?.lua"
 local logger       = require("framework.logger")
@@ -44,16 +44,16 @@ function recorder.start(callback)
     local names  = get_names_of_nearby_characters()
     local prompt = create_transcription_prompt(names)
 
-    -- Show initial status immediately; each mic.status ZMQ push will refresh it.
+    -- Show initial status immediately; each mic.status push will refresh it.
     -- Use a long duration so the text persists across the whole recording phase.
     engine.display_hud_message("LISTENING", 15)
 
     mic.start(prompt, {
-        -- ZMQ push: new phase started — refresh HUD for up to 15 more seconds.
+        -- New phase started — refresh HUD for up to 15 more seconds.
         on_status = function(status)
             engine.display_hud_message(status, 15)
         end,
-        -- ZMQ push: result delivered — no loop to clean up.
+        -- Result delivered — no loop to clean up.
         on_result = function(text)
             if text and text ~= "" then
                 text = json.utf8_to_codepage(text)

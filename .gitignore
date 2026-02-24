@@ -35,7 +35,7 @@ talker_mic.exe
 
 **/.DS_Store
 documentation
-pollnet
+bin/pollnet/
 logs
 .vscode/settings.json
 mic_python/python/__pycache__/
