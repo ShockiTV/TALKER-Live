@@ -1,7 +1,7 @@
 -- domain/repo/voices.lua
 -- Per-character voice ID resolved from the STALKER engine's sound_prefix.
 -- npc:sound_prefix() returns e.g. "characters_voice\human\stalker_1\" which
--- maps exactly to the voice theme folder name in mic_python/voices/.
+-- maps exactly to the voice theme folder name in talker_bridge/voices/.
 --
 -- When the engine object is not loaded, assignment is deferred (nil in cache)
 -- and retried on the next call. No faction-pool fallback is used.

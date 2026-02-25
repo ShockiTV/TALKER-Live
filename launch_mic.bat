@@ -84,9 +84,9 @@ goto python_menu
 
 :py_setup
 REM Create venv if it doesn't exist and install dependencies
-set MIC_DIR=%~dp0mic_python\python
+set MIC_DIR=%~dp0talker_bridge\python
 if not exist "%MIC_DIR%\.venv" (
-    echo Creating virtual environment for mic_python...
+    echo Creating virtual environment for talker_bridge...
     python -m venv "%MIC_DIR%\.venv"
     if errorlevel 1 (
         echo ERROR: Failed to create virtual environment
@@ -95,7 +95,7 @@ if not exist "%MIC_DIR%\.venv" (
     )
 )
 REM Install/update dependencies
-echo Checking mic_python dependencies...
+echo Checking talker_bridge dependencies...
 "%MIC_DIR%\.venv\Scripts\pip.exe" install -q -r "%MIC_DIR%\requirements.txt"
 if errorlevel 1 (
     echo ERROR: Failed to install dependencies
@@ -109,7 +109,7 @@ set py_target=py_gemini_run
 goto py_setup
 :py_gemini_run
 echo Launching Python mic with Gemini Proxy...
-start "TALKER Mic (Python) - Gemini Proxy" /D "%~dp0mic_python\python" cmd /k ".venv\Scripts\python.exe main.py gemini_proxy"
+start "TALKER Mic (Python) - Gemini Proxy" /D "%~dp0talker_bridge\python" cmd /k ".venv\Scripts\python.exe main.py gemini_proxy"
 goto end
 
 :py_whisper_local
@@ -117,7 +117,7 @@ set py_target=py_whisper_local_run
 goto py_setup
 :py_whisper_local_run
 echo Launching Python mic with Whisper Local...
-start "TALKER Mic (Python) - Whisper Local" /D "%~dp0mic_python\python" cmd /k ".venv\Scripts\python.exe main.py whisper_local"
+start "TALKER Mic (Python) - Whisper Local" /D "%~dp0talker_bridge\python" cmd /k ".venv\Scripts\python.exe main.py whisper_local"
 goto end
 
 :py_whisper_api
@@ -125,7 +125,7 @@ set py_target=py_whisper_api_run
 goto py_setup
 :py_whisper_api_run
 echo Launching Python mic with Whisper API...
-start "TALKER Mic (Python) - Whisper API" /D "%~dp0mic_python\python" cmd /k ".venv\Scripts\python.exe main.py whisper_api"
+start "TALKER Mic (Python) - Whisper API" /D "%~dp0talker_bridge\python" cmd /k ".venv\Scripts\python.exe main.py whisper_api"
 goto end
 
 :py_whisper_local_tts
@@ -133,7 +133,7 @@ set py_target=py_whisper_local_tts_run
 goto py_setup
 :py_whisper_local_tts_run
 echo Launching Python mic with Whisper Local + TTS...
-start "TALKER Mic (Python) - Whisper Local + TTS" /D "%~dp0mic_python\python" cmd /k ".venv\Scripts\python.exe main.py whisper_local --tts"
+start "TALKER Mic (Python) - Whisper Local + TTS" /D "%~dp0talker_bridge\python" cmd /k ".venv\Scripts\python.exe main.py whisper_local --tts"
 goto end
 
 :py_whisper_api_tts
@@ -141,7 +141,7 @@ set py_target=py_whisper_api_tts_run
 goto py_setup
 :py_whisper_api_tts_run
 echo Launching Python mic with Whisper API + TTS...
-start "TALKER Mic (Python) - Whisper API + TTS" /D "%~dp0mic_python\python" cmd /k ".venv\Scripts\python.exe main.py whisper_api --tts"
+start "TALKER Mic (Python) - Whisper API + TTS" /D "%~dp0talker_bridge\python" cmd /k ".venv\Scripts\python.exe main.py whisper_api --tts"
 goto end
 
 :no_exe

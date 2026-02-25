@@ -174,7 +174,7 @@ function c.state_query_timeout()
 end
 
 function c.tts_enabled()
-	-- Whether TTS playback is enabled (requires mic_python running with --tts)
+	-- Whether TTS playback is enabled (requires talker_bridge running with --tts)
 	return cfg("enable_tts") == true or cfg("enable_tts") == 1
 end
 

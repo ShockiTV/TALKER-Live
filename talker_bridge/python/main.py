@@ -26,7 +26,7 @@ logging.basicConfig(
     ],
 )
 
-MIC_WS_PORT = 5558  # mic_python WS server ← Lua mic channel connects here
+MIC_WS_PORT = 5558  # talker_bridge WS server ← Lua bridge channel connects here
 AUDIO_FILE = "talker_audio.ogg"
 
 ####################################################################################################
@@ -240,7 +240,7 @@ def main() -> None:
         if not voice_cache:
             logging.warning(
                 "TTS enabled but no voices loaded. "
-                "Add .wav files to mic_python/voices/ and run export_voices.bat."
+                "Add .wav files to talker_bridge/voices/ and run export_voices.bat."
             )
 
     # ── TTS queue + STT lock ────────────────────────────────

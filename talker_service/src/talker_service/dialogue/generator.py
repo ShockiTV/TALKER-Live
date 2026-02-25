@@ -631,7 +631,7 @@ class DialogueGenerator:
             except Exception as e:
                 logger.warning(f"[D#{dialogue_id}] TTS generation failed: {e}, falling back to dialogue.display")
         
-        # Fallback: publish dialogue.display for text-only display + mic_python TTS (2D)
+        # Fallback: publish dialogue.display for text-only display + talker_bridge TTS (2D)
         voice_id_fallback = (character.sound_prefix if character and getattr(character, 'sound_prefix', None) else "")
         payload = {
             "speaker_id": speaker_id,

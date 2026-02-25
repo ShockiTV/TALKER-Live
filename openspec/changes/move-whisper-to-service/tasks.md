@@ -6,7 +6,7 @@
 
 ## 2. `talker_bridge` — WS Proxy
 
-- [ ] 2.1 Rename `mic_python` directory to `talker_bridge`; update launch scripts and documentation references
+- [x] 2.1 Rename `mic_python` directory to `talker_bridge`; update launch scripts and documentation references
 - [ ] 2.2 Implement upstream WS client connection from `talker_bridge` to `talker_service` (port 5557)
 - [ ] 2.3 Implement transparent WS message proxying: Lua→service and service→Lua (forward all non-mic topics as-is)
 - [ ] 2.4 Handle `mic.start` and `mic.cancel` topics locally (do not proxy to service)
