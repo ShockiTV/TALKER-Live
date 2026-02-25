@@ -7,18 +7,18 @@
 ## 2. `talker_bridge` — WS Proxy
 
 - [x] 2.1 Rename `mic_python` directory to `talker_bridge`; update launch scripts and documentation references
-- [ ] 2.2 Implement upstream WS client connection from `talker_bridge` to `talker_service` (port 5557)
-- [ ] 2.3 Implement transparent WS message proxying: Lua→service and service→Lua (forward all non-mic topics as-is)
-- [ ] 2.4 Handle `mic.start` and `mic.cancel` topics locally (do not proxy to service)
-- [ ] 2.5 Proxy `mic.result` and `mic.status` (TRANSCRIBING) from `talker_service` downstream to Lua
+- [x] 2.2 Implement upstream WS client connection from `talker_bridge` to `talker_service` (port 5557)
+- [x] 2.3 Implement transparent WS message proxying: Lua→service and service→Lua (forward all non-mic topics as-is)
+- [x] 2.4 Handle `mic.start` and `mic.cancel` topics locally (do not proxy to service)
+- [x] 2.5 Proxy `mic.result` and `mic.status` (TRANSCRIBING) from `talker_service` downstream to Lua
 
 ## 3. `talker_bridge` — Audio Capture & Streaming
 
-- [ ] 3.1 Implement local VAD (using `webrtcvad` or energy-based threshold) for silence/end-of-speech detection
-- [ ] 3.2 On `mic.start`: begin audio capture, send `mic.status` LISTENING to Lua
-- [ ] 3.3 Stream base64-encoded audio chunks to `talker_service` as `mic.audio.chunk` messages (with sequence numbers)
-- [ ] 3.4 On VAD silence detection or `mic.cancel`: send `mic.audio.end` (with context type) to `talker_service`
-- [ ] 3.5 Remove old transcription logic and STT imports from `talker_bridge`
+- [x] 3.1 Implement local VAD (using `webrtcvad` or energy-based threshold) for silence/end-of-speech detection
+- [x] 3.2 On `mic.start`: begin audio capture, send `mic.status` LISTENING to Lua
+- [x] 3.3 Stream base64-encoded audio chunks to `talker_service` as `mic.audio.chunk` messages (with sequence numbers)
+- [x] 3.4 On VAD silence detection or `mic.cancel`: send `mic.audio.end` (with context type) to `talker_service`
+- [x] 3.5 Remove old transcription logic and STT imports from `talker_bridge`
 
 ## 4. `talker_service` — STT Integration
 
