@@ -2,13 +2,13 @@
 -- Manages the microphone and transcription process via WebSocket.
 -- Sends mic.start / mic.stop commands to talker_bridge via the bridge channel.
 -- mic.status and mic.result handlers are registered per recording session
--- using mic_channel.start_session().
+-- using bridge_channel.start_session().
 
 package.path = package.path .. ";./bin/lua/?.lua;"
 
 local mic = {}
 
-local mic_channel = require("infra.mic.channel")
+local bridge_channel = require("infra.bridge.channel")
 local config  = require("interface.config")
 local logger  = require("framework.logger")
 
@@ -22,7 +22,7 @@ end
 
 --- Start recording.
 -- Publishes mic.start to talker_bridge and registers per-session handlers
--- via mic_channel.start_session().
+-- via bridge_channel.start_session().
 -- @param transcription_prompt  Hint string forwarded to the transcription provider.
 -- @param opts Table with optional callbacks:
 --   opts.on_status(status_str)  Called when mic.status is received ("LISTENING" | "TRANSCRIBING").
@@ -32,10 +32,10 @@ function mic.start(transcription_prompt, opts)
     local lang_code = config.language_short()
     mic_on = true
 
-    -- Register per-session handlers via mic_channel.
+    -- Register per-session handlers via bridge_channel.
     -- start_session clears any previous handlers and registers on_status + on_result.
     -- on_result auto-cleans up session handlers.
-    mic_channel.start_session(
+    bridge_channel.start_session(
         function(payload)
             -- on_status callback — payload is {status = "LISTENING"} etc.
             if opts and opts.on_status then
@@ -45,7 +45,7 @@ function mic.start(transcription_prompt, opts)
         end,
         function(payload)
             -- on_result callback — payload is {text = "transcribed text"}
-            -- session handlers are auto-cleaned by mic_channel
+            -- session handlers are auto-cleaned by bridge_channel
             mic_on = false
             if opts and opts.on_result then
                 local text_str = (type(payload) == "table" and payload.text) or tostring(payload)
@@ -54,7 +54,7 @@ function mic.start(transcription_prompt, opts)
         end
     )
 
-    mic_channel.publish("mic.start", {
+    bridge_channel.publish("mic.start", {
         lang   = lang_code,
         prompt = transcription_prompt or "",
     })
@@ -67,7 +67,7 @@ end
 function mic.stop()
     if not mic_on then return end
     mic_on = false
-    mic_channel.publish("mic.stop", {})
+    bridge_channel.publish("mic.stop", {})
     logger.info("mic.stop published")
 end
 

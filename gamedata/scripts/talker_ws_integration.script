@@ -1,15 +1,14 @@
 -- TALKER WebSocket Integration Script
--- Replaces talker_zmq_integration.script
--- Drives service_channel.tick() and mic_channel.tick() via game timer,
+-- Drives bridge_channel.tick() via game timer,
 -- shows HUD status notifications, and exposes the public publishing API.
+-- All traffic flows through talker_bridge (port 5558) which proxies to talker_service.
 
 package.path = package.path .. ";./bin/lua/?.lua;"
 local logger  = require("framework.logger")
 local config  = require("interface.config")
 
--- Lazy-loaded WS channels
-local service_channel = nil
-local mic_channel     = nil
+-- Single WS channel to talker_bridge
+local bridge_channel  = nil
 local is_initialized  = false
 
 local tick_timer_id     = "talker_ws_tick"
@@ -33,24 +32,12 @@ local function safe_require(module_name)
     end
 end
 
-local function get_ws_url()
-    -- Build WS URL from config.  Defaults: ws://127.0.0.1:5557/ws
-    local host = config.ws_host and config.ws_host() or "127.0.0.1"
-    local port = config.ws_port and config.ws_port() or 5557
-    local url  = "ws://" .. host .. ":" .. tostring(port) .. "/ws"
-
-    -- Append token if configured
-    local token = config.ws_token and config.ws_token() or nil
-    if token and token ~= "" then
-        url = url .. "?token=" .. token
-    end
-    return url
-end
-
-local function get_mic_url()
+local function get_bridge_url()
+    -- Build WS URL to talker_bridge.  Defaults: ws://127.0.0.1:5558/ws
     local host = config.ws_host and config.ws_host() or "127.0.0.1"
     local port = config.mic_ws_port and config.mic_ws_port() or 5558
     local url  = "ws://" .. host .. ":" .. tostring(port) .. "/ws"
+
     local token = config.ws_token and config.ws_token() or nil
     if token and token ~= "" then
         url = url .. "?token=" .. token
@@ -64,45 +51,35 @@ end
 
 local function init_channels()
     if is_initialized then
-        return service_channel ~= nil
+        return bridge_channel ~= nil
     end
     is_initialized = true
 
-    service_channel = safe_require("infra.service.channel")
-    if not service_channel then
-        logger.warn("service_channel module not available - WS integration disabled")
+    bridge_channel = safe_require("infra.bridge.channel")
+    if not bridge_channel then
+        logger.warn("bridge_channel module not available - WS integration disabled")
         return false
     end
 
-    mic_channel = safe_require("infra.mic.channel")
-    -- mic_channel is optional (only needed for microphone)
-
-    service_channel.init(get_ws_url())
-    if mic_channel then
-        mic_channel.init(get_mic_url())
-    end
+    bridge_channel.init(get_bridge_url())
 
     -- On reconnect, resend full config sync
-    service_channel.set_on_reconnect(function()
+    bridge_channel.set_on_reconnect(function()
         logger.info("WS reconnected - sending config sync")
         publish_config_sync()
     end)
 
-    logger.info("WS channels initialized (service=%s)", get_ws_url())
+    logger.info("WS bridge channel initialized (%s)", get_bridge_url())
     start_tick_timer()
     return true
 end
 
 local function shutdown_channels()
     stop_tick_timer()
-    if service_channel then
-        service_channel.shutdown()
+    if bridge_channel then
+        bridge_channel.shutdown()
     end
-    if mic_channel then
-        mic_channel.shutdown()
-    end
-    service_channel  = nil
-    mic_channel      = nil
+    bridge_channel   = nil
     is_initialized   = false
 end
 
@@ -111,11 +88,8 @@ end
 --------------------------------------------------------------------------------
 
 local function tick()
-    if service_channel then
-        service_channel.tick()
-    end
-    if mic_channel then
-        mic_channel.tick()
+    if bridge_channel then
+        bridge_channel.tick()
     end
     return false -- continue timer
 end
@@ -162,9 +136,9 @@ local function show_service_reconnected_notification()
 end
 
 local function update_status_notifications()
-    if not service_channel then return end
+    if not bridge_channel then return end
 
-    local status = service_channel.get_status()
+    local status = bridge_channel.get_status()
     if status ~= last_known_status then
         if last_known_status == "connected" and status ~= "connected" then
             -- Just disconnected
@@ -188,7 +162,7 @@ end
 --------------------------------------------------------------------------------
 
 --- Register a handler for receiving commands from Python.
--- Delegates to service_channel.on(topic, handler).
+-- Delegates to bridge_channel.on(topic, handler).
 -- @param topic   string    Topic (e.g. "dialogue.display")
 -- @param handler function  fn(payload, request_id)
 function register_command_handler(topic, handler)
@@ -196,7 +170,7 @@ function register_command_handler(topic, handler)
         logger.warn("Cannot register command handler - WS not initialized")
         return false
     end
-    service_channel.on(topic, handler)
+    bridge_channel.on(topic, handler)
     return true
 end
 
@@ -204,22 +178,22 @@ end
 -- Public API (for use by other scripts)
 --------------------------------------------------------------------------------
 
---- Get the service channel module (for scripts that need direct access).
-function get_service_channel()
+--- Get the bridge channel module (for scripts that need direct access).
+function get_bridge_channel()
     if not init_channels() then return nil end
-    return service_channel
+    return bridge_channel
 end
 
---- Get the mic channel module (for scripts that need direct access).
+--- Backward-compatible alias for get_bridge_channel.
+-- Mic-related topics are now also routed through the bridge channel.
 function get_mic_channel()
-    if not init_channels() then return nil end
-    return mic_channel
+    return get_bridge_channel()
 end
 
 function publish_game_event(event, is_important)
     if not init_channels() then return false end
 
-    if service_channel.get_status() ~= "connected" then
+    if bridge_channel.get_status() ~= "connected" then
         -- Queue will hold it, but warn if offline
         logger.debug("WS not connected - event queued")
     end
@@ -229,7 +203,7 @@ function publish_game_event(event, is_important)
     local payload = serializer.serialize_event(event)
     payload.is_important = is_important
 
-    service_channel.publish("game.event", payload)
+    bridge_channel.publish("game.event", payload)
     return true
 end
 
@@ -241,7 +215,7 @@ function publish_player_dialogue(text, context)
         text = text,
         context = context and serializer.serialize_context(context) or {},
     }
-    service_channel.publish("player.dialogue", payload)
+    bridge_channel.publish("player.dialogue", payload)
     return true
 end
 
@@ -255,25 +229,25 @@ function publish_player_whisper(text, target)
     if target then
         payload.target = serializer.serialize_character(target)
     end
-    service_channel.publish("player.whisper", payload)
+    bridge_channel.publish("player.whisper", payload)
     return true
 end
 
 function publish_config_update(key, value)
     if not init_channels() then return false end
-    service_channel.publish("config.update", { key = key, value = value })
+    bridge_channel.publish("config.update", { key = key, value = value })
     return true
 end
 
 function publish_config_sync()
     if not init_channels() then return false end
     local all_config = config.get_all_config()
-    service_channel.publish("config.sync", all_config)
+    bridge_channel.publish("config.sync", all_config)
     return true
 end
 
 function is_ws_connected()
-    return service_channel ~= nil and service_channel.get_status() == "connected"
+    return bridge_channel ~= nil and bridge_channel.get_status() == "connected"
 end
 
 --------------------------------------------------------------------------------

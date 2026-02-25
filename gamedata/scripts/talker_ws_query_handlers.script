@@ -1,7 +1,7 @@
 -- TALKER WebSocket Query Handlers
 -- Replaces talker_zmq_query_handlers.script
 -- Handles state queries from Python service via WebSocket.
--- Responds via service_channel.publish() with the r-field echoed back
+-- Responds via bridge_channel.publish() with the r-field echoed back
 -- so WSRouter can resolve the pending future.
 
 package.path = package.path .. ";./bin/lua/?.lua;"
@@ -447,7 +447,7 @@ local function handle_batch_query(payload, request_r)
 
     -- Publish batch response with the r-field echoed back
     local ws = get_ws_integration()
-    local channel = ws and ws.get_service_channel and ws.get_service_channel()
+    local channel = ws and ws.get_bridge_channel and ws.get_bridge_channel()
     if channel then
         local response_payload = {
             request_id = request_id or request_r,
@@ -456,7 +456,7 @@ local function handle_batch_query(payload, request_r)
         }
         channel.publish("state.response", response_payload, request_r)
     else
-        logger.warn("Service channel not available for batch response")
+        logger.warn("Bridge channel not available for batch response")
     end
 end
 
