@@ -1,6 +1,6 @@
 @echo off
 REM TALKER Voice Export
-REM Bakes voice audio files in mic_python\voices\ into .safetensors kvcache files.
+REM Bakes voice audio files in talker_bridge\voices\ into .safetensors kvcache files.
 REM Supports .wav, .mp3, and .ogg files — both flat (voices\bandit_1.wav) and
 REM subdirectory layouts (voices\bandit_1\...\sample.ogg → bandit_1.safetensors).
 REM Run once when new voice files or subdirectories are added.
@@ -9,11 +9,11 @@ REM Flags:
 REM   --force    Re-export even if .safetensors already exists
 REM   --denoise  Apply DeepFilterNet noise reduction (requires: pip install deepfilternet)
 
-set MIC_DIR=%~dp0mic_python\python
+set MIC_DIR=%~dp0talker_bridge\python
 
 REM Create venv if needed and install dependencies
 if not exist "%MIC_DIR%\.venv" (
-    echo Creating virtual environment for mic_python...
+    echo Creating virtual environment for talker_bridge...
     python -m venv "%MIC_DIR%\.venv"
     if errorlevel 1 (
         echo ERROR: Failed to create virtual environment
@@ -22,7 +22,7 @@ if not exist "%MIC_DIR%\.venv" (
     )
 )
 
-echo Installing / updating mic_python dependencies (including pocket-tts)...
+echo Installing / updating talker_bridge dependencies (including pocket-tts)...
 "%MIC_DIR%\.venv\Scripts\pip.exe" install -q --timeout 120 -r "%MIC_DIR%\requirements.txt"
 if errorlevel 1 (
     echo ERROR: Failed to install dependencies

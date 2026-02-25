@@ -1,6 +1,6 @@
 -- microphone.lua
 -- Manages the microphone and transcription process via WebSocket.
--- Sends mic.start / mic.stop commands to mic_python via the mic channel.
+-- Sends mic.start / mic.stop commands to talker_bridge via the bridge channel.
 -- mic.status and mic.result handlers are registered per recording session
 -- using mic_channel.start_session().
 
@@ -21,7 +21,7 @@ function mic.is_mic_on()
 end
 
 --- Start recording.
--- Publishes mic.start to mic_python and registers per-session handlers
+-- Publishes mic.start to talker_bridge and registers per-session handlers
 -- via mic_channel.start_session().
 -- @param transcription_prompt  Hint string forwarded to the transcription provider.
 -- @param opts Table with optional callbacks:
@@ -63,7 +63,7 @@ function mic.start(transcription_prompt, opts)
 end
 
 --- Stop recording early (cancellation).
--- Publishes mic.stop to mic_python.
+-- Publishes mic.stop to talker_bridge.
 function mic.stop()
     if not mic_on then return end
     mic_on = false

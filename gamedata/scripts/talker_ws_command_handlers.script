@@ -151,7 +151,7 @@ local function handle_dialogue_display(payload)
 
     _create_dialogue_event(speaker_id, dialogue, event_context, create_event)
 
-    -- If TTS enabled, also send speech request to mic_python (fire-and-forget)
+    -- If TTS enabled, also send speech request to talker_bridge (fire-and-forget)
     if config.tts_enabled() then
         local voice_id = payload.voice_id
         if not voice_id or voice_id == "" then
