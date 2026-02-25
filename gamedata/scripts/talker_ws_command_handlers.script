@@ -1,6 +1,6 @@
 -- TALKER WebSocket Command Handlers
 -- Replaces talker_zmq_command_handlers.script
--- Handles commands from Python service via WebSocket (service_channel).
+-- Handles commands from Python service via WebSocket (bridge_channel).
 
 package.path = package.path .. ";./bin/lua/?.lua;"
 local logger       = require("framework.logger")
@@ -126,7 +126,7 @@ local function handle_tts_audio(payload)
 end
 
 --- Handler for dialogue.display command
--- Receives payload only (no topic argument — service_channel.on() convention).
+-- Receives payload only (no topic argument — bridge_channel.on() convention).
 local function handle_dialogue_display(payload)
     local speaker_id    = payload.speaker_id
     local dialogue      = payload.dialogue
@@ -161,16 +161,16 @@ local function handle_dialogue_display(payload)
 
         local tts_ok, tts_err = pcall(function()
             local ws = get_ws_integration()
-            local mic_ch = ws and ws.get_mic_channel and ws.get_mic_channel()
-            if mic_ch then
-                mic_ch.publish("tts.speak", {
+            local bridge_ch = ws and ws.get_bridge_channel and ws.get_bridge_channel()
+            if bridge_ch then
+                bridge_ch.publish("tts.speak", {
                     voice_id   = voice_id,
                     text       = dialogue,
                     speaker_id = speaker_id or "",
                 })
                 logger.debug("Published tts.speak for speaker=%s, voice=%s", speaker_id, voice_id)
             else
-                logger.warn("Mic channel not available for tts.speak")
+                logger.warn("Bridge channel not available for tts.speak")
             end
         end)
         if not tts_ok then

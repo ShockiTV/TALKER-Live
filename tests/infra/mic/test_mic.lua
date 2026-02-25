@@ -26,7 +26,7 @@ function mock_logger.info(...) end
 function mock_logger.debug(...) end
 function mock_logger.error(...) end
 
-package.preload["infra.mic.channel"]  = function() return mock_channel end
+package.preload["infra.bridge.channel"]  = function() return mock_channel end
 package.preload["interface.config"]  = function() return mock_config end
 package.preload["framework.logger"]  = function() return mock_logger end
 

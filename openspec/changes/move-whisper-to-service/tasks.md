@@ -31,10 +31,10 @@
 
 ## 5. Lua — Single Connection Migration
 
-- [ ] 5.1 Remove `service-channel` (direct Lua→`talker_service` connection on port 5557)
-- [ ] 5.2 Update `mic-channel` to carry all traffic (rename to bridge-channel or similar)
-- [ ] 5.3 Route all outbound topics (`game.event`, `player.dialogue`, `config.update`, etc.) through the single bridge connection
-- [ ] 5.4 Route all inbound topics (`dialogue.display`, `memory.update`, `state.query.batch`, etc.) from the bridge connection to existing handlers
+- [x] 5.1 Remove `service-channel` (direct Lua→`talker_service` connection on port 5557)
+- [x] 5.2 Update `mic-channel` to carry all traffic (rename to bridge-channel or similar)
+- [x] 5.3 Route all outbound topics (`game.event`, `player.dialogue`, `config.update`, etc.) through the single bridge connection
+- [x] 5.4 Route all inbound topics (`dialogue.display`, `memory.update`, `state.query.batch`, etc.) from the bridge connection to existing handlers
 
 ## 6. Build & Packaging
 
