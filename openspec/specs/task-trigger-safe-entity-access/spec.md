@@ -1,4 +1,10 @@
-## ADDED Requirements
+# task-trigger-safe-entity-access
+
+## Purpose
+
+Defines safe entity access patterns for the task trigger to prevent nil-reference errors when accessing game objects.
+
+## Requirements
 
 ### Requirement: Story ID from section_name
 

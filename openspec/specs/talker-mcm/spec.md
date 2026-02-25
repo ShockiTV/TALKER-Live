@@ -1,4 +1,10 @@
-## MODIFIED Requirements
+# talker-mcm
+
+## Purpose
+
+Defines the Mod Configuration Menu (MCM) settings and defaults for the TALKER mod.
+
+## Requirements
 
 ### Requirement: MCM defaults available as pure Lua module
 

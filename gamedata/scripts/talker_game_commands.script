@@ -52,6 +52,10 @@ function display_hud_message(input, seconds)
     actor_menu.set_msg(1, input, seconds)
 end
 
+function exec_console_cmd(command)
+    get_console():execute(command)
+end
+
 function is_loaded()
     return true
 end

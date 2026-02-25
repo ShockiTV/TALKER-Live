@@ -22,6 +22,7 @@ class CharacterData(BaseModel):
     reputation: int = 0
     weapon: Optional[str] = None
     visual_faction: Optional[str] = None
+    sound_prefix: Optional[str] = None  # Voice theme ID, e.g. "stalker_1"
 
     @model_validator(mode="before")
     @classmethod

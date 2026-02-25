@@ -19,6 +19,7 @@ class Character:
     weapon: str = ""
     visual_faction: str | None = None  # For disguises
     story_id: str | None = None  # Story ID for notable character matching
+    sound_prefix: str | None = None  # Voice theme ID, e.g. "stalker_1"
     
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "Character":
@@ -32,6 +33,7 @@ class Character:
             weapon=data.get("weapon", ""),
             visual_faction=data.get("visual_faction"),
             story_id=data.get("story_id"),
+            sound_prefix=data.get("sound_prefix"),
         )
 
 

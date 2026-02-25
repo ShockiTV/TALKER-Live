@@ -115,7 +115,7 @@
       }
     },
     {
-      "response": "Get to cover \u00e2\u20ac\u201d NOW. Emission's sweeping through and you don't want to be caught in the open.",
+      "response": "Get to cover â€” NOW. Emission's sweeping through and you don't want to be caught in the open.",
       "request": {
         "model": "gpt-4o-mini",
         "messages": [
@@ -290,11 +290,12 @@
         "topic": "dialogue.display",
         "payload": {
           "speaker_id": "12345",
-          "dialogue": "Get to cover \u00e2\u20ac\u201d NOW. Emission's sweeping through and you don't want to be caught in the open.",
+          "dialogue": "Get to cover â€” NOW. Emission's sweeping through and you don't want to be caught in the open.",
           "create_event": true,
           "event_context": {
             "world_context": null
-          }
+          },
+          "voice_id": ""
         }
       }
     ]

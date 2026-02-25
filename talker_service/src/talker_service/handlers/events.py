@@ -10,6 +10,20 @@ from loguru import logger
 
 from ..models.messages import GameEventMessage, PlayerDialogueMessage, HeartbeatMessage
 
+# Maximum concurrent dialogue generation tasks
+_MAX_CONCURRENT_DIALOGUES = 3
+_dialogue_semaphore = asyncio.Semaphore(_MAX_CONCURRENT_DIALOGUES)
+
+
+def _logged_task(coro, *, name: str = "unnamed"):
+    """Create an asyncio task that logs exceptions instead of swallowing them."""
+    async def _wrapper():
+        try:
+            await coro
+        except Exception:
+            logger.opt(exception=True).error(f"Background task '{name}' failed")
+    return asyncio.create_task(_wrapper(), name=name)
+
 if TYPE_CHECKING:
     from ..dialogue import DialogueGenerator
     from ..dialogue.retry_queue import DialogueRetryQueue
@@ -143,13 +157,11 @@ async def handle_game_event(payload: dict[str, Any]) -> None:
         
         # Handle idle conversation events (direct instruction)
         if flags.get("is_idle", False):
-            # Spawn as background task to avoid blocking message loop
-            asyncio.create_task(_handle_idle_event(event))
+            _logged_task(_handle_idle_event(event), name=f"idle-{event_type}")
             return
         
         # Regular event-triggered dialogue
-        # Spawn as background task to avoid blocking message loop
-        asyncio.create_task(_handle_regular_event(event))
+        _logged_task(_handle_regular_event(event), name=f"dialogue-{event_type}")
             
     except Exception as e:
         logger.error(f"Error processing game event: {e}")
@@ -162,40 +174,45 @@ async def _handle_idle_event(event: GameEventMessage) -> None:
         logger.warning("Dialogue generator not available for idle event")
         return
     
-    # Convert context to dict (EventContext is a Pydantic model)
-    context_dict = {}
-    if event.context:
-        if hasattr(event.context, "model_dump"):
-            context_dict = event.context.model_dump()
-        elif isinstance(event.context, dict):
-            context_dict = event.context
-    
-    # Get the speaker from context — idle events use context.speaker, others use context.actor
-    speaker_id = None
-    for key in ("speaker", "actor"):
-        char = context_dict.get(key)
-        if char and isinstance(char, dict):
-            speaker_id = str(char.get("game_id"))
-            break
-
-    if not speaker_id:
-        logger.error("Idle event has no valid speaker")
+    if _dialogue_semaphore.locked():
+        logger.debug(f"Skipping idle event — {_MAX_CONCURRENT_DIALOGUES} dialogue tasks already running")
         return
     
-    logger.info(f"Triggering idle dialogue for speaker {speaker_id}")
-    
-    # Convert to dict format expected by generator
-    event_dict = {
-        "type": event.type,
-        "context": context_dict,
-        "game_time_ms": event.game_time_ms,
-        "world_context": event.world_context,
-        "witnesses": [{"game_id": w.game_id, "name": w.name, "faction": w.faction} 
-                      for w in event.witnesses],
-        "flags": event.get_flags(),
-    }
-    
-    await _dialogue_generator.generate_from_instruction(speaker_id, event_dict)
+    async with _dialogue_semaphore:
+        # Convert context to dict (EventContext is a Pydantic model)
+        context_dict = {}
+        if event.context:
+            if hasattr(event.context, "model_dump"):
+                context_dict = event.context.model_dump()
+            elif isinstance(event.context, dict):
+                context_dict = event.context
+        
+        # Get the speaker from context — idle events use context.speaker, others use context.actor
+        speaker_id = None
+        for key in ("speaker", "actor"):
+            char = context_dict.get(key)
+            if char and isinstance(char, dict):
+                speaker_id = str(char.get("game_id"))
+                break
+
+        if not speaker_id:
+            logger.error("Idle event has no valid speaker")
+            return
+        
+        logger.info(f"Triggering idle dialogue for speaker {speaker_id}")
+        
+        # Convert to dict format expected by generator
+        event_dict = {
+            "type": event.type,
+            "context": context_dict,
+            "game_time_ms": event.game_time_ms,
+            "world_context": event.world_context,
+            "witnesses": [{"game_id": w.game_id, "name": w.name, "faction": w.faction} 
+                          for w in event.witnesses],
+            "flags": event.get_flags(),
+        }
+        
+        await _dialogue_generator.generate_from_instruction(speaker_id, event_dict)
 
 
 async def _handle_regular_event(event: GameEventMessage) -> None:
@@ -204,30 +221,35 @@ async def _handle_regular_event(event: GameEventMessage) -> None:
         logger.warning("Dialogue generator not available for event")
         return
     
+    if _dialogue_semaphore.locked():
+        logger.debug(f"Skipping event type={event.type} — {_MAX_CONCURRENT_DIALOGUES} dialogue tasks already running")
+        return
+    
     logger.info(f"Triggering dialogue generation for event type={event.type}")
     
-    # Convert context to dict (EventContext is a Pydantic model)
-    context_dict = {}
-    if event.context:
-        if hasattr(event.context, "model_dump"):
-            context_dict = event.context.model_dump()
-        elif isinstance(event.context, dict):
-            context_dict = event.context
-    
-    # Convert to dict format expected by generator
-    event_dict = {
-        "type": event.type,
-        "context": context_dict,
-        "game_time_ms": event.game_time_ms,
-        "world_context": event.world_context,
-        "witnesses": [{"game_id": w.game_id, "name": w.name, "faction": w.faction,
-                       "experience": getattr(w, "experience", ""),
-                       "reputation": getattr(w, "reputation", "")} 
-                      for w in event.witnesses],
-        "flags": event.get_flags(),
-    }
-    
-    await _dialogue_generator.generate_from_event(event_dict)
+    async with _dialogue_semaphore:
+        # Convert context to dict (EventContext is a Pydantic model)
+        context_dict = {}
+        if event.context:
+            if hasattr(event.context, "model_dump"):
+                context_dict = event.context.model_dump()
+            elif isinstance(event.context, dict):
+                context_dict = event.context
+        
+        # Convert to dict format expected by generator
+        event_dict = {
+            "type": event.type,
+            "context": context_dict,
+            "game_time_ms": event.game_time_ms,
+            "world_context": event.world_context,
+            "witnesses": [{"game_id": w.game_id, "name": w.name, "faction": w.faction,
+                           "experience": getattr(w, "experience", ""),
+                           "reputation": getattr(w, "reputation", "")} 
+                          for w in event.witnesses],
+            "flags": event.get_flags(),
+        }
+        
+        await _dialogue_generator.generate_from_event(event_dict)
 
 
 async def handle_player_dialogue(payload: dict[str, Any]) -> None:
@@ -317,3 +339,4 @@ async def handle_heartbeat(payload: dict[str, Any]) -> None:
     except Exception as e:
         logger.error(f"Error processing heartbeat: {e}")
         logger.debug(f"Raw payload: {payload}")
+

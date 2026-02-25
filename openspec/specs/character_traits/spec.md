@@ -6,7 +6,7 @@ Defines the architecture and behavior for handling character narrative traits (p
 ## Requirements
 
 ### Requirement: Lean Character DTO
-The `Character` entity in both Lua and Python must not contain `backstory` or `personality` fields.
+The `Character` entity in both Lua and Python SHALL NOT contain `backstory` or `personality` fields.
 
 #### Scenario: Lua Character Creation
 - **WHEN** a new `Character` object is created in Lua via `game_adapter.lua`
@@ -17,7 +17,7 @@ The `Character` entity in both Lua and Python must not contain `backstory` or `p
 - **THEN** the deserialized `Character` objects do not contain `backstory` or `personality` fields.
 
 ### Requirement: Lazy Generation of Traits in Lua
-Lua must handle the generation and persistence of missing narrative traits when queried by Python.
+Lua SHALL handle the generation and persistence of missing narrative traits when queried by Python.
 
 #### Scenario: Querying a Missing Personality
 - **WHEN** Python sends a `BatchQuery` for `store.personalities` for a character ID that has no assigned personality
@@ -28,7 +28,7 @@ Lua must handle the generation and persistence of missing narrative traits when 
 - **THEN** Lua's query handler generates a new backstory, saves it to the store, and returns the new backstory ID.
 
 ### Requirement: Two-Phase Fetch in Python
-Python's `DialogueGenerator` must fetch traits on-demand in two distinct phases to optimize data transfer.
+Python's `DialogueGenerator` SHALL fetch traits on-demand in two distinct phases to optimize data transfer.
 
 #### Scenario: Phase 1 - Speaker Selection
 - **WHEN** an event triggers dialogue generation

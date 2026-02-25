@@ -11,15 +11,11 @@ local Event        = require("domain.model.event")
 local EventType    = require("domain.model.event_types")
 local config       = require("interface.config")
 local engine       = require("interface.engine")
+local base64       = require("infra.base64")
+local tts_slot     = require("domain.service.tts_slot")
 
 -- Reference to WS integration (lazy-loaded)
 local ws_integration = nil
-
--- TTS state
-local TTS_QUEUE_MAX    = 5
-local tts_queue        = {}
-local tts_pending_item = nil
-local tts_timeout_id   = "talker_tts_timeout"
 
 --------------------------------------------------------------------------------
 -- Helpers
@@ -34,20 +30,6 @@ end
 
 local function get_queries()
     return talker_game_queries
-end
-
---------------------------------------------------------------------------------
--- TTS Queue Helpers
---------------------------------------------------------------------------------
-
-local function display_dialogue_for_item(item)
-    if not item then return end
-    local ok, err = pcall(function()
-        game_adapter.display_dialogue(item.speaker_id, item.dialogue or "")
-    end)
-    if not ok then
-        logger.error("Failed to display dialogue in TTS flow: %s", err)
-    end
 end
 
 local function _create_dialogue_event(speaker_id, dialogue, event_context, create_event)
@@ -84,57 +66,64 @@ local function _create_dialogue_event(speaker_id, dialogue, event_context, creat
     end
 end
 
-local function publish_next_tts()
-    if #tts_queue == 0 then return end
-
-    local item = tts_queue[1]
-    tts_pending_item = item
-
-    -- Publish tts.speak via mic channel (if available)
-    local ok, err = pcall(function()
-        local ws = get_ws_integration()
-        local mic_ch = ws and ws.get_mic_channel and ws.get_mic_channel()
-        if mic_ch then
-            mic_ch.publish("tts.speak", {
-                voice_id   = item.voice_id or "",
-                text       = item.text or "",
-                speaker_id = item.speaker_id or "",
-            })
-        else
-            logger.warn("Mic channel not available for tts.speak")
-            -- Fall through: skip this item
-            table.remove(tts_queue, 1)
-            tts_pending_item = nil
-            publish_next_tts()
-            return
-        end
-    end)
-    if not ok then
-        logger.error("Failed to publish tts.speak: %s", err)
-        table.remove(tts_queue, 1)
-        tts_pending_item = nil
-        publish_next_tts()
-        return
-    end
-
-    logger.debug("Published tts.speak for speaker=%s, voice=%s", item.speaker_id, item.voice_id)
-
-    -- 30-second safety timeout for tts.started
-    engine.create_time_event(tts_timeout_id, tts_timeout_id, 30, function()
-        if tts_pending_item then
-            logger.warn("TTS timeout: tts.started not received within 30s, skipping item (speaker=%s)",
-                tts_pending_item.speaker_id)
-            table.remove(tts_queue, 1)
-            tts_pending_item = nil
-            publish_next_tts()
-        end
-        return true
-    end)
-end
-
 --------------------------------------------------------------------------------
 -- Command Handlers
 --------------------------------------------------------------------------------
+
+--- Handler for tts.audio command (in-engine TTS)
+-- Receives pre-rendered OGG audio from Python service, plays immediately.
+local function handle_tts_audio(payload)
+    local speaker_id    = payload.speaker_id
+    local audio_b64     = payload.audio_b64
+    local voice_id      = payload.voice_id
+    local dialogue      = payload.dialogue
+    local dialogue_id   = payload.dialogue_id or "?"
+    local create_event  = payload.create_event ~= false
+    local event_context = payload.event_context or {}
+
+    logger.info("[D#%s] Handling tts.audio for speaker: %s (voice: %s)", dialogue_id, speaker_id, voice_id or "?")
+
+    if not speaker_id or not audio_b64 or not dialogue then
+        logger.error("[D#%s] tts.audio requires speaker_id, audio_b64, and dialogue", dialogue_id)
+        return
+    end
+
+    local ok, err = pcall(function()
+        -- 1. Decode base64 audio
+        local ogg_bytes = base64.decode(audio_b64)
+        if not ogg_bytes or #ogg_bytes == 0 then
+            logger.error("[D#%s] Failed to decode base64 audio for speaker %s", dialogue_id, speaker_id)
+            return
+        end
+        logger.debug("[D#%s] Decoded %d bytes of audio for speaker %s", dialogue_id, #ogg_bytes, speaker_id)
+
+        -- 2. Allocate slot
+        local slot_num = tts_slot.allocate()
+        logger.info("[D#%s] slot=%d speaker=%s dialogue='%s'", dialogue_id, slot_num, speaker_id, dialogue:sub(1, 60))
+
+        -- 3. Write OGG to slot file
+        local write_success = tts_slot.write_slot(slot_num, ogg_bytes)
+        if not write_success then
+            logger.error("[D#%s] Failed to write OGG to slot %d for speaker %s", dialogue_id, slot_num, speaker_id)
+            return
+        end
+
+        -- 4. Display dialogue text
+        game_adapter.display_dialogue(speaker_id, dialogue)
+
+        -- 5. Create dialogue event
+        _create_dialogue_event(speaker_id, dialogue, event_context, create_event)
+
+        -- 6. Play audio on NPC (fire-and-forget)
+        local npc_obj = engine.get_obj_by_id(speaker_id)
+        tts_slot.play_on_npc(slot_num, npc_obj)
+        logger.info("[D#%s] Display + play complete (slot=%d)", dialogue_id, slot_num)
+    end)
+
+    if not ok then
+        logger.error("Failed to process tts.audio: %s", err)
+    end
+end
 
 --- Handler for dialogue.display command
 -- Receives payload only (no topic argument — service_channel.on() convention).
@@ -151,45 +140,42 @@ local function handle_dialogue_display(payload)
         return
     end
 
-    local voice_id = payload.voice_id
-    if not voice_id or voice_id == "" then
-        local obj = engine.get_obj_by_id(speaker_id)
-        voice_id = (obj and engine.get_sound_prefix(obj)) or ""
+    -- Display dialogue immediately
+    local ok, err = pcall(function()
+        game_adapter.display_dialogue(speaker_id, dialogue)
+    end)
+    if not ok then
+        logger.error("Failed to display dialogue: %s", err)
+        return
     end
 
+    _create_dialogue_event(speaker_id, dialogue, event_context, create_event)
+
+    -- If TTS enabled, also send speech request to mic_python (fire-and-forget)
     if config.tts_enabled() then
-        if #tts_queue >= TTS_QUEUE_MAX then
-            logger.warn("TTS queue full (max %d), dropping dialogue for speaker %s", TTS_QUEUE_MAX, speaker_id)
-            return
+        local voice_id = payload.voice_id
+        if not voice_id or voice_id == "" then
+            local obj = engine.get_obj_by_id(speaker_id)
+            voice_id = (obj and engine.get_sound_prefix(obj)) or ""
         end
 
-        local queue_was_empty = (#tts_queue == 0) and (tts_pending_item == nil)
-
-        table.insert(tts_queue, {
-            voice_id      = voice_id,
-            text          = dialogue,
-            speaker_id    = speaker_id,
-            dialogue      = dialogue,
-            event_context = event_context,
-            create_event  = create_event,
-        })
-
-        logger.debug("Queued TTS item for speaker=%s (queue size now %d)", speaker_id, #tts_queue)
-
-        if queue_was_empty then
-            publish_next_tts()
-        end
-    else
-        local ok, err = pcall(function()
-            game_adapter.display_dialogue(speaker_id, dialogue)
+        local tts_ok, tts_err = pcall(function()
+            local ws = get_ws_integration()
+            local mic_ch = ws and ws.get_mic_channel and ws.get_mic_channel()
+            if mic_ch then
+                mic_ch.publish("tts.speak", {
+                    voice_id   = voice_id,
+                    text       = dialogue,
+                    speaker_id = speaker_id or "",
+                })
+                logger.debug("Published tts.speak for speaker=%s, voice=%s", speaker_id, voice_id)
+            else
+                logger.warn("Mic channel not available for tts.speak")
+            end
         end)
-
-        if not ok then
-            logger.error("Failed to display dialogue: %s", err)
-            return
+        if not tts_ok then
+            logger.error("Failed to publish tts.speak: %s", tts_err)
         end
-
-        _create_dialogue_event(speaker_id, dialogue, event_context, create_event)
     end
 end
 
@@ -276,39 +262,6 @@ local function handle_heartbeat_ack(payload)
     -- With WS, connectivity is implicit — no need to mark_service_alive.
 end
 
---- Handler for tts.started
-local function handle_tts_started(payload)
-    logger.debug("Received tts.started from mic_python (speaker=%s)", payload.speaker_id or "?")
-
-    engine.remove_time_event(tts_timeout_id, tts_timeout_id)
-
-    if tts_pending_item then
-        display_dialogue_for_item(tts_pending_item)
-        _create_dialogue_event(
-            tts_pending_item.speaker_id,
-            tts_pending_item.dialogue,
-            tts_pending_item.event_context,
-            tts_pending_item.create_event
-        )
-    else
-        logger.warn("tts.started received but no pending TTS item")
-    end
-end
-
---- Handler for tts.done
-local function handle_tts_done(payload)
-    logger.debug("Received tts.done from mic_python (speaker=%s)", payload.speaker_id or "?")
-
-    if #tts_queue > 0 then
-        table.remove(tts_queue, 1)
-    end
-    tts_pending_item = nil
-
-    if #tts_queue > 0 then
-        publish_next_tts()
-    end
-end
-
 --------------------------------------------------------------------------------
 -- Registration
 --------------------------------------------------------------------------------
@@ -322,21 +275,12 @@ local function register_handlers()
 
     logger.info("Registering WS command handlers...")
 
+    ws.register_command_handler("tts.audio",        handle_tts_audio)
     ws.register_command_handler("dialogue.display", handle_dialogue_display)
     ws.register_command_handler("memory.update",    handle_memory_update)
     ws.register_command_handler("event.store",      handle_event_store)
     ws.register_command_handler("config.request",   handle_config_request)
     ws.register_command_handler("service.heartbeat.ack", handle_heartbeat_ack)
-
-    -- TTS responses come from mic_python via mic_channel, not service_channel
-    local mic_ch = ws.get_mic_channel and ws.get_mic_channel()
-    if mic_ch then
-        mic_ch.on("tts.started", handle_tts_started)
-        mic_ch.on("tts.done",    handle_tts_done)
-        logger.info("TTS handlers registered on mic channel")
-    else
-        logger.warn("Mic channel not available - TTS handlers not registered")
-    end
 
     logger.info("WS command handlers registered successfully")
     return true

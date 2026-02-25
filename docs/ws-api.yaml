@@ -221,6 +221,19 @@ messages:
       create_event:  { type: bool, default: true, description: "Whether to create a DIALOGUE event in event_store" }
       event_context: { type: object, description: "Additional context merged into the created event" }
 
+  tts.audio:
+    channel: service
+    direction: python→lua
+    description: "Play TTS audio for an NPC in-game using 3D spatial audio. Replaces dialogue.display when TTS is available."
+    payload:
+      speaker_id:    { type: string, required: true, description: "Character ID" }
+      dialogue:      { type: string, required: true, description: "Dialogue text (included for logging/fallback)" }
+      dialogue_id:   { type: int, required: true, description: "Monotonic counter for end-to-end correlation" }
+      audio_b64:     { type: string, required: true, description: "Base64-encoded OGG Vorbis audio data" }
+      voice_id:      { type: string, required: true, description: "Voice identifier used for TTS generation" }
+      create_event:  { type: bool, default: true, description: "Whether to create a DIALOGUE event in event_store" }
+      event_context: { type: object, description: "Additional context merged into the created event" }
+
   memory.update:
     channel: service
     direction: python→lua

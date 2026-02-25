@@ -1,4 +1,10 @@
-## ADDED Requirements
+# anomaly-trigger-migration
+
+## Purpose
+
+Defines the migration of anomaly detection from XML parsing to a Lua data-table lookup for the anomaly trigger.
+
+## Requirements
 
 ### Requirement: Replace load_xml anomaly detection in proximity handler
 

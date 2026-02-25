@@ -11,6 +11,12 @@ websockets>=11.0
 loguru>=0.7.0
 python-dotenv>=1.0.0
 
+# TTS (optional - install with: pip install pocket_tts imageio-ffmpeg numpy)
+# Uncomment the following lines to enable in-engine NPC TTS:
+# pocket_tts>=0.1.0
+# imageio-ffmpeg>=0.4.0
+# numpy>=1.24.0
+
 # Development
 pytest>=7.0.0
 pytest-asyncio>=0.21.0

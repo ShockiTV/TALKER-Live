@@ -33,6 +33,10 @@ class Settings(BaseSettings):
     
     # State Query Settings
     state_query_timeout: float = 30.0  # seconds
+    
+    # TTS Settings
+    tts_enabled: bool = False  # Enable in-engine TTS audio generation
+    voices_dir: Path = Path("../mic_python/voices")  # Directory containing .safetensors voice files
 
 
 # Global settings instance

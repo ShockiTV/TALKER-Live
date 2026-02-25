@@ -1,4 +1,10 @@
-## ADDED Requirements
+# callout-dedup-typed-events
+
+## Purpose
+
+Defines typed event deduplication and callout trigger behavior to prevent duplicate events from the same source.
+
+## Requirements
 
 ### Requirement: Typed event dedup matching
 

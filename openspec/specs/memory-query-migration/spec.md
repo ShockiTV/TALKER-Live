@@ -1,5 +1,9 @@
 # Spec: Memory Query Migration
 
+## Purpose
+
+Defines the migration of memory context construction from Lua to Python, using store queries for events and memories.
+
 ## Requirements
 
 ### Requirement: Python-side Memory Context Construction

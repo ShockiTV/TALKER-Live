@@ -14,7 +14,7 @@ logging.basicConfig(encoding="utf-8")
 ################################################################################################
 
 ROOT_DIR = Path(getattr(sys, "frozen", False) and sys.executable or __file__).resolve().parent
-WHISPER_MODEL = "tiny.en"  # faster-whisper model name
+WHISPER_MODEL = "base.en"  # faster-whisper model name
 
 ################################################################################################
 # TRANSCRIPTION

@@ -102,12 +102,17 @@ def _assert_ws_published(actual: list[dict], expected: list[dict]) -> None:
         f"Expected {len(expected)} WS publishes, got {len(actual)}.\n"
         f"Actual topics: {[e['topic'] for e in actual]}"
     )
+    # Dynamic fields that are not part of scenario fixtures
+    _DYNAMIC_FIELDS = {"dialogue_id"}
+
     for i, (act, exp) in enumerate(zip(actual, expected)):
         assert act["topic"] == exp["topic"], (
             f"WS publish {i}: topic mismatch — got {act['topic']!r}, expected {exp['topic']!r}"
         )
-        assert act["payload"] == exp["payload"], (
+        # Strip dynamic fields before comparison
+        act_payload = {k: v for k, v in act["payload"].items() if k not in _DYNAMIC_FIELDS}
+        assert act_payload == exp["payload"], (
             f"WS publish {i} ({act['topic']}): payload mismatch.\n"
             f"Expected: {exp['payload']}\n"
-            f"Actual:   {act['payload']}"
+            f"Actual:   {act_payload}"
         )

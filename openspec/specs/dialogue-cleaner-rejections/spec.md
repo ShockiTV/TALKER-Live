@@ -1,4 +1,10 @@
-## ADDED Requirements
+# dialogue-cleaner-rejections
+
+## Purpose
+
+Defines the expanded refusal and rejection detection logic in the dialogue cleaner module.
+
+## Requirements
 
 ### Requirement: Expanded refusal detection
 

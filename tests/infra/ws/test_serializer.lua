@@ -16,6 +16,7 @@ local function make_char(overrides)
         weapon         = "AK-74",
         visual_faction = nil,
         story_id       = "esc_2_12_stalker_wolf",
+        sound_prefix   = "stalker_1",
     }
     if overrides then
         for k, v in pairs(overrides) do c[k] = v end
@@ -54,12 +55,13 @@ end
 function testSerializeCharacter_allFields()
     local char   = make_char()
     local result = serializer.serialize_character(char)
-    luaunit.assertEquals(result.name,        "Wolf")
-    luaunit.assertEquals(result.faction,     "Loner")
-    luaunit.assertEquals(result.experience,  "veteran")
-    luaunit.assertEquals(result.reputation,  750)
-    luaunit.assertEquals(result.weapon,      "AK-74")
-    luaunit.assertEquals(result.story_id,    "esc_2_12_stalker_wolf")
+    luaunit.assertEquals(result.name,         "Wolf")
+    luaunit.assertEquals(result.faction,      "Loner")
+    luaunit.assertEquals(result.experience,   "veteran")
+    luaunit.assertEquals(result.reputation,   750)
+    luaunit.assertEquals(result.weapon,       "AK-74")
+    luaunit.assertEquals(result.story_id,     "esc_2_12_stalker_wolf")
+    luaunit.assertEquals(result.sound_prefix, "stalker_1")
 end
 
 function testSerializeCharacter_storyIdIncludedInWireFormat()
@@ -87,6 +89,24 @@ function testSerializeCharacter_visualFaction()
     local char   = make_char({ visual_faction = "Duty" })
     local result = serializer.serialize_character(char)
     luaunit.assertEquals(result.visual_faction, "Duty")
+end
+
+function testSerializeCharacter_soundPrefix()
+    local char   = make_char({ sound_prefix = "bandit_3" })
+    local result = serializer.serialize_character(char)
+    luaunit.assertEquals(result.sound_prefix, "bandit_3")
+end
+
+function testSerializeCharacter_soundPrefixNilWhenAbsent()
+    local char = {
+        game_id    = 7,
+        name       = "Generic Stalker",
+        faction    = "Loner",
+        experience = "rookie",
+        reputation = 0,
+    }
+    local result = serializer.serialize_character(char)
+    luaunit.assertNil(result.sound_prefix)
 end
 
 -- ── serialize_context ─────────────────────────────────────────────────────────

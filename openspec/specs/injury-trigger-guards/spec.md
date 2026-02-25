@@ -1,4 +1,10 @@
-## ADDED Requirements
+# injury-trigger-guards
+
+## Purpose
+
+Defines guard conditions for the injury trigger to prevent nil-reference errors and handle edge cases.
+
+## Requirements
 
 ### Requirement: Nil attacker guard
 

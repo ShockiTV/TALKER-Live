@@ -253,6 +253,27 @@ function M.play_sound(sound_name)
     -- no-op
 end
 
+function M.create_sound_object(path)
+    -- Delegate to _G.sound_object if injected by the test, otherwise return nil
+    if _G.sound_object then
+        return _G.sound_object(path)
+    end
+    return nil
+end
+
+-- Sound mode constants (match engine.lua)
+M.S3D = "s3d"
+M.S2D = "s2d"
+
+function M.exec_console_cmd(command)
+    -- Check for override first (e.g., to track console commands in tests)
+    local override = _overrides["exec_console_cmd"]
+    if override then
+        override(command)
+    end
+    -- Otherwise no-op
+end
+
 function M.SendScriptCallback(callback_name, ...)
     -- no-op
 end
@@ -274,7 +295,12 @@ end
 ------------------------------------------------------------
 
 function M.create_time_event(event_id, action_id, delay, func)
-    -- no-op
+    -- Check for override first (e.g., to track time events in tests)
+    local override = _overrides["create_time_event"]
+    if override then
+        override(event_id, action_id, delay, func)
+    end
+    -- Otherwise no-op
 end
 
 function M.reset_time_event(event_id, action_id)
