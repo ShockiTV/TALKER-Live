@@ -17,11 +17,13 @@ from .config import settings
 from .transport.ws_router import WSRouter
 from .handlers import events as event_handlers
 from .handlers import config as config_handlers
+from .handlers import audio as audio_handlers
 from .dialogue import DialogueGenerator, SpeakerSelector
 from .dialogue.retry_queue import DialogueRetryQueue
 from .state.client import StateQueryClient
 from .llm import get_llm_client
 from .tts import TTS_AVAILABLE, TTSEngine
+from .stt import STT_AVAILABLE
 
 
 def _force_exit():
@@ -126,6 +128,37 @@ async def lifespan(app: FastAPI):
     ws_router.on("config.update", config_handlers.handle_config_update)
     ws_router.on("config.sync", config_handlers.handle_config_sync)
     ws_router.on("system.heartbeat", event_handlers.handle_heartbeat)
+    
+    # Register STT audio handlers (only when STT deps are installed)
+    if STT_AVAILABLE:
+        audio_handlers.set_audio_publisher(ws_router)
+        ws_router.on("mic.audio.chunk", audio_handlers.handle_audio_chunk)
+        ws_router.on("mic.audio.end", audio_handlers.handle_audio_end)
+        logger.info("STT audio handlers registered")
+        
+        # Lazily initialise the STT provider on first config sync so we know
+        # which method the user picked (local / api / proxy).
+        from .handlers.config import config_mirror
+        _stt_initialised = False
+        
+        def _init_stt_on_config(cfg):
+            nonlocal _stt_initialised
+            if _stt_initialised:
+                return
+            _stt_initialised = True
+            try:
+                from .stt.factory import get_stt_provider
+                # Determine method from MCM mirror (model_method 3 = proxy)
+                model_method = config_mirror.get("model_method", 0)
+                stt_method = "proxy" if model_method == 3 else "local"
+                provider = get_stt_provider(stt_method)
+                audio_handlers.set_stt_provider(provider)
+            except Exception as exc:
+                logger.error("Failed to initialise STT provider: {}", exc)
+        
+        config_mirror.on_change(_init_stt_on_config)
+    else:
+        logger.info("STT not available — mic.audio.* topics will be ignored")
     
     # Request config sync from Lua once a client connects
     async def request_config_sync():

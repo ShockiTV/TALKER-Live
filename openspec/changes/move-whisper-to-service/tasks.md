@@ -22,12 +22,12 @@
 
 ## 4. `talker_service` — STT Integration
 
-- [ ] 4.1 Create `stt` package in `talker_service/src/talker_service/stt/`
-- [ ] 4.2 Move `whisper_local.py` and `whisper_api.py` from `mic_python` to the new `stt` package
-- [ ] 4.3 Add WS handler for `mic.audio.chunk` topic — buffer incoming audio chunks in order
-- [ ] 4.4 Add WS handler for `mic.audio.end` topic — finalize buffer and trigger transcription
-- [ ] 4.5 Send `mic.status` TRANSCRIBING and `mic.result` back through WS after transcription completes
-- [ ] 4.6 Wire the transcription result to trigger the standard dialogue generation flow (`player.dialogue` or `player.whisper` based on context type)
+- [x] 4.1 Create `stt` package in `talker_service/src/talker_service/stt/`
+- [x] 4.2 Move `whisper_local.py` and `whisper_api.py` from `mic_python` to the new `stt` package
+- [x] 4.3 Add WS handler for `mic.audio.chunk` topic — buffer incoming audio chunks in order
+- [x] 4.4 Add WS handler for `mic.audio.end` topic — finalize buffer and trigger transcription
+- [x] 4.5 Send `mic.status` TRANSCRIBING and `mic.result` back through WS after transcription completes
+- [x] 4.6 Wire the transcription result to trigger the standard dialogue generation flow (`player.dialogue` or `player.whisper` based on context type)
 
 ## 5. Lua — Single Connection Migration
 
