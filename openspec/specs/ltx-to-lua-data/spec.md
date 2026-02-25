@@ -1,4 +1,10 @@
-## ADDED Requirements
+# ltx-to-lua-data
+
+## Purpose
+
+Defines the migration of backstory and personality data from LTX config files to pure Lua data tables.
+
+## Requirements
 
 ### Requirement: Backstory data as Lua table
 

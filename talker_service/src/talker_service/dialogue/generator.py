@@ -28,6 +28,9 @@ from ..state.models import SceneContext
 # Memory compression threshold
 COMPRESSION_THRESHOLD = 12
 
+# Monotonic dialogue counter for correlating TTS audio with dialogue text
+_dialogue_counter = 0
+
 
 def _normalize_store_map(data: Any, id_key: str, value_key: str) -> dict[str, str]:
     """Convert Lua store query results (list of dicts) to a {id: value} dict.
@@ -89,6 +92,7 @@ class DialogueGenerator:
         speaker_selector: SpeakerSelector | None = None,
         llm_timeout: float = 60.0,
         retry_queue: DialogueRetryQueue | None = None,
+        tts_engine: Any | None = None,
     ):
         """Initialize dialogue generator.
         
@@ -101,6 +105,8 @@ class DialogueGenerator:
             retry_queue: Optional retry queue for deferring transient failures.
                 When provided, StateQueryTimeout errors are enqueued for retry
                 instead of being silently discarded.
+            tts_engine: Optional TTS engine for audio generation. If provided,
+                will generate audio and publish tts.audio instead of dialogue.display
         """
         # Store either a fixed client or a factory
         if callable(llm_client) and not isinstance(llm_client, LLMClient):
@@ -115,6 +121,7 @@ class DialogueGenerator:
         self.speakers = speaker_selector or SpeakerSelector()
         self.llm_timeout = llm_timeout
         self.retry_queue = retry_queue
+        self.tts_engine = tts_engine
         
         # Lock to prevent concurrent memory updates for same character
         self._memory_locks: dict[str, asyncio.Lock] = {}
@@ -374,6 +381,10 @@ class DialogueGenerator:
                 new_events=new_events,
             )
             character = Character.from_dict(result["char"])
+            logger.debug(
+                f"Character state for {speaker_id}: "
+                f"name={character.name}, sound_prefix={character.sound_prefix}"
+            )
             
             # Check if memory compression needed (run in background)
             asyncio.create_task(
@@ -457,7 +468,7 @@ class DialogueGenerator:
                 return
             
             # Publish dialogue.display command
-            await self._publish_dialogue(speaker_id, dialogue, event)
+            await self._publish_dialogue(speaker_id, dialogue, event, character)
             
         except StateQueryTimeout:
             # Let StateQueryTimeout propagate to callers for retry handling
@@ -558,18 +569,75 @@ class DialogueGenerator:
         self,
         speaker_id: str,
         dialogue: str,
-        event: dict[str, Any]
+        event: dict[str, Any],
+        character: Any | None = None,
     ) -> None:
-        """Publish dialogue.display command.
+        """Publish dialogue using TTS audio or text display.
+        
+        If TTS engine is available, generates audio and publishes tts.audio.
+        Falls back to dialogue.display on TTS failure or if TTS unavailable.
         
         Args:
             speaker_id: Character ID
             dialogue: Cleaned dialogue text
             event: Original event context
+            character: Character object from state query (has sound_prefix)
         """
+        # Assign a unique dialogue_id for correlating TTS audio with text
+        global _dialogue_counter
+        _dialogue_counter += 1
+        dialogue_id = _dialogue_counter
+
+        # Try TTS first if available
+        if self.tts_engine:
+            try:
+                import base64
+                
+                # Resolve voice_id from the character's sound_prefix (e.g. "stalker_1")
+                # which matches .safetensors filenames in the voices directory.
+                # Falls back to speaker_id if no sound_prefix available;
+                # TTSEngine._resolve_voice falls back to first voice if no match.
+                voice_id = (character.sound_prefix if character and getattr(character, 'sound_prefix', None) else speaker_id)
+                logger.info(f"[D#{dialogue_id}] Generating TTS for {speaker_id} (voice={voice_id}): {dialogue[:50]}...")
+                audio_bytes = await self.tts_engine.generate_audio(
+                    text=dialogue,
+                    voice_id=voice_id
+                )
+                
+                if audio_bytes:
+                    # Encode to base64 for wire transport
+                    audio_base64 = base64.b64encode(audio_bytes).decode('ascii')
+                    
+                    payload = {
+                        "speaker_id": speaker_id,
+                        "dialogue": dialogue,  # Include text for logging/fallback
+                        "audio_b64": audio_base64,
+                        "voice_id": voice_id,
+                        "dialogue_id": dialogue_id,
+                        "create_event": True,
+                        "event_context": {
+                            "world_context": event.get("world_context", ""),
+                        },
+                    }
+                    
+                    success = await self.publisher.publish("tts.audio", payload)
+                    if success:
+                        logger.info(f"[D#{dialogue_id}] Published TTS audio for {speaker_id}: {dialogue[:50]}...")
+                        return
+                    else:
+                        logger.warning(f"[D#{dialogue_id}] Failed to publish tts.audio, falling back to dialogue.display")
+                else:
+                    logger.warning(f"[D#{dialogue_id}] TTS engine returned no audio, falling back to dialogue.display")
+            except Exception as e:
+                logger.warning(f"[D#{dialogue_id}] TTS generation failed: {e}, falling back to dialogue.display")
+        
+        # Fallback: publish dialogue.display for text-only display + mic_python TTS (2D)
+        voice_id_fallback = (character.sound_prefix if character and getattr(character, 'sound_prefix', None) else "")
         payload = {
             "speaker_id": speaker_id,
             "dialogue": dialogue,
+            "voice_id": voice_id_fallback,
+            "dialogue_id": dialogue_id,
             "create_event": True,
             "event_context": {
                 "world_context": event.get("world_context", ""),
@@ -578,6 +646,6 @@ class DialogueGenerator:
         
         success = await self.publisher.publish("dialogue.display", payload)
         if success:
-            logger.info(f"Published dialogue for {speaker_id}: {dialogue[:50]}...")
+            logger.info(f"[D#{dialogue_id}] Published dialogue for {speaker_id}: {dialogue[:50]}...")
         else:
-            logger.error("Failed to publish dialogue command")
+            logger.error(f"[D#{dialogue_id}] Failed to publish dialogue command")

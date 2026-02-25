@@ -1,4 +1,10 @@
-## ADDED Requirements
+# mic-tts-engine
+
+## Purpose
+
+Defines the TTS playback capabilities of the mic_python desktop client, including pocket_tts model loading, streamed audio playback via sounddevice, voice export, and the fallback relationship with in-engine TTS.
+
+## Requirements
 
 ### Requirement: TTS flag enables model loading
 When mic_python is launched with `--tts`, the Pocket TTS model SHALL be loaded at startup and a voice cache SHALL be populated from all `.safetensors` files found in `mic_python/voices/`. Without `--tts`, no TTS model is loaded and startup behaviour is unchanged.
@@ -11,8 +17,12 @@ When mic_python is launched with `--tts`, the Pocket TTS model SHALL be loaded a
 - **WHEN** mic_python starts without `--tts`
 - **THEN** no TTSModel is instantiated and `tts.speak` messages are ignored
 
-### Requirement: tts.speak triggers streamed audio playback
+### Requirement: tts.speak triggers streamed audio playback on desktop speakers
 On receiving `tts.speak`, mic_python SHALL extract `voice_id` and `text` from the payload, look up the voice state in cache, open a sounddevice OutputStream at 24000 Hz, publish `tts.started`, stream audio chunks via `generate_audio_stream`, then publish `tts.done` after the last chunk.
+
+When the mic channel is active AND the `--tts` flag was passed AND in-engine TTS is NOT available, the `tts.speak` handler SHALL stream audio through desktop speakers as a fallback path.
+
+When in-engine TTS is active (the service publishes `tts.audio` to the game client), the mic channel's `tts.speak` handler is NOT invoked for that dialogue — the audio plays through the game engine instead.
 
 #### Scenario: Known voice_id plays audio
 - **WHEN** mic_python receives `tts.speak { "voice_id": "dolg_1", "text": "Stay sharp.", "speaker_id": "npc_wolf" }`
@@ -25,6 +35,17 @@ On receiving `tts.speak`, mic_python SHALL extract `voice_id` and `text` from th
 #### Scenario: Empty voice cache falls back gracefully
 - **WHEN** `--tts` is active but `voices/` has no `.safetensors` files
 - **THEN** mic_python logs an error and publishes `tts.done` immediately without playback
+
+#### Scenario: In-engine TTS active, mic channel not used for playback
+- **WHEN** the Python service generates a `tts.audio` message for a dialogue line
+- **THEN** the service does NOT publish `tts.speak` to the mic channel for that same line
+- **AND** audio plays in-engine on the NPC game object
+
+#### Scenario: In-engine TTS unavailable, mic channel fallback
+- **WHEN** the Python service cannot generate TTS audio (pocket_tts not loaded or voice not found)
+- **AND** the mic channel is connected with `--tts` enabled
+- **THEN** the service publishes `tts.speak` to the mic channel as before
+- **AND** audio plays through desktop speakers via sounddevice
 
 ### Requirement: Shared task queue serialises STT and TTS
 mic_python SHALL maintain a single FIFO task queue. While a task (STT or TTS) is active, incoming `mic.start` and `tts.speak` messages SHALL be enqueued rather than processed immediately. Tasks are processed one at a time in arrival order.

@@ -45,6 +45,9 @@ class MCMConfig(BaseModel):
     zmq_port: int = 5555
     zmq_heartbeat_interval: int = 5
     
+    # TTS settings
+    tts_volume_boost: float = 4.0  # Volume multiplier for TTS audio (1.0-5.0)
+
     # Timeout settings (Phase 2)
     llm_timeout: int = 60  # LLM request timeout in seconds
     state_query_timeout: int = 30  # State query timeout in seconds

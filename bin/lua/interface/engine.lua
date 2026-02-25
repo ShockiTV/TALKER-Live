@@ -307,6 +307,25 @@ function M.play_sound(sound_name)
     if cmd then cmd.play_sound(sound_name) end
 end
 
+--- Create a sound_object for the given path.
+-- @param path string Sound path (e.g. "characters_voice\\talker_tts\\slot_1")
+-- @return table|nil sound_object instance
+function M.create_sound_object(path)
+    if sound_object then
+        return sound_object(path)
+    end
+    return nil
+end
+
+--- Sound mode constants for play() / play_no_feedback().
+M.S3D = sound_object and sound_object.s3d or 0
+M.S2D = sound_object and sound_object.s2d or 0
+
+function M.exec_console_cmd(command)
+    local cmd = get_cmd()
+    if cmd then cmd.exec_console_cmd(command) end
+end
+
 function M.SendScriptCallback(callback_name, ...)
     local cmd = get_cmd()
     if cmd then cmd.SendScriptCallback(callback_name, ...) end

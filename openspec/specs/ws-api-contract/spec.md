@@ -53,16 +53,25 @@ The following topics SHALL be sent by the Python service to the Lua game client:
 
 | Topic | Payload fields | Purpose |
 |-------|---------------|---------|
-| `dialogue.display` | `speaker_id` (string/int), `dialogue` (string), `duration_ms` (int) | Display NPC dialogue |
+| `dialogue.display` | `speaker_id` (string/int), `dialogue` (string), `duration_ms` (int), `dialogue_id` (int) | Display NPC dialogue (text only, no audio) |
+| `tts.audio` | `speaker_id` (string/int), `audio_b64` (string), `voice_id` (string), `dialogue` (string), `dialogue_id` (int) | Display NPC dialogue with in-engine TTS audio |
 | `memory.update` | `character_id` (string), `narrative` (string) | Update character long-term memory |
 | `state.query.batch` | `r` at envelope level, `queries` (array) | Batch state query (correlates via r) |
 
 #### Scenario: dialogue.display sent with required fields
 
-- **WHEN** `router.publish("dialogue.display", {"speaker_id": "5", "dialogue": "Hey stalker", "duration_ms": 4000})` is called
+- **WHEN** `router.publish("dialogue.display", {"speaker_id": "5", "dialogue": "Hey stalker", "duration_ms": 4000, "dialogue_id": 1})` is called
 - **THEN** the Lua client receives the envelope with `t = "dialogue.display"`
 
+#### Scenario: tts.audio sent with audio payload
+
+- **WHEN** `router.publish("tts.audio", {"speaker_id": "5", "audio_b64": "<base64>", "voice_id": "dolg_1", "dialogue": "Stay sharp.", "dialogue_id": 2})` is called
+- **THEN** the Lua client receives the envelope with `t = "tts.audio"`
+- **AND** the payload contains base64-encoded OGG Vorbis audio
+
 ### Requirement: Mic channel topics (Lua → mic_python)
+
+The following topics SHALL be sent by the Lua game client to mic_python:
 
 | Topic | Payload | Purpose |
 |-------|---------|---------|
@@ -75,6 +84,8 @@ The following topics SHALL be sent by the Python service to the Lua game client:
 - **THEN** audio capture begins
 
 ### Requirement: Mic channel topics (mic_python → Lua)
+
+The following topics SHALL be sent by mic_python to the Lua game client:
 
 | Topic | Payload fields | Purpose |
 |-------|---------------|---------|
@@ -89,7 +100,7 @@ The following topics SHALL be sent by the Python service to the Lua game client:
 
 ### Requirement: State query protocol
 
-State queries use request/response correlation via the `r` field:
+State queries SHALL use request/response correlation via the `r` field:
 1. Python sends `{"t":"state.query.batch","p":{"queries":[...]},"r":"<uuid>"}` to Lua
 2. Lua responds `{"t":"state.response","p":{...},"r":"<same-uuid>"}` on the same WS connection
 3. Python `WSRouter` routes the response by `r` to the pending `asyncio.Future`
@@ -102,9 +113,10 @@ State queries use request/response correlation via the `r` field:
 
 ### Requirement: Documentation in ws-api.yaml
 
-The file `docs/ws-api.yaml` SHALL describe all topics, envelope format, close codes, and auth requirements. It SHALL replace `docs/zmq-api.yaml` as the canonical wire protocol reference.
+The file `docs/ws-api.yaml` SHALL describe all topics, envelope format, close codes, and auth requirements. It SHALL replace `docs/zmq-api.yaml` as the canonical wire protocol reference. This includes the `tts.audio` topic (Python→Lua) and mic channel TTS topics (`tts.speak`, `tts.started`, `tts.done`).
 
 #### Scenario: ws-api.yaml documents service topics
 
 - **WHEN** `docs/ws-api.yaml` is opened
 - **THEN** all topics from the service and mic channels are documented with their payload schemas
+- **AND** the `tts.audio` topic is documented with `speaker_id`, `audio_b64`, `voice_id`, `dialogue`, and `dialogue_id` fields

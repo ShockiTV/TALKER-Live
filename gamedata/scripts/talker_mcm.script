@@ -90,6 +90,15 @@ function on_mcm_load()
                 val = 1,
                 def = false,
             },
+            {
+                id = "tts_volume_boost",
+                type = "track",
+                val = 2,
+                min = 1.0,
+                max = 5.0,
+                step = 0.1,
+                def = 4.0,
+            },
 
             -- Language Selection
             {
@@ -484,6 +493,8 @@ local defaults = {
     ["mic_ws_port"] = 5558,
     ["llm_timeout"] = 60,
     ["state_query_timeout"] = 30,
+    ["enable_tts"] = false,
+    ["tts_volume_boost"] = 4.0,
 }
 
 -- Function to retrieve the configuration value

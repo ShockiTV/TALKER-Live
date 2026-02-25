@@ -14,14 +14,15 @@ local M = {}
 function M.serialize_character(char)
     if not char then return nil end
     local result = {
-        game_id       = tostring(char.game_id),
-        name          = char.name,
-        faction       = char.faction,
-        experience    = char.experience,
-        reputation    = char.reputation,
-        weapon        = char.weapon,
+        game_id        = tostring(char.game_id),
+        name           = char.name,
+        faction        = char.faction,
+        experience     = char.experience,
+        reputation     = char.reputation,
+        weapon         = char.weapon,
         visual_faction = char.visual_faction,
-        story_id      = char.story_id,
+        story_id       = char.story_id,
+        sound_prefix   = char.sound_prefix,
     }
     return result
 end

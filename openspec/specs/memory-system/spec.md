@@ -1,5 +1,9 @@
 # Spec: Memory System
 
+## Purpose
+
+Defines the responsibilities of the Lua memory store and its separation from Python-side memory context construction.
+
 ## Requirements
 
 ### Requirement: Memory Store Responsibilities

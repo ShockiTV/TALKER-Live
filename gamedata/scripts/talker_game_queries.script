@@ -249,13 +249,32 @@ function get_faction(npc)
 end
 
 -- Returns the voice theme ID for an NPC, e.g. "stalker_1", "bandit_3".
--- Extracted from npc:sound_prefix() which gives e.g. "characters_voice\human\stalker_1\".
+-- Tries static ini lookup first (no C++ warnings), then falls back to
+-- the runtime npc:sound_prefix() method for dynamically-configured NPCs.
 function get_sound_prefix(npc)
-    local raw = try(function() return npc:sound_prefix() end)
-    if not raw or raw == "" then return nil end
-    -- Strip trailing separators then grab the last path component
-    raw = raw:gsub("[/\\]+$", "")
-    return raw:match("[^/\\]+$") or nil
+    -- 1) Static ini lookup (safe, no engine warnings)
+    local section = try(function() return npc:section() end)
+    if section and section ~= "" then
+        local raw = SYS_GetParam(0, section, "snd_config", "")
+        if raw and raw ~= "" then
+            raw = raw:gsub("[/\\]+$", "")
+            local result = raw:match("[^/\\]+$")
+            if result then return result end
+        end
+    end
+
+    -- 2) Runtime fallback — only for stalker NPCs (CCustomMonster subclasses).
+    --    Calling sound_prefix() on traders, mechanics, etc. triggers a C++ warning.
+    local cls_ok, cls = pcall(function() return npc:clsid() end)
+    if cls_ok and cls == clsid.script_stalker then
+        local ok, prefix = pcall(function() return npc:sound_prefix() end)
+        if ok and prefix and prefix ~= "" then
+            prefix = prefix:gsub("[/\\]+$", "")
+            return prefix:match("[^/\\]+$") or nil
+        end
+    end
+
+    return nil
 end
 
 function get_rank(npc)

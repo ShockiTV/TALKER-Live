@@ -34,6 +34,10 @@ local defaults = {
     llm_timeout             = 60,
     state_query_timeout     = 30,
 
+    -- TTS
+    enable_tts              = false,
+    tts_volume_boost        = 4.0,
+
     -- Debug
     debug_logging           = 2,
     max_log_entries_per_level = 0,

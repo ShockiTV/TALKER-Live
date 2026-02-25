@@ -113,6 +113,8 @@ function m.create_character(game_object_person)
 	end
 	-- Look up story_id for important character matching (nil for generic NPCs)
 	local story_id = engine.get_story_id(game_id)
+	-- Get voice theme ID for TTS voice matching (e.g. "stalker_1", "bandit_3")
+	local sound_prefix = engine.get_sound_prefix(game_object_person)
 	log.spam(
 		"creating character with id: "
 			.. game_id
@@ -126,8 +128,10 @@ function m.create_character(game_object_person)
 			.. tostring(reputation)
 			.. ", story_id: "
 			.. tostring(story_id)
+			.. ", sound_prefix: "
+			.. tostring(sound_prefix)
 	)
-	return Character.new(game_id, name, experience, faction, reputation, weapon_description, visual_faction, story_id)
+	return Character.new(game_id, name, experience, faction, reputation, weapon_description, visual_faction, story_id, sound_prefix)
 end
 
 function m.create_dialogue_event(speaker_id, dialogue, source_event)

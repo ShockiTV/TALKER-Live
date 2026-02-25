@@ -1,4 +1,10 @@
-## ADDED Requirements
+# engine-facade
+
+## Purpose
+
+Defines the engine facade module that abstracts all STALKER engine API calls behind a testable interface for bin/lua/ modules.
+
+## Requirements
 
 ### Requirement: Engine facade module exists at interface/engine.lua
 

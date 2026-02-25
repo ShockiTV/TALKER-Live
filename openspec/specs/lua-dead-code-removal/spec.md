@@ -8,7 +8,7 @@ Documents Lua functions that have been migrated to Python and removed from TALKE
 
 ### Requirement: Event Text Rendering Removed
 
-Event-to-text rendering is handled by Python prompt builders. The following functions have been removed from `bin/lua/domain/model/event.lua`:
+The system SHALL NOT provide event-to-text rendering in Lua. The following functions have been removed from `bin/lua/domain/model/event.lua`:
 
 - `Event.describe(event)`
 - `Event.describe_short(event)` 
@@ -26,7 +26,7 @@ Event-to-text rendering is handled by Python prompt builders. The following func
 
 ### Requirement: Mention Scanning Removed
 
-Faction/character/player mention scanning is handled by Python. The following functions have been removed from `bin/lua/infra/game_adapter.lua`:
+The system SHALL NOT provide faction/character/player mention scanning in Lua. The following functions have been removed from `bin/lua/infra/game_adapter.lua`:
 
 - `get_mentioned_factions(events)`
 - `is_player_involved(events, player_name)`
@@ -41,7 +41,7 @@ Faction/character/player mention scanning is handled by Python. The following fu
 
 ### Requirement: Tests Updated
 
-Tests for removed functions have been removed from `tests/entities/test_event.lua`.
+Tests for removed functions SHALL be removed from `tests/entities/test_event.lua`.
 
 #### Scenario: Event tests updated
 - **WHEN** test suite runs

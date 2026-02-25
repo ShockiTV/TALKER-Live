@@ -1,4 +1,10 @@
-## ADDED Requirements
+# mic-zmq-transport
+
+## Purpose
+
+Defines the ZMQ-based transport for sending TTS audio commands from the Lua game to the mic_python process.
+
+## Requirements
 
 ### Requirement: tts.speak topic sent from Lua to mic_python
 Lua SHALL publish `tts.speak` on ZMQ port 5555 when dequeuing a TTS task. The payload SHALL include `voice_id` (string), `text` (string), and `speaker_id` (string).

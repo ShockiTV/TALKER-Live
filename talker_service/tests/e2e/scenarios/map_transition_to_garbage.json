@@ -125,7 +125,7 @@
       }
     },
     {
-      "response": "The Garbage. Watch for bandits near the old depot \u00e2\u20ac\u201d they've been more aggressive lately.",
+      "response": "The Garbage. Watch for bandits near the old depot â€” they've been more aggressive lately.",
       "request": {
         "model": "gpt-4o-mini",
         "messages": [
@@ -296,11 +296,12 @@
         "topic": "dialogue.display",
         "payload": {
           "speaker_id": "12345",
-          "dialogue": "The Garbage. Watch for bandits near the old depot \u00e2\u20ac\u201d they've been more aggressive lately.",
+          "dialogue": "The Garbage. Watch for bandits near the old depot â€” they've been more aggressive lately.",
           "create_event": true,
           "event_context": {
             "world_context": null
-          }
+          },
+          "voice_id": ""
         }
       }
     ]

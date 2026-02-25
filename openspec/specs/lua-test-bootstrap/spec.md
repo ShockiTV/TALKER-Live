@@ -1,4 +1,10 @@
-## ADDED Requirements
+# lua-test-bootstrap
+
+## Purpose
+
+Defines the test bootstrap module that configures the mock engine and package paths for Lua unit tests.
+
+## Requirements
 
 ### Requirement: Test bootstrap module exists
 

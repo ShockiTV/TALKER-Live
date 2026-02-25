@@ -1,7 +1,12 @@
 """Main entry point for TALKER service."""
 
+from __future__ import annotations
+
 import asyncio
+import atexit
+import os
 import signal
+import threading
 from contextlib import asynccontextmanager
 
 import uvicorn
@@ -16,22 +21,50 @@ from .dialogue import DialogueGenerator, SpeakerSelector
 from .dialogue.retry_queue import DialogueRetryQueue
 from .state.client import StateQueryClient
 from .llm import get_llm_client
+from .tts import TTS_AVAILABLE, TTSEngine
+
+
+def _force_exit():
+    """Last-resort exit if stuck threads prevent clean shutdown."""
+    def _exit_after(seconds: float):
+        threading.Event().wait(seconds)
+        logger.warning("Force-exiting after {}s shutdown timeout", seconds)
+        os._exit(0)
+    t = threading.Thread(target=_exit_after, args=(5.0,), daemon=True)
+    t.start()
+
+
+atexit.register(_force_exit)
 
 
 # Global instances
 ws_router: WSRouter | None = None
 dialogue_generator: DialogueGenerator | None = None
+tts_engine: TTSEngine | None = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Manage application lifespan - startup and shutdown."""
-    global ws_router, dialogue_generator
+    global ws_router, dialogue_generator, tts_engine
     
     # Startup
     logger.info("Starting TALKER Service v0.4.0 (WebSocket transport)")
     
     ws_router = WSRouter()
+    
+    # Initialize TTS engine if enabled
+    if settings.tts_enabled and TTS_AVAILABLE:
+        logger.info("Initializing TTS engine...")
+        try:
+            tts_engine = TTSEngine()
+            await tts_engine.load(settings.voices_dir)
+            logger.info(f"TTS engine initialized with {len(tts_engine.voice_cache)} voices")
+        except Exception as e:
+            logger.error(f"Failed to initialize TTS engine: {e}")
+            tts_engine = None
+    elif settings.tts_enabled and not TTS_AVAILABLE:
+        logger.warning("TTS enabled but pocket_tts not available (install with: pip install \".[tts]\")")
     
     # Initialize dialogue generation components
     logger.info("Initializing dialogue generation pipeline...")
@@ -61,19 +94,30 @@ async def lifespan(app: FastAPI):
         heartbeat_interval=5.0,
     )
     
-    # Create dialogue generator with factory function
+    # Create dialogue generator with factory function and TTS engine
     dialogue_generator = DialogueGenerator(
         llm_client=get_current_llm_client,  # Pass factory, not client
         state_client=state_client,
         publisher=ws_router,
         llm_timeout=settings.llm_timeout,
         retry_queue=retry_queue,
+        tts_engine=tts_engine,  # Pass TTS engine if available
     )
     
     # Inject generator into event handlers
     event_handlers.set_dialogue_generator(dialogue_generator)
     event_handlers.set_publisher(ws_router)  # For heartbeat acks
     event_handlers.set_retry_queue(retry_queue)
+    
+    # Wire config changes to TTS engine volume
+    if tts_engine:
+        from .handlers.config import config_mirror
+        def _on_config_change(cfg):
+            vol = getattr(cfg, "tts_volume_boost", None)
+            if vol is not None:
+                tts_engine.volume_boost = float(vol)
+                logger.info(f"TTS volume boost updated to {tts_engine.volume_boost}")
+        config_mirror.on_change(_on_config_change)
     
     # Register handlers
     ws_router.on("game.event", event_handlers.handle_game_event)
@@ -97,6 +141,9 @@ async def lifespan(app: FastAPI):
     
     # Shutdown
     logger.info("Shutting down TALKER Service...")
+    if tts_engine:
+        tts_engine.shutdown()
+        logger.info("TTS engine shut down")
     if ws_router:
         await ws_router.shutdown()
     logger.info("TALKER Service stopped")

@@ -1,4 +1,10 @@
-## ADDED Requirements
+# anomaly-data-table
+
+## Purpose
+
+Defines the Lua data table for anomaly section identifiers used by the anomaly trigger.
+
+## Requirements
 
 ### Requirement: Anomaly sections data table
 

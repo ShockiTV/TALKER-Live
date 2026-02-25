@@ -244,7 +244,8 @@
           "create_event": true,
           "event_context": {
             "world_context": null
-          }
+          },
+          "voice_id": ""
         }
       }
     ]

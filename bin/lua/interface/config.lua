@@ -178,6 +178,10 @@ function c.tts_enabled()
 	return cfg("enable_tts") == true or cfg("enable_tts") == 1
 end
 
+function c.tts_volume_boost()
+	return tonumber(cfg("tts_volume_boost")) or 4.0
+end
+
 function c.max_log_entries_per_level()
 	return tonumber(cfg("max_log_entries_per_level"))
 end
@@ -212,6 +216,9 @@ function c.get_all_config()
 		ws_port                 = tonumber(cfg("ws_port")),
 		llm_timeout             = tonumber(cfg("llm_timeout")),
 		state_query_timeout     = tonumber(cfg("state_query_timeout")),
+
+		-- TTS
+		tts_volume_boost        = tonumber(cfg("tts_volume_boost")),
 
 		-- Debug
 		debug_logging           = tonumber(cfg("debug_logging")),

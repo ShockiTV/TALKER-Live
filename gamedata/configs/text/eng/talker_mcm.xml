@@ -74,6 +74,9 @@
     <string id="ui_mcm_talker_enable_tts">
         <text>Enable TTS</text>
     </string>
+    <string id="ui_mcm_talker_tts_volume_boost">
+        <text>TTS Volume Boost (1.0 = normal, 5.0 = loudest)</text>
+    </string>
     <!-- Input options -->
     <string id="ui_mcm_talker_input_option_title">
         <text>Input Method</text>
