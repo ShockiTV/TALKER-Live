@@ -1,9 +1,8 @@
 numpy
-openai
 sounddevice
 soundfile
 websockets
 httpx
-faster-whisper
+webrtcvad
 requests
 pocket-tts
