@@ -38,8 +38,8 @@
 
 ## 6. Build & Packaging
 
-- [ ] 6.1 Update `talker_bridge` build script to generate standalone `.exe` without heavy dependencies (no PyTorch/Whisper)
-- [ ] 6.2 Rename launch scripts: `launch_mic.bat` → `launch_talker_bridge.bat` (or similar)
+- [x] 6.1 Update `talker_bridge` build script to generate standalone `.exe` without heavy dependencies (no PyTorch/Whisper)
+- [x] 6.2 Rename launch scripts: `launch_mic.bat` → `launch_talker_bridge.bat` (or similar)
 
 ## 7. Documentation & Protocol
 
