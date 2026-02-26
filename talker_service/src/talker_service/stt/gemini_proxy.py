@@ -70,9 +70,9 @@ class GeminiProxyProvider:
                         "content": [
                             {"type": "text", "text": instruction},
                             {
-                                "type": "file",
-                                "file": {
-                                    "file_data": f"data:audio/wav;base64,{encoded_data}",
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": f"data:audio/wav;base64,{encoded_data}",
                                 },
                             },
                         ],

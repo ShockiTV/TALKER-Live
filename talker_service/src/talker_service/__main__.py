@@ -148,9 +148,10 @@ async def lifespan(app: FastAPI):
             _stt_initialised = True
             try:
                 from .stt.factory import get_stt_provider
-                # Determine method from MCM mirror (model_method 3 = proxy)
-                model_method = config_mirror.get("model_method", 0)
-                stt_method = "proxy" if model_method == 3 else "local"
+                # STT method is independent of LLM model_method.
+                # Default to local Whisper; users can override via
+                # stt_method config key ("local", "api", "proxy").
+                stt_method = config_mirror.get("stt_method", "local")
                 provider = get_stt_provider(stt_method)
                 audio_handlers.set_stt_provider(provider)
             except Exception as exc:

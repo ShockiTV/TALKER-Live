@@ -1,7 +1,6 @@
 """STT provider factory.
 
-Selects the appropriate STT provider based on the MCM config mirror's
-``stt_method`` value (or falls back to ``model_method`` for proxy detection).
+Selects the appropriate STT provider based on the ``stt_method`` parameter.
 
 Provider selection:
 - ``"local"``  → WhisperLocalProvider (faster-whisper, CPU)
