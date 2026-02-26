@@ -65,12 +65,13 @@ async def handle_audio_chunk(payload: dict[str, Any]) -> None:
             _audio_buffer = AudioBuffer()
             logger.info("AudioBuffer created on first chunk")
 
+        fmt = payload.get("format", "pcm")
         try:
-            _audio_buffer.add_chunk(seq, audio_b64)
+            _audio_buffer.add_chunk(seq, audio_b64, fmt=fmt)
         except ValueError:
             # Buffer was already finalized — start a fresh one
             _audio_buffer = AudioBuffer()
-            _audio_buffer.add_chunk(seq, audio_b64)
+            _audio_buffer.add_chunk(seq, audio_b64, fmt=fmt)
             logger.info("AudioBuffer reset on stale chunk (seq={})", seq)
 
 

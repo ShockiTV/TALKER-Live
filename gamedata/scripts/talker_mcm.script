@@ -370,20 +370,6 @@ function on_mcm_load()
                 def = "127.0.0.1",
             },
             {
-                id = "ws_port_title",
-                type = "desc",
-                clr = {200, 200, 255, 200},
-                text = "ui_mcm_talker_ws_port_title"
-            },
-            {
-                id = "ws_port",
-                type = "input",
-                val = 2,
-                min = 1024,
-                max = 65535,
-                def = 5557,
-            },
-            {
                 id = "mic_ws_port_title",
                 type = "desc",
                 clr = {200, 200, 255, 200},
@@ -489,7 +475,6 @@ local defaults = {
     ["time_gap"] = 12,
     ["debug_logging"] = 2,
     ["ws_host"] = "127.0.0.1",
-    ["ws_port"] = 5557,
     ["mic_ws_port"] = 5558,
     ["llm_timeout"] = 60,
     ["state_query_timeout"] = 30,

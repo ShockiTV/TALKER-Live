@@ -20,7 +20,7 @@
 
 #### Scenario: Streaming audio chunks
 - **WHEN** `talker_bridge` captures a chunk of audio data
-- **THEN** it base64-encodes the chunk and sends a `mic.audio.chunk` message to `talker_service`
+- **THEN** it compresses the chunk as OGG/Vorbis, base64-encodes it, and sends a `mic.audio.chunk` message (with `format: "ogg"`) to `talker_service`
 
 #### Scenario: End of audio stream
 - **WHEN** VAD detects end of speech or the user releases push-to-talk

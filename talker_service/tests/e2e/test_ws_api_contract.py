@@ -137,11 +137,11 @@ class TestEventContextType:
         assert field in types["EventContext"], f"EventContext missing field: {field}"
 
 
-# ── Requirement: Lua→Python message definitions ──────────────
+# ── Requirement: Lua→Service message definitions ─────────────
 
 
-class TestLuaToPythonMessages:
-    """All Lua→Python topics present with correct direction."""
+class TestLuaToServiceMessages:
+    """All Lua→Service topics present with correct direction."""
 
     TOPICS = [
         "game.event", "player.dialogue", "player.whisper",
@@ -153,8 +153,8 @@ class TestLuaToPythonMessages:
         assert topic in messages
 
     @pytest.mark.parametrize("topic", TOPICS)
-    def test_direction_lua_to_python(self, messages, topic):
-        assert messages[topic]["direction"] == "lua→python"
+    def test_direction_lua_to_service(self, messages, topic):
+        assert messages[topic]["direction"] == "lua→bridge→service"
 
     @pytest.mark.parametrize("topic", TOPICS)
     def test_has_payload(self, messages, topic):
@@ -165,7 +165,7 @@ class TestGameEventMessage:
     """Scenario: game.event message is fully defined."""
 
     def test_direction(self, messages):
-        assert messages["game.event"]["direction"] == "lua→python"
+        assert messages["game.event"]["direction"] == "lua→bridge→service"
 
     def test_event_ref_required(self, messages):
         payload = messages["game.event"]["payload"]
@@ -203,11 +203,11 @@ class TestSystemHeartbeatMessage:
         assert field["type"] == "string"
 
 
-# ── Requirement: Python→Lua command definitions ──────────────
+# ── Requirement: Service→Lua command definitions ─────────────
 
 
-class TestPythonToLuaMessages:
-    """All Python→Lua topics present with correct direction."""
+class TestServiceToLuaMessages:
+    """All Service→Lua topics present with correct direction."""
 
     TOPICS = [
         "dialogue.display", "memory.update", "event.store",
@@ -219,15 +219,15 @@ class TestPythonToLuaMessages:
         assert topic in messages
 
     @pytest.mark.parametrize("topic", TOPICS)
-    def test_direction_python_to_lua(self, messages, topic):
-        assert messages[topic]["direction"] == "python→lua"
+    def test_direction_service_to_lua(self, messages, topic):
+        assert messages[topic]["direction"] == "service→bridge→lua"
 
 
 class TestDialogueDisplayMessage:
     """Scenario: dialogue.display message is fully defined."""
 
     def test_direction(self, messages):
-        assert messages["dialogue.display"]["direction"] == "python→lua"
+        assert messages["dialogue.display"]["direction"] == "service→bridge→lua"
 
     def test_speaker_id_required(self, messages):
         field = messages["dialogue.display"]["payload"]["speaker_id"]
@@ -279,7 +279,7 @@ class TestStateQueryBatch:
         assert "state.query.batch" in messages
 
     def test_direction_bidirectional(self, messages):
-        assert messages["state.query.batch"]["direction"] == "python→lua→python"
+        assert messages["state.query.batch"]["direction"] == "service→bridge→lua→bridge→service"
 
     def test_has_request_and_response(self, messages):
         assert "request" in messages["state.query.batch"]
@@ -350,7 +350,7 @@ class TestStateResponseEnvelope:
     """Scenario: state.response envelope is documented."""
 
     def test_direction(self, messages):
-        assert messages["state.response"]["direction"] == "lua→python"
+        assert messages["state.response"]["direction"] == "lua→bridge→service"
 
     def test_request_id_required(self, messages):
         field = messages["state.response"]["payload"]["request_id"]

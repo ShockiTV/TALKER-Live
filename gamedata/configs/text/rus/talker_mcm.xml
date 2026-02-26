@@ -486,12 +486,6 @@
     <string id="ui_mcm_talker_ws_host">
         <text>Имя хоста или IP Python сервиса (по умолчанию: 127.0.0.1)</text>
     </string>
-    <string id="ui_mcm_talker_ws_port_title">
-        <text>Порт сервиса</text>
-    </string>
-    <string id="ui_mcm_talker_ws_port">
-        <text>Порт для подключения к Python сервису (по умолчанию: 5557)</text>
-    </string>
     <string id="ui_mcm_talker_mic_ws_port_title">
         <text>Порт микрофонного сервиса</text>
     </string>

@@ -3,11 +3,13 @@ import time
 import logging
 import json
 import base64
+import io
 import threading
 from collections import deque
 
 import asyncio
-
+import numpy as np
+import soundfile as sf
 import websockets
 
 from banner import print_banner
@@ -207,13 +209,17 @@ class AudioStreamer:
                 if overflowed:
                     logging.debug("Audio buffer overflowed")
 
-                # Stream chunk to service
+                # Stream chunk to service (OGG/Vorbis compressed)
                 self._seq += 1
-                audio_b64 = base64.b64encode(data.tobytes()).decode("ascii")
+                ogg_buf = io.BytesIO()
+                sf.write(ogg_buf, data, AUDIO_SAMPLE_RATE,
+                         format="OGG", subtype="VORBIS")
+                audio_b64 = base64.b64encode(ogg_buf.getvalue()).decode("ascii")
                 asyncio.run_coroutine_threadsafe(
                     send_to_service("mic.audio.chunk", {
                         "audio_b64": audio_b64,
                         "seq": self._seq,
+                        "format": "ogg",
                     }),
                     _event_loop,
                 )

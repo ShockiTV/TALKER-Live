@@ -404,7 +404,7 @@ messages:
 
   state.response:
     channel: service
-    direction: lua→python
+    direction: lua→bridge→service
     description: >
       Response to a state.query.batch. The 'r' field in the envelope
       carries the original request_id for correlation.
@@ -446,10 +446,11 @@ messages:
   mic.audio.chunk:
     channel: service
     direction: bridge→service
-    description: "Stream a chunk of base64-encoded PCM audio from bridge to service"
+    description: "Stream a chunk of OGG/Vorbis compressed audio from bridge to service"
     payload:
-      audio_b64: { type: string, required: true, description: "Base64-encoded raw PCM int16 mono 16kHz audio chunk" }
+      audio_b64: { type: string, required: true, description: "Base64-encoded audio chunk (OGG/Vorbis compressed by default)" }
       seq:       { type: int, required: true, description: "1-based sequence number for ordering" }
+      format:    { type: string, enum: [ogg, pcm], default: pcm, description: "Audio encoding format. 'ogg' = OGG/Vorbis compressed, 'pcm' = raw int16 mono 16kHz" }
 
   mic.audio.end:
     channel: service
