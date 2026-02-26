@@ -4,11 +4,12 @@
 
 **TALKER Expanded** is a STALKER: Anomaly mod that enables AI-powered NPC dialogue using Large Language Models (LLMs). It implements a hierarchical memory system where NPCs witness events, store memories, and generate contextual dialogue through AI models.
 
-This is a **dual-codebase project**:
+This is a **triple-component project**:
 - **Lua** (game integration) - Runs inside the STALKER: Anomaly game engine
-- **Python** (AI processing & microphone input) - Runs as a standalone service
+- **talker_service** (AI processing) - Python FastAPI service for LLM calls, STT, speaker selection, memory compression
+- **talker_bridge** (WS proxy + audio capture) - Lightweight Python bridge between Lua and talker_service; handles mic/TTS locally
 
-**Phase 2+ Architecture**: AI dialogue generation is handled by the Python service, NOT Lua. The game (Lua) stores events and sends them via WebSocket to Python, which handles LLM calls, speaker selection, and memory compression.
+**Phase 2+ Architecture**: Lua connects to talker_bridge (port 5558) via a single WebSocket. The bridge proxies game messages to talker_service (port 5557) and handles mic/TTS topics locally. STT (speech-to-text) runs inside talker_service; audio is streamed from the bridge as base64 PCM chunks.
 
 ## Architecture
 
@@ -75,8 +76,17 @@ talker_service/
 │   │   └── models.py           # State query models
 │   ├── transport/
 │   │   └── ws_router.py        # WSRouter (FastAPI WebSocket endpoint)
+│   ├── stt/                    # Speech-to-text (optional [stt] extra)
+│   │   ├── __init__.py         # STT_AVAILABLE probe
+│   │   ├── base.py             # STTProvider protocol
+│   │   ├── factory.py          # get_stt_provider(method)
+│   │   ├── audio_buffer.py     # Sequence-ordered chunk accumulator
+│   │   ├── whisper_local.py    # Local faster-whisper provider
+│   │   ├── whisper_api.py      # OpenAI Whisper API provider
+│   │   └── gemini_proxy.py     # LiteLLM Gemini proxy provider
 │   └── handlers/
 │       ├── events.py           # Game event handlers (triggers dialogue)
+│       ├── audio.py            # mic.audio.chunk/end → STT transcription
 │       └── config.py           # ConfigMirror class
 └── tests/                      # pytest test suite (~130 tests)
 ```
@@ -84,14 +94,14 @@ talker_service/
 ### Communication Flow
 
 ```
-Lua (Game)                          Python (Service)
-    │                                     │
-    │  WebSocket (5557)  ◄──────────────► │  /ws
-    │  JSON envelopes: {t, p, r, ts}      │
-    │  game.event, player.dialogue, etc.  │
-    │  dialogue.display, memory.update    │
-    │                                     │
-    │  HTTP 5557/health  ───────────────► │  FastAPI
+Lua (Game)              talker_bridge              talker_service
+    │                        │                           │
+    │  WS (5558)  ◄────────► │  WS (5557/ws)  ◄────────► │
+    │  JSON {t,p,r,ts}       │  proxies game msgs        │  /ws
+    │  game.event, etc.      │  handles mic/tts locally   │
+    │                        │  streams audio chunks ───► │  STT
+    │                        │                           │
+    │                        │  HTTP 5557/health  ──────► │  FastAPI
 ```
 
 ## Technologies
@@ -376,6 +386,8 @@ Edit files in `talker_service/src/talker_service/prompts/`:
 - [`talker_service/src/talker_service/llm/factory.py`](talker_service/src/talker_service/llm/factory.py) - LLM client factory
 - [`talker_service/src/talker_service/transport/ws_router.py`](talker_service/src/talker_service/transport/ws_router.py) - WebSocket router
 - [`talker_service/src/talker_service/handlers/events.py`](talker_service/src/talker_service/handlers/events.py) - Event handlers
+- [`talker_service/src/talker_service/handlers/audio.py`](talker_service/src/talker_service/handlers/audio.py) - Audio chunk/STT handlers
+- [`talker_service/src/talker_service/stt/factory.py`](talker_service/src/talker_service/stt/factory.py) - STT provider factory
 - [`talker_service/src/talker_service/state/client.py`](talker_service/src/talker_service/state/client.py) - State query client
 
 ### Documentation
@@ -388,26 +400,26 @@ Edit files in `talker_service/src/talker_service/prompts/`:
 - See [`.github/copilot-instructions.md`](.github/copilot-instructions.md) for additional AI coding agent instructions
 - See [`README.md`](README.md) for user-facing documentation and model recommendations
 
-## Python Microphone System
+## talker_bridge (Audio + WS Proxy)
 
-Located in `mic_python/python/`:
-- `main.py` - Watchdog-based file polling system
-- `recorder.py` - Audio capture using sounddevice
-- `whisper_api.py` / `whisper_local.py` - Transcription providers
-- Communicates via temp files (`talker_mic_io_commands`, `talker_mic_io_transcription`)
+Located in `talker_bridge/python/`:
+- `main.py` - WS proxy server (port 5558) + audio capture + TTS playback
+- `AudioStreamer` - sounddevice capture with energy-based VAD, streams base64 PCM chunks
+- Proxies all non-mic/tts topics transparently between Lua and talker_service
+- Handles `mic.start`, `mic.stop`, `mic.cancel`, `tts.speak` locally
 
-Launch via `launch_mic.bat`, not directly.
+Launch via `launch_talker_bridge.bat`, not directly.
 
 ## Launch Commands
 
-**Python Service** (required for AI dialogue):
+**talker_service** (required for AI dialogue):
 ```batch
 launch_talker_service.bat
 ```
 
-**Microphone** (optional):
+**talker_bridge** (required for mic/TTS, recommended for all use):
 ```batch
-launch_mic.bat
+launch_talker_bridge.bat
 ```
 
 **Game Launch** (IMPORTANT: Launch directly from MO2, NOT via Anomaly Launcher):
