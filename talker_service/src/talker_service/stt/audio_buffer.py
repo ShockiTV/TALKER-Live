@@ -3,15 +3,27 @@
 Collects base64-encoded audio chunks sent by ``talker_bridge`` as
 ``mic.audio.chunk`` messages, orders them by sequence number, and
 yields the concatenated raw PCM bytes when finalized.
+
+Supports both raw PCM and OGG/Vorbis compressed chunks — the bridge
+sends OGG-compressed chunks by default to reduce wire payload size.
 """
 
 from __future__ import annotations
 
 import base64
+import io
 import threading
 from typing import Optional
 
 from loguru import logger
+
+# soundfile is an optional dependency (part of [stt] extras)
+try:
+    import numpy as np
+    import soundfile as sf
+    _SF_AVAILABLE = True
+except ImportError:
+    _SF_AVAILABLE = False
 
 
 class AudioBuffer:
@@ -40,12 +52,14 @@ class AudioBuffer:
         with self._lock:
             return len(self._chunks)
 
-    def add_chunk(self, seq: int, audio_b64: str) -> None:
+    def add_chunk(self, seq: int, audio_b64: str, fmt: str = "pcm") -> None:
         """Decode and store a single audio chunk.
 
         Args:
             seq: 1-based sequence number for ordering.
-            audio_b64: Base64-encoded raw PCM int16 mono audio.
+            audio_b64: Base64-encoded audio chunk (PCM or OGG/Vorbis).
+            fmt: Audio format — ``"pcm"`` for raw int16 mono 16 kHz,
+                 ``"ogg"`` for OGG/Vorbis compressed.
 
         Raises:
             ValueError: If the buffer has already been finalized.
@@ -53,10 +67,19 @@ class AudioBuffer:
         if self._finalized:
             raise ValueError("Cannot add chunks to a finalized buffer")
 
-        raw = base64.b64decode(audio_b64)
+        raw_b64 = base64.b64decode(audio_b64)
+
+        if fmt == "ogg" and _SF_AVAILABLE:
+            # Decompress OGG/Vorbis back to raw PCM int16
+            data, _sr = sf.read(io.BytesIO(raw_b64), dtype="int16")
+            pcm_bytes = data.tobytes()
+        else:
+            pcm_bytes = raw_b64
+
         with self._lock:
-            self._chunks[seq] = raw
-        logger.debug("AudioBuffer: stored chunk seq={} ({} bytes)", seq, len(raw))
+            self._chunks[seq] = pcm_bytes
+        logger.debug("AudioBuffer: stored chunk seq={} ({} bytes, fmt={})",
+                     seq, len(pcm_bytes), fmt)
 
     def finalize(self) -> bytes:
         """Concatenate chunks in order and return the full PCM byte stream.

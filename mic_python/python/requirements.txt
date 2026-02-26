@@ -1,8 +1,0 @@
-numpy
-sounddevice
-soundfile
-websockets
-httpx
-webrtcvad
-requests
-pocket-tts

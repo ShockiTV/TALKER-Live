@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Defines the wire protocol between the Lua game client and the Python service (and mic_python) over WebSocket. Supersedes `zmq-api-contract`. The canonical reference is `docs/ws-api.yaml`.
+Defines the wire protocol between the Lua game client and the Python service (and talker_bridge) over WebSocket. Supersedes `zmq-api-contract`. The canonical reference is `docs/ws-api.yaml`.
 
 ## Requirements
 
@@ -69,9 +69,9 @@ The following topics SHALL be sent by the Python service to the Lua game client:
 - **THEN** the Lua client receives the envelope with `t = "tts.audio"`
 - **AND** the payload contains base64-encoded OGG Vorbis audio
 
-### Requirement: Mic channel topics (Lua → mic_python)
+### Requirement: Mic channel topics (Lua → talker_bridge)
 
-The following topics SHALL be sent by the Lua game client to mic_python:
+The following topics SHALL be sent by the Lua game client to talker_bridge:
 
 | Topic | Payload | Purpose |
 |-------|---------|---------|
@@ -80,12 +80,12 @@ The following topics SHALL be sent by the Lua game client to mic_python:
 
 #### Scenario: mic.start triggers recording
 
-- **WHEN** `{"t":"mic.start","p":{}}` is received by mic_python
+- **WHEN** `{"t":"mic.start","p":{}}` is received by talker_bridge
 - **THEN** audio capture begins
 
-### Requirement: Mic channel topics (mic_python → Lua)
+### Requirement: Mic channel topics (talker_bridge → Lua)
 
-The following topics SHALL be sent by mic_python to the Lua game client:
+The following topics SHALL be sent by talker_bridge to the Lua game client:
 
 | Topic | Payload fields | Purpose |
 |-------|---------------|---------|

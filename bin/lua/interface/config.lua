@@ -151,10 +151,6 @@ function c.ws_host()
 	return cfg("ws_host") or "127.0.0.1"
 end
 
-function c.ws_port()
-	return tonumber(cfg("ws_port"))
-end
-
 function c.mic_ws_port()
 	return tonumber(cfg("mic_ws_port"))
 end
@@ -213,7 +209,6 @@ function c.get_all_config()
 
 		-- WebSocket settings
 		ws_host                 = cfg("ws_host"),
-		ws_port                 = tonumber(cfg("ws_port")),
 		llm_timeout             = tonumber(cfg("llm_timeout")),
 		state_query_timeout     = tonumber(cfg("state_query_timeout")),
 

@@ -14,8 +14,8 @@ on:
         default: false
   push:
     paths:
-      - 'mic_python/python/**'
-      - 'launch_mic.bat'
+      - 'talker_bridge/python/**'
+      - 'launch_talker_bridge.bat'
       - '.github/workflows/build.yml'
       - 'cliff.toml'
 
@@ -33,7 +33,7 @@ jobs:
       uses: astral-sh/setup-uv@v4
       with:
         enable-cache: true
-        cache-dependency-glob: "mic_python/python/requirements.txt"
+        cache-dependency-glob: "talker_bridge/python/requirements.txt"
 
     - name: Set up Python with uv
       shell: bash
@@ -44,7 +44,7 @@ jobs:
     - name: Install dependencies
       shell: bash
       run: |
-        cd mic_python/python
+        cd talker_bridge/python
         source ../../.venv/bin/activate || . ../../.venv/Scripts/activate
         uv pip install -r requirements.txt
         uv pip install pyinstaller
@@ -65,21 +65,21 @@ jobs:
       uses: actions/cache@v4
       with:
         path: ${{ steps.pyinstaller-cache-dir.outputs.path }}
-        key: ${{ runner.os }}-pyinstaller-3.12-${{ hashFiles('mic_python/python/requirements.txt') }}
+        key: ${{ runner.os }}-pyinstaller-3.12-${{ hashFiles('talker_bridge/python/requirements.txt') }}
         restore-keys: |
           ${{ runner.os }}-pyinstaller-3.12-
 
     - name: Build executable
       shell: bash
       run: |
-        cd mic_python/python
+        cd talker_bridge/python
         source ../../.venv/bin/activate || . ../../.venv/Scripts/activate
         if [ "${{ runner.os }}" == "Windows" ]; then
           ./build.bat
         else
           # Run PyInstaller directly on Unix systems
           # Note: --icon parameter works differently on different platforms but PyInstaller handles it
-          python -m PyInstaller --onefile --name talker_mic --icon=talker_mic.ico --hidden-import=gemini_proxy --hidden-import=whisper_local --hidden-import=whisper_api main.py
+          python -m PyInstaller --onefile --name talker_bridge --icon=talker_mic.ico --exclude-module torch --exclude-module faster_whisper --exclude-module openai main.py
         fi
 
     - name: Get short SHA
@@ -95,11 +95,11 @@ jobs:
         stagingDir="staging"
         mkdir -p $stagingDir
         if [ "${{ runner.os }}" == "Windows" ]; then
-          cp mic_python/python/dist/talker_mic.exe "$stagingDir/"
+          cp talker_bridge/python/dist/talker_bridge.exe "$stagingDir/"
         else
-          cp mic_python/python/dist/talker_mic "$stagingDir/"
+          cp talker_bridge/python/dist/talker_bridge "$stagingDir/"
         fi
-        cp launch_mic.bat "$stagingDir/"
+        cp launch_talker_bridge.bat "$stagingDir/"
         echo "--- Staging directory contents ---"
         ls -R $stagingDir
         echo "------------------------------------"
@@ -107,7 +107,7 @@ jobs:
     - name: Archive build artifact
       uses: actions/upload-artifact@v4
       with:
-        name: talker-mic-build-${{ runner.os }}-${{ steps.version.outputs.sha }}
+        name: talker-bridge-build-${{ runner.os }}-${{ steps.version.outputs.sha }}
         path: staging/
 
   release:

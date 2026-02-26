@@ -7,7 +7,7 @@ Defines how the Python `talker_service` generates OGG Vorbis audio from dialogue
 ## Requirements
 
 ### Requirement: pocket_tts model and voice cache in talker_service
-When TTS is enabled in the configuration, the talker_service SHALL load the pocket_tts model at startup and populate a voice cache from `.safetensors` files found in the configured voices directory. The voices directory SHALL default to `mic_python/voices/` relative to the project root.
+When TTS is enabled in the configuration, the talker_service SHALL load the pocket_tts model at startup and populate a voice cache from `.safetensors` files found in the configured voices directory. The voices directory SHALL default to `talker_bridge/voices/` relative to the project root.
 
 #### Scenario: Service starts with TTS enabled and voices available
 - **WHEN** talker_service starts with TTS enabled and `voices/dolg_1.safetensors` exists

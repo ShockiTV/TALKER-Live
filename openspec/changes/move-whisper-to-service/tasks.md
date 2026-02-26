@@ -43,6 +43,6 @@
 
 ## 7. Documentation & Protocol
 
-- [ ] 7.1 Update `docs/ws-api.yaml` to document `mic.audio.chunk`, `mic.audio.end` topics and the bridge proxy architecture
-- [ ] 7.2 Update `docs/Python_Service_Setup.md` to explain the new required `talker_bridge` and optional STT dependencies for `talker_service`
-- [ ] 7.3 Update `AGENTS.md` architecture section to reflect the bridge proxy architecture
+- [x] 7.1 Update `docs/ws-api.yaml` to document `mic.audio.chunk`, `mic.audio.end` topics and the bridge proxy architecture
+- [x] 7.2 Update `docs/Python_Service_Setup.md` to explain the new required `talker_bridge` and optional STT dependencies for `talker_service`
+- [x] 7.3 Update `AGENTS.md` architecture section to reflect the bridge proxy architecture

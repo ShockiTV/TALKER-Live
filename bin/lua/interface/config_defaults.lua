@@ -28,7 +28,6 @@ local defaults = {
 
     -- WebSocket / service
     ws_host                 = "127.0.0.1",
-    ws_port                 = 5557,
     mic_ws_port             = 5558,
     ws_token                = "",
     llm_timeout             = 60,
