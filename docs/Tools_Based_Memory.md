@@ -135,9 +135,15 @@ One long-lived conversation per game session (per tenant). The LLM acts as the *
 │  Required:  character_id: string                             │
 │                                                              │
 │  Returns: {                                                  │
-│    character: { id, name, faction, rank, ..., background },  │
-│    squad_members: [{ id, name, ..., background }, ...]       │
+│    character: { id, name, faction, rank, ...,                 │
+│                 gender, background },                         │
+│    squad_members: [{ id, name, ..., gender,                   │
+│                      background }, ...]                       │
 │  }                                                           │
+│                                                              │
+│  gender: "female" | "male". Derived from sound_prefix.        │
+│          Not on the Character dataclass — only added to       │
+│          this tool's response by the query handler.           │
 │                                                              │
 │  Side effects:                                               │
 │    - Creates dirs + backfills globals for new squad members   │
@@ -873,6 +879,200 @@ background("12467", "update",
 
 Unique NPC backgrounds seeded from committed Lua data file (`bin/lua/domain/data/unique_backgrounds.lua`), generated offline by developer tooling.
 
+### Unique NPC Background Seeding
+
+**Source data** (existing, keyed by story_id):
+- `talker_service/texts/backstory/unique.py` — full backstory paragraphs (~60+ NPCs)
+- `talker_service/texts/personality/unique.py` — trait adjective strings (matching set)
+- `talker_service/texts/characters/important.py` — name, role, faction, area metadata
+
+**Pipeline (offline, run once by developer, output committed to codebase):**
+
+**Script 1: `tools/generate_unique_backgrounds.py`**
+1. Reads all three source files, combines per story_id
+2. Builds an LLM prompt: given personality + backstory + metadata, generate a structured `Background` (traits list, backstory paragraph, connections list)
+3. Calls LLM API (any provider — this is a dev tool, not runtime), one batch prompt with all NPCs
+4. Writes enriched backgrounds to `tools/unique_backgrounds_output/` as temp JSON files (one per story_id)
+
+**Script 2: `tools/package_unique_backgrounds.py`**
+1. Reads temp folder output
+2. Generates a Lua module: `bin/lua/domain/data/unique_backgrounds.lua`
+3. Format: `story_id → Background` as a Lua table of structured objects
+
+```lua
+-- bin/lua/domain/data/unique_backgrounds.lua (auto-generated, do not edit)
+local BACKGROUNDS = {
+    ["esc_2_12_stalker_wolf"] = {
+        traits = {
+            "gruff, suspicious of outsiders",
+            "protective of rookies despite harsh exterior",
+            "chain smoker, fidgets when anxious",
+        },
+        backstory = "Former Ukrainian border guard...",
+        connections = {
+            { story_id = "esc_2_12_stalker_nimble", name = "Nimble",
+              relation = "fellow Cordon veteran, mutual respect" },
+        },
+    },
+    ["esc_m_trader"] = {
+        traits = { "shrewd businessman", "cynical but reliable" },
+        backstory = "One of the Zone's longest-serving traders...",
+        connections = {},
+    },
+    ...
+}
+return BACKGROUNDS
+```
+
+**Lua runtime (game load):**
+1. Requires `domain.data.unique_backgrounds`
+2. Iterates entries, resolves each story_id to numeric game_id via `story_objects.object_id_by_story_id[story_id]`
+3. Seeds `Background` into memory store for each resolved NPC
+4. Skipped if NPC already has a background (save data takes precedence over seed)
+
+**Key properties:**
+- Main Python service does NOT need to run for either script
+- Output is committed — no runtime generation, no API cost at game time
+- Lua owns the seed data, Python never touches unique backgrounds (only reads via tools)
+- `story_objects` registry is available at game load (no need to be near NPCs)
+- Connections use `story_id` in the seed file — Lua resolves to numeric `character_id` at load time
+
+---
+
+## Notable Zone Inhabitants (System Prompt)
+
+### Why System Prompt?
+
+The ~35 characterized unique NPCs (leaders, important figures, notable locals) are **static game data** — they don't change during a session. This makes them ideal for the system prompt:
+
+1. **Cacheable** — every provider caches the system prompt prefix. Static data amortizes to near-zero cost after the first turn.
+2. **Always available** — the LLM doesn't need to call a tool to know who Sidorovich is. This avoids unnecessary tool roundtrips when the LLM wants to reference a well-known character organically.
+3. **Rank-gated** — the existing instruction "familiarity governed by rank" still applies. A novice won't cite Sakharov's research in conversation, but the LLM needs to *know about* him to decide not to.
+
+### Replaces Vague Name-Dropping
+
+The current `KNOWLEDGE_FAMILIARITY` section vaguely lists ~9 names:
+> "Sidorovich, Barkeep, Arnie, Beard, Sakharov, General Voronin, Lukash, Sultan, Butcher etc."
+
+This gives the LLM names but no context — it has to guess who these people are from pretraining data (unreliable for a modded game). The new design replaces this with a structured registry:
+
+```
+## Notable Zone Inhabitants
+
+Leaders:
+- General Kuznetsov — Military commander, Southern checkpoint
+- General Voronin — Duty leader, Rostok base
+- Lukash — Freedom leader, Army Warehouses
+- Cold — Clear Sky leader, Great Swamps
+- Sakharov — Ecologist lead researcher, Yantar
+- Dushman — Mercenary leader, Dead City
+- Sultan — Bandit boss, Garbage
+- Charon — Monolith leader, Pripyat outskirts
+...
+
+Important figures:
+- Sidorovich — Loner trader, Cordon. First contact for most newcomers.
+- Barkeep — Neutral bar owner, Rostok. Information broker.
+- Strelok — Legendary stalker, whereabouts unknown.
+- Beard — Loner trader, Zaton. Runs the Skadovsk bar.
+...
+
+Notable locals:
+- Wolf — Experienced Loner, Cordon. Mentors newcomers.
+- Hip — Young Loner, Cordon. Amateur journalist.
+- Owl — Trader, Yanov Station. Information dealer.
+...
+```
+
+### Token Cost
+
+~35 characters × ~20 tokens each ≈ **700 tokens**. With the existing system prompt sections (Zone geography, ranks, reputation, knowledge rules, tool definitions), total system prompt is ~3.5–4K tokens. This caches perfectly on all providers.
+
+### What Stays Dynamic
+
+**Dead NPC tracking** (`query.characters_alive`) remains in the per-event user message, not the system prompt. A character being dead is *dynamic state* — it changes during gameplay. The system prompt tells the LLM *who these people are*; the event message tells the LLM *which ones are dead*.
+
+| Data | Where | Why |
+|------|-------|-----|
+| NPC registry (name, faction, role, description) | System prompt | Static — never changes within a session |
+| Dead NPC status | Event message (from `query.characters_alive`) | Dynamic — NPCs die during gameplay |
+| NPC backgrounds (traits, backstory, connections) | Tool call (`get_character_info`) | Per-speaker — only fetched when needed |
+
+### Scope: Characterized vs. Technical IDs
+
+Two distinct datasets exist:
+
+| Dataset | Count | Content | Used For |
+|---------|-------|---------|----------|
+| `texts/characters/important.py` | ~35 | Name, faction, role, area, description | System prompt registry |
+| `bin/lua/domain/data/unique_npcs.lua` | ~130 | Technical section IDs only | Lua-side `is_important_person()` checks (trigger chance override) |
+
+Only the ~35 characterized NPCs go in the system prompt — the broader ~130 ID set is a Lua-side concern for trigger logic, not LLM knowledge.
+
+### Area Filtering: Not Needed in System Prompt
+
+The current `world_context.py` filters notable characters by area proximity when reporting dead NPCs. This filtering is **not applied** to the system prompt registry — a stalker can *know about* Lukash without being in Army Warehouses. Area filtering only makes sense for the dead-status lines (to avoid noise about deaths the NPC wouldn't have heard about).
+
+### Gender
+
+The STALKER engine has no explicit gender field on game objects. Gender reaches the LLM through three channels — one per character type:
+
+**1. Unique NPCs: descriptions in pre-written texts (TALKER-controlled)**
+
+The backstory/personality texts in `texts/personality/unique.py` and `texts/characters/important.py` are TALKER-specific data that we fully control. Gender is encoded in the description prose ("a young girl", "legendary stalker", etc.). Since the LLM uses these texts when generating unique NPC backgrounds, it picks up gender naturally — no runtime field needed.
+
+**Voice consistency rule**: descriptions must match the engine's voice assignment. If the engine gives an NPC a male voice set, the text must not claim female — TTS would produce male vocals while the LLM writes female dialogue.
+
+**Audit of old TALKER personality texts**: The previous TALKER `texts/personality/unique.py` described 5 NPCs as "a young woman". Engine voice verification shows only 2 are actually female:
+
+| NPC | ID | Engine `snd_config` | Voice Set | Actually Female? |
+|-----|-----|---------------------|-----------|:---------------:|
+| Hip | `devushka` | `characters_voice\human\woman\` | `woman` | **Yes** ✓ |
+| Anna | `stalker_duty_girl` | `characters_voice\human\woman\` | `woman` | **Yes** ✓ |
+| Eidolon | `monolith_eidolon` | `characters_voice\human\monolith_3\` | `monolith_3` | **No** ✗ |
+| Semenov | `yan_ecolog_semenov` | `characters_voice\human\ecolog_3\` | `ecolog_3` | **No** ✗ |
+| Kolin | `zat_stancia_mech_merc` | `characters_voice\human\killer_3\` | `killer_3` | **No** ✗ |
+
+Eidolon, Semenov, and Kolin personality texts should be corrected — their engine voice sets are male.
+
+**2. Generic NPCs: optional `gender` field on `get_character_info`**
+
+The `get_character_info` tool response includes an optional `gender` field, derived from `sound_prefix` on the Lua side:
+
+```
+sound_prefix == "woman"  →  gender: "female"
+otherwise                →  gender: "male"
+```
+
+This is the **only place** gender is surfaced at runtime. It's not needed in events, speaker selection, or other queries — only when the LLM is about to generate a background for an NPC it hasn't spoken as before. The Lua query handler derives it from the same `sound_prefix` already fetched for TTS, and adds it to the response — it's **not** a field on the `Character` dataclass itself:
+
+```lua
+-- In get_character_info query handler (not on Character model):
+local gender = "male"
+if character.sound_prefix == "woman" then
+    gender = "female"
+end
+-- always included in response
+```
+
+**3. Player gender (`female_gender` MCM → system prompt)**
+
+The existing MCM toggle `female_gender` (boolean, default false) is already mirrored to Python config. In the new design, this goes directly into the system prompt as part of the player identity section:
+
+```
+The player character is [male/female].
+```
+
+This ensures the LLM uses correct pronouns when NPCs refer to the player in dialogue and memory compression.
+
+**Summary: Where gender lives**
+
+| Character Type | Gender Source | Mechanism |
+|---------------|--------------|----------|
+| **Player** | `female_gender` MCM toggle | System prompt |
+| **Unique NPCs** (~35) | Pre-written description text | Baked into backstory/personality texts (TALKER-controlled) |
+| **Generic NPCs** | `sound_prefix` → `gender` field | Always present on `get_character_info` response (not on Character dataclass) |
+
 ---
 
 ## Conversation Lifecycle
@@ -982,7 +1182,7 @@ The core architecture works on any provider with tool calling. Optimizations lay
 
 ### Prompt Caching
 
-The system prompt (~3K tokens of Zone rules, faction data, memory rules, tool definitions) is the cacheable prefix — identical across all turns within a session.
+The system prompt (~3.5–4K tokens of Zone rules, faction data, NPC registry, memory rules, tool definitions) is the cacheable prefix — identical across all turns within a session.
 
 | Provider | Cache Mechanism | Discount | Developer Action |
 |----------|----------------|----------|------------------|
