@@ -36,7 +36,7 @@ class Settings(BaseSettings):
     
     # TTS Settings
     tts_enabled: bool = False  # Enable in-engine TTS audio generation
-    voices_dir: Path = Path("../talker_bridge/voices")  # Directory containing .safetensors voice files
+    voices_dir: Path = Path("./voices")  # Directory containing .safetensors voice files (flat layout)
 
 
 # Global settings instance

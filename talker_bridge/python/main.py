@@ -5,8 +5,6 @@ import json
 import base64
 import io
 import threading
-from collections import deque
-
 import asyncio
 import numpy as np
 import soundfile as sf
@@ -31,7 +29,7 @@ BRIDGE_WS_PORT = 5558       # talker_bridge WS server ← Lua connects here
 SERVICE_WS_URL = "ws://127.0.0.1:5557/ws"  # upstream talker_service
 
 # Topics handled locally by the bridge (not proxied upstream)
-LOCAL_TOPICS = {"mic.start", "mic.cancel", "mic.stop", "tts.speak"}
+LOCAL_TOPICS = {"mic.start", "mic.cancel", "mic.stop"}
 
 # Topics proxied from talker_service downstream to Lua (transparent)
 # (All service→bridge messages are forwarded to Lua by default)
@@ -41,55 +39,6 @@ AUDIO_CHUNK_DURATION_MS = 200   # send a chunk every 200 ms
 AUDIO_SAMPLE_RATE = 16000       # 16 kHz mono int16
 VAD_SILENCE_THRESHOLD_S = 2.0  # seconds of silence before auto-stop
 VAD_ENERGY_LEVEL = 1000        # energy threshold for silence detection
-
-
-####################################################################################################
-# TTS QUEUE
-####################################################################################################
-
-
-class TTSQueue:
-    """FIFO queue for TTS playback tasks.
-
-    Only one TTS task plays at a time.  New tasks are queued and automatically
-    started when the current one finishes.  STT is handled independently on its
-    own thread so recording always works — even during TTS playback.
-    """
-
-    def __init__(self):
-        self._queue: deque = deque()
-        self._busy: bool = False
-        self._lock = threading.Lock()
-
-    @property
-    def busy(self) -> bool:
-        return self._busy
-
-    def submit(self, task: dict) -> None:
-        """Submit a TTS task.  Starts immediately when idle, queues otherwise."""
-        with self._lock:
-            if not self._busy:
-                self._busy = True
-                threading.Thread(target=self._execute, args=(task,), daemon=True).start()
-            else:
-                self._queue.append(task)
-                logging.debug(
-                    "TTS task queued — queue depth %d",
-                    len(self._queue),
-                )
-
-    def _execute(self, task: dict) -> None:
-        try:
-            _run_tts_task(task)
-        except Exception:
-            logging.exception("Unhandled error executing TTS task")
-        finally:
-            with self._lock:
-                if self._queue:
-                    next_task = self._queue.popleft()
-                    threading.Thread(target=self._execute, args=(next_task,), daemon=True).start()
-                else:
-                    self._busy = False
 
 
 ####################################################################################################
@@ -259,79 +208,6 @@ class AudioStreamer:
 
 
 ####################################################################################################
-# TTS HELPERS
-####################################################################################################
-
-def load_voice_cache(voices_dir: str) -> "tuple[dict, object]":
-    """Load all *.safetensors files in voices_dir into a dict keyed by voice_id (filename stem).
-
-    Returns (cache, model). Both are empty/None if pocket-tts is unavailable or no files found.
-    """
-    import os
-    import glob
-
-    try:
-        from pocket_tts import TTSModel
-    except ImportError:
-        logging.error(
-            "pocket-tts is not installed — TTS disabled. "
-            "Run export_voices.bat to install it."
-        )
-        return {}, None
-
-    # Search both flat root (voices/bandit_1.safetensors) and subdirs
-    # (voices/bandit_1/bandit_1.safetensors — Anomaly structure).
-    files = sorted(
-        glob.glob(os.path.join(voices_dir, "*.safetensors")) +
-        glob.glob(os.path.join(voices_dir, "**", "*.safetensors"), recursive=True)
-    )
-    files = list(dict.fromkeys(files))  # deduplicate, preserve order
-    if not files:
-        logging.warning("No .safetensors voice files found in %s", voices_dir)
-        return {}, None
-
-    logging.info("Loading TTS model…")
-    model = TTSModel.load_model()
-
-    cache: dict = {}
-    for path in files:
-        voice_id = os.path.splitext(os.path.basename(path))[0]
-        try:
-            voice_state = model.get_state_for_audio_prompt(path)
-            cache[voice_id] = voice_state
-            logging.info("  Loaded voice: %s", voice_id)
-        except Exception as exc:
-            logging.error("  Failed to load voice %s: %s", voice_id, exc)
-
-    logging.info("Voice cache ready: %d voice(s) loaded", len(cache))
-    return cache, model
-
-
-def play_tts(text: str, voice_state: object, model: object) -> None:
-    """Stream TTS audio to the default audio output via sounddevice."""
-    import sounddevice as sd
-
-    with sd.OutputStream(samplerate=24000, channels=1, dtype="float32") as stream:
-        for chunk in model.generate_audio_stream(voice_state, text):
-            stream.write(chunk.numpy())
-
-
-def _run_tts_task(task: dict) -> None:
-    """Execute a TTS playback task."""
-    voice_state = task["voice_state"]
-    text: str   = task["text"]
-    speaker_id: str = task.get("speaker_id", "")
-
-    publish_to_lua("tts.started", {"speaker_id": speaker_id})
-    try:
-        play_tts(text, voice_state, task["model"])
-    except Exception as exc:
-        logging.error("TTS playback failed: %s", exc)
-    finally:
-        publish_to_lua("tts.done", {"speaker_id": speaker_id})
-
-
-####################################################################################################
 # UPSTREAM SERVICE CONNECTION
 ####################################################################################################
 
@@ -366,30 +242,8 @@ def main() -> None:
     print_banner("TALKER")
     print("-" * 50)
 
-    # ── Argument parsing ────────────────────────────────────
-    tts_enabled = "--tts" in sys.argv[1:]
-
-    if tts_enabled:
-        logging.info("TTS mode enabled (--tts)")
-
     # ── Audio streamer ──────────────────────────────────────
     audio_streamer = AudioStreamer()
-
-    # ── TTS startup ─────────────────────────────────────────
-    voice_cache: dict = {}
-    tts_model = None
-    if tts_enabled:
-        import os
-
-        voices_dir = os.path.join(os.path.dirname(__file__), "..", "voices")
-        voice_cache, tts_model = load_voice_cache(voices_dir)
-        if not voice_cache:
-            logging.warning(
-                "TTS enabled but no voices loaded. "
-                "Add .wav files to talker_bridge/voices/ and run export_voices.bat."
-            )
-
-    tts_queue = TTSQueue()
 
     # ── Local message handler (mic + TTS topics only) ───────
     async def handle_local_message(topic: str, payload: dict) -> None:
@@ -401,40 +255,6 @@ def main() -> None:
 
         elif topic in ("mic.cancel", "mic.stop"):
             audio_streamer.cancel()
-
-        elif topic == "tts.speak" and tts_enabled:
-            voice_id   = payload.get("voice_id", "")
-            text       = payload.get("text", "")
-            speaker_id = payload.get("speaker_id", "")
-            logging.info("tts.speak  speaker=%s  voice=%s  text=%.60s",
-                         speaker_id, voice_id or "(none)", text)
-
-            if not text:
-                logging.warning("tts.speak received with empty text — skipping")
-                publish_to_lua("tts.done", {"speaker_id": speaker_id})
-                return
-
-            voice_state = voice_cache.get(voice_id)
-            if voice_state is None:
-                if voice_cache:
-                    fallback_id = next(iter(voice_cache))
-                    logging.warning(
-                        "voice_id '%s' not in cache — falling back to '%s'",
-                        voice_id,
-                        fallback_id,
-                    )
-                    voice_state = voice_cache[fallback_id]
-                else:
-                    logging.error("tts.speak: voice cache empty, cannot play TTS")
-                    publish_to_lua("tts.done", {"speaker_id": speaker_id})
-                    return
-
-            tts_queue.submit({
-                "model":       tts_model,
-                "voice_state": voice_state,
-                "text":        text,
-                "speaker_id":  speaker_id,
-            })
 
     # ── Lua WebSocket handler (downstream) ──────────────────
     async def lua_ws_handler(websocket):
@@ -485,8 +305,6 @@ def main() -> None:
         async with websockets.serve(lua_ws_handler, "0.0.0.0", BRIDGE_WS_PORT):
             logging.info("Bridge WS server listening on ws://0.0.0.0:%d", BRIDGE_WS_PORT)
             logging.info("Proxying to talker_service at %s", SERVICE_WS_URL)
-            if tts_enabled:
-                print("TTS enabled — NPCs will speak their dialogue aloud.")
             print("TALKER Bridge ready. Waiting for game connection...")
             await asyncio.Future()  # run forever
 

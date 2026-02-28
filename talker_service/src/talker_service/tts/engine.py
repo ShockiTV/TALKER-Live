@@ -139,9 +139,7 @@ class TTSEngine:
             logger.warning("Voices directory not found: {}", voices_dir)
             return
 
-        voice_files = list(voices_dir.glob("**/*.safetensors"))
-        # Deduplicate (flat + nested may overlap)
-        voice_files = list(dict.fromkeys(voice_files))
+        voice_files = sorted(voices_dir.glob("*.safetensors"))
         if not voice_files:
             logger.warning("No .safetensors files found in {}", voices_dir)
             return

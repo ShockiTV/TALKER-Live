@@ -34,7 +34,6 @@ local defaults = {
     state_query_timeout     = 30,
 
     -- TTS
-    enable_tts              = false,
     tts_volume_boost        = 4.0,
 
     -- Debug
