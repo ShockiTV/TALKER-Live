@@ -67,12 +67,18 @@ class Event:
             if isinstance(w, dict):
                 witnesses.append(Character.from_dict(w))
         
+        # Lua JSON: empty tables serialize as [] not {} — coerce to dict
+        raw_context = data.get("context", {})
+        context = raw_context if isinstance(raw_context, dict) else {}
+        raw_flags = data.get("flags", {})
+        flags = raw_flags if isinstance(raw_flags, dict) else {}
+        
         return cls(
             game_time_ms=data.get("game_time_ms", 0),
             type=data.get("type"),
-            context=data.get("context", {}),
+            context=context,
             witnesses=witnesses,
-            flags=data.get("flags", {}),
+            flags=flags,
         )
 
 
