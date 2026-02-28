@@ -10,44 +10,6 @@ This document captures design thinking for a **provider-agnostic** memory archit
 
 ---
 
-## Motivation: Why Standard Tools Instead of `memory_tool`
-
-### The `memory_tool` Design Overfit to Anthropic
-
-The previous design ([Claude_Based_Memory.md](Claude_Based_Memory.md)) used Anthropic's `memory_tool` to expose a virtual filesystem of per-NPC memories. But analysis of what the LLM actually needed showed:
-
-| `memory_tool` Operation | Actually Used? | Purpose |
-|------------------------|:-:|---|
-| `view /memories/characters/{id}/` | Yes | Read all memory tiers |
-| `create background.md` | Yes | Create character identity |
-| `str_replace background.md` | Yes | Edit character traits |
-| `delete` any file | No | Python handles all deletion |
-| `create event_*/summary_*/etc.` | No | Python handles all writes |
-| `view /global_event_backfill/` | No | Python-only bookkeeping |
-
-The LLM's actual API surface is: **read memories, read/write background**. The virtual filesystem abstraction provided far more power than needed — and it was the thing that locked the design to Anthropic.
-
-### Standard Tool Calling Is Universal
-
-Every major provider supports function/tool calling with the same basic wire format:
-
-| Provider | Tool Calling | Prompt Caching | Tool Cleanup |
-|----------|:-:|:-:|:-:|
-| OpenAI / GPT-4.1 | Yes | Automatic (50% off, ≥1024t prefix) | Manual (client-side truncation) |
-| Anthropic / Claude | Yes | Explicit `cache_control` (90% off) | `clear_tool_uses` API |
-| Google / Gemini | Yes | `cachedContent` API (32K min) | No |
-| Ollama (local) | Yes (model-dependent) | Implicit KV cache | No |
-| OpenRouter | Yes (pass-through) | Varies by model | Varies |
-| Hosted / custom endpoint | Yes (OpenAI-compatible) | Varies | Varies |
-
-By using standard tools, the memory architecture works on **all** of these. Provider-specific optimizations (caching, cleanup) layer on top where available.
-
-### Structured Storage > Markdown Files
-
-The `memory_tool` design stored everything as `.md` files because the tool spoke files. Without it, there's no reason to flatten structured events into markdown. Events arrive from Lua with structured fields (type, location, timestamp, actors) — storing them structured preserves information that prose would lose.
-
----
-
 ## Architecture Overview
 
 ### LLM as Game Master, Python as Memory Manager
