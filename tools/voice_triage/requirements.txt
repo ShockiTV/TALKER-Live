@@ -1,0 +1,20 @@
+# Core audio processing
+librosa==0.11.0
+numpy==2.2.6
+soundfile==0.13.1
+
+# PyTorch (Install with CUDA support if available)
+torch==2.7.1+cu118
+torchaudio==2.7.1+cu118
+
+# Resemble Enhance and its dependencies
+resemble-enhance==0.0.1
+omegaconf==2.3.0
+tqdm==4.67.3
+rich==14.3.3
+pandas==2.3.3
+matplotlib==3.10.8
+tabulate==0.9.0
+
+# Note: deepspeed is intentionally omitted as it fails to compile on Windows.
+# The scripts mock deepspeed imports to bypass this issue.

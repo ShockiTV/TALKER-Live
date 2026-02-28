@@ -169,11 +169,6 @@ function c.state_query_timeout()
 	return tonumber(cfg("state_query_timeout"))
 end
 
-function c.tts_enabled()
-	-- Whether TTS playback is enabled (requires talker_bridge running with --tts)
-	return cfg("enable_tts") == true or cfg("enable_tts") == 1
-end
-
 function c.tts_volume_boost()
 	return tonumber(cfg("tts_volume_boost")) or 4.0
 end

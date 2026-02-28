@@ -150,33 +150,6 @@ local function handle_dialogue_display(payload)
     end
 
     _create_dialogue_event(speaker_id, dialogue, event_context, create_event)
-
-    -- If TTS enabled, also send speech request to talker_bridge (fire-and-forget)
-    if config.tts_enabled() then
-        local voice_id = payload.voice_id
-        if not voice_id or voice_id == "" then
-            local obj = engine.get_obj_by_id(speaker_id)
-            voice_id = (obj and engine.get_sound_prefix(obj)) or ""
-        end
-
-        local tts_ok, tts_err = pcall(function()
-            local ws = get_ws_integration()
-            local bridge_ch = ws and ws.get_bridge_channel and ws.get_bridge_channel()
-            if bridge_ch then
-                bridge_ch.publish("tts.speak", {
-                    voice_id   = voice_id,
-                    text       = dialogue,
-                    speaker_id = speaker_id or "",
-                })
-                logger.debug("Published tts.speak for speaker=%s, voice=%s", speaker_id, voice_id)
-            else
-                logger.warn("Bridge channel not available for tts.speak")
-            end
-        end)
-        if not tts_ok then
-            logger.error("Failed to publish tts.speak: %s", tts_err)
-        end
-    end
 end
 
 --- Handler for memory.update command

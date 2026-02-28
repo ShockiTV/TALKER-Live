@@ -4,4 +4,3 @@ soundfile
 websockets
 httpx
 requests
-pocket-tts

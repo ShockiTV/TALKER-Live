@@ -1,31 +1,26 @@
-# Compiled Lua sources
+# ── Build artifacts & object files ──
 luac.out
-
-# luarocks build files
 *.src.rock
-*.zip
-*.tar.gz
-
-# Object files
 *.o
 *.os
 *.ko
 *.obj
 *.elf
-
-# Precompiled Headers
 *.gch
 *.pch
-
-# Libraries
 *.lib
 *.a
 *.la
 *.lo
 *.def
 *.exp
+*.egg-info/
 
-# Executables
+# ── Archives (never commit tarballs / zips) ──
+*.zip
+*.tar.gz
+
+# ── Executables ──
 *.out
 *.app
 *.i*86
@@ -33,33 +28,33 @@ luac.out
 *.hex
 talker_mic.exe
 
+# ── OS / IDE ──
 **/.DS_Store
-documentation
-bin/pollnet/
-logs
 .vscode/settings.json
-mic_python/python/__pycache__/
-mic_python/python/build/
-mic_python/python/main.spec
-mic_python/python/talker_mic.spec
-mic_python/python/dist/
-mic_python/python/talker_audio.ogg
-talker_bridge/python/__pycache__/
-talker_bridge/python/build/
-talker_bridge/python/dist/
-*.egg-info/
-openAi_API_KEY.key
-openai_api_key.txt
-talker.log
-# Generated voice model files (baked from .wav sources via export_voices.bat)
-talker_bridge/voices/**/*.ogg
-talker_bridge/voices/**/*.wav
-talker_bridge/voices/**/*.safetensors
+
+# ── Secrets ──
 *.key
 .env
+openai_api_key.txt
+
+# ── Python environments & caches ──
 .venv/
 .venv_df/
 **/__pycache__/
-**/.test_artifacts/
 **/.pytest_cache/
+**/.test_artifacts/
+
+# ── Logs ──
+logs/
+talker.log
+
+# ── Binary DLLs (shipped separately) ──
+bin/pollnet/
+
+# ── Voice staging (intermediate audio, reproducible from game files) ──
+voice_staging/
+
+# ── Temp / one-off scripts ──
+test_audio_analysis.py
+generate_silent_slots.py
 
