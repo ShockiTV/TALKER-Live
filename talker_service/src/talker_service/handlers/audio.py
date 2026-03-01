@@ -44,7 +44,7 @@ def set_audio_publisher(publisher: "PublisherProtocol") -> None:
     logger.info("Publisher injected into audio handlers")
 
 
-async def handle_audio_chunk(payload: dict[str, Any]) -> None:
+async def handle_audio_chunk(payload: dict[str, Any], session_id: str = "__default__") -> None:
     """Handle ``mic.audio.chunk`` — buffer a single audio chunk.
 
     Payload::
@@ -85,7 +85,7 @@ async def handle_audio_chunk(payload: dict[str, Any]) -> None:
             logger.info("AudioBuffer reset on stale chunk (seq={}, session={})", seq, session_id)
 
 
-async def handle_audio_end(payload: dict[str, Any]) -> None:
+async def handle_audio_end(payload: dict[str, Any], session_id: str = "__default__") -> None:
     """Handle ``mic.audio.end`` — finalize buffer and run transcription.
 
     Payload::

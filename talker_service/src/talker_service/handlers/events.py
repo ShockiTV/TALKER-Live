@@ -31,7 +31,7 @@ if TYPE_CHECKING:
 
 class PublisherProtocol(Protocol):
     """Protocol for ZMQ publisher."""
-    async def publish(self, topic: str, payload: dict[str, Any]) -> bool: ...
+    async def publish(self, topic: str, payload: dict[str, Any], *, session: str | None = None) -> bool: ...
 
 
 # Track last heartbeat for health check
@@ -110,7 +110,7 @@ def _should_someone_speak(event: GameEventMessage, is_important: bool) -> bool:
     return random.random() < BASE_DIALOGUE_CHANCE
 
 
-async def handle_game_event(payload: dict[str, Any]) -> None:
+async def handle_game_event(payload: dict[str, Any], session_id: str = "__default__") -> None:
     """Handle incoming game event from Lua.
     
     Parses the event and triggers dialogue generation if appropriate.
@@ -157,18 +157,18 @@ async def handle_game_event(payload: dict[str, Any]) -> None:
         
         # Handle idle conversation events (direct instruction)
         if flags.get("is_idle", False):
-            _logged_task(_handle_idle_event(event), name=f"idle-{event_type}")
+            _logged_task(_handle_idle_event(event, session_id=session_id), name=f"idle-{event_type}")
             return
         
         # Regular event-triggered dialogue
-        _logged_task(_handle_regular_event(event), name=f"dialogue-{event_type}")
+        _logged_task(_handle_regular_event(event, session_id=session_id), name=f"dialogue-{event_type}")
             
     except Exception as e:
         logger.error(f"Error processing game event: {e}")
         logger.debug(f"Raw payload: {payload}")
 
 
-async def _handle_idle_event(event: GameEventMessage) -> None:
+async def _handle_idle_event(event: GameEventMessage, *, session_id: str | None = None) -> None:
     """Handle idle conversation event (direct instruction to speak)."""
     if _dialogue_generator is None:
         logger.warning("Dialogue generator not available for idle event")
@@ -212,10 +212,10 @@ async def _handle_idle_event(event: GameEventMessage) -> None:
             "flags": event.get_flags(),
         }
         
-        await _dialogue_generator.generate_from_instruction(speaker_id, event_dict)
+        await _dialogue_generator.generate_from_instruction(speaker_id, event_dict, session_id=session_id)
 
 
-async def _handle_regular_event(event: GameEventMessage) -> None:
+async def _handle_regular_event(event: GameEventMessage, *, session_id: str | None = None) -> None:
     """Handle regular event-triggered dialogue."""
     if _dialogue_generator is None:
         logger.warning("Dialogue generator not available for event")
@@ -249,10 +249,10 @@ async def _handle_regular_event(event: GameEventMessage) -> None:
             "flags": event.get_flags(),
         }
         
-        await _dialogue_generator.generate_from_event(event_dict)
+        await _dialogue_generator.generate_from_event(event_dict, session_id=session_id)
 
 
-async def handle_player_dialogue(payload: dict[str, Any]) -> None:
+async def handle_player_dialogue(payload: dict[str, Any], session_id: str = "__default__") -> None:
     """Handle player dialogue input from Lua.
     
     Phase 1: Just log the input.
@@ -270,7 +270,7 @@ async def handle_player_dialogue(payload: dict[str, Any]) -> None:
         logger.debug(f"Raw payload: {payload}")
 
 
-async def handle_player_whisper(payload: dict[str, Any]) -> None:
+async def handle_player_whisper(payload: dict[str, Any], session_id: str = "__default__") -> None:
     """Handle player whisper input from Lua.
     
     Phase 1: Just log the input.
@@ -288,7 +288,7 @@ async def handle_player_whisper(payload: dict[str, Any]) -> None:
         logger.debug(f"Raw payload: {payload}")
 
 
-async def handle_heartbeat(payload: dict[str, Any]) -> None:
+async def handle_heartbeat(payload: dict[str, Any], session_id: str = "__default__") -> None:
     """Handle heartbeat message from Lua.
     
     Updates last_seen timestamp for health monitoring, sends ack back,
@@ -313,10 +313,11 @@ async def handle_heartbeat(payload: dict[str, Any]) -> None:
         # If we haven't received a config sync yet, re-request one.
         # This handles the case where the service started while the game was
         # paused/in menu and the initial config.request went unanswered.
-        from ..handlers.config import config_mirror
-        if not config_mirror.is_synced and _publisher:
+        from ..handlers.config import _get_mirror
+        mirror = _get_mirror(session_id)
+        if not mirror.is_synced and _publisher:
             logger.info("Config not yet synced — re-requesting config sync via heartbeat")
-            await _publisher.publish("config.request", {"reason": "heartbeat_no_sync"})
+            await _publisher.publish("config.request", {"reason": "heartbeat_no_sync"}, session=session_id)
         
         # Check retry queue for heartbeat gap (Lua recovered from pause)
         if _retry_queue and _dialogue_generator:
@@ -327,14 +328,14 @@ async def handle_heartbeat(payload: dict[str, Any]) -> None:
                 # Also re-request config in case the service was restarted during the gap
                 if _publisher:
                     logger.info("Re-requesting config sync after heartbeat gap recovery")
-                    await _publisher.publish("config.request", {"reason": "heartbeat_gap_recovery"})
+                    await _publisher.publish("config.request", {"reason": "heartbeat_gap_recovery"}, session=session_id)
         
         # Send heartbeat acknowledgement back to Lua so it knows we're alive
         if _publisher:
             await _publisher.publish("service.heartbeat.ack", {
                 "status": "alive",
                 "timestamp": datetime.now().isoformat(),
-            })
+            }, session=session_id)
         
     except Exception as e:
         logger.error(f"Error processing heartbeat: {e}")

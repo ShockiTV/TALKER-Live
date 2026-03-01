@@ -31,7 +31,7 @@ When a WebSocket client connects, the router SHALL resolve a `session_id` from t
 
 ### Requirement: Handler dispatch includes session_id
 
-All registered message handlers SHALL be called with `(payload, session_id)` instead of `(payload)`. The router SHALL resolve the session_id from the connection that sent the message before dispatching to the handler.
+All registered message handlers SHALL be called with `(payload, session_id)` instead of `(payload)`. The router SHALL resolve the session_id from the connection that sent the message before dispatching to the handler. The `MessageHandler` type alias SHALL be `Callable[[dict[str, Any], str], Awaitable[None]]`.
 
 #### Scenario: Handler receives session_id
 
@@ -46,7 +46,7 @@ All registered message handlers SHALL be called with `(payload, session_id)` ins
 
 ### Requirement: Targeted publish by session
 
-`WSRouter.publish()` SHALL accept an optional `session: str | None` parameter. When `session` is provided, the message SHALL be sent only to the connection associated with that session_id. When `session` is `None`, the message SHALL be broadcast to all connections.
+`WSRouter.publish()` SHALL accept an optional `session: str | None` parameter. When `session` is provided, the message SHALL be sent only to the connection associated with that session_id. When `session` is `None`, the message SHALL be broadcast to all connections. When `session` is provided but the session has no active connection, the message SHALL be buffered in the session's outbox via `SessionRegistry`.
 
 #### Scenario: Publish to specific session
 

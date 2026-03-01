@@ -47,7 +47,7 @@ class MockStateClient:
         # Record requests as JSON-serializable dicts
         self.requests: list[dict] = []
 
-    async def execute_batch(self, batch) -> "BatchResult":
+    async def execute_batch(self, batch, *, timeout=None, session=None) -> "BatchResult":
         """Route batch sub-queries to individual mock methods, recording requests."""
         results: dict[str, dict] = {}
         for q in batch.build():
@@ -109,7 +109,7 @@ class MockPublisher:
     def __init__(self):
         self.published: list[dict] = []
 
-    async def publish(self, topic: str, payload: dict) -> bool:
+    async def publish(self, topic: str, payload: dict, *, session: str | None = None) -> bool:
         self.published.append({"topic": topic, "payload": payload})
         return True
 

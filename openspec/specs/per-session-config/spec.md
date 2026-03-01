@@ -30,7 +30,7 @@ A `SessionRegistry` SHALL provide access to per-session `ConfigMirror` and `Spea
 
 ### Requirement: Config sync scoped to session
 
-When `config.sync` is received, the full config SHALL be applied only to the ConfigMirror for the session that sent the message. Other sessions' configs SHALL NOT be affected.
+When `config.sync` is received, the full config SHALL be applied only to the ConfigMirror for the session that sent the message. `handle_config_sync(payload, session_id)` SHALL accept a `session_id` parameter (defaulting to `"__default__"`). When a `SessionRegistry` has been set via `set_session_registry()`, it SHALL write to `registry.get_config(session_id)`. When no registry is set, it SHALL fall back to the global `config_mirror` singleton for backward compatibility.
 
 #### Scenario: Config sync applies to correct session
 
@@ -39,9 +39,15 @@ When `config.sync` is received, the full config SHALL be applied only to the Con
 - **THEN** alice's ConfigMirror SHALL have `model_method=1`
 - **AND** bob's ConfigMirror SHALL remain `model_method=0`
 
+#### Scenario: Config sync falls back to global mirror without registry
+
+- **WHEN** no `SessionRegistry` has been set
+- **AND** `handle_config_sync(payload)` is called without session_id
+- **THEN** the global `config_mirror` singleton SHALL be updated
+
 ### Requirement: Config update scoped to session
 
-When `config.update` is received, the setting change SHALL be applied only to the ConfigMirror for the session that sent the message.
+When `config.update` is received, the setting change SHALL be applied only to the ConfigMirror for the session that sent the message. `handle_config_update(payload, session_id)` SHALL accept a `session_id` parameter (defaulting to `"__default__"`). Routing follows the same registry-or-fallback pattern as config sync.
 
 #### Scenario: Config update applies to correct session
 
@@ -59,6 +65,16 @@ The LLM client factory function SHALL accept a `session_id` parameter and read f
 - **AND** bob's config has `model_method=1` (OpenRouter)
 - **THEN** `get_current_llm_client("alice")` SHALL return an OpenAI client
 - **AND** `get_current_llm_client("bob")` SHALL return an OpenRouter client
+
+### Requirement: Session registry injection for config handlers
+
+The config handler module SHALL expose `set_session_registry(registry)` to inject a `SessionRegistry` instance. When set, `handle_config_sync` and `handle_config_update` SHALL route through the registry. When not set (None), they SHALL use the global `config_mirror` singleton.
+
+#### Scenario: Registry injection enables per-session config
+
+- **WHEN** `set_session_registry(registry)` is called with a SessionRegistry
+- **AND** `handle_config_sync(payload, "alice")` is called
+- **THEN** the config SHALL be written to `registry.get_config("alice")`
 
 ### Requirement: Session cleanup
 

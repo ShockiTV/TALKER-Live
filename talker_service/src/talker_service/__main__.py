@@ -24,6 +24,7 @@ from .state.client import StateQueryClient
 from .llm import get_llm_client
 from .tts import TTS_AVAILABLE, TTSEngine
 from .stt import STT_AVAILABLE
+from .transport.session_registry import SessionRegistry
 
 
 def _force_exit():
@@ -54,6 +55,11 @@ async def lifespan(app: FastAPI):
     logger.info("Starting TALKER Service v0.4.0 (WebSocket transport)")
     
     ws_router = WSRouter()
+
+    # Create session registry for multi-session support
+    session_registry = SessionRegistry()
+    ws_router.set_session_registry(session_registry)
+    config_handlers.set_session_registry(session_registry)
     
     # Initialize TTS engine if enabled
     if settings.tts_enabled and TTS_AVAILABLE:

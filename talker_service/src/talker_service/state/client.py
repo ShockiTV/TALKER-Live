@@ -115,6 +115,7 @@ class StateQueryClient:
         batch: BatchQuery,
         *,
         timeout: float | None = None,
+        session: str | None = None,
     ) -> BatchResult:
         """Execute a batch query against Lua in a single WS roundtrip.
 
@@ -125,6 +126,7 @@ class StateQueryClient:
         Args:
             batch: A :class:`BatchQuery` with at least one sub-query.
             timeout: Optional timeout override in seconds.
+            session: Optional session_id for targeted send.
 
         Returns:
             BatchResult accessor for individual sub-query results.
@@ -145,7 +147,7 @@ class StateQueryClient:
             "queries": queries,
         }
 
-        success = await self.router.publish("state.query.batch", payload, r=request_id)
+        success = await self.router.publish("state.query.batch", payload, r=request_id, session=session)
         if not success:
             raise ConnectionError("Failed to publish batch query")
 
