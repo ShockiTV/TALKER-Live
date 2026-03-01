@@ -28,8 +28,10 @@ class Settings(BaseSettings):
     llm_timeout: float = 60.0  # seconds
     
     # Proxy settings (for model_method = 3)
+    force_proxy_llm: bool = False
     proxy_endpoint: str = "http://127.0.0.1:8000/v1/chat/completions"
     proxy_api_key: str = "VerysecretKey"
+    proxy_model: str = ""
     
     # State Query Settings
     state_query_timeout: float = 30.0  # seconds

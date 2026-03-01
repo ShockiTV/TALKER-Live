@@ -87,7 +87,7 @@ def get_llm_client(
         # Get proxy settings from config or kwargs
         endpoint = kwargs.pop("endpoint", None) or settings.proxy_endpoint
         api_key = kwargs.pop("api_key", None) or settings.proxy_api_key
-        model = kwargs.pop("model", None)
+        model = kwargs.pop("model", None) or getattr(settings, "proxy_model", None)
         client = ProxyClient(endpoint=endpoint, api_key=api_key, model=model, timeout=timeout, **kwargs)
         logger.info(f"Created Proxy client with endpoint: {endpoint}, model: {model}")
         
