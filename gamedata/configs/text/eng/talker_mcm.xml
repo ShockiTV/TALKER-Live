@@ -511,6 +511,18 @@
     <string id="ui_mcm_talker_mic_ws_port">
         <text>Port for microphone/TTS service communication (default: 5558)</text>
     </string>
+    <string id="ui_mcm_talker_service_url_title">
+        <text>Service URL</text>
+    </string>
+    <string id="ui_mcm_talker_service_url">
+        <text>WebSocket URL of the TALKER AI service (e.g. wss://talker-live.duckdns.org/ws or ws://127.0.0.1:5557/ws)</text>
+    </string>
+    <string id="ui_mcm_talker_ws_token_title">
+        <text>Service Token</text>
+    </string>
+    <string id="ui_mcm_talker_ws_token">
+        <text>Optional authentication token for the remote TALKER service (leave empty if not required)</text>
+    </string>
     <string id="ui_mcm_talker_llm_timeout_title">
         <text>LLM Timeout</text>
     </string>

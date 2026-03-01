@@ -51,6 +51,12 @@ talker.log
 # ── Binary DLLs (shipped separately) ──
 bin/pollnet/
 
+# ── Voice model files (baked locally via voice triage pipeline) ──
+talker_service/voices/*
+!talker_service/voices/.gitkeep
+talker_bridge/voices/*
+!talker_bridge/voices/.gitkeep
+
 # ── Voice staging (intermediate audio, reproducible from game files) ──
 voice_staging/
 
