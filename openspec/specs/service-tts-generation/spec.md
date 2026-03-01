@@ -7,10 +7,10 @@ Defines how the Python `talker_service` generates OGG Vorbis audio from dialogue
 ## Requirements
 
 ### Requirement: pocket_tts model and voice cache in talker_service
-When TTS is enabled in the configuration, the talker_service SHALL load the pocket_tts model at startup and populate a voice cache from `.safetensors` files found in the configured voices directory. The voices directory SHALL default to `talker_bridge/voices/` relative to the project root.
+When TTS is enabled in the configuration, the talker_service SHALL load the pocket_tts model at startup and populate a voice cache from `.safetensors` files found in the configured voices directory. The voices directory SHALL default to `./voices` relative to the talker_service root (i.e., `talker_service/voices/`). The directory SHALL contain a flat layout of `<theme>.safetensors` files with no subdirectories.
 
 #### Scenario: Service starts with TTS enabled and voices available
-- **WHEN** talker_service starts with TTS enabled and `voices/dolg_1.safetensors` exists
+- **WHEN** talker_service starts with TTS enabled and `voices/dolg_1.safetensors` exists in `talker_service/voices/`
 - **THEN** the TTS model is loaded and `voice_cache["dolg_1"]` contains the voice state
 
 #### Scenario: Service starts with TTS disabled
@@ -56,15 +56,16 @@ After generating OGG bytes, the TTS module SHALL base64-encode the bytes for inc
 - **AND** it decodes back to the original bytes
 
 ### Requirement: Publish tts.audio after dialogue generation
-After the dialogue generator produces dialogue text, the service SHALL generate TTS audio (if TTS is enabled and a voice is available) and publish `tts.audio` to the Lua client via the service channel. The payload SHALL include `speaker_id`, `audio_b64`, `voice_id`, `dialogue`, and `dialogue_id` (monotonic counter for correlation).
+After the dialogue generator produces dialogue text, the service SHALL generate TTS audio (if TTS is enabled and a voice is available) and publish `tts.audio` to the Lua client via the service channel. The payload SHALL include `speaker_id`, `audio_b64`, `voice_id`, `dialogue`, and `dialogue_id` (monotonic counter for correlation). When TTS is disabled or unavailable, `dialogue.display` is published as fallback. There SHALL be no secondary `tts.speak` fallback to the bridge — the service is the sole TTS provider.
 
 #### Scenario: Dialogue with TTS audio
 - **WHEN** dialogue "Stay sharp." is generated for speaker_id "5" with voice "dolg_1" and dialogue_id 3
 - **THEN** `tts.audio` is published with `{ speaker_id: "5", audio_b64: "<base64_ogg>", voice_id: "dolg_1", dialogue: "Stay sharp.", dialogue_id: 3 }`
 
-#### Scenario: TTS disabled falls back to dialogue.display
+#### Scenario: TTS disabled falls back to dialogue.display only
 - **WHEN** TTS is disabled or no voice is available
-- **THEN** `dialogue.display` is published instead (existing behavior unchanged)
+- **THEN** `dialogue.display` is published instead
+- **AND** no `tts.speak` message is sent to the bridge
 
 #### Scenario: TTS generation failure falls back to dialogue.display
 - **WHEN** pocket_tts throws an error during generation
@@ -124,3 +125,17 @@ Each dialogue publication SHALL be assigned a monotonic `dialogue_id` (increment
 - **WHEN** dialogue_id 5 is published for speaker "19240"
 - **THEN** Python logs `[D#5] Published TTS audio for 19240: ...`
 - **AND** Lua logs `[D#5] slot=5 speaker=19240 dialogue='...'`
+
+## Removed Capabilities
+
+### Requirement: Bridge tts.speak fallback from Lua
+The Lua `handle_dialogue_display` handler SHALL NOT publish `tts.speak` to the bridge as a fallback when receiving `dialogue.display`. The bridge no longer handles TTS playback. Dialogue display is the terminal action.
+
+### Requirement: Bridge 2D TTS playback
+The talker_bridge SHALL NOT contain TTS playback code (`TTSQueue`, `load_voice_cache`, `play_tts`, `_run_tts_task`), the `--tts` CLI flag, or the `tts.speak` local topic handler. All TTS is handled by the talker_service via `tts.audio`.
+
+### Requirement: Lua tts_enabled config getter
+The Lua `interface.config` module SHALL NOT expose a `tts_enabled()` getter. TTS enablement is a service-side concern; the Lua client does not need to query it.
+
+### Requirement: Lua voices.lua repository
+The `bin/lua/domain/repo/voices.lua` module SHALL NOT exist. Per-character voice ID tracking was superseded by the `voice-profile-store` spec; the service resolves voice IDs from game state data.
