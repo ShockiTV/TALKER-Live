@@ -1,0 +1,40 @@
+# Multi-branch TALKER Caddyfile — template for VPS deployment
+#
+# Replace {$DOMAIN} with your actual domain or set the DOMAIN env var.
+# Caddy auto-provisions TLS via Let's Encrypt.
+#
+# Routing:
+#   /ws/main   → talker-main:5557/ws   (main branch WebSocket)
+#   /ws/dev    → talker-dev:5557/ws     (dev branch WebSocket)
+#   /health/*  → per-branch health check
+#   /grafana/* → Grafana dashboard
+
+{$DOMAIN} {
+    # ─── Branch: main ──────────────────────────
+    handle_path /ws/main {
+        reverse_proxy talker-main:5557
+    }
+
+    handle /health/main {
+        reverse_proxy talker-main:5557
+    }
+
+    # ─── Branch: dev ───────────────────────────
+    handle_path /ws/dev {
+        reverse_proxy talker-dev:5557
+    }
+
+    handle /health/dev {
+        reverse_proxy talker-dev:5557
+    }
+
+    # ─── Grafana dashboard ─────────────────────
+    handle_path /grafana/* {
+        reverse_proxy grafana:3000
+    }
+
+    # ─── Default: 404 ──────────────────────────
+    handle {
+        respond "Not found" 404
+    }
+}
