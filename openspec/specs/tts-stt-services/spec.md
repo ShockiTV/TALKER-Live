@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+Standalone TTS and STT microservices: a TTS HTTP service wrapping pocket_tts for voice synthesis, and an STT service using faster-whisper-server for speech-to-text transcription.
+
+## Requirements
 
 ### Requirement: TTS HTTP service
 The system SHALL provide a standalone TTS HTTP service that loads pocket_tts and voice files, accepting text + voice_id and returning OGG audio.
