@@ -40,9 +40,16 @@ class ConfigMirror:
             old_config.model_name != self._config.model_name
         )
         if model_changed:
-            from ..llm.factory import clear_client_cache
-            clear_client_cache()
-            logger.info(f"LLM config changed: method={old_config.model_method}->{self._config.model_method}, model={old_config.model_name}->{self._config.model_name}")
+            from ..config import settings
+            if settings.force_proxy_llm:
+                logger.info(
+                    f"MCM model changed (method={old_config.model_method}->{self._config.model_method}) "
+                    f"but FORCE_PROXY_LLM is active — ignoring, keeping Proxy client"
+                )
+            else:
+                from ..llm.factory import clear_client_cache
+                clear_client_cache()
+                logger.info(f"LLM config changed: method={old_config.model_method}->{self._config.model_method}, model={old_config.model_name}->{self._config.model_name}")
 
         # Notify callbacks
         for callback in self._callbacks:
@@ -56,6 +63,8 @@ class ConfigMirror:
 
         Unlike update(), this always clears the LLM client cache so that any
         client created before the first sync (using defaults) is discarded.
+        When ``force_proxy_llm`` is active the cache is left alone because
+        the ProxyClient is always used regardless of MCM values.
 
         Args:
             payload: Full config dictionary from Lua
@@ -63,12 +72,20 @@ class ConfigMirror:
         self._config = MCMConfig.from_lua_payload(payload)
         self._received_sync = True
 
-        from ..llm.factory import clear_client_cache
-        clear_client_cache()
-        logger.info(
-            f"Config sync applied — LLM cache cleared. "
-            f"method={self._config.model_method}, model={self._config.model_name!r}"
-        )
+        from ..config import settings
+        if settings.force_proxy_llm:
+            logger.info(
+                f"Config sync applied (MCM method={self._config.model_method}, "
+                f"model={self._config.model_name!r}) — FORCE_PROXY_LLM active, "
+                f"keeping Proxy client, cache NOT cleared"
+            )
+        else:
+            from ..llm.factory import clear_client_cache
+            clear_client_cache()
+            logger.info(
+                f"Config sync applied — LLM cache cleared. "
+                f"method={self._config.model_method}, model={self._config.model_name!r}"
+            )
 
         # Notify callbacks
         for callback in self._callbacks:
