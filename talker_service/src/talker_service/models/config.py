@@ -46,7 +46,7 @@ class MCMConfig(BaseModel):
     zmq_heartbeat_interval: int = 5
     
     # TTS settings
-    tts_volume_boost: float = 4.0  # Volume multiplier for TTS audio (1.0-5.0)
+    tts_volume_boost: float = 8.0  # Volume multiplier for TTS audio (1.0-15.0)
 
     # Timeout settings (Phase 2)
     llm_timeout: int = 60  # LLM request timeout in seconds

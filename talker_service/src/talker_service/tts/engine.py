@@ -66,9 +66,9 @@ TTS_TIMEOUT_S = 30
 MAX_TTS_CHUNKS = 200
 
 # Default volume boost applied during OGG encoding (ffmpeg -af volume=N).
-# pocket_tts outputs low-amplitude waveforms; 4.0 ≈ +12 dB.
+# Audio is peak-normalized to ±1.0 first; 8.0 ≈ +18 dB above full scale.
 # Overridden at runtime by MCM setting tts_volume_boost.
-DEFAULT_VOLUME_BOOST = 4.0
+DEFAULT_VOLUME_BOOST = 8.0
 
 # pocket_tts import (will fail if not installed)
 try:
@@ -215,8 +215,14 @@ class TTSEngine:
 
             logger.info("pocket_tts produced {} chunks, encoding...", chunk_count)
 
-            # 2) Concatenate and pipe through ffmpeg (resample + volume + OGG encode)
+            # 2) Concatenate and peak-normalize to ±1.0
             raw_audio = np.concatenate(chunks).astype(np.float32)
+            peak = np.max(np.abs(raw_audio))
+            if peak > 1e-6:
+                raw_audio = raw_audio / peak
+                logger.info("Peak-normalized audio (peak was {:.6f})", peak)
+            else:
+                logger.warning("Audio near-silent (peak {:.6f}), skipping normalization", peak)
             pcm_bytes = raw_audio.tobytes()
 
             # ffmpeg handles 24kHz→44100Hz resampling, volume boost, and OGG encoding
