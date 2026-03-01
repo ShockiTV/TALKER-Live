@@ -1,0 +1,159 @@
+# Multi-branch TALKER deployment — docker-compose template
+#
+# Deploy multiple talker_service instances (one per git branch) behind Caddy,
+# with shared TTS and STT containers.
+#
+# Directory layout on VPS:
+#   /opt/talker-live/
+#   ├── docker-compose.yml   (this file)
+#   ├── Caddyfile
+#   ├── .env.main
+#   ├── .env.dev
+#   ├── voices/              (shared .safetensors voice files)
+#   ├── logs/main/
+#   ├── logs/dev/
+#   └── branches/
+#       ├── main/            (git worktree → main branch)
+#       └── dev/             (git worktree → dev branch)
+
+services:
+  # ─── Reverse Proxy ───────────────────────────
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - talker-main
+      - talker-dev
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://localhost:3100/loki/api/v1/push"
+        labels: "service=caddy"
+
+  # ─── Branch: main ────────────────────────────
+  talker-main:
+    build:
+      context: ./branches/main/talker_service
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file: .env.main
+    environment:
+      - WS_HOST=0.0.0.0
+      - WS_PORT=5557
+      - LOG_LEVEL=INFO
+      - TTS_SERVICE_URL=http://tts-service:8100
+      - STT_ENDPOINT=http://stt-service:8000/v1
+    volumes:
+      - ./logs/main:/app/logs
+    expose:
+      - "5557"
+    depends_on:
+      - tts-service
+      - stt-service
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://localhost:3100/loki/api/v1/push"
+        labels: "service=talker-main"
+
+  # ─── Branch: dev ─────────────────────────────
+  talker-dev:
+    build:
+      context: ./branches/dev/talker_service
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file: .env.dev
+    environment:
+      - WS_HOST=0.0.0.0
+      - WS_PORT=5557
+      - LOG_LEVEL=INFO
+      - TTS_SERVICE_URL=http://tts-service:8100
+      - STT_ENDPOINT=http://stt-service:8000/v1
+    volumes:
+      - ./logs/dev:/app/logs
+    expose:
+      - "5557"
+    depends_on:
+      - tts-service
+      - stt-service
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://localhost:3100/loki/api/v1/push"
+        labels: "service=talker-dev"
+
+  # ─── Shared TTS Service ─────────────────────
+  tts-service:
+    build:
+      context: ./tts_service
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    volumes:
+      - ./voices:/app/voices:ro
+    expose:
+      - "8100"
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://localhost:3100/loki/api/v1/push"
+        labels: "service=tts"
+
+  # ─── Shared STT Service ─────────────────────
+  stt-service:
+    image: fedirz/faster-whisper-server:latest-cpu
+    restart: unless-stopped
+    environment:
+      - WHISPER__MODEL=Systran/faster-whisper-base.en
+    expose:
+      - "8000"
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://localhost:3100/loki/api/v1/push"
+        labels: "service=stt"
+
+  # ─── Logging ─────────────────────────────────
+  loki:
+    image: grafana/loki:3.0.0
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3100:3100"
+    volumes:
+      - loki_data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+
+  grafana:
+    image: grafana/grafana:11.0.0
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_PASSWORD:-changeme}
+      - GF_SERVER_ROOT_URL=https://${DOMAIN}/grafana/
+      - GF_SERVER_SERVE_FROM_SUB_PATH=true
+    depends_on:
+      - loki
+    logging:
+      driver: loki
+      options:
+        loki-url: "http://localhost:3100/loki/api/v1/push"
+        labels: "service=grafana"
+
+volumes:
+  caddy_data:
+  caddy_config:
+  loki_data:
+  grafana_data:
