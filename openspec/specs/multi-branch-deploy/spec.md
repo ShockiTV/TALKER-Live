@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+Multi-branch VPS deployment: run N talker_service instances (one per git branch) behind Caddy with path-based WS routing, shared TTS/STT containers, and per-branch environment isolation.
+
+## Requirements
 
 ### Requirement: Path-based WebSocket routing
 Caddy SHALL route WebSocket connections to branch-specific talker_service instances based on URL path prefix.
