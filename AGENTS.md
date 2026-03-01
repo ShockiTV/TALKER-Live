@@ -104,6 +104,24 @@ Lua (Game)              talker_bridge              talker_service
     │                        │  HTTP 5557/health  ──────► │  FastAPI
 ```
 
+## Developer Setup
+
+After cloning the repo, run `setup.bat` once:
+
+```batch
+setup.bat
+```
+
+This marks the 200 TTS slot OGG files as `skip-worktree` so git ignores in-game modifications. During gameplay, the TTS system overwrites slot files with real audio data. Without this, `git status` will show ~10-20 modified binary files after every play session.
+
+**Why this matters**: The X-Ray engine indexes sound files at startup. The 200 silent placeholder OGGs must exist in the mod directory for `sound_object()` to work. The game then overwrites them in-place with TTS audio via `io.open(path, "wb")` — and MO2's USVFS writes directly to the mod directory (not the overwrite folder) because the mod owns these files.
+
+To undo (e.g., if you need to regenerate and re-commit the placeholders):
+```batch
+for /L %i in (1,1,200) do git update-index --no-skip-worktree "gamedata/sounds/characters_voice/talker_tts/slot_%i.ogg"
+python generate_silent_slots.py
+```
+
 ## Technologies
 
 ### Lua Stack
