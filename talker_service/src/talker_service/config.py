@@ -36,6 +36,11 @@ class Settings(BaseSettings):
     # State Query Settings
     state_query_timeout: float = 30.0  # seconds
     
+    # STT Settings (local Whisper)
+    force_local_whisper: bool = False  # If True, always use local Whisper regardless of MCM stt_method
+    whisper_model: str = "base.en"  # faster-whisper model name (e.g. tiny.en, base.en, small.en, distil-large-v3)
+    whisper_beam_size: int = 1  # Beam search width (1 = greedy/fast, 5 = higher quality)
+
     # TTS Settings
     tts_enabled: bool = False  # Enable in-engine TTS audio generation
     voices_dir: Path = Path("./voices")  # Directory containing .safetensors voice files (flat layout)
