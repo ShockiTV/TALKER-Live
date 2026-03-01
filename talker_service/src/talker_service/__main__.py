@@ -160,6 +160,13 @@ async def lifespan(app: FastAPI):
                 # Default to local Whisper; users can override via
                 # stt_method config key ("local", "api", "proxy").
                 stt_method = config_mirror.get("stt_method", "local")
+                if settings.force_local_whisper and stt_method != "local":
+                    logger.info(
+                        "FORCE_LOCAL_WHISPER active — using local Whisper "
+                        "(ignoring MCM stt_method={})",
+                        stt_method,
+                    )
+                    stt_method = "local"
                 provider = get_stt_provider(stt_method)
                 audio_handlers.set_stt_provider(provider)
             except Exception as exc:

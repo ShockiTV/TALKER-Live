@@ -18,8 +18,7 @@ from loguru import logger
 
 from faster_whisper import WhisperModel
 
-# Default model — small footprint, English-only
-_DEFAULT_MODEL = "base.en"
+from ..config import settings
 
 # Minimum audio duration in seconds — anything shorter is almost certainly
 # a click / key-up artefact, not real speech.
@@ -54,10 +53,20 @@ _HALLUCINATIONS: frozenset[str] = frozenset(
 class WhisperLocalProvider:
     """Transcribe audio locally using faster-whisper."""
 
-    def __init__(self, model_name: str = _DEFAULT_MODEL) -> None:
-        logger.info("Loading faster-whisper model '{}'...", model_name)
+    def __init__(
+        self,
+        model_name: str | None = None,
+        beam_size: int | None = None,
+    ) -> None:
+        model_name = model_name or settings.whisper_model
+        self._beam_size = beam_size if beam_size is not None else settings.whisper_beam_size
+        logger.info(
+            "Loading faster-whisper model '{}' (beam_size={})...",
+            model_name,
+            self._beam_size,
+        )
         self._model = WhisperModel(model_name, compute_type="int8", device="cpu")
-        logger.info("faster-whisper model '{}' loaded", model_name)
+        logger.info("faster-whisper model '{}' ready (beam_size={})", model_name, self._beam_size)
 
     def transcribe(
         self,
@@ -95,6 +104,7 @@ class WhisperLocalProvider:
                 language=language if language else None,
                 initial_prompt=prompt if prompt else None,
                 vad_filter=True,
+                beam_size=self._beam_size,
             )
 
             # Collect only segments that the model is confident contain speech
