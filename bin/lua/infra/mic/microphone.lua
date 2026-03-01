@@ -1,74 +1,55 @@
 -- microphone.lua
--- Manages the microphone and transcription process via WebSocket.
--- Sends mic.start / mic.stop commands to talker_bridge via the bridge channel.
--- mic.status and mic.result handlers are registered per recording session
--- using bridge_channel.start_session().
+-- Thin wrapper around the mic hardware via bridge channel.
+-- Only tracks whether the mic device is physically recording.
+--
+-- The mic is the only exclusive resource — one capture at a time.
+-- Transcription, LLM, TTS all run concurrently in the background.
+--
+-- Higher-level toggle logic and result handling live in recorder.lua.
 
 package.path = package.path .. ";./bin/lua/?.lua;"
 
 local mic = {}
 
 local bridge_channel = require("infra.bridge.channel")
-local config  = require("interface.config")
 local logger  = require("framework.logger")
 
--- Internal state
-local mic_on = false
+-- Internal state: true only while mic hardware is actively capturing.
+local _recording = false
 
---- Returns true if a recording session is currently active.
-function mic.is_mic_on()
-    return mic_on
+--- Returns true if the mic is actively capturing audio.
+function mic.is_recording()
+    return _recording
 end
 
---- Start recording.
--- Publishes mic.start to talker_bridge and registers per-session handlers
--- via bridge_channel.start_session().
--- @param transcription_prompt  Hint string forwarded to the transcription provider.
--- @param opts Table with optional callbacks:
---   opts.on_status(status_str)  Called when mic.status is received ("LISTENING" | "TRANSCRIBING").
---   opts.on_result(text_str)    Called once when mic.result is received; session handlers auto-cleanup.
-function mic.start(transcription_prompt, opts)
-    if mic_on then return end
-    local lang_code = config.language_short()
-    mic_on = true
-
-    -- Register per-session handlers via bridge_channel.
-    -- start_session clears any previous handlers and registers on_status + on_result.
-    -- on_result auto-cleans up session handlers.
-    bridge_channel.start_session(
-        function(payload)
-            -- on_status callback — payload is {status = "LISTENING"} etc.
-            if opts and opts.on_status then
-                local status_str = (type(payload) == "table" and payload.status) or tostring(payload)
-                opts.on_status(status_str)
-            end
-        end,
-        function(payload)
-            -- on_result callback — payload is {text = "transcribed text"}
-            -- session handlers are auto-cleaned by bridge_channel
-            mic_on = false
-            if opts and opts.on_result then
-                local text_str = (type(payload) == "table" and payload.text) or tostring(payload)
-                opts.on_result(text_str)
-            end
-        end
-    )
-
+--- Start audio capture.
+-- Publishes mic.start to bridge, which begins streaming audio chunks.
+-- If already recording, this is a no-op (use stop() first or call start
+-- from recorder which handles the toggle).
+function mic.start_capture(context_type)
+    if _recording then return end
+    _recording = true
     bridge_channel.publish("mic.start", {
-        lang   = lang_code,
-        prompt = transcription_prompt or "",
+        context_type = context_type or "dialogue",
     })
-
-    logger.info("mic.start published (lang=%s)", tostring(lang_code))
+    logger.info("mic.start_capture published (context=%s)", tostring(context_type or "dialogue"))
 end
 
---- Stop recording early (cancellation).
--- Publishes mic.stop to talker_bridge.
-function mic.stop()
-    if not mic_on then return end
-    mic_on = false
+--- Graceful stop — end capture, trigger transcription.
+-- Bridge sends mic.audio.end to service, which transcribes and sends mic.result.
+function mic.stop_capture()
+    if not _recording then return end
+    _recording = false
     bridge_channel.publish("mic.stop", {})
-    logger.info("mic.stop published")
+    logger.info("mic.stop_capture published")
+end
+
+--- Called when the bridge reports that the mic hardware stopped capturing
+--- (e.g. VAD silence detection).  Syncs Lua state to match reality.
+function mic.on_stopped()
+    if not _recording then return end
+    _recording = false
+    logger.info("mic: hardware stopped (bridge notified)")
 end
 
 return mic

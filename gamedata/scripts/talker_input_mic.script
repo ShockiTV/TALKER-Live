@@ -22,7 +22,7 @@ local function on_key_press(key)
     if key ~= config.speak_key() or not config.is_mic_enabled()  or not queries.is_player_alive() then
         return
     end
-     microphone_recorder.start(talker_mic_transcribe_finished)
+     microphone_recorder.toggle(talker_mic_transcribe_finished)
 end
 
 ------------------------------------------------------------------------------------------------------------------------------

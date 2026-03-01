@@ -29,7 +29,7 @@ BRIDGE_WS_PORT = 5558       # talker_bridge WS server ← Lua connects here
 SERVICE_WS_URL = "ws://127.0.0.1:5557/ws"  # upstream talker_service
 
 # Topics handled locally by the bridge (not proxied upstream)
-LOCAL_TOPICS = {"mic.start", "mic.cancel", "mic.stop"}
+LOCAL_TOPICS = {"mic.start", "mic.stop"}
 
 # Topics proxied from talker_service downstream to Lua (transparent)
 # (All service→bridge messages are forwarded to Lua by default)
@@ -102,12 +102,23 @@ async def forward_raw_to_lua(raw: str) -> None:
 
 
 class AudioStreamer:
-    """Captures audio, runs local VAD (energy-based), and streams chunks upstream."""
+    """Captures audio, runs local VAD (energy-based), and streams chunks upstream.
+
+    The mic device is the only exclusive resource — one capture at a time.
+    Transcription/LLM/TTS run concurrently in the background.
+
+    - start()  — begin new capture (supersedes any active capture)
+    - stop()   — graceful stop: end capture, trigger transcription
+    - cancel() — hard cancel: discard captured audio
+    """
 
     def __init__(self):
         self._recording = False
         self._seq = 0
-        self._context_type = "dialogue"  # "dialogue" or "whisper"
+        self._session_id = 0
+        self._context_type = "dialogue"
+        self._cancelled = False         # per-session cancel flag
+        self._stopped = False           # per-session manual stop flag
         self._lock = threading.Lock()
 
     @property
@@ -115,27 +126,53 @@ class AudioStreamer:
         return self._recording
 
     def start(self, context_type: str = "dialogue") -> None:
-        """Begin audio capture + streaming in a background thread."""
+        """Begin audio capture in a background thread.
+
+        If already recording, the old capture is superseded (no end signal).
+        """
         with self._lock:
             if self._recording:
-                return
+                # Supersede old capture — old thread will detect session mismatch
+                self._recording = False
+            self._session_id += 1
             self._recording = True
+            self._cancelled = False
+            self._stopped = False
             self._seq = 0
             self._context_type = context_type
+            sid = self._session_id
 
-        publish_to_lua("mic.status", {"status": "LISTENING"})
-        threading.Thread(target=self._capture_loop, daemon=True).start()
+        publish_to_lua("mic.status", {"status": "RECORDING", "session_id": sid})
+        threading.Thread(target=self._capture_loop, args=(sid,), daemon=True).start()
 
-    def cancel(self) -> None:
-        """Cancel the current recording session."""
+    def stop(self) -> None:
+        """Graceful stop — end capture, send mic.audio.end, trigger transcription."""
         with self._lock:
             if not self._recording:
                 return
+            self._stopped = True      # distinguish from VAD
+            self._recording = False
+            # Don't set _cancelled — thread will send mic.audio.end normally
+        logging.info("Recording stopped (graceful)")
+
+    def cancel(self) -> None:
+        """Hard cancel — discard captured audio, suppress mic.audio.end."""
+        with self._lock:
+            if not self._recording:
+                return
+            self._cancelled = True
             self._recording = False
         logging.info("Recording cancelled")
 
-    def _capture_loop(self) -> None:
-        """Record audio, stream chunks, detect silence, send end signal."""
+    def _capture_loop(self, my_session_id: int) -> None:
+        """Record audio, stream chunks, detect silence, send end signal.
+
+        Exit reasons:
+        - VAD silence detected → send mic.audio.end (trigger transcription)
+        - stop() called        → send mic.audio.end (trigger transcription)
+        - cancel() called      → suppress mic.audio.end (discard)
+        - superseded by start() → suppress mic.audio.end (new session took over)
+        """
         import numpy as np
         import sounddevice as sd
 
@@ -143,15 +180,24 @@ class AudioStreamer:
         silence_start = None
         grace_end = time.time() + 0.5  # 500ms grace period
 
+        superseded = False
+        cancelled = False
+        stopped = False     # manual stop() — Lua already knows
+
         try:
             stream = sd.InputStream(samplerate=AUDIO_SAMPLE_RATE, channels=1,
                                     dtype="int16", blocksize=chunk_samples)
             stream.start()
-            logging.info("Audio capture started")
+            logging.info("Audio capture started (session=%d)", my_session_id)
 
             while True:
                 with self._lock:
+                    if self._session_id != my_session_id:
+                        superseded = True
+                        break
                     if not self._recording:
+                        cancelled = self._cancelled
+                        stopped = self._stopped
                         break
 
                 data, overflowed = stream.read(chunk_samples)
@@ -169,6 +215,7 @@ class AudioStreamer:
                         "audio_b64": audio_b64,
                         "seq": self._seq,
                         "format": "ogg",
+                        "session_id": my_session_id,
                     }),
                     _event_loop,
                 )
@@ -178,13 +225,12 @@ class AudioStreamer:
                 now = time.time()
 
                 if now < grace_end:
-                    # Grace period — ignore silence
                     silence_start = None
                 elif energy < VAD_ENERGY_LEVEL:
                     if silence_start is None:
                         silence_start = now
                     elif (now - silence_start) >= VAD_SILENCE_THRESHOLD_S:
-                        logging.info("VAD: silence detected, ending recording")
+                        logging.info("VAD: silence detected (session=%d)", my_session_id)
                         break
                 else:
                     silence_start = None
@@ -192,19 +238,33 @@ class AudioStreamer:
             stream.stop()
             stream.close()
         except Exception:
-            logging.exception("Error during audio capture")
+            logging.exception("Error during audio capture (session=%d)", my_session_id)
         finally:
             with self._lock:
-                self._recording = False
+                if self._session_id == my_session_id:
+                    self._recording = False
 
-        # Send end-of-audio signal to service
+        # Determine whether to send the end signal
+        if superseded or cancelled:
+            logging.info("Audio session %d ended without transcription (superseded=%s, cancelled=%s)",
+                         my_session_id, superseded, cancelled)
+            return
+
+        # Notify Lua that the mic hardware stopped capturing.
+        # For manual stop() Lua already set its state; only VAD needs this.
+        if not stopped:
+            publish_to_lua("mic.stopped", {"reason": "vad", "session_id": my_session_id})
+
+        # Graceful end (VAD silence or stop()) → trigger transcription
         asyncio.run_coroutine_threadsafe(
             send_to_service("mic.audio.end", {
                 "context": {"type": self._context_type},
+                "session_id": my_session_id,
             }),
             _event_loop,
         )
-        logging.info("Audio stream ended (seq=%d, context=%s)", self._seq, self._context_type)
+        logging.info("Audio stream ended (session=%d, seq=%d, context=%s)",
+                     my_session_id, self._seq, self._context_type)
 
 
 ####################################################################################################
@@ -253,8 +313,9 @@ def main() -> None:
             context_type = payload.get("context_type", "dialogue")
             audio_streamer.start(context_type)
 
-        elif topic in ("mic.cancel", "mic.stop"):
-            audio_streamer.cancel()
+        elif topic == "mic.stop":
+            audio_streamer.stop()    # graceful: trigger transcription
+
 
     # ── Lua WebSocket handler (downstream) ──────────────────
     async def lua_ws_handler(websocket):

@@ -82,8 +82,8 @@ Lua SHALL connect to `talker_bridge` (localhost, port 5558) via a single WebSock
 
 | Topic | Payload | Purpose |
 |-------|---------|---------|
-| `mic.start` | `{ lang, prompt }` | Start recording |
-| `mic.cancel` | `{}` | Cancel current recording |
+| `mic.start` | `{ context_type }` | Start recording |
+| `mic.stop` | `{}` | Stop recording (trigger transcription) |
 
 These topics are handled locally by `talker_bridge` and are NOT proxied to `talker_service`.
 
@@ -95,10 +95,11 @@ These topics are handled locally by `talker_bridge` and are NOT proxied to `talk
 
 | Topic | Payload fields | Purpose |
 |-------|---------------|---------|
-| `mic.status` | `state` (string: "LISTENING"\|"TRANSCRIBING") | HUD status update |
-| `mic.result` | `text` (string) | Transcription result |
+| `mic.status` | `status` (string: "RECORDING"\|"TRANSCRIBING"), `session_id` (int) | HUD status update |
+| `mic.stopped` | `reason` (string: "vad"), `session_id` (int) | Bridge reports mic hardware stopped (VAD auto-stop) |
+| `mic.result` | `text` (string), `session_id` (int) | Transcription result |
 
-`mic.status` originates from `talker_bridge` (for LISTENING state). TRANSCRIBING status and `mic.result` originate from `talker_service` and are proxied through the bridge to Lua.
+`mic.status` originates from `talker_bridge` (for RECORDING state). TRANSCRIBING status and `mic.result` originate from `talker_service` and are proxied through the bridge to Lua.
 
 #### Scenario: mic.result delivered with transcript
 
