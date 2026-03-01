@@ -54,7 +54,7 @@ class TestDialogueTTS:
         # Mock TTS engine
         tts_mock = MagicMock()
         fake_audio = b'\x00\x01\x02\x03'  # Fake OGG data
-        tts_mock.generate_audio = AsyncMock(return_value=fake_audio)
+        tts_mock.generate_audio = AsyncMock(return_value=(fake_audio, 1234))
         
         # Create generator with TTS engine
         generator = DialogueGenerator(
@@ -106,6 +106,7 @@ class TestDialogueTTS:
         assert payload["dialogue"] == "Test dialogue response"
         assert "audio_b64" in payload
         assert payload["voice_id"] == "stalker_1"
+        assert payload["audio_duration_ms"] == 1234
         
         # Verify audio is base64 encoded
         audio_base64 = payload["audio_b64"]

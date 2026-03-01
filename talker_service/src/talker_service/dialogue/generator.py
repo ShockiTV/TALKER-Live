@@ -599,12 +599,13 @@ class DialogueGenerator:
                 # TTSEngine._resolve_voice falls back to first voice if no match.
                 voice_id = (character.sound_prefix if character and getattr(character, 'sound_prefix', None) else speaker_id)
                 logger.info(f"[D#{dialogue_id}] Generating TTS for {speaker_id} (voice={voice_id}): {dialogue[:50]}...")
-                audio_bytes = await self.tts_engine.generate_audio(
+                tts_result = await self.tts_engine.generate_audio(
                     text=dialogue,
                     voice_id=voice_id
                 )
                 
-                if audio_bytes:
+                if tts_result:
+                    audio_bytes, audio_duration_ms = tts_result
                     # Encode to base64 for wire transport
                     audio_base64 = base64.b64encode(audio_bytes).decode('ascii')
                     
@@ -614,6 +615,7 @@ class DialogueGenerator:
                         "audio_b64": audio_base64,
                         "voice_id": voice_id,
                         "dialogue_id": dialogue_id,
+                        "audio_duration_ms": audio_duration_ms,
                         "create_event": True,
                         "event_context": {
                             "world_context": event.get("world_context", ""),
