@@ -174,7 +174,7 @@ function c.state_query_timeout()
 end
 
 function c.tts_volume_boost()
-	return tonumber(cfg("tts_volume_boost")) or 4.0
+	return tonumber(cfg("tts_volume_boost")) or 8.0
 end
 
 function c.max_log_entries_per_level()
