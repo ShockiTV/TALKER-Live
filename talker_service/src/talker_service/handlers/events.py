@@ -9,6 +9,7 @@ from typing import Any, Optional, Protocol, TYPE_CHECKING
 from loguru import logger
 
 from ..models.messages import GameEventMessage, PlayerDialogueMessage, HeartbeatMessage
+from ._log import log_prefix
 
 # Maximum concurrent dialogue generation tasks
 _MAX_CONCURRENT_DIALOGUES = 3
@@ -110,7 +111,7 @@ def _should_someone_speak(event: GameEventMessage, is_important: bool) -> bool:
     return random.random() < BASE_DIALOGUE_CHANCE
 
 
-async def handle_game_event(payload: dict[str, Any], session_id: str = "__default__") -> None:
+async def handle_game_event(payload: dict[str, Any], session_id: str = "__default__", req_id: int = 0) -> None:
     """Handle incoming game event from Lua.
     
     Parses the event and triggers dialogue generation if appropriate.
@@ -133,8 +134,9 @@ async def handle_game_event(payload: dict[str, Any], session_id: str = "__defaul
         flags = event.get_flags()
         
         # Log event details
+        pfx = log_prefix(req_id, session_id)
         logger.info(
-            f"Game Event: type={event_type}, "
+            f"{pfx}Game Event: type={event_type}, "
             f"witnesses={witnesses_count}, "
             f"game_time={event.game_time_ms}, "
             f"important={is_important}, "
@@ -143,32 +145,32 @@ async def handle_game_event(payload: dict[str, Any], session_id: str = "__defaul
         
         # Log context details at debug level
         if event.context:
-            logger.debug(f"Event context: {event.context}")
+            logger.debug(f"{pfx}Event context: {event.context}")
         if event.world_context:
-            logger.debug(f"World context: {event.world_context}")
+            logger.debug(f"{pfx}World context: {event.world_context}")
         if event.witnesses:
             witness_names = [w.name for w in event.witnesses]
-            logger.debug(f"Witnesses: {witness_names}")
+            logger.debug(f"{pfx}Witnesses: {witness_names}")
         
         # Check if dialogue should be generated
         if not _should_someone_speak(event, is_important):
-            logger.debug("Skipping dialogue generation for this event")
+            logger.debug(f"{pfx}Skipping dialogue generation for this event")
             return
         
         # Handle idle conversation events (direct instruction)
         if flags.get("is_idle", False):
-            _logged_task(_handle_idle_event(event, session_id=session_id), name=f"idle-{event_type}")
+            _logged_task(_handle_idle_event(event, session_id=session_id, req_id=req_id), name=f"idle-{event_type}")
             return
         
         # Regular event-triggered dialogue
-        _logged_task(_handle_regular_event(event, session_id=session_id), name=f"dialogue-{event_type}")
+        _logged_task(_handle_regular_event(event, session_id=session_id, req_id=req_id), name=f"dialogue-{event_type}")
             
     except Exception as e:
         logger.error(f"Error processing game event: {e}")
         logger.debug(f"Raw payload: {payload}")
 
 
-async def _handle_idle_event(event: GameEventMessage, *, session_id: str | None = None) -> None:
+async def _handle_idle_event(event: GameEventMessage, *, session_id: str | None = None, req_id: int = 0) -> None:
     """Handle idle conversation event (direct instruction to speak)."""
     if _dialogue_generator is None:
         logger.warning("Dialogue generator not available for idle event")
@@ -212,10 +214,10 @@ async def _handle_idle_event(event: GameEventMessage, *, session_id: str | None 
             "flags": event.get_flags(),
         }
         
-        await _dialogue_generator.generate_from_instruction(speaker_id, event_dict, session_id=session_id)
+        await _dialogue_generator.generate_from_instruction(speaker_id, event_dict, session_id=session_id, req_id=req_id)
 
 
-async def _handle_regular_event(event: GameEventMessage, *, session_id: str | None = None) -> None:
+async def _handle_regular_event(event: GameEventMessage, *, session_id: str | None = None, req_id: int = 0) -> None:
     """Handle regular event-triggered dialogue."""
     if _dialogue_generator is None:
         logger.warning("Dialogue generator not available for event")
@@ -249,10 +251,10 @@ async def _handle_regular_event(event: GameEventMessage, *, session_id: str | No
             "flags": event.get_flags(),
         }
         
-        await _dialogue_generator.generate_from_event(event_dict, session_id=session_id)
+        await _dialogue_generator.generate_from_event(event_dict, session_id=session_id, req_id=req_id)
 
 
-async def handle_player_dialogue(payload: dict[str, Any], session_id: str = "__default__") -> None:
+async def handle_player_dialogue(payload: dict[str, Any], session_id: str = "__default__", req_id: int = 0) -> None:
     """Handle player dialogue input from Lua.
     
     Phase 1: Just log the input.
@@ -261,16 +263,17 @@ async def handle_player_dialogue(payload: dict[str, Any], session_id: str = "__d
     try:
         msg = PlayerDialogueMessage(**payload)
         
-        logger.info(f"Player Dialogue: \"{msg.text}\"")
+        pfx = log_prefix(req_id)
+        logger.info(f"{pfx}Player Dialogue: \"{msg.text}\"")
         if msg.context:
-            logger.debug(f"Dialogue context: {msg.context}")
+            logger.debug(f"{pfx}Dialogue context: {msg.context}")
             
     except Exception as e:
         logger.error(f"Error processing player dialogue: {e}")
         logger.debug(f"Raw payload: {payload}")
 
 
-async def handle_player_whisper(payload: dict[str, Any], session_id: str = "__default__") -> None:
+async def handle_player_whisper(payload: dict[str, Any], session_id: str = "__default__", req_id: int = 0) -> None:
     """Handle player whisper input from Lua.
     
     Phase 1: Just log the input.
@@ -279,16 +282,17 @@ async def handle_player_whisper(payload: dict[str, Any], session_id: str = "__de
     try:
         msg = PlayerDialogueMessage(**payload)
         
-        logger.info(f"Player Whisper: \"{msg.text}\"")
+        pfx = log_prefix(req_id)
+        logger.info(f"{pfx}Player Whisper: \"{msg.text}\"")
         if msg.context:
-            logger.debug(f"Whisper context: {msg.context}")
+            logger.debug(f"{pfx}Whisper context: {msg.context}")
             
     except Exception as e:
         logger.error(f"Error processing player whisper: {e}")
         logger.debug(f"Raw payload: {payload}")
 
 
-async def handle_heartbeat(payload: dict[str, Any], session_id: str = "__default__") -> None:
+async def handle_heartbeat(payload: dict[str, Any], session_id: str = "__default__", req_id: int = 0) -> None:
     """Handle heartbeat message from Lua.
     
     Updates last_seen timestamp for health monitoring, sends ack back,
@@ -305,8 +309,9 @@ async def handle_heartbeat(payload: dict[str, Any], session_id: str = "__default
         # Only log heartbeats if explicitly enabled (reduces log noise)
         from ..config import settings
         if settings.log_heartbeat:
+            pfx = log_prefix(req_id)
             logger.debug(
-                f"Heartbeat received: alive={msg.alive}, "
+                f"{pfx}Heartbeat received: alive={msg.alive}, "
                 f"game_time={msg.game_time_ms}"
             )
 

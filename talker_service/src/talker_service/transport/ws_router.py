@@ -21,8 +21,11 @@ from starlette.websockets import WebSocketState
 
 from .session import DEFAULT_SESSION
 
-# Type alias for handler functions — handlers receive (payload, session_id)
-MessageHandler = Callable[[dict[str, Any], str], Awaitable[None]]
+# Type alias for handler functions — handlers receive (payload, session_id, req_id)
+MessageHandler = Callable[[dict[str, Any], str, int], Awaitable[None]]
+
+# Monotonic request counter — assigned in _process_message for lifecycle tracing
+_req_counter: int = 0
 
 
 def parse_tokens(raw: str | None) -> dict[str, str]:
@@ -292,10 +295,16 @@ class WSRouter:
         # ── Resolve session_id from connection ────────────────────────
         session_id = self._conn_to_session.get(ws, DEFAULT_SESSION) if ws else DEFAULT_SESSION
 
+        # ── Assign monotonic req_id ───────────────────────────────────
+        global _req_counter
+        _req_counter += 1
+        req_id = _req_counter
+
         # ── Handler dispatch ──────────────────────────────────────────
         handler = self.handlers.get(topic)
         if handler:
-            asyncio.create_task(handler(payload, session_id))
+            logger.debug(f"[R:{req_id}] Dispatching {topic}")
+            asyncio.create_task(handler(payload, session_id, req_id))
         else:
             if not topic.startswith("mic."):
                 logger.warning(f"No handler for topic: {topic}")

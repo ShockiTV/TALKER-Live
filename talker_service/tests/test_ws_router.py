@@ -99,7 +99,11 @@ class TestWSRouterProcessMessage:
 
         # Handler is called via create_task; let event loop run
         await asyncio.sleep(0)
-        handler.assert_awaited_once_with({"type": "DEATH"}, "__default__")
+        handler.assert_awaited_once()
+        call_args = handler.await_args
+        assert call_args[0][0] == {"type": "DEATH"}
+        assert call_args[0][1] == "__default__"
+        assert isinstance(call_args[0][2], int)  # req_id
 
     @pytest.mark.asyncio
     async def test_malformed_json_discarded(self):
