@@ -1,4 +1,6 @@
 import sys
+import os
+import re
 import time
 import logging
 import json
@@ -26,7 +28,11 @@ logging.basicConfig(
 )
 
 BRIDGE_WS_PORT = 5558       # talker_bridge WS server ← Lua connects here
-SERVICE_WS_URL = "ws://127.0.0.1:5557/ws"  # upstream talker_service
+
+# Default upstream URL — overridden by MCM config.sync / config.update at runtime
+_DEFAULT_SERVICE_URL = os.environ.get("SERVICE_WS_URL", "wss://talker-live.duckdns.org/ws")
+_service_url: str = _DEFAULT_SERVICE_URL  # mutable — updated from MCM
+_service_token: str = ""                  # auth token from MCM (ws_token)
 
 # Topics handled locally by the bridge (not proxied upstream)
 LOCAL_TOPICS = {"mic.start", "mic.stop"}
@@ -94,6 +100,52 @@ async def forward_raw_to_lua(raw: str) -> None:
         await _lua_ws.send(raw)
     except Exception:
         logging.warning("Failed to forward message to Lua")
+
+
+####################################################################################################
+# SERVICE URL CONFIGURATION (MCM-driven)
+####################################################################################################
+
+def mask_token(url: str) -> str:
+    """Mask the token query parameter in a URL for safe logging."""
+    if "token=" not in url:
+        return url
+    return re.sub(r"token=[^&]*", "token=***", url)
+
+
+def _build_service_url(base_url: str, token: str) -> str:
+    """Build the full upstream URL, appending ?token=<token> if non-empty."""
+    if not base_url:
+        base_url = _DEFAULT_SERVICE_URL
+    url = base_url.rstrip("/")
+    if token and "token=" not in url:
+        sep = "&" if "?" in url else "?"
+        url = f"{url}{sep}token={token}"
+    return url
+
+
+def _apply_mcm_service_config(service_url: str | None, ws_token: str | None) -> None:
+    """Update the upstream URL from MCM values and trigger reconnect if changed."""
+    global _service_url, _service_token, _service_ws
+
+    new_url = (service_url or "").strip() or _DEFAULT_SERVICE_URL
+    new_token = (ws_token or "").strip()
+
+    old_full = _build_service_url(_service_url, _service_token)
+    new_full = _build_service_url(new_url, new_token)
+
+    if old_full == new_full:
+        return  # no change
+
+    _service_url = new_url
+    _service_token = new_token
+
+    logging.info("Service URL updated → %s", mask_token(new_full))
+
+    # Close current connection — service_reader() retry loop will reconnect
+    ws = _service_ws
+    if ws is not None:
+        asyncio.ensure_future(ws.close())
 
 
 ####################################################################################################
@@ -275,10 +327,11 @@ async def service_reader():
     """Read messages from talker_service and forward them to Lua."""
     global _service_ws
     while True:
+        url = _build_service_url(_service_url, _service_token)
         try:
-            async with websockets.connect(SERVICE_WS_URL) as ws:
+            async with websockets.connect(url) as ws:
                 _service_ws = ws
-                logging.info("Connected to talker_service at %s", SERVICE_WS_URL)
+                logging.info("Connected to talker_service at %s", mask_token(url))
                 async for raw in ws:
                     # Forward all service messages to Lua transparently
                     await forward_raw_to_lua(raw)
@@ -345,6 +398,25 @@ def main() -> None:
                 if topic in LOCAL_TOPICS:
                     # Handle locally (mic control, TTS)
                     await handle_local_message(topic, payload)
+                elif topic == "config.sync":
+                    # Peek at full config for service_url / ws_token, then proxy
+                    _apply_mcm_service_config(
+                        payload.get("service_url"),
+                        payload.get("ws_token"),
+                    )
+                    await forward_raw_to_service(raw)
+                elif topic == "config.update":
+                    # Peek at individual key change, then proxy
+                    key = payload.get("key", "")
+                    if key in ("service_url", "ws_token"):
+                        # Fetch latest values — for a single key change we
+                        # only update that one field, keeping the other as-is
+                        val = payload.get("value", "")
+                        if key == "service_url":
+                            _apply_mcm_service_config(val, _service_token)
+                        else:
+                            _apply_mcm_service_config(_service_url, val)
+                    await forward_raw_to_service(raw)
                 else:
                     # Proxy transparently to talker_service
                     await forward_raw_to_service(raw)
@@ -365,7 +437,8 @@ def main() -> None:
         # Start downstream Lua-facing server
         async with websockets.serve(lua_ws_handler, "0.0.0.0", BRIDGE_WS_PORT):
             logging.info("Bridge WS server listening on ws://0.0.0.0:%d", BRIDGE_WS_PORT)
-            logging.info("Proxying to talker_service at %s", SERVICE_WS_URL)
+            startup_url = _build_service_url(_service_url, _service_token)
+            logging.info("Proxying to talker_service at %s", mask_token(startup_url))
             print("TALKER Bridge ready. Waiting for game connection...")
             await asyncio.Future()  # run forever
 

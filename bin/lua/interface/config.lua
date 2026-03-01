@@ -159,6 +159,10 @@ function c.ws_token()
 	return cfg("ws_token") or ""
 end
 
+function c.service_url()
+	return cfg("service_url") or "wss://talker-live.duckdns.org/ws"
+end
+
 function c.llm_timeout()
 	-- Maximum seconds to wait for LLM response (default 60s)
 	return tonumber(cfg("llm_timeout"))
@@ -204,6 +208,8 @@ function c.get_all_config()
 
 		-- WebSocket settings
 		ws_host                 = cfg("ws_host"),
+		service_url             = cfg("service_url"),
+		ws_token                = cfg("ws_token"),
 		llm_timeout             = tonumber(cfg("llm_timeout")),
 		state_query_timeout     = tonumber(cfg("state_query_timeout")),
 
