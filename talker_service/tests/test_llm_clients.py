@@ -260,6 +260,11 @@ class TestFactory:
         """Test creating Proxy client."""
         client = get_llm_client(PROVIDER_PROXY)
         assert isinstance(client, ProxyClient)
+
+    def test_get_proxy_client_with_model_override(self):
+        """Test creating Proxy client with model override in kwargs."""
+        client = get_llm_client(PROVIDER_PROXY, model="test-super-model")
+        assert client.default_model == "test-super-model"
     
     def test_client_caching(self):
         """Test that clients are cached."""

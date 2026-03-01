@@ -75,8 +75,16 @@ async def lifespan(app: FastAPI):
     # This allows the client to change when config.sync is received from the game
     def get_current_llm_client():
         from .handlers.config import config_mirror
-        model_method = config_mirror.get("model_method", 0)
-        model_name = config_mirror.get("model_name", "")
+        from .config import settings
+        
+        if getattr(settings, "force_proxy_llm", False):
+            logger.debug("Forcing LLM Provider to PROXY due to force_proxy_llm environment variable")
+            model_method = 3  # PROVIDER_PROXY
+            model_name = getattr(settings, "proxy_model", None)
+        else:
+            model_method = config_mirror.get("model_method", 0)
+            model_name = config_mirror.get("model_name", "")
+            
         logger.debug(f"Getting LLM client for model_method={model_method}, model_name={model_name}")
         return get_llm_client(
             model_method,
