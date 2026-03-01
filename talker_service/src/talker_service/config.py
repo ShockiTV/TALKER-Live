@@ -55,6 +55,10 @@ class Settings(BaseSettings):
     # TTS Settings
     tts_enabled: bool = False  # Enable in-engine TTS audio generation
     voices_dir: Path = Path("./voices")  # Directory containing .safetensors voice files (flat layout)
+    tts_service_url: str = ""  # Remote TTS service URL (e.g. http://tts-service:8100); empty = embedded engine
+
+    # Remote STT endpoint (for use with faster-whisper-server or compatible)
+    stt_endpoint: str = ""  # Custom STT base_url (e.g. http://whisper:8200/v1); empty = OpenAI cloud
 
     @model_validator(mode="after")
     def _resolve_backward_compat(self) -> "Settings":

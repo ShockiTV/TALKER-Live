@@ -2,6 +2,9 @@
 
 Accepts raw PCM audio bytes (16kHz mono int16), writes them to a temporary
 WAV file, and sends to the OpenAI Whisper API for transcription.
+
+When ``endpoint`` is set (e.g. ``http://whisper:8200/v1``), the provider
+targets a local faster-whisper-server container instead of OpenAI's cloud.
 """
 
 from __future__ import annotations
@@ -16,15 +19,29 @@ import openai
 
 
 class WhisperAPIProvider:
-    """Transcribe audio using the OpenAI Whisper API."""
+    """Transcribe audio using the OpenAI Whisper API (or compatible endpoint)."""
 
-    def __init__(self, api_key: str | None = None) -> None:
+    def __init__(
+        self,
+        api_key: str | None = None,
+        endpoint: str | None = None,
+    ) -> None:
         self._api_key = api_key or os.environ.get("OPENAI_API_KEY", "")
-        if not self._api_key:
-            logger.warning("No OpenAI API key set — Whisper API transcription will fail")
+        self._endpoint = endpoint or ""
+
+        if self._endpoint:
+            # Local faster-whisper-server — api_key not needed but required by client
+            self._client = openai.OpenAI(
+                base_url=self._endpoint,
+                api_key=self._api_key or "unused",
+            )
+            logger.info("Whisper API provider initialized (endpoint: {})", self._endpoint)
         else:
-            openai.api_key = self._api_key
-            logger.info("Whisper API provider initialized")
+            # Default OpenAI cloud
+            if not self._api_key:
+                logger.warning("No OpenAI API key set — Whisper API transcription will fail")
+            self._client = openai.OpenAI(api_key=self._api_key)
+            logger.info("Whisper API provider initialized (OpenAI cloud)")
 
     def transcribe(
         self,
@@ -41,7 +58,7 @@ class WhisperAPIProvider:
 
         try:
             with open(wav_path, "rb") as audio_file:
-                transcript = openai.audio.transcriptions.create(
+                transcript = self._client.audio.transcriptions.create(
                     model="whisper-1",
                     file=audio_file,
                     prompt=prompt if prompt else None,
@@ -53,6 +70,11 @@ class WhisperAPIProvider:
         except Exception:
             logger.opt(exception=True).error("Whisper API transcription failed")
             return ""
+        finally:
+            try:
+                os.unlink(wav_path)
+            except OSError:
+                pass
 
     @staticmethod
     def _pcm_to_wav(pcm_bytes: bytes, sample_rate: int = 16000) -> str:
