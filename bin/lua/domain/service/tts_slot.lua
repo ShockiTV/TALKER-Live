@@ -1,7 +1,7 @@
 --- TTS slot manager for in-engine NPC audio playback.
 -- Manages a pool of 200 pre-deployed slot files, allocates them round-robin,
--- writes TTS audio bytes, and plays via play_no_feedback() for fire-and-forget
--- 3D spatial audio at the NPC's position.
+-- writes TTS audio bytes, and plays via play_at_pos() with a set_position()
+-- tracking loop so the audio source follows the NPC in real-time.
 --
 -- @module tts_slot
 
@@ -100,13 +100,44 @@ function M.write_slot(slot_num, ogg_bytes)
 end
 
 ------------------------------------------------------------
--- Audio playback (fire-and-forget)
+-- Position-tracking playback
 ------------------------------------------------------------
 
+--- Start a tracking loop that updates the sound position to follow the NPC.
+-- Uses CreateTimeEvent (via engine facade) to tick each engine frame.
+-- The callback returns false to keep ticking, true to self-remove.
+--
+-- @param snd table sound_object instance (must be playing)
+-- @param npc_obj table NPC game object
+-- @param slot_num number Slot number (used for unique event key)
+local function start_tracking(snd, npc_obj, slot_num)
+    local event_id = "talker_tts_track"
+    local action_id = "slot_" .. slot_num
+
+    engine.create_time_event(event_id, action_id, 0, function()
+        -- Stop tracking when sound finishes
+        if not snd:playing() then
+            log.debug("TTS tracking slot %d: sound finished, removing", slot_num)
+            return true
+        end
+
+        -- Stop tracking when NPC becomes invalid (despawned/nil position)
+        local pos = engine.get_position(npc_obj)
+        if not pos then
+            log.debug("TTS tracking slot %d: NPC position nil, removing", slot_num)
+            return true
+        end
+
+        -- Update sound position to follow NPC
+        snd:set_position(pos)
+        return false
+    end)
+end
+
 --- Play audio from the specified slot on the given NPC.
--- For 3D: uses play_no_feedback() for fire-and-forget spatial audio
--- at the NPC's position (proven pattern from xr_wounded.script).
--- Falls back to 2D audio on the player if NPC is nil/dead.
+-- For 3D: uses play_at_pos() with a set_position() tracking loop so
+-- the audio source follows the NPC in real-time (proven pattern from
+-- ph_sound.script). Falls back to 2D audio on the player if NPC is nil/dead.
 --
 -- @param slot_num number Slot number (1-200)
 -- @param npc_obj table|nil NPC game object
@@ -126,19 +157,17 @@ function M.play_on_npc(slot_num, npc_obj)
     local use_3d = npc_obj and engine.is_alive(npc_obj)
 
     if use_3d and not FORCE_2D_DEBUG then
-        -- Fire-and-forget 3D playback at NPC position.
-        -- play_no_feedback: proven pattern from xr_wounded.script.
-        -- Args: (obj, flags, delay, pos, volume, frequency)
+        -- 3D playback at NPC position with position tracking.
+        -- play_at_pos + set_position loop: proven pattern from ph_sound.script.
         local pos = engine.get_position(npc_obj)
-        snd:play_no_feedback(npc_obj, engine.S3D, 0, pos, 1, 1)
-        log.info("TTS playing slot %d on NPC via play_no_feedback (3D)", slot_num)
+        snd:play_at_pos(npc_obj, pos, 0, engine.S3D)
+        start_tracking(snd, npc_obj, slot_num)
+        log.info("TTS playing slot %d on NPC via play_at_pos (3D tracking)", slot_num)
     else
         -- 2D audio on player actor
         local player = engine.get_player()
         if player then
             snd:play(player, 0, engine.S2D)
-            snd.volume = 1
-            snd.frequency = 1
             if FORCE_2D_DEBUG then
                 log.info("TTS playing slot %d on player (2D DEBUG mode)", slot_num)
             else
@@ -149,6 +178,9 @@ function M.play_on_npc(slot_num, npc_obj)
             return nil
         end
     end
+
+    snd.volume = 1
+    snd.frequency = 1
 
     return snd
 end

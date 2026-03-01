@@ -155,7 +155,7 @@ local function test_write_empty_data()
     print("✓ Test 5: Empty data returns false")
 end
 
--- Test 6: play_on_npc with alive NPC uses play_no_feedback (3D)
+-- Test 6: play_on_npc with alive NPC uses play_at_pos (3D) and starts tracking
 local function test_play_3d_on_alive_npc()
     reset_state()
     
@@ -169,7 +169,18 @@ local function test_play_3d_on_alive_npc()
     mock_engine._set("get_player", { id = 0 })
     mock_engine._set("get_position", { x = 10, y = 0, z = 20 })
     
-    -- Mock sound_object with play_no_feedback
+    -- Track create_time_event calls
+    local time_event_calls = {}
+    mock_engine._set("create_time_event", function(event_id, action_id, delay, func)
+        table.insert(time_event_calls, {
+            event_id = event_id,
+            action_id = action_id,
+            delay = delay,
+            func = func
+        })
+    end)
+    
+    -- Mock sound_object with play_at_pos
     local sound_object_mock = {
         s3d = "s3d",
         s2d = "s2d"
@@ -184,18 +195,18 @@ local function test_play_3d_on_alive_npc()
                         mode = mode
                     }
                 end,
-                play_no_feedback = function(_, obj, mode, delay, pos, vol, freq)
+                play_at_pos = function(_, obj, pos, delay, mode)
                     test_state.sound_played = {
                         path = path,
                         obj = obj,
                         mode = mode,
                         pos = pos,
-                        volume = vol,
-                        frequency = freq,
-                        used_play_no_feedback = true
+                        delay = delay,
+                        used_play_at_pos = true
                     }
                 end,
                 playing = function() return true end,
+                set_position = function() end,
                 stop = function() test_state.sound_stopped = true end,
                 length = function() return 3.0 end
             }
@@ -207,21 +218,34 @@ local function test_play_3d_on_alive_npc()
     
     assert(snd ~= nil, "Should return sound_object")
     assert(test_state.sound_played ~= nil, "Should have played sound")
-    assert(test_state.sound_played.used_play_no_feedback, "Should use play_no_feedback for 3D")
+    assert(test_state.sound_played.used_play_at_pos, "Should use play_at_pos for 3D")
     assert(test_state.sound_played.mode == "s3d", "Should use s3d mode")
-    assert(test_state.sound_played.volume == 1, "Volume should be 1")
-    assert(test_state.sound_played.frequency == 1, "Frequency should be 1")
     assert(test_state.sound_played.obj == mock_npc, "Should play on NPC object")
+    assert(test_state.sound_played.pos.x == 10, "Position x should match NPC")
+    assert(test_state.sound_played.delay == 0, "Delay should be 0")
     
-    print("✓ Test 6: play_on_npc uses play_no_feedback for 3D NPC audio")
+    -- Verify tracking was started
+    assert(#time_event_calls == 1, "Should register one time event for tracking")
+    assert(time_event_calls[1].event_id == "talker_tts_track", "Event ID should be talker_tts_track")
+    assert(time_event_calls[1].action_id == "slot_10", "Action ID should be slot_10")
+    assert(time_event_calls[1].delay == 0, "Delay should be 0")
+    assert(type(time_event_calls[1].func) == "function", "Should register a callback function")
+    
+    print("✓ Test 6: play_on_npc uses play_at_pos for 3D NPC audio with tracking")
 end
 
--- Test 7: play_on_npc falls back to 2D when NPC is nil
+-- Test 7: play_on_npc falls back to 2D when NPC is nil (no tracking)
 local function test_play_2d_when_npc_nil()
     reset_state()
     
     mock_engine._set("is_alive", false)
     mock_engine._set("get_player", { id = 0 })
+    
+    -- Track create_time_event calls — should stay empty for 2D
+    local time_event_calls = {}
+    mock_engine._set("create_time_event", function(event_id, action_id, delay, func)
+        table.insert(time_event_calls, { event_id = event_id })
+    end)
     
     -- Mock sound_object
     local sound_object_mock = {
@@ -238,13 +262,14 @@ local function test_play_2d_when_npc_nil()
                         mode = mode
                     }
                 end,
-                play_no_feedback = function(_, obj, mode, delay, pos, vol, freq)
+                play_at_pos = function(_, obj, pos, delay, mode)
                     test_state.sound_played = {
                         path = path,
-                        used_play_no_feedback = true
+                        used_play_at_pos = true
                     }
                 end,
                 playing = function() return true end,
+                set_position = function() end,
                 stop = function() test_state.sound_stopped = true end,
                 length = function() return 2.0 end
             }
@@ -256,9 +281,248 @@ local function test_play_2d_when_npc_nil()
     
     assert(snd ~= nil, "Should return sound_object")
     assert(test_state.sound_played.mode == "s2d", "Should use 2D mode when NPC is nil")
-    assert(not test_state.sound_played.used_play_no_feedback, "Should NOT use play_no_feedback for 2D")
+    assert(not test_state.sound_played.used_play_at_pos, "Should NOT use play_at_pos for 2D")
+    assert(#time_event_calls == 0, "Should NOT start tracking for 2D playback")
     
-    print("✓ Test 7: play_on_npc falls back to 2D when NPC is nil")
+    print("✓ Test 7: play_on_npc falls back to 2D when NPC is nil (no tracking)")
+end
+
+-- Test 7b: Tracking loop calls set_position and returns false to keep ticking
+local function test_tracking_loop_updates_position()
+    reset_state()
+    
+    local mock_npc = { id = 5, alive = function() return true end }
+    mock_engine._set("is_alive", true)
+    mock_engine._set("get_player", { id = 0 })
+    
+    -- Initial position for play_at_pos
+    mock_engine._set("get_position", { x = 10, y = 0, z = 20 })
+    
+    -- Capture the tracking callback
+    local tracking_callback = nil
+    mock_engine._set("create_time_event", function(event_id, action_id, delay, func)
+        tracking_callback = func
+    end)
+    
+    -- Track set_position calls on the sound object
+    local set_position_calls = {}
+    local sound_object_mock = { s3d = "s3d", s2d = "s2d" }
+    setmetatable(sound_object_mock, {
+        __call = function(self, path)
+            return {
+                play_at_pos = function() end,
+                play = function() end,
+                playing = function() return true end,
+                set_position = function(_, pos)
+                    table.insert(set_position_calls, pos)
+                end,
+                stop = function() end,
+                length = function() return 3.0 end
+            }
+        end
+    })
+    _G.sound_object = sound_object_mock
+    
+    tts_slot.play_on_npc(10, mock_npc)
+    
+    assert(tracking_callback ~= nil, "Tracking callback should be captured")
+    
+    -- Update NPC position before ticking
+    mock_engine._set("get_position", { x = 15, y = 0, z = 25 })
+    
+    -- Tick the callback — sound still playing, NPC valid
+    local result = tracking_callback()
+    
+    assert(result == false, "Tracking loop should return false to keep ticking")
+    assert(#set_position_calls == 1, "Should have called set_position once")
+    assert(set_position_calls[1].x == 15, "set_position should use updated NPC position")
+    assert(set_position_calls[1].z == 25, "set_position z should match updated position")
+    
+    print("✓ Test 7b: Tracking loop calls set_position and returns false")
+end
+
+-- Test 7c: Tracking loop returns true when sound finishes (playing() == false)
+local function test_tracking_loop_stops_when_finished()
+    reset_state()
+    
+    local mock_npc = { id = 5, alive = function() return true end }
+    mock_engine._set("is_alive", true)
+    mock_engine._set("get_player", { id = 0 })
+    mock_engine._set("get_position", { x = 10, y = 0, z = 20 })
+    
+    local tracking_callback = nil
+    mock_engine._set("create_time_event", function(event_id, action_id, delay, func)
+        tracking_callback = func
+    end)
+    
+    -- Sound that reports not playing
+    local is_playing = true
+    local sound_object_mock = { s3d = "s3d", s2d = "s2d" }
+    setmetatable(sound_object_mock, {
+        __call = function(self, path)
+            return {
+                play_at_pos = function() end,
+                play = function() end,
+                playing = function() return is_playing end,
+                set_position = function() end,
+                stop = function() end,
+                length = function() return 3.0 end
+            }
+        end
+    })
+    _G.sound_object = sound_object_mock
+    
+    tts_slot.play_on_npc(10, mock_npc)
+    assert(tracking_callback ~= nil, "Tracking callback should be captured")
+    
+    -- First tick: still playing → returns false
+    local result1 = tracking_callback()
+    assert(result1 == false, "Should return false while still playing")
+    
+    -- Sound finishes
+    is_playing = false
+    local result2 = tracking_callback()
+    assert(result2 == true, "Should return true when sound finished (self-remove)")
+    
+    print("✓ Test 7c: Tracking loop returns true when sound finishes")
+end
+
+-- Test 7d: Tracking loop returns true when NPC position is nil (despawned)
+local function test_tracking_loop_stops_when_npc_despawned()
+    reset_state()
+    
+    local mock_npc = { id = 5, alive = function() return true end }
+    mock_engine._set("is_alive", true)
+    mock_engine._set("get_player", { id = 0 })
+    
+    -- Position: valid initially
+    mock_engine._set("get_position", { x = 10, y = 0, z = 20 })
+    
+    local tracking_callback = nil
+    mock_engine._set("create_time_event", function(event_id, action_id, delay, func)
+        tracking_callback = func
+    end)
+    
+    local sound_object_mock = { s3d = "s3d", s2d = "s2d" }
+    setmetatable(sound_object_mock, {
+        __call = function(self, path)
+            return {
+                play_at_pos = function() end,
+                play = function() end,
+                playing = function() return true end,
+                set_position = function() end,
+                stop = function() end,
+                length = function() return 3.0 end
+            }
+        end
+    })
+    _G.sound_object = sound_object_mock
+    
+    tts_slot.play_on_npc(10, mock_npc)
+    assert(tracking_callback ~= nil, "Tracking callback should be captured")
+    
+    -- First tick: NPC valid → returns false
+    local result1 = tracking_callback()
+    assert(result1 == false, "Should return false while NPC is valid")
+    
+    -- NPC despawns (position becomes nil/false — mock_engine can't store nil)
+    mock_engine._set("get_position", false)
+    local result2 = tracking_callback()
+    assert(result2 == true, "Should return true when NPC position is nil (self-remove)")
+    
+    print("✓ Test 7d: Tracking loop returns true when NPC despawned")
+end
+
+-- Test 7e: Concurrent tracking loops are independent (different slot numbers)
+local function test_concurrent_tracking_independent()
+    reset_state()
+
+    local mock_npc_a = { id = 1, alive = function() return true end }
+    local mock_npc_b = { id = 2, alive = function() return true end }
+    mock_engine._set("is_alive", true)
+    mock_engine._set("get_player", { id = 0 })
+    mock_engine._set("get_position", { x = 10, y = 0, z = 20 })
+
+    local time_event_calls = {}
+    mock_engine._set("create_time_event", function(event_id, action_id, delay, func)
+        table.insert(time_event_calls, {
+            event_id = event_id,
+            action_id = action_id,
+            func = func
+        })
+    end)
+
+    local sound_object_mock = { s3d = "s3d", s2d = "s2d" }
+    setmetatable(sound_object_mock, {
+        __call = function(self, path)
+            return {
+                play_at_pos = function() end,
+                play = function() end,
+                playing = function() return true end,
+                set_position = function() end,
+                stop = function() end,
+                length = function() return 3.0 end
+            }
+        end
+    })
+    _G.sound_object = sound_object_mock
+
+    tts_slot.play_on_npc(5, mock_npc_a)
+    tts_slot.play_on_npc(8, mock_npc_b)
+
+    assert(#time_event_calls == 2, "Should register two separate time events")
+    assert(time_event_calls[1].action_id == "slot_5", "First tracking should use slot_5")
+    assert(time_event_calls[2].action_id == "slot_8", "Second tracking should use slot_8")
+    assert(time_event_calls[1].event_id == "talker_tts_track", "Both use same event_id")
+    assert(time_event_calls[2].event_id == "talker_tts_track", "Both use same event_id")
+
+    print("✓ Test 7e: Concurrent tracking loops are independent")
+end
+
+-- Test 7f: Slot reuse replaces previous tracking (same slot number)
+local function test_slot_reuse_replaces_tracking()
+    reset_state()
+
+    local mock_npc = { id = 1, alive = function() return true end }
+    mock_engine._set("is_alive", true)
+    mock_engine._set("get_player", { id = 0 })
+    mock_engine._set("get_position", { x = 10, y = 0, z = 20 })
+
+    local time_event_calls = {}
+    mock_engine._set("create_time_event", function(event_id, action_id, delay, func)
+        table.insert(time_event_calls, {
+            event_id = event_id,
+            action_id = action_id,
+            func = func
+        })
+    end)
+
+    local sound_object_mock = { s3d = "s3d", s2d = "s2d" }
+    setmetatable(sound_object_mock, {
+        __call = function(self, path)
+            return {
+                play_at_pos = function() end,
+                play = function() end,
+                playing = function() return true end,
+                set_position = function() end,
+                stop = function() end,
+                length = function() return 3.0 end
+            }
+        end
+    })
+    _G.sound_object = sound_object_mock
+
+    tts_slot.play_on_npc(5, mock_npc)
+    tts_slot.play_on_npc(5, mock_npc)
+
+    assert(#time_event_calls == 2, "Should register two time events")
+    assert(time_event_calls[1].action_id == "slot_5", "First uses slot_5")
+    assert(time_event_calls[2].action_id == "slot_5", "Second uses same slot_5 (replaces)")
+    -- Both calls use the same event_id + action_id, so CreateTimeEvent replaces the first
+    assert(time_event_calls[1].func ~= time_event_calls[2].func,
+        "Callbacks should be different function instances")
+
+    print("✓ Test 7f: Slot reuse replaces previous tracking (same action_id)")
 end
 
 -- Test 8: Wrap-around at 200 slots, second snd_restart fires
@@ -295,6 +559,11 @@ local function run_tests()
         test_write_empty_data,
         test_play_3d_on_alive_npc,
         test_play_2d_when_npc_nil,
+        test_tracking_loop_updates_position,
+        test_tracking_loop_stops_when_finished,
+        test_tracking_loop_stops_when_npc_despawned,
+        test_concurrent_tracking_independent,
+        test_slot_reuse_replaces_tracking,
         test_wrap_at_200,
     }
     
