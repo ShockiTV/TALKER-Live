@@ -18,6 +18,12 @@ local current_slot = 1  -- Round-robin counter (1-200)
 local SLOT_COUNT = 200
 local CACHE_FLUSH_INTERVAL = 100  -- Flush sound cache every N slots
 
+-- Persistent references to in-flight sound_objects.
+-- Keyed by slot_num.  Prevents Lua GC from collecting the luabind
+-- userdata (whose C++ destructor calls stop()) while audio is playing.
+-- Cleared by the tracking / polling loop when playback finishes.
+local active_sounds = {}
+
 -- Sound path for X-Ray sound_object (used for 2D fallback and duration query).
 -- No .ogg extension — X-Ray appends it automatically.
 local SLOT_PATH_PREFIX = "characters_voice\\talker_tts\\slot_"
@@ -106,6 +112,7 @@ end
 --- Start a tracking loop that updates the sound position to follow the NPC.
 -- Uses CreateTimeEvent (via engine facade) to tick each engine frame.
 -- The callback returns false to keep ticking, true to self-remove.
+-- Maintains a tick counter for diagnostics (low count = GC truncation).
 --
 -- @param snd table sound_object instance (must be playing)
 -- @param npc_obj table NPC game object
@@ -113,23 +120,52 @@ end
 local function start_tracking(snd, npc_obj, slot_num)
     local event_id = "talker_tts_track"
     local action_id = "slot_" .. slot_num
+    local ticks = 0
 
     engine.create_time_event(event_id, action_id, 0, function()
+        ticks = ticks + 1
+
         -- Stop tracking when sound finishes
         if not snd:playing() then
-            log.debug("TTS tracking slot %d: sound finished, removing", slot_num)
+            active_sounds[slot_num] = nil
+            log.debug("TTS tracking slot %d: sound finished after %d ticks, removing", slot_num, ticks)
             return true
         end
 
         -- Stop tracking when NPC becomes invalid (despawned/nil position)
         local pos = engine.get_position(npc_obj)
         if not pos then
-            log.debug("TTS tracking slot %d: NPC position nil, removing", slot_num)
+            active_sounds[slot_num] = nil
+            log.debug("TTS tracking slot %d: NPC position nil after %d ticks, removing", slot_num, ticks)
             return true
         end
 
         -- Update sound position to follow NPC
         snd:set_position(pos)
+        return false
+    end)
+end
+
+--- Start a simplified polling loop for 2D playback.
+-- Only checks snd:playing() and releases the active_sounds reference
+-- when done.  No position tracking needed for 2D audio.
+--
+-- @param snd table sound_object instance (must be playing)
+-- @param slot_num number Slot number (used for unique event key)
+local function start_2d_poll(snd, slot_num)
+    local event_id = "talker_tts_track"
+    local action_id = "slot_" .. slot_num
+    local ticks = 0
+
+    engine.create_time_event(event_id, action_id, 0, function()
+        ticks = ticks + 1
+
+        if not snd:playing() then
+            active_sounds[slot_num] = nil
+            log.debug("TTS 2D poll slot %d: sound finished after %d ticks, removing", slot_num, ticks)
+            return true
+        end
+
         return false
     end)
 end
@@ -153,6 +189,9 @@ function M.play_on_npc(slot_num, npc_obj)
         return nil
     end
 
+    -- Store persistent reference BEFORE play to prevent GC
+    active_sounds[slot_num] = snd
+
     -- Check if NPC is valid and alive
     local use_3d = npc_obj and engine.is_alive(npc_obj)
 
@@ -168,12 +207,14 @@ function M.play_on_npc(slot_num, npc_obj)
         local player = engine.get_player()
         if player then
             snd:play(player, 0, engine.S2D)
+            start_2d_poll(snd, slot_num)
             if FORCE_2D_DEBUG then
                 log.info("TTS playing slot %d on player (2D DEBUG mode)", slot_num)
             else
                 log.warn("TTS playing slot %d on player (2D fallback, NPC unavailable)", slot_num)
             end
         else
+            active_sounds[slot_num] = nil
             log.error("TTS play_on_npc: no player available, cannot play audio")
             return nil
         end
@@ -200,13 +241,24 @@ end
 -- fresh writes start from slot 1.
 function M.flush_cache()
     current_slot = 1
+    active_sounds = {}
     engine.exec_console_cmd("snd_restart")
-    log.info("TTS flush_cache: snd_restart issued, slot counter reset to 1")
+    log.info("TTS flush_cache: snd_restart issued, slot counter reset to 1, active_sounds cleared")
 end
 
 --- Reset slot counter to 1 (for testing)
 function M._reset_counter()
     current_slot = 1
+    active_sounds = {}
+end
+
+--- Get number of active (playing) sounds (for testing/diagnostics)
+function M._get_active_count()
+    local count = 0
+    for _ in pairs(active_sounds) do
+        count = count + 1
+    end
+    return count
 end
 
 return M
