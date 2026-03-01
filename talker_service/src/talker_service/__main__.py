@@ -78,7 +78,7 @@ async def lifespan(app: FastAPI):
         from .config import settings
         
         if getattr(settings, "force_proxy_llm", False):
-            logger.debug("Forcing LLM Provider to PROXY due to force_proxy_llm environment variable")
+            logger.info("FORCE_PROXY_LLM active — using Proxy client (ignoring MCM model_method=%s)", config_mirror.get("model_method", "?"))
             model_method = 3  # PROVIDER_PROXY
             model_name = getattr(settings, "proxy_model", None)
         else:
@@ -221,7 +221,13 @@ async def health_check():
 async def debug_config():
     """Debug endpoint to view current config mirror."""
     from .handlers.config import config_mirror
-    return config_mirror.dump()
+    data = config_mirror.dump()
+    data["force_proxy_llm"] = settings.force_proxy_llm
+    if settings.force_proxy_llm:
+        data["effective_provider"] = "proxy (forced via FORCE_PROXY_LLM)"
+        data["effective_model"] = settings.proxy_model or "(default)"
+        data["effective_endpoint"] = settings.proxy_endpoint
+    return data
 
 
 def main():
