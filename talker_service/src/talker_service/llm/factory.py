@@ -68,7 +68,9 @@ def get_llm_client(
     
     if provider == PROVIDER_OPENAI:
         from .openai_client import OpenAIClient
-        client = OpenAIClient(timeout=timeout, **kwargs)
+        from ..config import settings as _settings
+        endpoint = kwargs.pop("endpoint", None) or getattr(_settings, "openai_endpoint", "") or None
+        client = OpenAIClient(endpoint=endpoint, timeout=timeout, **kwargs)
         logger.info("Created OpenAI client")
         
     elif provider == PROVIDER_OPENROUTER:
