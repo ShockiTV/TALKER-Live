@@ -62,6 +62,30 @@ local function test_allocation_sequence()
     print("✓ Test 1: Sequential allocation")
 end
 
+-- Test 1b: flush_cache issues snd_restart and resets counter
+local function test_flush_cache()
+    reset_state()
+    
+    -- Advance the counter
+    tts_slot.allocate()
+    tts_slot.allocate()
+    assert(tts_slot._get_current_slot() == 3, "Counter should be at 3")
+    test_state.console_commands = {}  -- clear any commands from allocate
+    
+    -- flush_cache resets counter and issues snd_restart
+    tts_slot.flush_cache()
+    assert(tts_slot._get_current_slot() == 1, "Counter should reset to 1 after flush")
+    assert(#test_state.console_commands == 1,
+        string.format("flush_cache should issue snd_restart (got %d commands)", #test_state.console_commands))
+    assert(test_state.console_commands[1] == "snd_restart", "Command should be snd_restart")
+    
+    -- Next allocation should return 1
+    local slot = tts_slot.allocate()
+    assert(slot == 1, "First slot after flush should be 1")
+    
+    print("\226\156\147 Test 1b: flush_cache resets counter and flushes sound cache")
+end
+
 -- Test 2: snd_restart fires at cache flush interval (slot 100)
 local function test_cache_flush_at_interval()
     reset_state()
@@ -71,7 +95,7 @@ local function test_cache_flush_at_interval()
         tts_slot.allocate()
     end
     
-    -- snd_restart should trigger when slot 100 is allocated (100 % 100 == 0)
+    -- snd_restart should trigger once at interval (slot 100)
     assert(#test_state.console_commands == 1,
         string.format("snd_restart should trigger at interval (got %d commands)", #test_state.console_commands))
     assert(test_state.console_commands[1] == "snd_restart", "Command should be snd_restart")
@@ -94,7 +118,7 @@ local function test_no_restart_before_interval()
     
     assert(#test_state.console_commands == 0, "snd_restart should not fire during normal allocation")
     
-    print("✓ Test 3: No snd_restart before interval boundary")
+    print("\226\156\147 Test 3: No snd_restart before interval boundary")
 end
 
 -- Test 4: write_slot delegates to io.open
@@ -264,6 +288,7 @@ local function run_tests()
     
     local tests = {
         test_allocation_sequence,
+        test_flush_cache,
         test_cache_flush_at_interval,
         test_no_restart_before_interval,
         test_write_delegates_to_io_open,

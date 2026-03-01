@@ -157,7 +157,7 @@ class TTSEngine:
 
         logger.info("Voice cache populated with {} voice(s)", len(self.voice_cache))
 
-    def _generate_audio_sync(self, text: str, voice_id: str, cancel: threading.Event | None = None) -> Optional[bytes]:
+    def _generate_audio_sync(self, text: str, voice_id: str, cancel: threading.Event | None = None) -> Optional[tuple[bytes, int]]:
         """Synchronous audio generation (runs in executor).
         
         Args:
@@ -166,7 +166,7 @@ class TTSEngine:
             cancel: Optional cancellation event; checked between chunks
             
         Returns:
-            OGG Vorbis bytes, or None on error or cancellation
+            Tuple of (OGG Vorbis bytes, duration_ms), or None on error/cancellation
         """
         if not text or text.strip() == "":
             logger.debug("Empty text, skipping TTS generation")
@@ -215,8 +215,9 @@ class TTSEngine:
 
             logger.info("pocket_tts produced {} chunks, encoding...", chunk_count)
 
-            # 2) Concatenate and peak-normalize to ±1.0
+            # 2) Concatenate, compute duration, and peak-normalize to ±1.0
             raw_audio = np.concatenate(chunks).astype(np.float32)
+            duration_ms = int(len(raw_audio) / TTS_SAMPLE_RATE * 1000)
             peak = np.max(np.abs(raw_audio))
             if peak > 1e-6:
                 raw_audio = raw_audio / peak
@@ -251,17 +252,17 @@ class TTSEngine:
 
             ogg_bytes = result.stdout
 
-            logger.info("Generated OGG audio: {} bytes ({} pages, {} chunks) for text: '{}'",
-                        len(ogg_bytes), ogg_bytes.count(b'OggS'), chunk_count, text[:50])
+            logger.info("Generated OGG audio: {} bytes ({} pages, {} chunks, {}ms) for text: '{}'",
+                        len(ogg_bytes), ogg_bytes.count(b'OggS'), chunk_count, duration_ms, text[:50])
             _log_memory()
             
-            return ogg_bytes
+            return ogg_bytes, duration_ms
 
         except Exception as e:
             logger.error("Failed to generate TTS audio: {}", e)
             return None
 
-    async def generate_audio(self, text: str, voice_id: str) -> Optional[bytes]:
+    async def generate_audio(self, text: str, voice_id: str) -> Optional[tuple[bytes, int]]:
         """Generate OGG Vorbis audio from dialogue text (async).
         
         Runs the blocking TTS generation in a thread pool executor to avoid
@@ -272,7 +273,7 @@ class TTSEngine:
             voice_id: Voice ID to use (from cache)
             
         Returns:
-            OGG Vorbis bytes, or None on error or if text is empty
+            Tuple of (OGG Vorbis bytes, duration_ms), or None on error/empty
         """
         if not text or text.strip() == "":
             return None

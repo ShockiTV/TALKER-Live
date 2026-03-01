@@ -14,6 +14,9 @@ local engine       = require("interface.engine")
 local base64       = require("infra.base64")
 local tts_slot     = require("domain.service.tts_slot")
 
+-- Monotonic counter for unique CreateTimeEvent keys per tts.audio message
+local _tts_play_counter = 0
+
 -- Reference to WS integration (lazy-loaded)
 local ws_integration = nil
 
@@ -71,58 +74,93 @@ end
 --------------------------------------------------------------------------------
 
 --- Handler for tts.audio command (in-engine TTS)
--- Receives pre-rendered OGG audio from Python service, plays immediately.
+-- Receives pre-rendered OGG audio from Python service.
+--
+-- Two-phase processing to prevent X-Ray sound cache desync:
+--   Phase 1 (immediate): decode base64, allocate slot, write OGG file
+--   Phase 2 (deferred 1 frame): display text + play audio
+--
+-- Each message is independent — multiple NPCs can talk simultaneously
+-- for natural 3D spatial audio immersion.  The one-frame defer gives
+-- X-Ray time to reflect the filesystem change before sound_object
+-- reads the slot.
 local function handle_tts_audio(payload)
-    local speaker_id    = payload.speaker_id
-    local audio_b64     = payload.audio_b64
-    local voice_id      = payload.voice_id
-    local dialogue      = payload.dialogue
-    local dialogue_id   = payload.dialogue_id or "?"
-    local create_event  = payload.create_event ~= false
-    local event_context = payload.event_context or {}
-
-    logger.info("[D#%s] Handling tts.audio for speaker: %s (voice: %s)", dialogue_id, speaker_id, voice_id or "?")
+    local speaker_id      = payload.speaker_id
+    local audio_b64       = payload.audio_b64
+    local voice_id        = payload.voice_id
+    local dialogue        = payload.dialogue
+    local dialogue_id     = payload.dialogue_id or "?"
+    local create_event    = payload.create_event ~= false
+    local event_context   = payload.event_context or {}
 
     if not speaker_id or not audio_b64 or not dialogue then
         logger.error("[D#%s] tts.audio requires speaker_id, audio_b64, and dialogue", dialogue_id)
         return
     end
 
-    local ok, err = pcall(function()
+    ---------------------------------------------------------------------------
+    -- Phase 1: IMMEDIATE — decode + allocate + write file.
+    -- Runs synchronously in the current frame so the OGG is on disk before
+    -- the deferred play fires (which is at least one frame later).
+    ---------------------------------------------------------------------------
+    local slot_num
+    local ok_write, err_write = pcall(function()
         -- 1. Decode base64 audio
         local ogg_bytes = base64.decode(audio_b64)
         if not ogg_bytes or #ogg_bytes == 0 then
-            logger.error("[D#%s] Failed to decode base64 audio for speaker %s", dialogue_id, speaker_id)
-            return
+            error(string.format("base64 decode failed for speaker %s", speaker_id))
         end
-        logger.debug("[D#%s] Decoded %d bytes of audio for speaker %s", dialogue_id, #ogg_bytes, speaker_id)
 
         -- 2. Allocate slot
-        local slot_num = tts_slot.allocate()
-        logger.info("[D#%s] slot=%d speaker=%s dialogue='%s'", dialogue_id, slot_num, speaker_id, dialogue:sub(1, 60))
+        slot_num = tts_slot.allocate()
 
         -- 3. Write OGG to slot file
-        local write_success = tts_slot.write_slot(slot_num, ogg_bytes)
-        if not write_success then
-            logger.error("[D#%s] Failed to write OGG to slot %d for speaker %s", dialogue_id, slot_num, speaker_id)
-            return
+        local write_ok = tts_slot.write_slot(slot_num, ogg_bytes)
+        if not write_ok then
+            error(string.format("failed to write OGG to slot %d", slot_num))
         end
 
-        -- 4. Display dialogue text
-        game_adapter.display_dialogue(speaker_id, dialogue)
-
-        -- 5. Create dialogue event
-        _create_dialogue_event(speaker_id, dialogue, event_context, create_event)
-
-        -- 6. Play audio on NPC (fire-and-forget)
-        local npc_obj = engine.get_obj_by_id(speaker_id)
-        tts_slot.play_on_npc(slot_num, npc_obj)
-        logger.info("[D#%s] Display + play complete (slot=%d)", dialogue_id, slot_num)
+        logger.info("[D#%s] slot=%d written (%d bytes) speaker=%s dialogue='%s'",
+            dialogue_id, slot_num, #ogg_bytes, speaker_id, dialogue:sub(1, 60))
     end)
 
-    if not ok then
-        logger.error("Failed to process tts.audio: %s", err)
+    if not ok_write then
+        logger.error("[D#%s] tts.audio write phase failed: %s", dialogue_id, err_write)
+        return
     end
+
+    ---------------------------------------------------------------------------
+    -- Phase 2: DEFERRED — display text + play audio.
+    -- Uses CreateTimeEvent(delay=0) to defer by one engine frame, ensuring
+    -- X-Ray re-reads the freshly-written slot file instead of serving stale
+    -- cached data.  Each message is independent (no serialization) so
+    -- multiple NPCs can speak simultaneously.
+    ---------------------------------------------------------------------------
+    _tts_play_counter = _tts_play_counter + 1
+    local play_key = "tts_play_" .. _tts_play_counter
+
+    logger.info("[D#%s] Deferring play for slot=%d (key=%s)", dialogue_id, slot_num, play_key)
+
+    engine.create_time_event("tts_play", play_key, 0, function()
+        local ok, err = pcall(function()
+            -- 4. Display dialogue text
+            game_adapter.display_dialogue(speaker_id, dialogue)
+
+            -- 5. Create dialogue event
+            _create_dialogue_event(speaker_id, dialogue, event_context, create_event)
+
+            -- 6. Play audio on NPC (fire-and-forget)
+            local npc_obj = engine.get_obj_by_id(speaker_id)
+            tts_slot.play_on_npc(slot_num, npc_obj)
+            logger.info("[D#%s] Display + play complete (slot=%d)", dialogue_id, slot_num)
+        end)
+
+        if not ok then
+            logger.error("[D#%s] tts.audio play phase failed: %s", dialogue_id, err)
+        end
+
+        return true  -- remove time event after execution
+    end)
 end
 
 --- Handler for dialogue.display command
@@ -264,6 +302,11 @@ end
 --------------------------------------------------------------------------------
 
 local function on_game_load()
+    -- Flush X-Ray sound cache immediately on load.
+    -- Purges stale slot audio cached from a previous save/session so that
+    -- freshly-written TTS audio is always what gets played.
+    tts_slot.flush_cache()
+
     CreateTimeEvent("talker_ws_command_handlers", "register", 3.5, function()
         register_handlers()
         return true

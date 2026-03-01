@@ -130,9 +130,12 @@ class TestTTSEngine:
         
         # subprocess.run was called to encode OGG via ffmpeg
         mock_pocket_tts['subprocess'].run.assert_called_once()
-        # Result is bytes from ffmpeg stdout
+        # Result is (ogg_bytes, duration_ms) tuple
         assert result is not None
-        assert isinstance(result, bytes)
+        ogg_bytes, duration_ms = result
+        assert isinstance(ogg_bytes, bytes)
+        assert isinstance(duration_ms, int)
+        assert duration_ms >= 0
 
     @pytest.mark.asyncio
     async def test_voice_id_resolution_exact_match(self, engine):
@@ -172,7 +175,7 @@ class TestTTSEngine:
         # Mock run_in_executor to verify it's called
         with patch('asyncio.get_event_loop') as mock_loop:
             mock_loop_instance = AsyncMock()
-            mock_loop_instance.run_in_executor = AsyncMock(return_value=b"OGG")
+            mock_loop_instance.run_in_executor = AsyncMock(return_value=(b"OGG", 500))
             mock_loop.return_value = mock_loop_instance
             
             result = await engine.generate_audio("Hello", "test_voice")

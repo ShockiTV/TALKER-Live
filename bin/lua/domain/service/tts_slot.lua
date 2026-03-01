@@ -162,6 +162,16 @@ function M._get_current_slot()
     return current_slot
 end
 
+--- Flush X-Ray sound cache.
+-- Call on game load to purge any stale cached slot audio from a
+-- previous save/session.  Also resets the round-robin counter so
+-- fresh writes start from slot 1.
+function M.flush_cache()
+    current_slot = 1
+    engine.exec_console_cmd("snd_restart")
+    log.info("TTS flush_cache: snd_restart issued, slot counter reset to 1")
+end
+
 --- Reset slot counter to 1 (for testing)
 function M._reset_counter()
     current_slot = 1
