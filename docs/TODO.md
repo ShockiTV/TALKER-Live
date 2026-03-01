@@ -25,3 +25,20 @@ The callout trigger currently puts `target_name` (a display string) in flags and
 - **Should `context.target` use `game_id` instead of `name` for dedup?** — If two NPCs spot the same enemy, context matching (for e.g. memory dedup or event grouping) would need to compare targets. String names can collide; `game_id` is unique.
 - **Candidate change**: ensure `context.target` always has `game_id` populated (it should already via `game.create_character`), and any downstream Python code that needs to identify the target uses `game_id`, not `name`.
 - **Check serializer**: `serialize_context` already serializes `target` as a full Character (with `game_id`). Verify Python-side code doesn't rely on a bare `target_name` string anywhere.
+
+## Investigate alternative TTS sound cache invalidation
+
+Currently `snd_restart` is used every 100 slot allocations to flush the X-Ray engine's decoded PCM cache. This is a blunt instrument — it flushes **all** cached sounds and can cause a brief audio stutter.
+
+- **Spike `getFS():rescan_path("$game_sounds$")`** — This unused engine FS API might allow targeted cache invalidation of just the `characters_voice\talker_tts\` subtree, without nuking the entire sound cache. Found in `lua_help.script` but never exercised by any shipping mod. Needs in-game testing to confirm: (a) it actually invalidates the PCM cache (not just the file index), and (b) it doesn't crash or stutter worse than `snd_restart`.
+- **Test per-slot invalidation** — Can `rescan_path` be scoped to a single file, or only a directory? If directory-only, does rescanning 200 silent OGGs at once cause a hitch?
+- **Measure `snd_restart` impact** — Profile the actual stutter duration. If it's <50ms, the whole investigation may not be worth the risk.
+
+## Investigate `npc:add_sound()` / `npc:play_sound()` for TTS
+
+The X-Ray engine exposes `game_object:add_sound(path, period, type, delay, ...)` and `game_object:play_sound(idx, ...)` which are used by `sound_theme.script` for vanilla NPC barks. This is a fundamentally different approach from `sound_object:play_at_pos()` — the engine itself manages the sound lifecycle and position tracking.
+
+- **Potential advantages**: Engine-native position tracking (no Lua tick loop), proper occlusion/reverb integration, compatible with the NPC sound system (e.g. `active_sound_count()` checks).
+- **Unknowns**: Can `add_sound` work with dynamically-overwritten OGG files (our slot system), or does it expect static paths indexed at startup? Does the sound type enum affect 3D spatialization? What happens if the NPC dies mid-playback?
+- **Approach**: Spike a minimal test in a `talker_trigger_*.script` callback — call `npc:add_sound("characters_voice\\talker_tts\\slot_1", 0, snd_type.talk, 0, 0, 0)` and then `npc:play_sound(0)` to see if audio is audible, spatially positioned, and tracks movement.
+- **Risk**: This is a much larger surface area change than `play_at_pos` + `set_position`. Only pursue if the tracking loop approach has issues in practice.
