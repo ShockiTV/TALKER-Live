@@ -1,48 +1,46 @@
-# Service-Level LLM Configuration Overrides Specification
+# force-llm-override
 
-## Capability Requirements
+## Purpose
 
-The `force-llm-override` capability allows operators hosting `talker_service` (centrally or locally) to completely intercept and replace the game client's (`talker.lua`) MCM LLM provider choices. 
+Allows operators hosting `talker_service` to override the game client's MCM LLM provider choices via `.env` variables, forcing all LLM calls through `ProxyClient` regardless of in-game settings.
 
-| Requirement | Type | Description | P/S | Verification |
-|-------------|------|-------------|-----|--------------|
-| Env Boolean Switch | Functional | `FORCE_PROXY_LLM=true` in `.env` forces all connections through the `ProxyClient` backend. | P | Unit Test validation |
-| Env Proxy Model | Functional | Optional `.env` variable `PROXY_MODEL="gpt-4o"` propagates down to constructor payload. | S | Unit Test validation |
-| Game Overrides | Functional | Client configured for "Ollama" in MCM receives responses seamlessly from the proxy without failure. | P | Integration tests |
+## Requirements
 
-*P/S: Primary / Secondary
+### Requirement: Env boolean switch forces proxy
 
-## Interaction Triggers
-1. Service boots up (reads `.env`).
-2. Player starts game, triggers `config.sync`.
-3. Client issues prompt.
-4. Python server `get_current_llm_client()` executes immediately prior to responding.
+When `FORCE_PROXY_LLM=true` is set in `.env`, the service SHALL route all LLM calls through the `ProxyClient` backend, ignoring the client's MCM `model_method` selection.
 
-### Before this capability:
-1. `__main__.py` evaluates `config_mirror` cache.
-2. Extracts method (e.g., 2 for Ollama).
-3. Connects to `localhost:11434`.
+#### Scenario: Force proxy enabled overrides Ollama config
 
-### After this capability:
-1. `__main__.py` evaluates `config_mirror` cache.
-2. Intercepts logic: `if settings.force_proxy_llm: return ProxyClient(3)`
-3. Connects to custom remote URL.
+- **WHEN** `FORCE_PROXY_LLM=true` is set in `.env`
+- **AND** the client MCM is configured for Ollama (`model_method=2`)
+- **THEN** `get_current_llm_client()` returns a `ProxyClient` instance
+- **AND** the response is served from the proxy endpoint
 
-## Configuration Schemas
-### Extended Settings Schema
-```python
-class Settings(BaseSettings):
-    # Proxy settings
-    force_proxy_llm: bool = False
-    proxy_model: str = ""
-    # ... legacy proxy_endpoint and key 
-```
+### Requirement: Env proxy model propagates to client
 
-## System Interfaces
+When `PROXY_MODEL` is set in `.env`, the service SHALL pass this model name to the `ProxyClient` constructor payload.
 
-* `talker_service/src/talker_service/config.py`: Primary loading logic for `force_proxy_llm`.
-* `talker_service/src/talker_service/__main__.py`: Routing switch based purely on Python `settings` singleton.
+#### Scenario: Custom model name used
 
-## Assumptions & Dependencies
-* `ProxyClient` remains functional as an OpenAI-compatible interface wrapper.
-* Users can format GitHub PAT variables properly inside `.env`.
+- **WHEN** `FORCE_PROXY_LLM=true` and `PROXY_MODEL="gpt-4o"` are set in `.env`
+- **THEN** the `ProxyClient` uses `"gpt-4o"` as the model name in API requests
+
+### Requirement: Configuration schema extends Settings
+
+The `Settings` class (pydantic-settings) SHALL include `force_proxy_llm: bool` (default `False`) and `proxy_model: str` (default `""`) fields loaded from `.env`.
+
+#### Scenario: Settings loaded from .env
+
+- **WHEN** the service boots
+- **THEN** `settings.force_proxy_llm` and `settings.proxy_model` reflect the `.env` values
+
+### Requirement: Override is transparent to game client
+
+The proxy override SHALL be transparent to the Lua game client — no protocol or behaviour changes are visible to the client when the override is active.
+
+#### Scenario: Client receives normal dialogue response
+
+- **WHEN** `FORCE_PROXY_LLM=true` is active
+- **AND** the client sends a `game.event`
+- **THEN** the client receives a `dialogue.display` response indistinguishable from a non-overridden response
