@@ -43,8 +43,11 @@ class TestConstants:
         assert main.SERVICE_WS_URL.startswith("ws://")
 
     def test_local_topics_include_mic(self):
-        for topic in ("mic.start", "mic.cancel", "mic.stop"):
+        for topic in ("mic.start", "mic.stop"):
             assert topic in main.LOCAL_TOPICS
+
+    def test_mic_cancel_not_in_local_topics(self):
+        assert "mic.cancel" not in main.LOCAL_TOPICS
 
     def test_local_topics_include_tts(self):
         assert "tts.speak" in main.LOCAL_TOPICS
@@ -81,22 +84,23 @@ class TestAudioStreamer:
                 assert self.streamer.is_recording
                 mock_thread.assert_called_once()
 
-    def test_start_publishes_listening(self):
+    def test_start_publishes_recording(self):
         with patch("main.threading.Thread") as mock_thread:
             mock_thread.return_value.start = MagicMock()
             with patch("main.publish_to_lua") as mock_pub:
                 self.streamer.start("dialogue")
                 mock_pub.assert_called_once_with(
-                    "mic.status", {"status": "LISTENING"}
+                    "mic.status", {"status": "RECORDING", "session_id": 1}
                 )
 
-    def test_double_start_ignored(self):
+    def test_double_start_supersedes(self):
         with patch("main.threading.Thread") as mock_thread:
             mock_thread.return_value.start = MagicMock()
             self.streamer.start("dialogue")
-            self.streamer.start("dialogue")  # second call
-            # Thread should only be created once
-            assert mock_thread.call_count == 1
+            self.streamer.start("dialogue")  # second call supersedes
+            # Each start spawns a new thread (old detects session mismatch)
+            assert mock_thread.call_count == 2
+            assert self.streamer._session_id == 2
 
     def test_cancel_stops_recording(self):
         with patch("main.threading.Thread") as mock_thread:

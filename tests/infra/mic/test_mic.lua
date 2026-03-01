@@ -4,22 +4,11 @@ local luaunit = require('tests.utils.luaunit')
 -- ── Mock dependencies before loading microphone ─────────────────────────────
 
 local publish_calls = {}   -- records publish(topic, payload) calls
-local session_on_status = nil
-local session_on_result = nil
-local session_count = 0
 
 local mock_channel = {}
 function mock_channel.publish(topic, payload)
     table.insert(publish_calls, { topic = topic, payload = payload })
 end
-function mock_channel.start_session(on_status, on_result)
-    session_count = session_count + 1
-    session_on_status = on_status
-    session_on_result = on_result
-end
-
-local mock_config = {}
-function mock_config.language_short() return "en" end
 
 local mock_logger = {}
 function mock_logger.info(...) end
@@ -27,7 +16,6 @@ function mock_logger.debug(...) end
 function mock_logger.error(...) end
 
 package.preload["infra.bridge.channel"]  = function() return mock_channel end
-package.preload["interface.config"]  = function() return mock_config end
 package.preload["framework.logger"]  = function() return mock_logger end
 
 local mic = require('infra.mic.microphone')
@@ -36,14 +24,10 @@ local mic = require('infra.mic.microphone')
 
 local function reset()
     publish_calls = {}
-    session_on_status = nil
-    session_on_result = nil
-    session_count = 0
-    -- Force internal mic_on state off by calling stop if on
-    if mic.is_mic_on() then
-        mic.stop()
+    -- Force internal _recording off
+    if mic.is_recording() then
+        mic.stop_capture()
         publish_calls = {}
-        session_count = 0
     end
 end
 
@@ -57,97 +41,116 @@ end
 
 -- ── Tests ────────────────────────────────────────────────────────────────────
 
-function testIsOffInitially()
-    luaunit.assertFalse(mic.is_mic_on())
+function testIsNotRecordingInitially()
+    luaunit.assertFalse(mic.is_recording())
 end
 
-function testStartSetsMicOn()
+function testStartCaptureRecording()
     reset()
-    mic.start("Recording test prompt")
-    luaunit.assertTrue(mic.is_mic_on())
+    mic.start_capture("dialogue")
+    luaunit.assertTrue(mic.is_recording())
 end
 
-function testStartPublishesMicStart()
+function testStartCapturePublishesMicStart()
     reset()
-    mic.start("my prompt")
+    mic.start_capture("dialogue")
     luaunit.assertItemsEquals(published_topics(), { "mic.start" })
 end
 
-function testStartPublishesPromptAndLang()
+function testStartCapturePublishesContextType()
     reset()
-    mic.start("hello world")
+    mic.start_capture("whisper")
     local pub
     for _, c in ipairs(publish_calls) do
         if c.topic == "mic.start" then pub = c end
     end
     luaunit.assertNotNil(pub)
-    luaunit.assertEquals(pub.payload.prompt, "hello world")
-    luaunit.assertEquals(pub.payload.lang, "en")
+    luaunit.assertEquals(pub.payload.context_type, "whisper")
 end
 
-function testStartRegistersSession()
+function testStartCaptureDefaultsToDialogue()
     reset()
-    mic.start("prompt")
-    luaunit.assertNotNil(session_on_status)
-    luaunit.assertNotNil(session_on_result)
-    luaunit.assertEquals(session_count, 1)
+    mic.start_capture()  -- no context_type
+    local pub
+    for _, c in ipairs(publish_calls) do
+        if c.topic == "mic.start" then pub = c end
+    end
+    luaunit.assertNotNil(pub)
+    luaunit.assertEquals(pub.payload.context_type, "dialogue")
 end
 
-function testStartWhenAlreadyOnIsNoop()
+function testStartCaptureWhenAlreadyRecordingIsNoop()
     reset()
-    mic.start("first")
+    mic.start_capture("dialogue")
     publish_calls = {}
-    session_count = 0
-    mic.start("second")  -- should be ignored
+    mic.start_capture("dialogue")  -- should be ignored
     luaunit.assertEquals(#publish_calls, 0)
-    luaunit.assertEquals(session_count, 0)
-    luaunit.assertTrue(mic.is_mic_on())
+    luaunit.assertTrue(mic.is_recording())
 end
 
-function testStopSetsMicOff()
+function testStopCaptureEndsRecording()
     reset()
-    mic.start("prompt")
-    mic.stop()
-    luaunit.assertFalse(mic.is_mic_on())
+    mic.start_capture("dialogue")
+    mic.stop_capture()
+    luaunit.assertFalse(mic.is_recording())
 end
 
-function testStopPublishesMicStop()
+function testStopCapturePublishesMicStop()
     reset()
-    mic.start("prompt")
+    mic.start_capture("dialogue")
     publish_calls = {}
-    mic.stop()
+    mic.stop_capture()
     luaunit.assertItemsEquals(published_topics(), { "mic.stop" })
 end
 
-function testStopWhenAlreadyOffIsNoop()
+function testStopCaptureWhenNotRecordingIsNoop()
     reset()
-    luaunit.assertFalse(mic.is_mic_on())
-    mic.stop()
+    luaunit.assertFalse(mic.is_recording())
+    mic.stop_capture()
     luaunit.assertEquals(#publish_calls, 0)
 end
 
-function testOnResultCallbackFiredAndMicTurnedOff()
+function testStartAfterStopWorks()
     reset()
-    local received_text = nil
-    mic.start("prompt", {
-        on_result = function(text) received_text = text end
-    })
-    luaunit.assertNotNil(session_on_result)
-    session_on_result("Hello Zone")
-    luaunit.assertEquals(received_text, "Hello Zone")
-    luaunit.assertFalse(mic.is_mic_on())
+    mic.start_capture("dialogue")
+    mic.stop_capture()
+    publish_calls = {}
+    mic.start_capture("dialogue")
+    luaunit.assertTrue(mic.is_recording())
+    luaunit.assertItemsEquals(published_topics(), { "mic.start" })
 end
 
-function testOnStatusCallbackFired()
+function testOnStoppedResetsRecording()
     reset()
-    local received_status = nil
-    mic.start("prompt", {
-        on_status = function(s) received_status = s end
-    })
-    luaunit.assertNotNil(session_on_status)
-    session_on_status("LISTENING")
-    luaunit.assertEquals(received_status, "LISTENING")
-    luaunit.assertTrue(mic.is_mic_on())
+    mic.start_capture("dialogue")
+    luaunit.assertTrue(mic.is_recording())
+    mic.on_stopped()
+    luaunit.assertFalse(mic.is_recording())
+end
+
+function testOnStoppedNoPublish()
+    reset()
+    mic.start_capture("dialogue")
+    publish_calls = {}
+    mic.on_stopped()
+    -- on_stopped should NOT publish anything (bridge already knows)
+    luaunit.assertEquals(#publish_calls, 0)
+end
+
+function testOnStoppedWhenNotRecordingIsNoop()
+    reset()
+    mic.on_stopped()
+    luaunit.assertEquals(#publish_calls, 0)
+end
+
+function testStartAfterOnStoppedWorks()
+    reset()
+    mic.start_capture("dialogue")
+    mic.on_stopped()
+    publish_calls = {}
+    mic.start_capture("dialogue")
+    luaunit.assertTrue(mic.is_recording())
+    luaunit.assertItemsEquals(published_topics(), { "mic.start" })
 end
 
 os.exit(luaunit.LuaUnit.run())

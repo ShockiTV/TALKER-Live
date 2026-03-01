@@ -26,6 +26,7 @@ _publisher: Optional["PublisherProtocol"] = None
 
 # Active audio buffer (one session at a time)
 _audio_buffer: Optional[AudioBuffer] = None
+_active_session_id: Optional[int] = None
 _buffer_lock = asyncio.Lock()
 
 
@@ -48,22 +49,30 @@ async def handle_audio_chunk(payload: dict[str, Any]) -> None:
 
     Payload::
 
-        {"audio_b64": "<base64>", "seq": <int>}
+        {"audio_b64": "<base64>", "seq": <int>, "session_id": <int>}
     """
-    global _audio_buffer
+    global _audio_buffer, _active_session_id
 
     seq = payload.get("seq", 0)
     audio_b64 = payload.get("audio_b64", "")
+    session_id = payload.get("session_id")
 
     if not audio_b64:
         logger.warning("mic.audio.chunk: empty audio_b64 (seq={})", seq)
         return
 
     async with _buffer_lock:
+        # If a new session started, discard the old buffer
+        if session_id is not None and _active_session_id is not None and session_id != _active_session_id:
+            logger.info("New audio session {} replacing old session {} — discarding buffer",
+                        session_id, _active_session_id)
+            _audio_buffer = None
+
         if _audio_buffer is None:
             # First chunk starts a new buffer implicitly
             _audio_buffer = AudioBuffer()
-            logger.info("AudioBuffer created on first chunk")
+            _active_session_id = session_id
+            logger.info("AudioBuffer created on first chunk (session={})", session_id)
 
         fmt = payload.get("format", "pcm")
         try:
@@ -71,8 +80,9 @@ async def handle_audio_chunk(payload: dict[str, Any]) -> None:
         except ValueError:
             # Buffer was already finalized — start a fresh one
             _audio_buffer = AudioBuffer()
+            _active_session_id = session_id
             _audio_buffer.add_chunk(seq, audio_b64, fmt=fmt)
-            logger.info("AudioBuffer reset on stale chunk (seq={})", seq)
+            logger.info("AudioBuffer reset on stale chunk (seq={}, session={})", seq, session_id)
 
 
 async def handle_audio_end(payload: dict[str, Any]) -> None:
@@ -80,22 +90,30 @@ async def handle_audio_end(payload: dict[str, Any]) -> None:
 
     Payload::
 
-        {"context": {"type": "dialogue" | "whisper"}}
+        {"context": {"type": "dialogue" | "whisper"}, "session_id": <int>}
 
     After transcription, sends:
-    - ``mic.status`` with ``{"status": "TRANSCRIBING"}``
-    - ``mic.result`` with ``{"text": "..."}``
+    - ``mic.status`` with ``{"status": "TRANSCRIBING", "session_id": ...}``
+    - ``mic.result`` with ``{"text": "...", "session_id": ...}``
 
     Then triggers dialogue generation via ``player.dialogue`` or ``player.whisper``.
     """
-    global _audio_buffer
+    global _audio_buffer, _active_session_id
 
     context = payload.get("context", {})
     context_type = context.get("type", "dialogue") if isinstance(context, dict) else "dialogue"
+    session_id = payload.get("session_id")
 
     async with _buffer_lock:
+        # Ignore end signals from stale sessions
+        if session_id is not None and _active_session_id is not None and session_id != _active_session_id:
+            logger.warning("Ignoring mic.audio.end for stale session {} (active={})",
+                           session_id, _active_session_id)
+            return
+
         buf = _audio_buffer
         _audio_buffer = None  # Allow new session immediately
+        _active_session_id = None
 
     if buf is None or buf.chunk_count == 0:
         logger.warning("mic.audio.end received but no audio buffered")
@@ -103,7 +121,7 @@ async def handle_audio_end(payload: dict[str, Any]) -> None:
 
     # Notify Lua that transcription is starting
     if _publisher:
-        await _publisher.publish("mic.status", {"status": "TRANSCRIBING"})
+        await _publisher.publish("mic.status", {"status": "TRANSCRIBING", "session_id": session_id})
 
     # Run transcription in a thread to avoid blocking the event loop
     pcm_bytes = buf.finalize()
@@ -112,12 +130,12 @@ async def handle_audio_end(payload: dict[str, Any]) -> None:
     if not text:
         logger.warning("Transcription returned empty text")
         if _publisher:
-            await _publisher.publish("mic.result", {"text": ""})
+            await _publisher.publish("mic.result", {"text": "", "session_id": session_id})
         return
 
     # Send result back to Lua (bridge proxies it downstream)
     if _publisher:
-        await _publisher.publish("mic.result", {"text": text})
+        await _publisher.publish("mic.result", {"text": text, "session_id": session_id})
     logger.info("Transcription result sent: '{}' (context={})", text, context_type)
 
     # Trigger dialogue generation using the standard handler path

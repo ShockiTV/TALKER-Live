@@ -15,8 +15,8 @@ setmetatable(mock_config, { __index = function() return function() end end })
 
 local recorder_calls = {}
 local mock_recorder = {}
-function mock_recorder.start(callback)
-    table.insert(recorder_calls, { fn = "start", callback = callback })
+function mock_recorder.toggle(callback)
+    table.insert(recorder_calls, { fn = "toggle", callback = callback })
 end
 
 local trigger_calls = {}
@@ -75,7 +75,7 @@ function testConfiguredSpeakKeyStartsRecorder()
     reset()
     press(CONFIGURED_SPEAK_KEY)
     luaunit.assertEquals(#recorder_calls, 1)
-    luaunit.assertEquals(recorder_calls[1].fn, "start")
+    luaunit.assertEquals(recorder_calls[1].fn, "toggle")
 end
 
 function testWrongKeyIsNoop()
