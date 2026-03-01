@@ -80,19 +80,19 @@ Lua SHALL connect to `talker_bridge` (localhost, port 5558) via a single WebSock
 
 ### Requirement: Mic control topics (Lua → talker_bridge)
 
+The following mic control topics SHALL be handled locally by `talker_bridge` and are NOT proxied to `talker_service`:
+
 | Topic | Payload | Purpose |
-|-------|---------|---------|
+|-------|---------|----------|
 | `mic.start` | `{ context_type }` | Start recording |
 | `mic.stop` | `{}` | Stop recording (trigger transcription) |
-
-These topics are handled locally by `talker_bridge` and are NOT proxied to `talker_service`.
 
 #### Scenario: mic.start triggers recording
 - **WHEN** `{"t":"mic.start","p":{"lang":"en","prompt":"..."}}` is received by `talker_bridge`
 - **THEN** audio capture begins locally in the bridge
 
 ### Requirement: Mic status topics (talker_bridge → Lua)
-
+The following mic status topics SHALL be sent by `talker_bridge` to the Lua client:
 | Topic | Payload fields | Purpose |
 |-------|---------------|---------|
 | `mic.status` | `status` (string: "RECORDING"\|"TRANSCRIBING"), `session_id` (int) | HUD status update |
@@ -109,7 +109,7 @@ These topics are handled locally by `talker_bridge` and are NOT proxied to `talk
 
 ### Requirement: Audio streaming topics (talker_bridge → talker_service)
 
-The following topics are sent by `talker_bridge` directly to `talker_service` over the upstream WS connection. These never pass through Lua.
+The following audio streaming topics SHALL be sent by `talker_bridge` directly to `talker_service` over the upstream WS connection. These never pass through Lua.
 
 | Topic | Payload fields | Purpose |
 |-------|---------------|---------|
@@ -126,7 +126,7 @@ The following topics are sent by `talker_bridge` directly to `talker_service` ov
 
 ### Requirement: Proxied topics (transparent relay)
 
-All other topics (e.g., `game.event`, `player.dialogue`, `config.update`, `dialogue.display`, `memory.update`, `state.query.batch`, etc.) pass through `talker_bridge` transparently. The bridge does not inspect, modify, or route these messages — it forwards them as-is between Lua and `talker_service`.
+All other topics (e.g., `game.event`, `player.dialogue`, `config.update`, `dialogue.display`, `memory.update`, `state.query.batch`, etc.) SHALL pass through `talker_bridge` transparently. The bridge SHALL NOT inspect, modify, or route these messages — it forwards them as-is between Lua and `talker_service`.
 
 #### Scenario: Transparent proxying
 - **WHEN** Lua sends `{"t":"game.event","p":{...}}` to the bridge
