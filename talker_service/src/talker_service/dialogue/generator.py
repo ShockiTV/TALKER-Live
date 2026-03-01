@@ -1,6 +1,7 @@
 """Main dialogue generation orchestrator."""
 
 import asyncio
+import inspect
 from typing import Any, Callable, Protocol
 
 from loguru import logger
@@ -128,8 +129,25 @@ class DialogueGenerator:
     
     @property
     def llm(self) -> LLMClient:
-        """Get the current LLM client (from factory if configured)."""
+        """Get the current LLM client (from factory if configured).
+
+        Backward-compatible property; delegates to :meth:`get_llm` with
+        no session.
+        """
+        return self.get_llm()
+
+    def get_llm(self, session_id: str | None = None) -> LLMClient:
+        """Get the LLM client, optionally scoped to *session_id*.
+
+        If a factory was provided at construction, it is called.  If the
+        factory signature includes a ``session_id`` parameter,
+        *session_id* is forwarded; otherwise the factory is called
+        without arguments (backward compatible).
+        """
         if self._llm_factory:
+            sig = inspect.signature(self._llm_factory)
+            if "session_id" in sig.parameters:
+                return self._llm_factory(session_id=session_id)
             return self._llm_factory()
         return self._llm_client
     
@@ -142,13 +160,16 @@ class DialogueGenerator:
     async def generate_from_event(
         self,
         event: dict[str, Any],
-        is_important: bool = False
+        is_important: bool = False,
+        *,
+        session_id: str | None = None,
     ) -> None:
         """Generate dialogue in response to a game event.
         
         Args:
             event: Game event dict
             is_important: Whether event should always trigger dialogue
+            session_id: Optional session for targeted state queries / publishes
         """
         logger.info(f"Generating dialogue from event: {event.get('type', 'legacy')}")
         
@@ -163,7 +184,7 @@ class DialogueGenerator:
         
         # Pick speaker
         try:
-            speaker_id = await self._pick_speaker(event, witnesses, current_time_ms)
+            speaker_id = await self._pick_speaker(event, witnesses, current_time_ms, session_id=session_id)
         except StateQueryTimeout as e:
             if self.retry_queue:
                 attempt = get_retry_attempt(event)
@@ -184,7 +205,7 @@ class DialogueGenerator:
         
         # Generate and display dialogue
         try:
-            await self._generate_dialogue_for_speaker(speaker_id, event)
+            await self._generate_dialogue_for_speaker(speaker_id, event, session_id=session_id)
         except StateQueryTimeout as e:
             if self.retry_queue:
                 attempt = get_retry_attempt(event)
@@ -199,7 +220,9 @@ class DialogueGenerator:
     async def generate_from_instruction(
         self,
         speaker_id: str,
-        event: dict[str, Any]
+        event: dict[str, Any],
+        *,
+        session_id: str | None = None,
     ) -> None:
         """Generate dialogue for a specific speaker (bypass speaker selection).
         
@@ -208,6 +231,7 @@ class DialogueGenerator:
         Args:
             speaker_id: Character ID who should speak
             event: Event context
+            session_id: Optional session for targeted state queries / publishes
         """
         logger.info(f"Generating dialogue from instruction for speaker {speaker_id}")
         
@@ -224,7 +248,7 @@ class DialogueGenerator:
         
         # Generate and display dialogue
         try:
-            await self._generate_dialogue_for_speaker(speaker_id, event)
+            await self._generate_dialogue_for_speaker(speaker_id, event, session_id=session_id)
         except StateQueryTimeout as e:
             if self.retry_queue:
                 attempt = get_retry_attempt(event)
@@ -243,7 +267,9 @@ class DialogueGenerator:
         self,
         event: dict[str, Any],
         witnesses: list[dict[str, Any]],
-        current_time_ms: int
+        current_time_ms: int,
+        *,
+        session_id: str | None = None,
     ) -> str | None:
         """Pick a speaker from witnesses.
         
@@ -287,7 +313,7 @@ class DialogueGenerator:
             personalities_query = BatchQuery().add(
                 "personality", "store.personalities", params={"target": candidate_ids}
             )
-            personalities_response = await self.state.execute_batch(personalities_query)
+            personalities_response = await self.state.execute_batch(personalities_query, session=session_id)
             raw_personalities = personalities_response["personality"] if personalities_response.ok("personality") else {}
             personalities = _normalize_store_map(raw_personalities, "character_id", "personality_id")
 
@@ -309,7 +335,7 @@ class DialogueGenerator:
             prompt_messages = create_pick_speaker_prompt(prompt_events, prompt_witnesses, personalities=personalities)
             messages = [Message(role=m.role, content=m.content) for m in prompt_messages]
             
-            response = await self.llm.complete(
+            response = await self.get_llm(session_id).complete(
                 messages,
                 LLMOptions(temperature=0.3, max_tokens=50, timeout=self.llm_timeout)
             )
@@ -335,7 +361,9 @@ class DialogueGenerator:
     async def _generate_dialogue_for_speaker(
         self,
         speaker_id: str,
-        event: dict[str, Any]
+        event: dict[str, Any],
+        *,
+        session_id: str | None = None,
     ) -> None:
         """Generate and display dialogue for a speaker.
         
@@ -369,7 +397,7 @@ class DialogueGenerator:
             if story_ids:
                 batch.add("alive", "query.characters_alive", params={"ids": story_ids})
             
-            result = await self.state.execute_batch(batch)
+            result = await self.state.execute_batch(batch, session=session_id)
             
             # Manually construct MemoryContext from separate mem + events results
             mem_data = result["mem"]
@@ -388,7 +416,7 @@ class DialogueGenerator:
             
             # Check if memory compression needed (run in background)
             asyncio.create_task(
-                self._maybe_compress_memory(speaker_id, memory_ctx)
+                self._maybe_compress_memory(speaker_id, memory_ctx, session_id=session_id)
             )
             
             # Build scene context dict from world query result
@@ -456,7 +484,7 @@ class DialogueGenerator:
             messages = [Message(role=m.role, content=m.content) for m in prompt_messages]
             
             # Generate dialogue
-            response = await self.llm.complete(
+            response = await self.get_llm(session_id).complete(
                 messages,
                 LLMOptions(temperature=0.8, max_tokens=200, timeout=self.llm_timeout)
             )
@@ -468,7 +496,7 @@ class DialogueGenerator:
                 return
             
             # Publish dialogue.display command
-            await self._publish_dialogue(speaker_id, dialogue, event, character)
+            await self._publish_dialogue(speaker_id, dialogue, event, character, session_id=session_id)
             
         except StateQueryTimeout:
             # Let StateQueryTimeout propagate to callers for retry handling
@@ -479,13 +507,16 @@ class DialogueGenerator:
     async def _maybe_compress_memory(
         self,
         speaker_id: str,
-        memory_ctx: Any
+        memory_ctx: Any,
+        *,
+        session_id: str | None = None,
     ) -> None:
         """Check if memory compression is needed and trigger if so.
         
         Args:
             speaker_id: Character ID
             memory_ctx: Memory context from state query
+            session_id: Optional session for targeted publishes
         """
         if not memory_ctx.new_events:
             return
@@ -499,25 +530,28 @@ class DialogueGenerator:
             return
         
         async with lock:
-            await self._compress_memory(speaker_id, memory_ctx)
+            await self._compress_memory(speaker_id, memory_ctx, session_id=session_id)
     
     async def _compress_memory(
         self,
         speaker_id: str,
-        memory_ctx: Any
+        memory_ctx: Any,
+        *,
+        session_id: str | None = None,
     ) -> None:
         """Compress memories and update narrative.
         
         Args:
             speaker_id: Character ID
             memory_ctx: Memory context from state query
+            session_id: Optional session for targeted publishes
         """
         logger.info(f"Compressing memories for {speaker_id}")
         
         try:
             # Get character for prompt via batch query
             batch = BatchQuery().add("char", "query.character", params={"id": speaker_id})
-            result = await self.state.execute_batch(batch)
+            result = await self.state.execute_batch(batch, session=session_id)
             character = Character.from_dict(result["char"])
             
             # Events from state query are already correct type
@@ -539,7 +573,7 @@ class DialogueGenerator:
             # Convert prompt Message objects to LLM Message objects
             messages = [Message(role=m.role, content=m.content) for m in prompt_messages]
             
-            response = await self.llm.complete(
+            response = await self.get_llm(session_id).complete(
                 messages,
                 LLMOptions(temperature=0.3, max_tokens=2000, timeout=self.llm_timeout)
             )
@@ -558,7 +592,7 @@ class DialogueGenerator:
                 "character_id": speaker_id,
                 "narrative": new_narrative,
                 "last_event_time_ms": newest_time,
-            })
+            }, session=session_id)
             
             logger.info(f"Memory updated for {speaker_id}, length: {len(new_narrative)}")
             
@@ -571,6 +605,8 @@ class DialogueGenerator:
         dialogue: str,
         event: dict[str, Any],
         character: Any | None = None,
+        *,
+        session_id: str | None = None,
     ) -> None:
         """Publish dialogue using TTS audio or text display.
         
@@ -582,6 +618,7 @@ class DialogueGenerator:
             dialogue: Cleaned dialogue text
             event: Original event context
             character: Character object from state query (has sound_prefix)
+            session_id: Optional session for targeted publish
         """
         # Assign a unique dialogue_id for correlating TTS audio with text
         global _dialogue_counter
@@ -622,7 +659,7 @@ class DialogueGenerator:
                         },
                     }
                     
-                    success = await self.publisher.publish("tts.audio", payload)
+                    success = await self.publisher.publish("tts.audio", payload, session=session_id)
                     if success:
                         logger.info(f"[D#{dialogue_id}] Published TTS audio for {speaker_id}: {dialogue[:50]}...")
                         return
@@ -646,7 +683,7 @@ class DialogueGenerator:
             },
         }
         
-        success = await self.publisher.publish("dialogue.display", payload)
+        success = await self.publisher.publish("dialogue.display", payload, session=session_id)
         if success:
             logger.info(f"[D#{dialogue_id}] Published dialogue for {speaker_id}: {dialogue[:50]}...")
         else:

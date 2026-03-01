@@ -139,18 +139,46 @@ class ConfigMirror:
 # Global config mirror instance
 config_mirror = ConfigMirror()
 
+# Optional session registry for per-session config routing
+_session_registry = None
 
-async def handle_config_update(payload: dict[str, Any]) -> None:
+
+def set_session_registry(registry) -> None:
+    """Inject a :class:`SessionRegistry` for per-session config routing.
+
+    When set, ``handle_config_sync`` and ``handle_config_update`` write to
+    the session-specific :class:`ConfigMirror` from the registry.  When
+    *registry* is ``None``, the global :data:`config_mirror` is used.
+    """
+    global _session_registry
+    _session_registry = registry
+    logger.info("Session registry {} for config handlers",
+                "set" if registry else "cleared")
+
+
+def _get_mirror(session_id: str | None = None):
+    """Return the ConfigMirror for *session_id*.
+
+    Uses the session registry when available; falls back to the module-level
+    global singleton.
+    """
+    if _session_registry and session_id is not None:
+        return _session_registry.get_config(session_id)
+    return config_mirror
+
+
+async def handle_config_update(payload: dict[str, Any], session_id: str = "__default__") -> None:
     """Handle config.update message (MCM setting changed).
-    
+
     Args:
         payload: Config dictionary from Lua
+        session_id: Session that sent the update
     """
-    logger.info("Received config update from game")
-    config_mirror.update(payload)
+    logger.info("Received config update from game (session={})", session_id)
+    _get_mirror(session_id).update(payload)
 
 
-async def handle_config_sync(payload: dict[str, Any]) -> None:
+async def handle_config_sync(payload: dict[str, Any], session_id: str = "__default__") -> None:
     """Handle config.sync message (full config on game load).
 
     Always clears the LLM client cache so any client instantiated before
@@ -159,6 +187,7 @@ async def handle_config_sync(payload: dict[str, Any]) -> None:
 
     Args:
         payload: Full config dictionary from Lua
+        session_id: Session that sent the sync
     """
-    logger.info("Received config sync from game (full config)")
-    config_mirror.sync(payload)
+    logger.info("Received config sync from game (session={})", session_id)
+    _get_mirror(session_id).sync(payload)

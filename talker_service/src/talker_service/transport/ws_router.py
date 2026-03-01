@@ -19,8 +19,10 @@ from fastapi import WebSocket, WebSocketDisconnect
 from loguru import logger
 from starlette.websockets import WebSocketState
 
-# Type alias for handler functions
-MessageHandler = Callable[[dict[str, Any]], Awaitable[None]]
+from .session import DEFAULT_SESSION
+
+# Type alias for handler functions — handlers receive (payload, session_id)
+MessageHandler = Callable[[dict[str, Any], str], Awaitable[None]]
 
 
 def parse_tokens(raw: str | None) -> dict[str, str]:
@@ -73,8 +75,10 @@ class WSRouter:
 
         self.handlers: dict[str, MessageHandler] = {}
         self._connections: list[WebSocket] = []
+        self._conn_to_session: dict[WebSocket, str] = {}
         self._pending_requests: dict[str, asyncio.Future] = {}
         self.is_connected: bool = False
+        self._session_registry = None  # set via set_session_registry()
 
     # ------------------------------------------------------------------
     # Handler registration
@@ -89,6 +93,10 @@ class WSRouter:
         logger.debug(f"Registered handler for topic: {topic}")
 
     register_handler = on  # alias used by the spec
+
+    def set_session_registry(self, registry) -> None:
+        """Inject :class:`SessionRegistry` for session→connection and outbox."""
+        self._session_registry = registry
 
     # ------------------------------------------------------------------
     # Request/response helpers
@@ -120,11 +128,25 @@ class WSRouter:
     # Publishing
     # ------------------------------------------------------------------
 
-    async def publish(self, topic: str, payload: dict[str, Any], *, r: str | None = None) -> bool:
-        """Send an envelope to **all** connected clients.
+    async def publish(
+        self,
+        topic: str,
+        payload: dict[str, Any],
+        *,
+        r: str | None = None,
+        session: str | None = None,
+    ) -> bool:
+        """Send an envelope to connected clients.
 
-        Returns ``True`` if sent to at least one client, ``False`` otherwise
-        (no clients connected — not an error).
+        When *session* is provided, the message is sent only to that
+        session's connection.  If the session has no active connection
+        the message is buffered in its outbox (when a
+        :class:`SessionRegistry` is available).
+
+        When *session* is ``None``, the message is broadcast to **all**
+        connected clients (backward-compatible default).
+
+        Returns ``True`` if sent (or buffered) successfully.
         """
         envelope: dict[str, Any] = {
             "t": topic,
@@ -136,19 +158,48 @@ class WSRouter:
         raw = json.dumps(envelope)
 
         sent = False
-        dead: list[WebSocket] = []
-        for ws in self._connections:
-            try:
-                await ws.send_text(raw)
-                sent = True
-            except Exception:
-                dead.append(ws)
 
-        for ws in dead:
-            self._remove_connection(ws)
+        if session is not None:
+            # ── Targeted send ─────────────────────────────────────
+            target_ws: WebSocket | None = None
+            if self._session_registry:
+                ctx = self._session_registry.get_session(session)
+                target_ws = ctx.connection
+            else:
+                # Fallback: reverse-lookup without registry
+                for ws, sid in self._conn_to_session.items():
+                    if sid == session:
+                        target_ws = ws
+                        break
 
-        if not sent and self._connections:
-            logger.warning("publish: failed to send to any client")
+            if target_ws is not None:
+                try:
+                    await target_ws.send_text(raw)
+                    sent = True
+                except Exception:
+                    self._remove_connection(target_ws)
+            else:
+                # Buffer in outbox if registry available
+                if self._session_registry:
+                    ctx = self._session_registry.get_session(session)
+                    ctx.outbox.append(raw)
+                    sent = True  # message accepted (buffered)
+                    logger.debug(f"Buffered message for disconnected session {session}")
+        else:
+            # ── Broadcast ──────────────────────────────────────────
+            dead: list[WebSocket] = []
+            for ws in self._connections:
+                try:
+                    await ws.send_text(raw)
+                    sent = True
+                except Exception:
+                    dead.append(ws)
+
+            for ws in dead:
+                self._remove_connection(ws)
+
+            if not sent and self._connections:
+                logger.warning("publish: failed to send to any client")
 
         from ..config import settings  # deferred to avoid circular import
         if topic != "service.heartbeat.ack" or getattr(settings, "log_heartbeat", False):
@@ -163,24 +214,37 @@ class WSRouter:
         """FastAPI WebSocket handler — intended to be mounted as ``/ws``."""
 
         # ── Auth ──────────────────────────────────────────────────────
+        session_id = DEFAULT_SESSION
         if self._auth_enabled:
             token = ws.query_params.get("token")
             if not token or token not in self._tokens.values():
                 await ws.close(code=4001)
                 logger.warning("WS connection rejected: invalid or missing token")
                 return
+            # Resolve session_id from token name
+            for name, tok in self._tokens.items():
+                if tok == token:
+                    session_id = name
+                    break
 
         await ws.accept()
         self._connections.append(ws)
+        self._conn_to_session[ws] = session_id
+
+        # Register connection in session registry (if available)
+        if self._session_registry:
+            ctx = self._session_registry.get_session(session_id)
+            ctx.connection = ws
+
         self.is_connected = True
-        logger.info("WS client connected ({} total)", len(self._connections))
+        logger.info("WS client connected (session={}, {} total)", session_id, len(self._connections))
 
         try:
             while True:
                 raw = await ws.receive_text()
-                await self._process_message(raw)
+                await self._process_message(raw, ws)
         except WebSocketDisconnect:
-            logger.info("WS client disconnected")
+            logger.info("WS client disconnected (session={})", session_id)
         except Exception as exc:
             logger.error(f"WS receive error: {exc}")
         finally:
@@ -190,7 +254,7 @@ class WSRouter:
     # Message processing
     # ------------------------------------------------------------------
 
-    async def _process_message(self, raw: str) -> None:
+    async def _process_message(self, raw: str, ws: WebSocket | None = None) -> None:
         """Parse a JSON envelope and dispatch."""
         try:
             data = json.loads(raw)
@@ -225,10 +289,13 @@ class WSRouter:
             logger.warning(f"No pending request for r={r}, discarding")
             return
 
+        # ── Resolve session_id from connection ────────────────────────
+        session_id = self._conn_to_session.get(ws, DEFAULT_SESSION) if ws else DEFAULT_SESSION
+
         # ── Handler dispatch ──────────────────────────────────────────
         handler = self.handlers.get(topic)
         if handler:
-            asyncio.create_task(handler(payload))
+            asyncio.create_task(handler(payload, session_id))
         else:
             if not topic.startswith("mic."):
                 logger.warning(f"No handler for topic: {topic}")
@@ -265,5 +332,13 @@ class WSRouter:
     def _remove_connection(self, ws: WebSocket) -> None:
         if ws in self._connections:
             self._connections.remove(ws)
+        session_id = self._conn_to_session.pop(ws, None)
+
+        # Clear connection on session context (keep session for outbox)
+        if session_id and self._session_registry:
+            ctx = self._session_registry.get_session(session_id)
+            if ctx.connection is ws:
+                ctx.connection = None
+
         self.is_connected = bool(self._connections)
         logger.debug("WS client removed ({} remaining)", len(self._connections))
