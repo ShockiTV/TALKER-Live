@@ -1,7 +1,7 @@
 """Tests for config mirror functionality."""
 
 import pytest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from talker_service.handlers.config import ConfigMirror, config_mirror
 
@@ -128,6 +128,109 @@ class TestConfigMirror:
         mirror.update(sample_config_payload)
         
         assert second_callback_called is True
+
+
+class TestPinMechanism:
+    """Tests for ConfigMirror pin() / get() override behaviour (task 7.1)."""
+
+    def test_pin_overrides_get(self, sample_config_payload):
+        """Pinned field returns pinned value, not MCM value."""
+        mirror = ConfigMirror()
+        mirror.update(sample_config_payload)
+
+        # MCM says model_method=1
+        assert mirror.get("model_method") == 1
+
+        mirror.pin("model_method", 0)
+        assert mirror.get("model_method") == 0
+
+    def test_unpinned_field_passthrough(self, sample_config_payload):
+        """Unpinned fields still return MCM config values."""
+        mirror = ConfigMirror()
+        mirror.pin("model_method", 3)
+        mirror.update(sample_config_payload)
+
+        # model_name is not pinned — MCM value should pass through
+        assert mirror.get("model_name") == "gpt-4"
+
+    def test_pin_overrides_model_name(self, sample_config_payload):
+        """Pinning model_name overrides the MCM model_name."""
+        mirror = ConfigMirror()
+        mirror.update(sample_config_payload)
+        mirror.pin("model_name", "claude-opus-4")
+
+        assert mirror.get("model_name") == "claude-opus-4"
+
+    def test_pin_appears_in_dump(self):
+        """dump() includes the pins dict."""
+        mirror = ConfigMirror()
+        mirror.pin("model_method", 2)
+        mirror.pin("model_name", "llama3")
+
+        dumped = mirror.dump()
+        assert "pins" in dumped
+        assert dumped["pins"]["model_method"] == 2
+        assert dumped["pins"]["model_name"] == "llama3"
+
+    def test_get_returns_default_when_no_pin_and_no_config(self):
+        """get() falls back to default when field is neither pinned nor in config."""
+        mirror = ConfigMirror()
+        assert mirror.get("nonexistent", "fallback") == "fallback"
+
+    def test_audit_log_on_pin_mismatch(self, sample_config_payload):
+        """_audit_pins logs when MCM disagrees with pin."""
+        mirror = ConfigMirror()
+        mirror.pin("model_method", 0)  # pin to openai
+
+        # MCM sends model_method=1 (openrouter)
+        with patch("talker_service.handlers.config.logger") as mock_logger:
+            mirror.update(sample_config_payload)
+            # Verify audit log was emitted for the mismatch
+            audit_calls = [
+                c for c in mock_logger.info.call_args_list
+                if "pinned" in str(c).lower()
+            ]
+            assert len(audit_calls) >= 1, "Expected audit log for pinned field mismatch"
+
+
+class TestCacheClearingWithPins:
+    """Tests for LLM cache clearing around pinned fields (task 7.2)."""
+
+    def test_cache_not_cleared_when_pinned_values_unchanged(self, sample_config_payload):
+        """Cache stays intact when MCM changes a pinned field."""
+        mirror = ConfigMirror()
+        mirror.pin("model_method", 0)
+        mirror.pin("model_name", "pinned-model")
+
+        # First sync to set baseline
+        mirror.sync(sample_config_payload)
+
+        # Second sync with different MCM values — but pins unchanged
+        payload2 = dict(sample_config_payload, model_method=2, model_name="different")
+        with patch("talker_service.llm.factory.clear_client_cache") as mock_clear:
+            mirror.sync(payload2)
+            mock_clear.assert_not_called()
+
+    def test_cache_cleared_when_effective_values_actually_change(self):
+        """Cache cleared when unpinned effective values change."""
+        mirror = ConfigMirror()
+
+        # First update: method=0, model=""
+        mirror.update({"model_method": 0, "model_name": ""})
+
+        # Second update: method=1 — not pinned, effective value changes
+        with patch("talker_service.llm.factory.clear_client_cache") as mock_clear:
+            mirror.update({"model_method": 1, "model_name": "gpt-4"})
+            mock_clear.assert_called_once()
+
+    def test_sync_clears_cache_on_first_sync_when_values_differ(self, sample_config_payload):
+        """First sync clears cache because defaults differ from MCM."""
+        mirror = ConfigMirror()
+        # defaults: model_method=0, model_name=""
+        # fixture: model_method=1, model_name="gpt-4"
+        with patch("talker_service.llm.factory.clear_client_cache") as mock_clear:
+            mirror.sync(sample_config_payload)
+            mock_clear.assert_called_once()
 
 
 class TestGlobalConfigMirror:

@@ -14,13 +14,14 @@ from .models import Message, LLMOptions
 class OpenAIClient(BaseLLMClient):
     """OpenAI API client for GPT models."""
     
-    API_URL = "https://api.openai.com/v1/chat/completions"
+    DEFAULT_API_URL = "https://api.openai.com/v1/chat/completions"
     DEFAULT_MODEL = "gpt-4o-mini"
     
     def __init__(
         self,
         api_key: str | None = None,
         model: str | None = None,
+        endpoint: str | None = None,
         timeout: float = 60.0,
         max_retries: int = 3,
     ):
@@ -29,16 +30,20 @@ class OpenAIClient(BaseLLMClient):
         Args:
             api_key: OpenAI API key (falls back to file/env)
             model: Default model to use (falls back to DEFAULT_MODEL)
+            endpoint: Custom API endpoint (falls back to OPENAI_ENDPOINT env, then default)
             timeout: Request timeout in seconds
             max_retries: Max retries on rate limit
         """
         super().__init__(timeout=timeout)
         self.api_key = api_key or self._load_api_key()
         self.default_model = model or self.DEFAULT_MODEL
+        self.api_url = endpoint or os.environ.get("OPENAI_ENDPOINT", "") or self.DEFAULT_API_URL
         self.max_retries = max_retries
         
         if not self.api_key:
             logger.warning("OpenAI API key not found - client will fail on requests")
+        if self.api_url != self.DEFAULT_API_URL:
+            logger.info("OpenAI client using custom endpoint: {}", self.api_url)
     
     def _load_api_key(self) -> str | None:
         """Load API key from file or environment."""
@@ -103,7 +108,7 @@ class OpenAIClient(BaseLLMClient):
             try:
                 async with httpx.AsyncClient(timeout=timeout) as client:
                     response = await client.post(
-                        self.API_URL,
+                        self.api_url,
                         json=request_body,
                         headers=headers,
                     )

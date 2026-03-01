@@ -76,20 +76,36 @@ async def lifespan(app: FastAPI):
     
     # Initialize dialogue generation components
     logger.info("Initializing dialogue generation pipeline...")
+
+    # ── Server authority pins ────────────────────────────────────────
+    # When .env sets LLM_PROVIDER / LLM_MODEL / etc., pin those values
+    # in ConfigMirror so MCM can never override them.
+    from .handlers.config import config_mirror
+    from .llm.factory import PROVIDER_NAMES
+
+    if settings.llm_provider:
+        provider_int = PROVIDER_NAMES.get(settings.llm_provider.lower())
+        if provider_int is not None:
+            config_mirror.pin("model_method", provider_int)
+        else:
+            logger.warning("Unknown LLM_PROVIDER '{}' — ignoring pin", settings.llm_provider)
+    if settings.llm_model:
+        config_mirror.pin("model_name", settings.llm_model)
+    if settings.llm_model_fast:
+        config_mirror.pin("model_name_fast", settings.llm_model_fast)
+    if settings.stt_method:
+        config_mirror.pin("stt_method", settings.stt_method)
+
+    if config_mirror._pins:
+        logger.info("Active server-authority pins: {}", config_mirror._pins)
+    else:
+        logger.info("No server-authority pins — MCM controls all settings")
     
     # Create a factory function that gets the LLM client based on current config
     # This allows the client to change when config.sync is received from the game
     def get_current_llm_client():
-        from .handlers.config import config_mirror
-        from .config import settings
-        
-        if getattr(settings, "force_proxy_llm", False):
-            logger.info("FORCE_PROXY_LLM active — using Proxy client (ignoring MCM model_method=%s)", config_mirror.get("model_method", "?"))
-            model_method = 3  # PROVIDER_PROXY
-            model_name = getattr(settings, "proxy_model", None)
-        else:
-            model_method = config_mirror.get("model_method", 0)
-            model_name = config_mirror.get("model_name", "")
+        model_method = config_mirror.get("model_method", 0)
+        model_name = config_mirror.get("model_name", "")
             
         logger.debug(f"Getting LLM client for model_method={model_method}, model_name={model_name}")
         return get_llm_client(
@@ -127,7 +143,6 @@ async def lifespan(app: FastAPI):
     
     # Wire config changes to TTS engine volume
     if tts_engine:
-        from .handlers.config import config_mirror
         def _on_config_change(cfg):
             vol = getattr(cfg, "tts_volume_boost", None)
             if vol is not None:
@@ -152,7 +167,6 @@ async def lifespan(app: FastAPI):
         
         # Lazily initialise the STT provider on first config sync so we know
         # which method the user picked (local / api / proxy).
-        from .handlers.config import config_mirror
         _stt_initialised = False
         
         def _init_stt_on_config(cfg):
@@ -162,17 +176,7 @@ async def lifespan(app: FastAPI):
             _stt_initialised = True
             try:
                 from .stt.factory import get_stt_provider
-                # STT method is independent of LLM model_method.
-                # Default to local Whisper; users can override via
-                # stt_method config key ("local", "api", "proxy").
                 stt_method = config_mirror.get("stt_method", "local")
-                if settings.force_local_whisper and stt_method != "local":
-                    logger.info(
-                        "FORCE_LOCAL_WHISPER active — using local Whisper "
-                        "(ignoring MCM stt_method={})",
-                        stt_method,
-                    )
-                    stt_method = "local"
                 provider = get_stt_provider(stt_method)
                 audio_handlers.set_stt_provider(provider)
             except Exception as exc:
@@ -234,12 +238,23 @@ async def health_check():
 async def debug_config():
     """Debug endpoint to view current config mirror."""
     from .handlers.config import config_mirror
+    from .llm.factory import PROVIDER_NAMES
+
     data = config_mirror.dump()
-    data["force_proxy_llm"] = settings.force_proxy_llm
-    if settings.force_proxy_llm:
-        data["effective_provider"] = "proxy (forced via FORCE_PROXY_LLM)"
-        data["effective_model"] = settings.proxy_model or "(default)"
-        data["effective_endpoint"] = settings.proxy_endpoint
+
+    # Reverse lookup: int → name
+    provider_labels = {v: k for k, v in PROVIDER_NAMES.items()}
+
+    method = config_mirror.get("model_method", 0)
+    data["effective"] = {
+        "provider": provider_labels.get(method, f"unknown({method})"),
+        "model": config_mirror.get("model_name", ""),
+        "model_fast": config_mirror.get("model_name_fast", ""),
+        "stt_method": config_mirror.get("stt_method", "local"),
+    }
+    if settings.openai_endpoint:
+        data["effective"]["openai_endpoint"] = settings.openai_endpoint
+
     return data
 
 

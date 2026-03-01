@@ -88,6 +88,47 @@ class TestOpenAIClient:
             assert result == "Hello! How can I help you?"
             assert mock_post.call_count == 2
 
+    def test_default_endpoint(self):
+        """Client uses default api.openai.com URL when no endpoint given."""
+        client = OpenAIClient(api_key="k", endpoint=None)
+        assert client.api_url == OpenAIClient.DEFAULT_API_URL
+
+    def test_custom_endpoint_param(self):
+        """Explicit endpoint param is used."""
+        url = "https://my-azure.openai.azure.com/v1/chat/completions"
+        client = OpenAIClient(api_key="k", endpoint=url)
+        assert client.api_url == url
+
+    def test_endpoint_from_env(self):
+        """Falls back to OPENAI_ENDPOINT env var when no param."""
+        url = "https://env-endpoint.example.com/v1"
+        with patch.dict("os.environ", {"OPENAI_ENDPOINT": url}):
+            client = OpenAIClient(api_key="k", endpoint=None)
+            assert client.api_url == url
+
+    def test_param_beats_env(self):
+        """Explicit endpoint param takes priority over env var."""
+        with patch.dict("os.environ", {"OPENAI_ENDPOINT": "https://env.example.com"}):
+            client = OpenAIClient(api_key="k", endpoint="https://param.example.com")
+            assert client.api_url == "https://param.example.com"
+
+    @pytest.mark.asyncio
+    async def test_custom_endpoint_used_in_request(self, sample_messages, mock_openai_response):
+        """complete() posts to the custom endpoint."""
+        url = "https://custom.example.com/v1/chat/completions"
+        client = OpenAIClient(api_key="test-key", endpoint=url, timeout=10.0)
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = mock_openai_response
+
+        with patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
+            mock_post.return_value = mock_response
+            await client.complete(sample_messages)
+            # Verify the URL used in the post call
+            call_args = mock_post.call_args
+            assert call_args[0][0] == url
+
 
 class TestOpenRouterClient:
     """Tests for OpenRouter client."""

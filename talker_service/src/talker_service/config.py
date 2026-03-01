@@ -1,6 +1,8 @@
 """Service configuration using pydantic-settings."""
 
+from typing import Optional
 from pathlib import Path
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -27,8 +29,17 @@ class Settings(BaseSettings):
     default_llm_provider: str = "openai"  # openai, openrouter, ollama, proxy
     llm_timeout: float = 60.0  # seconds
     
+    # Server authority pins — when set, MCM cannot override these
+    llm_provider: Optional[str] = None  # openai | openrouter | ollama | proxy
+    llm_model: Optional[str] = None  # pins model_name
+    llm_model_fast: Optional[str] = None  # pins model_name_fast
+    stt_method: Optional[str] = None  # local | api | proxy
+    
+    # OpenAI settings
+    openai_endpoint: str = ""  # Custom endpoint (e.g. Azure); empty = default api.openai.com
+
     # Proxy settings (for model_method = 3)
-    force_proxy_llm: bool = False
+    force_proxy_llm: bool = False  # Backward compat alias for llm_provider=proxy
     proxy_endpoint: str = "http://127.0.0.1:8000/v1/chat/completions"
     proxy_api_key: str = "VerysecretKey"
     proxy_model: str = ""
@@ -37,13 +48,26 @@ class Settings(BaseSettings):
     state_query_timeout: float = 30.0  # seconds
     
     # STT Settings (local Whisper)
-    force_local_whisper: bool = False  # If True, always use local Whisper regardless of MCM stt_method
+    force_local_whisper: bool = False  # Backward compat alias for stt_method=local
     whisper_model: str = "base.en"  # faster-whisper model name (e.g. tiny.en, base.en, small.en, distil-large-v3)
     whisper_beam_size: int = 1  # Beam search width (1 = greedy/fast, 5 = higher quality)
 
     # TTS Settings
     tts_enabled: bool = False  # Enable in-engine TTS audio generation
     voices_dir: Path = Path("./voices")  # Directory containing .safetensors voice files (flat layout)
+
+    @model_validator(mode="after")
+    def _resolve_backward_compat(self) -> "Settings":
+        """Resolve backward-compat aliases.
+
+        ``FORCE_PROXY_LLM=true`` → ``llm_provider="proxy"`` (if llm_provider not set).
+        ``FORCE_LOCAL_WHISPER=true`` → ``stt_method="local"`` (if stt_method not set).
+        """
+        if self.llm_provider is None and self.force_proxy_llm:
+            self.llm_provider = "proxy"
+        if self.stt_method is None and self.force_local_whisper:
+            self.stt_method = "local"
+        return self
 
 
 # Global settings instance

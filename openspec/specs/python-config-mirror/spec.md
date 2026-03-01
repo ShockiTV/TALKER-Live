@@ -20,11 +20,17 @@ The config mirror SHALL store the latest MCM configuration received from Lua.
 
 ### Config access
 
-The config mirror SHALL provide typed access to configuration values.
+The config mirror SHALL provide typed access to configuration values, respecting server-side pins.
 
-#### Scenario: Access model method
+#### Scenario: Access model method (no pin)
 - **WHEN** `config_mirror.get("model_method")` is called
-- **THEN** the current model_method value is returned
+- **AND** `model_method` is not pinned
+- **THEN** the current MCM model_method value is returned
+
+#### Scenario: Access model method (pinned)
+- **WHEN** `config_mirror.get("model_method")` is called
+- **AND** `model_method` is pinned to `3`
+- **THEN** the pinned value `3` is returned regardless of MCM
 
 #### Scenario: Access with default
 - **WHEN** `config_mirror.get("unknown_key", default=42)` is called
@@ -68,12 +74,17 @@ The config mirror SHALL start with sensible defaults until first sync.
 
 ### Config dump for debugging
 
-The config mirror SHALL provide a way to dump current config state.
+The config mirror SHALL provide a way to dump current config state including pins.
 
 #### Scenario: Dump config
 - **WHEN** `config_mirror.dump()` is called
 - **THEN** the full current config is returned as a dictionary
 
+#### Scenario: Dump includes pins
+- **WHEN** `config_mirror.dump()` is called
+- **AND** pins are active
+- **THEN** the dump includes a `pins` key showing all pinned field names and values
+
 #### Scenario: HTTP endpoint for config
 - **WHEN** `GET /debug/config` is requested
-- **THEN** the current config is returned as JSON
+- **THEN** the current config including pins is returned as JSON
