@@ -1,0 +1,159 @@
+# four-tier-memory-store
+
+## Purpose
+
+Per-NPC structured memory storage in Lua with four compactable tiers (events, summary, digest, core) plus an optional Background entity. Replaces the flat narrative blob memory store.
+
+## Requirements
+
+### Requirement: Per-NPC four-tier storage structure
+
+The `memory_store` module SHALL store memory per character as a structured table with five fields: `events` (list), `summary` (list), `digest` (list), `core` (list), and `background` (table or nil). Each list item SHALL have a monotonically increasing `seq` number that is never reused within a character's memory.
+
+#### Scenario: New character memory entry created
+- **WHEN** an event is appended for a character with no existing memory
+- **THEN** a new entry SHALL be created with empty `summary`, `digest`, `core` lists, nil `background`, and the event in `events`
+
+#### Scenario: Seq numbers are monotonically increasing
+- **WHEN** multiple events are appended for the same character
+- **THEN** each event SHALL receive a `seq` value greater than all previous `seq` values for that character
+
+#### Scenario: Memory entry has all five fields
+- **WHEN** a character's memory is queried
+- **THEN** the result SHALL contain `events`, `summary`, `digest`, `core`, and `background` fields
+
+### Requirement: Event tier storage
+
+The `events` tier SHALL store structured event objects with fields: `seq` (number), `timestamp` (number, game time), `type` (string, EventType), and `context` (table with event-specific fields). Events SHALL NOT store a `text` field — text is generated from templates at read time by Python.
+
+#### Scenario: Event stored without text field
+- **WHEN** a DEATH event is appended to a character's memory
+- **THEN** the stored event SHALL contain `seq`, `timestamp`, `type`, `context`
+- **AND** SHALL NOT contain a `text` field
+
+#### Scenario: Context contains character references
+- **WHEN** a DEATH event is stored
+- **THEN** `context.victim` SHALL contain `{game_id, name, faction}` at minimum
+- **AND** `context.killer` MAY be present with the same structure
+
+### Requirement: Compressed tier storage
+
+The `summary`, `digest`, and `core` tiers SHALL store compressed memory objects with fields: `seq` (number), `tier` (string), `start_ts` (number), `end_ts` (number), `text` (string), and `source_count` (number).
+
+#### Scenario: Summary entry structure
+- **WHEN** a summary is appended via mutation
+- **THEN** it SHALL contain `seq`, `tier="summary"`, `start_ts`, `end_ts`, `text`, `source_count`
+
+#### Scenario: Core entry is self-describing
+- **WHEN** a core entry exists
+- **THEN** `tier` SHALL be `"core"` and `source_count` SHALL reflect how many lower-tier items it absorbed
+
+### Requirement: Tier caps with oldest-eviction
+
+Each tier SHALL have a configurable cap. When an append would exceed the cap, the oldest items (lowest `seq`) SHALL be evicted before the append. Default caps: events=100, summary=10, digest=5, core=5.
+
+#### Scenario: Events tier at capacity
+- **WHEN** events tier has 100 items and a new event is appended
+- **THEN** the oldest event (lowest seq) SHALL be evicted
+- **AND** the new event SHALL be appended
+
+#### Scenario: Summary tier at capacity
+- **WHEN** summary tier has 10 items and a new summary is appended
+- **THEN** the oldest summary SHALL be evicted
+
+### Requirement: Background entity
+
+The `background` field SHALL store a structured table with `traits` (list of strings), `backstory` (string), and `connections` (list of `{character_id, name, relation}` tables). Background MAY be nil for characters who have never been selected as speaker.
+
+#### Scenario: Background initially nil
+- **WHEN** a new character memory entry is created
+- **THEN** `background` SHALL be nil
+
+#### Scenario: Background set via mutation
+- **WHEN** `set` operation targets `memory.background` for a character
+- **THEN** `background` SHALL contain `traits`, `backstory`, `connections` fields
+
+#### Scenario: Background traits updated
+- **WHEN** `update` operation adds a trait and removes another
+- **THEN** `traits` list SHALL reflect the addition and removal
+
+### Requirement: Unified store DSL operations
+
+The `memory_store` module SHALL provide five operations: `append(char_id, resource, items)`, `delete(char_id, resource, ids)`, `set(char_id, resource, data)`, `update(char_id, resource, ops)`, `query(char_id, resource, params)`.
+
+#### Scenario: Append adds items to a tier
+- **WHEN** `append("12467", "memory.events", {event})` is called
+- **THEN** the event SHALL be added to character 12467's events list with a new seq
+
+#### Scenario: Delete removes items by seq
+- **WHEN** `delete("12467", "memory.events", {1, 2, 3})` is called
+- **THEN** events with seq 1, 2, 3 SHALL be removed from character 12467's events
+- **AND** non-existent seq numbers SHALL be silently skipped
+
+#### Scenario: Set replaces entire resource
+- **WHEN** `set("12467", "memory.background", {traits={...}, backstory="...", connections={}})` is called
+- **THEN** character 12467's background SHALL be replaced with the new value
+
+#### Scenario: Update applies partial operators
+- **WHEN** `update("12467", "memory.background", {["$push"]={traits="brave"}, ["$pull"]={traits="timid"}})` is called
+- **THEN** "brave" SHALL be added to traits and "timid" SHALL be removed
+
+#### Scenario: Query returns tier data
+- **WHEN** `query("12467", "memory.events", {})` is called
+- **THEN** all events for character 12467 SHALL be returned
+
+#### Scenario: Query with timestamp filter
+- **WHEN** `query("12467", "memory.events", {from_timestamp=300})` is called
+- **THEN** only events with `timestamp >= 300` SHALL be returned
+
+### Requirement: Event fan-out to witnesses
+
+When an event occurs, the trigger layer SHALL call `memory_store:append()` for each witness NPC's events tier. This is a direct Lua function call, not a WS roundtrip.
+
+#### Scenario: Event appended to all witnesses
+- **WHEN** a DEATH event occurs with witnesses [Wolf, Fanatic, Stalker_123]
+- **THEN** the event SHALL be appended to Wolf's, Fanatic's, and Stalker_123's events tiers
+
+#### Scenario: New witness gets memory entry created
+- **WHEN** a witness has no existing memory entry
+- **THEN** a new entry SHALL be created with global backfill (if applicable) plus the triggering event
+
+### Requirement: Global event buffer and backfill
+
+The `memory_store` SHALL maintain a `global_event_buffer` (cap: 30) for global events (emissions, psy storms). When a new memory entry is created for a character, all globals from the buffer SHALL be backfilled into the character's events tier before the triggering event.
+
+#### Scenario: Global event stored in buffer
+- **WHEN** an emission event occurs
+- **THEN** it SHALL be appended to all existing NPCs' event tiers
+- **AND** it SHALL be appended to `global_event_buffer`
+
+#### Scenario: Backfill on first contact
+- **WHEN** a new NPC is encountered (no memory entry) and `global_event_buffer` has 5 events
+- **THEN** those 5 global events SHALL be backfilled into the NPC's events tier
+- **AND** the triggering event SHALL be appended after the backfill
+
+#### Scenario: Global buffer respects cap
+- **WHEN** `global_event_buffer` has 30 items and a new global event arrives
+- **THEN** the oldest global event SHALL be evicted
+
+### Requirement: Save and load persistence
+
+The `memory_store` SHALL provide `get_save_data()` and `load_save_data(data)` for game save/load. The save format SHALL include `memories_version = "3"` for migration detection. The `global_event_buffer` SHALL be included in the save data.
+
+#### Scenario: Save data format
+- **WHEN** `get_save_data()` is called
+- **THEN** returned table SHALL contain `memories_version = "3"`, `memories` (map of char_id to memory tables), and `global_events` (list)
+
+#### Scenario: Load v3 save data
+- **WHEN** `load_save_data` is called with `memories_version = "3"`
+- **THEN** all character memories and global buffer SHALL be restored
+
+#### Scenario: Load v2 save data (migration)
+- **WHEN** `load_save_data` is called with `memories_version = "2"` (flat narrative blob)
+- **THEN** each character's narrative SHALL be migrated to a single core-tier entry
+- **AND** all other tiers SHALL start empty
+- **AND** a log message SHALL indicate migration occurred
+
+#### Scenario: Load nil save data
+- **WHEN** `load_save_data(nil)` is called
+- **THEN** the store SHALL be empty with no error
