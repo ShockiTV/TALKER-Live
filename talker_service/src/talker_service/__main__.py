@@ -22,7 +22,7 @@ from .dialogue import DialogueGenerator, SpeakerSelector
 from .dialogue.retry_queue import DialogueRetryQueue
 from .state.client import StateQueryClient
 from .llm import get_llm_client
-from .tts import TTS_AVAILABLE, TTSEngine
+from .tts import TTS_AVAILABLE, TTSEngine, TTSRemoteClient
 from .stt import STT_AVAILABLE
 from .transport.session_registry import SessionRegistry
 
@@ -61,9 +61,13 @@ async def lifespan(app: FastAPI):
     ws_router.set_session_registry(session_registry)
     config_handlers.set_session_registry(session_registry)
     
-    # Initialize TTS engine if enabled
-    if settings.tts_enabled and TTS_AVAILABLE:
-        logger.info("Initializing TTS engine...")
+    # Initialize TTS: remote client (shared microservice) or embedded engine
+    if settings.tts_service_url:
+        logger.info("Using remote TTS service at {}", settings.tts_service_url)
+        tts_engine = TTSRemoteClient(settings.tts_service_url)
+        logger.info("TTSRemoteClient ready")
+    elif settings.tts_enabled and TTS_AVAILABLE:
+        logger.info("Initializing embedded TTS engine...")
         try:
             tts_engine = TTSEngine()
             await tts_engine.load(settings.voices_dir)
@@ -177,7 +181,12 @@ async def lifespan(app: FastAPI):
             try:
                 from .stt.factory import get_stt_provider
                 stt_method = config_mirror.get("stt_method", "local")
-                provider = get_stt_provider(stt_method)
+                # Pass stt_endpoint so WhisperAPIProvider can target a local
+                # faster-whisper-server container instead of OpenAI cloud.
+                stt_kwargs = {}
+                if settings.stt_endpoint:
+                    stt_kwargs["endpoint"] = settings.stt_endpoint
+                provider = get_stt_provider(stt_method, **stt_kwargs)
                 audio_handlers.set_stt_provider(provider)
             except Exception as exc:
                 logger.error("Failed to initialise STT provider: {}", exc)
@@ -201,8 +210,12 @@ async def lifespan(app: FastAPI):
     # Shutdown
     logger.info("Shutting down TALKER Service...")
     if tts_engine:
-        tts_engine.shutdown()
-        logger.info("TTS engine shut down")
+        if isinstance(tts_engine, TTSRemoteClient):
+            await tts_engine.close()
+            logger.info("TTSRemoteClient closed")
+        else:
+            tts_engine.shutdown()
+            logger.info("TTS engine shut down")
     if ws_router:
         await ws_router.shutdown()
     logger.info("TALKER Service stopped")
