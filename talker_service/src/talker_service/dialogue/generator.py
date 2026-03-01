@@ -13,6 +13,7 @@ from .retry_queue import DialogueRetryQueue, get_retry_attempt
 from ..llm import LLMClient, Message, LLMOptions
 from ..state.batch import BatchQuery
 from ..state.client import StateQueryTimeout
+from ..handlers._log import log_prefix
 from ..prompts import (
     create_dialogue_request_prompt,
     create_pick_speaker_prompt,
@@ -163,6 +164,7 @@ class DialogueGenerator:
         is_important: bool = False,
         *,
         session_id: str | None = None,
+        req_id: int | None = None,
     ) -> None:
         """Generate dialogue in response to a game event.
         
@@ -170,13 +172,15 @@ class DialogueGenerator:
             event: Game event dict
             is_important: Whether event should always trigger dialogue
             session_id: Optional session for targeted state queries / publishes
+            req_id: Optional request correlation ID for log tracing
         """
-        logger.info(f"Generating dialogue from event: {event.get('type', 'legacy')}")
+        pfx = log_prefix(req_id, session_id)
+        logger.info(f"{pfx}Generating dialogue from event: {event.get('type', 'legacy')}")
         
         # Get witnesses from event
         witnesses = event.get("witnesses", [])
         if not witnesses:
-            logger.debug("No witnesses in event, skipping dialogue")
+            logger.debug(f"{pfx}No witnesses in event, skipping dialogue")
             return
         
         # Get current game time from event
@@ -184,20 +188,20 @@ class DialogueGenerator:
         
         # Pick speaker
         try:
-            speaker_id = await self._pick_speaker(event, witnesses, current_time_ms, session_id=session_id)
+            speaker_id = await self._pick_speaker(event, witnesses, current_time_ms, session_id=session_id, req_id=req_id)
         except StateQueryTimeout as e:
             if self.retry_queue:
                 attempt = get_retry_attempt(event)
                 logger.warning(
-                    f"State query timeout during speaker selection, "
+                    f"{pfx}State query timeout during speaker selection, "
                     f"deferring to retry queue (attempt {attempt}): {e}"
                 )
                 self.retry_queue.enqueue("event", event, attempt_count=attempt)
             else:
-                logger.error(f"Speaker selection failed (no retry queue): {e}")
+                logger.error(f"{pfx}Speaker selection failed (no retry queue): {e}")
             return
         if not speaker_id:
-            logger.debug("No speaker selected, skipping dialogue")
+            logger.debug(f"{pfx}No speaker selected, skipping dialogue")
             return
         
         # Set cooldown
@@ -205,17 +209,17 @@ class DialogueGenerator:
         
         # Generate and display dialogue
         try:
-            await self._generate_dialogue_for_speaker(speaker_id, event, session_id=session_id)
+            await self._generate_dialogue_for_speaker(speaker_id, event, session_id=session_id, req_id=req_id)
         except StateQueryTimeout as e:
             if self.retry_queue:
                 attempt = get_retry_attempt(event)
                 logger.warning(
-                    f"State query timeout during event dialogue, "
+                    f"{pfx}State query timeout during event dialogue, "
                     f"deferring to retry queue (attempt {attempt}): {e}"
                 )
                 self.retry_queue.enqueue("event", event, attempt_count=attempt)
             else:
-                logger.error(f"Dialogue generation failed (no retry queue): {e}")
+                logger.error(f"{pfx}Dialogue generation failed (no retry queue): {e}")
     
     async def generate_from_instruction(
         self,
@@ -223,6 +227,7 @@ class DialogueGenerator:
         event: dict[str, Any],
         *,
         session_id: str | None = None,
+        req_id: int | None = None,
     ) -> None:
         """Generate dialogue for a specific speaker (bypass speaker selection).
         
@@ -232,15 +237,17 @@ class DialogueGenerator:
             speaker_id: Character ID who should speak
             event: Event context
             session_id: Optional session for targeted state queries / publishes
+            req_id: Optional request correlation ID for log tracing
         """
-        logger.info(f"Generating dialogue from instruction for speaker {speaker_id}")
+        pfx = log_prefix(req_id, session_id)
+        logger.info(f"{pfx}Generating dialogue from instruction for speaker {speaker_id}")
         
         current_time_ms = event.get("game_time_ms", 0)
         
         # Check if speaker spoke too recently
         last_spoke = self.speakers.get_last_spoke_time(speaker_id)
         if last_spoke and (current_time_ms - last_spoke) < self.speakers.cooldown_ms:
-            logger.debug(f"Speaker {speaker_id} spoke too recently, skipping")
+            logger.debug(f"{pfx}Speaker {speaker_id} spoke too recently, skipping")
             return
         
         # Set cooldown
@@ -248,12 +255,12 @@ class DialogueGenerator:
         
         # Generate and display dialogue
         try:
-            await self._generate_dialogue_for_speaker(speaker_id, event, session_id=session_id)
+            await self._generate_dialogue_for_speaker(speaker_id, event, session_id=session_id, req_id=req_id)
         except StateQueryTimeout as e:
             if self.retry_queue:
                 attempt = get_retry_attempt(event)
                 logger.warning(
-                    f"State query timeout during instruction dialogue, "
+                    f"{pfx}State query timeout during instruction dialogue, "
                     f"deferring to retry queue (attempt {attempt}): {e}"
                 )
                 self.retry_queue.enqueue(
@@ -261,7 +268,7 @@ class DialogueGenerator:
                     speaker_id=speaker_id, attempt_count=attempt,
                 )
             else:
-                logger.error(f"Dialogue generation failed (no retry queue): {e}")
+                logger.error(f"{pfx}Dialogue generation failed (no retry queue): {e}")
     
     async def _pick_speaker(
         self,
@@ -270,6 +277,7 @@ class DialogueGenerator:
         current_time_ms: int,
         *,
         session_id: str | None = None,
+        req_id: int | None = None,
     ) -> str | None:
         """Pick a speaker from witnesses.
         
@@ -277,14 +285,16 @@ class DialogueGenerator:
             event: Event context
             witnesses: List of witness dicts
             current_time_ms: Current game time
+            req_id: Optional request correlation ID for log tracing
             
         Returns:
             Speaker ID or None if no speaker selected
         """
+        pfx = log_prefix(req_id, session_id)
         # Filter out player (game_id 0)
         candidates = [w for w in witnesses if str(w.get("game_id", "")) != "0"]
         if not candidates:
-            logger.debug("No non-player witnesses")
+            logger.debug(f"{pfx}No non-player witnesses")
             return None
         
         # Player-directed events (is_dialogue flag) bypass cooldown so the NPC
@@ -294,12 +304,12 @@ class DialogueGenerator:
 
         if is_player_directed:
             available = candidates
-            logger.debug("Player-directed event — skipping cooldown filter")
+            logger.debug(f"{pfx}Player-directed event — skipping cooldown filter")
         else:
             # Filter by cooldown
             available = self.speakers.filter_by_cooldown(candidates, current_time_ms)
             if not available:
-                logger.debug("All speakers on cooldown")
+                logger.debug(f"{pfx}All speakers on cooldown")
                 return None
         
         # If only one speaker, return them directly
@@ -348,13 +358,13 @@ class DialogueGenerator:
                 if speaker_id in valid_ids:
                     return speaker_id
                 else:
-                    logger.warning(f"LLM picked invalid speaker {speaker_id}")
+                    logger.warning(f"{pfx}LLM picked invalid speaker {speaker_id}")
             
             # Fallback to first available
             return str(available[0].get("game_id", ""))
             
         except Exception as e:
-            logger.error(f"Speaker selection failed: {e}")
+            logger.error(f"{pfx}Speaker selection failed: {e}")
             # Fallback to first available
             return str(available[0].get("game_id", ""))
     
@@ -364,6 +374,7 @@ class DialogueGenerator:
         event: dict[str, Any],
         *,
         session_id: str | None = None,
+        req_id: int | None = None,
     ) -> None:
         """Generate and display dialogue for a speaker.
         
@@ -373,7 +384,14 @@ class DialogueGenerator:
         Args:
             speaker_id: Character ID
             event: Event context
+            req_id: Optional request correlation ID for log tracing
         """
+        # Assign dialogue_id early so all pipeline logs can reference it
+        global _dialogue_counter
+        _dialogue_counter += 1
+        dialogue_id = _dialogue_counter
+        pfx = log_prefix(req_id, session_id, dialogue_id)
+        
         try:
             # Gather all story IDs for alive check
             story_ids = get_all_story_ids()
@@ -410,13 +428,13 @@ class DialogueGenerator:
             )
             character = Character.from_dict(result["char"])
             logger.debug(
-                f"Character state for {speaker_id}: "
+                f"{pfx}Character state for {speaker_id}: "
                 f"name={character.name}, sound_prefix={character.sound_prefix}"
             )
             
             # Check if memory compression needed (run in background)
             asyncio.create_task(
-                self._maybe_compress_memory(speaker_id, memory_ctx, session_id=session_id)
+                self._maybe_compress_memory(speaker_id, memory_ctx, session_id=session_id, dialogue_id=dialogue_id)
             )
             
             # Build scene context dict from world query result
@@ -448,10 +466,10 @@ class DialogueGenerator:
                         alive_status=alive_status,
                     )
                 except Exception as e:
-                    logger.warning(f"Failed to build world context: {e}")
+                    logger.warning(f"{pfx}Failed to build world context: {e}")
                     world_state_context = ""
             except Exception as e:
-                logger.warning(f"Failed to parse scene context: {e}")
+                logger.warning(f"{pfx}Failed to parse scene context: {e}")
             
             prompt_memory = MemoryContext(
                 narrative=memory_ctx.narrative,
@@ -492,17 +510,17 @@ class DialogueGenerator:
             dialogue = clean_dialogue(response)
             
             if not dialogue:
-                logger.warning("Generated empty dialogue after cleaning")
+                logger.warning(f"{pfx}Generated empty dialogue after cleaning")
                 return
             
             # Publish dialogue.display command
-            await self._publish_dialogue(speaker_id, dialogue, event, character, session_id=session_id)
+            await self._publish_dialogue(speaker_id, dialogue, event, character, session_id=session_id, req_id=req_id, dialogue_id=dialogue_id)
             
         except StateQueryTimeout:
             # Let StateQueryTimeout propagate to callers for retry handling
             raise
         except Exception as e:
-            logger.error(f"Dialogue generation failed: {e}")
+            logger.error(f"{pfx}Dialogue generation failed: {e}")
     
     async def _maybe_compress_memory(
         self,
@@ -510,6 +528,7 @@ class DialogueGenerator:
         memory_ctx: Any,
         *,
         session_id: str | None = None,
+        dialogue_id: int | None = None,
     ) -> None:
         """Check if memory compression is needed and trigger if so.
         
@@ -517,6 +536,7 @@ class DialogueGenerator:
             speaker_id: Character ID
             memory_ctx: Memory context from state query
             session_id: Optional session for targeted publishes
+            dialogue_id: Optional dialogue_id for log correlation
         """
         if not memory_ctx.new_events:
             return
@@ -526,11 +546,12 @@ class DialogueGenerator:
         
         lock = self._get_memory_lock(speaker_id)
         if lock.locked():
-            logger.debug(f"Memory update already in progress for {speaker_id}")
+            pfx = log_prefix(dialogue_id=dialogue_id)
+            logger.debug(f"{pfx}Memory update already in progress for {speaker_id}")
             return
         
         async with lock:
-            await self._compress_memory(speaker_id, memory_ctx, session_id=session_id)
+            await self._compress_memory(speaker_id, memory_ctx, session_id=session_id, dialogue_id=dialogue_id)
     
     async def _compress_memory(
         self,
@@ -538,6 +559,7 @@ class DialogueGenerator:
         memory_ctx: Any,
         *,
         session_id: str | None = None,
+        dialogue_id: int | None = None,
     ) -> None:
         """Compress memories and update narrative.
         
@@ -545,8 +567,10 @@ class DialogueGenerator:
             speaker_id: Character ID
             memory_ctx: Memory context from state query
             session_id: Optional session for targeted publishes
+            dialogue_id: Optional dialogue_id for log correlation
         """
-        logger.info(f"Compressing memories for {speaker_id}")
+        pfx = log_prefix(dialogue_id=dialogue_id)
+        logger.info(f"{pfx}Compressing memories for {speaker_id}")
         
         try:
             # Get character for prompt via batch query
@@ -581,7 +605,7 @@ class DialogueGenerator:
             new_narrative = response.strip()
             
             if not new_narrative:
-                logger.warning("Generated empty narrative")
+                logger.warning(f"{pfx}Generated empty narrative")
                 return
             
             # Get timestamp from newest event
@@ -594,10 +618,10 @@ class DialogueGenerator:
                 "last_event_time_ms": newest_time,
             }, session=session_id)
             
-            logger.info(f"Memory updated for {speaker_id}, length: {len(new_narrative)}")
+            logger.info(f"{pfx}Memory updated for {speaker_id}, length: {len(new_narrative)}")
             
         except Exception as e:
-            logger.error(f"Memory compression failed: {e}")
+            logger.error(f"{pfx}Memory compression failed: {e}")
     
     async def _publish_dialogue(
         self,
@@ -607,6 +631,8 @@ class DialogueGenerator:
         character: Any | None = None,
         *,
         session_id: str | None = None,
+        req_id: int | None = None,
+        dialogue_id: int | None = None,
     ) -> None:
         """Publish dialogue using TTS audio or text display.
         
@@ -619,11 +645,17 @@ class DialogueGenerator:
             event: Original event context
             character: Character object from state query (has sound_prefix)
             session_id: Optional session for targeted publish
+            req_id: Optional request correlation ID for log tracing
+            dialogue_id: Pre-assigned dialogue_id from _generate_dialogue_for_speaker
         """
-        # Assign a unique dialogue_id for correlating TTS audio with text
-        global _dialogue_counter
-        _dialogue_counter += 1
-        dialogue_id = _dialogue_counter
+        # Use pre-assigned dialogue_id (assigned earlier in _generate_dialogue_for_speaker)
+        # Fallback: assign one here if called without (backward compat)
+        if dialogue_id is None:
+            global _dialogue_counter
+            _dialogue_counter += 1
+            dialogue_id = _dialogue_counter
+        
+        pfx = log_prefix(req_id, session_id, dialogue_id)
 
         # Try TTS first if available
         if self.tts_engine:
@@ -635,7 +667,7 @@ class DialogueGenerator:
                 # Falls back to speaker_id if no sound_prefix available;
                 # TTSEngine._resolve_voice falls back to first voice if no match.
                 voice_id = (character.sound_prefix if character and getattr(character, 'sound_prefix', None) else speaker_id)
-                logger.info(f"[D#{dialogue_id}] Generating TTS for {speaker_id} (voice={voice_id}): {dialogue[:50]}...")
+                logger.info(f"{pfx}Generating TTS for {speaker_id} (voice={voice_id}): {dialogue[:50]}...")
                 tts_result = await self.tts_engine.generate_audio(
                     text=dialogue,
                     voice_id=voice_id
@@ -661,14 +693,14 @@ class DialogueGenerator:
                     
                     success = await self.publisher.publish("tts.audio", payload, session=session_id)
                     if success:
-                        logger.info(f"[D#{dialogue_id}] Published TTS audio for {speaker_id}: {dialogue[:50]}...")
+                        logger.info(f"{pfx}Published TTS audio for {speaker_id}: {dialogue[:50]}...")
                         return
                     else:
-                        logger.warning(f"[D#{dialogue_id}] Failed to publish tts.audio, falling back to dialogue.display")
+                        logger.warning(f"{pfx}Failed to publish tts.audio, falling back to dialogue.display")
                 else:
-                    logger.warning(f"[D#{dialogue_id}] TTS engine returned no audio, falling back to dialogue.display")
+                    logger.warning(f"{pfx}TTS engine returned no audio, falling back to dialogue.display")
             except Exception as e:
-                logger.warning(f"[D#{dialogue_id}] TTS generation failed: {e}, falling back to dialogue.display")
+                logger.warning(f"{pfx}TTS generation failed: {e}, falling back to dialogue.display")
         
         # Fallback: publish dialogue.display for text-only display + talker_bridge TTS (2D)
         voice_id_fallback = (character.sound_prefix if character and getattr(character, 'sound_prefix', None) else "")
@@ -685,6 +717,6 @@ class DialogueGenerator:
         
         success = await self.publisher.publish("dialogue.display", payload, session=session_id)
         if success:
-            logger.info(f"[D#{dialogue_id}] Published dialogue for {speaker_id}: {dialogue[:50]}...")
+            logger.info(f"{pfx}Published dialogue for {speaker_id}: {dialogue[:50]}...")
         else:
-            logger.error(f"[D#{dialogue_id}] Failed to publish dialogue command")
+            logger.error(f"{pfx}Failed to publish dialogue command")

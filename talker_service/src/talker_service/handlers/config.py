@@ -5,6 +5,7 @@ from typing import Any, Callable, Optional
 from loguru import logger
 
 from ..models.config import MCMConfig
+from ._log import log_prefix
 
 
 class ConfigMirror:
@@ -12,44 +13,70 @@ class ConfigMirror:
     
     Stores the latest config received from Lua and provides
     typed access to configuration values.
+
+    Server-side pins (set via ``.env``) override MCM values transparently:
+    ``get()`` returns the pinned value when one exists for that field.
     """
     
     def __init__(self):
         """Initialize with default config."""
         self._config: MCMConfig = MCMConfig()
         self._callbacks: list[Callable[[MCMConfig], None]] = []
+        self._pins: dict[str, Any] = {}
         self._received_sync = False
         logger.info("Config mirror initialized with defaults. Waiting for sync from game.")
+
+    def pin(self, field: str, value: Any) -> None:
+        """Pin a field to a server-side value.
+
+        Pinned fields always return the pinned value from ``get()``,
+        regardless of what MCM sends.
+
+        Args:
+            field: Config field name (e.g. ``"model_method"``)
+            value: The authoritative value
+        """
+        self._pins[field] = value
+        logger.info("Config field '{}' pinned to: {}", field, value)
     
+    def _audit_pins(self, new_config: MCMConfig) -> None:
+        """Log when MCM attempts to change a pinned field."""
+        for field, pinned_value in self._pins.items():
+            mcm_value = getattr(new_config, field, None)
+            if mcm_value is not None and mcm_value != pinned_value:
+                logger.info(
+                    "MCM wants {}={}, pinned to {} — ignored",
+                    field, mcm_value, pinned_value,
+                )
+
+    def _effective_llm_values(self) -> tuple[Any, Any]:
+        """Return the effective (post-pin) model_method and model_name."""
+        return self.get("model_method", 0), self.get("model_name", "")
+
     def update(self, payload: dict[str, Any]) -> None:
         """Update config from Lua payload.
         
         Args:
             payload: Config dictionary from Lua
         """
-        old_config = self._config
+        old_effective = self._effective_llm_values()
         self._config = MCMConfig.from_lua_payload(payload)
         self._received_sync = True
         
         logger.info("Config updated from game")
         logger.debug(f"Config values: {self._config.model_dump()}")
+        self._audit_pins(self._config)
         
-        # Clear LLM client cache when model settings change
-        model_changed = (
-            old_config.model_method != self._config.model_method or
-            old_config.model_name != self._config.model_name
-        )
-        if model_changed:
-            from ..config import settings
-            if settings.force_proxy_llm:
-                logger.info(
-                    f"MCM model changed (method={old_config.model_method}->{self._config.model_method}) "
-                    f"but FORCE_PROXY_LLM is active — ignoring, keeping Proxy client"
-                )
-            else:
-                from ..llm.factory import clear_client_cache
-                clear_client_cache()
-                logger.info(f"LLM config changed: method={old_config.model_method}->{self._config.model_method}, model={old_config.model_name}->{self._config.model_name}")
+        # Clear LLM client cache only when effective (post-pin) values change
+        new_effective = self._effective_llm_values()
+        if old_effective != new_effective:
+            from ..llm.factory import clear_client_cache
+            clear_client_cache()
+            logger.info(
+                "LLM config changed: method={}->{}, model={!r}->{!r}",
+                old_effective[0], new_effective[0],
+                old_effective[1], new_effective[1],
+            )
 
         # Notify callbacks
         for callback in self._callbacks:
@@ -61,30 +88,32 @@ class ConfigMirror:
     def sync(self, payload: dict[str, Any]) -> None:
         """Apply a full config sync from the game.
 
-        Unlike update(), this always clears the LLM client cache so that any
-        client created before the first sync (using defaults) is discarded.
-        When ``force_proxy_llm`` is active the cache is left alone because
-        the ProxyClient is always used regardless of MCM values.
+        Always clears the LLM client cache so that any client created
+        before the first sync (using defaults) is discarded — unless
+        the effective (post-pin) LLM values are unchanged.
 
         Args:
             payload: Full config dictionary from Lua
         """
+        old_effective = self._effective_llm_values()
         self._config = MCMConfig.from_lua_payload(payload)
         self._received_sync = True
+        self._audit_pins(self._config)
 
-        from ..config import settings
-        if settings.force_proxy_llm:
-            logger.info(
-                f"Config sync applied (MCM method={self._config.model_method}, "
-                f"model={self._config.model_name!r}) — FORCE_PROXY_LLM active, "
-                f"keeping Proxy client, cache NOT cleared"
-            )
-        else:
+        new_effective = self._effective_llm_values()
+        if old_effective != new_effective:
             from ..llm.factory import clear_client_cache
             clear_client_cache()
             logger.info(
-                f"Config sync applied — LLM cache cleared. "
-                f"method={self._config.model_method}, model={self._config.model_name!r}"
+                "Config sync applied — LLM cache cleared. "
+                "effective method={}, model={!r}",
+                new_effective[0], new_effective[1],
+            )
+        else:
+            logger.info(
+                "Config sync applied — effective LLM values unchanged "
+                "(method={}, model={!r}), cache kept",
+                new_effective[0], new_effective[1],
             )
 
         # Notify callbacks
@@ -96,14 +125,18 @@ class ConfigMirror:
 
     def get(self, key: str, default: Any = None) -> Any:
         """Get a config value by key.
+
+        Pinned values always take priority over MCM config.
         
         Args:
             key: Config key name
             default: Default value if key not found
             
         Returns:
-            Config value or default
+            Pinned value if field is pinned, otherwise config value or default
         """
+        if key in self._pins:
+            return self._pins[key]
         return getattr(self._config, key, default)
     
     def on_change(self, callback: Callable[[MCMConfig], None]) -> None:
@@ -118,11 +151,12 @@ class ConfigMirror:
         """Dump current config as dictionary.
         
         Returns:
-            Full config dictionary
+            Full config dictionary including pins
         """
         return {
             "received_sync": self._received_sync,
             "config": self._config.model_dump(),
+            "pins": dict(self._pins),
         }
     
     @property
@@ -167,18 +201,18 @@ def _get_mirror(session_id: str | None = None):
     return config_mirror
 
 
-async def handle_config_update(payload: dict[str, Any], session_id: str = "__default__") -> None:
+async def handle_config_update(payload: dict[str, Any], session_id: str = "__default__", req_id: int = 0) -> None:
     """Handle config.update message (MCM setting changed).
 
     Args:
         payload: Config dictionary from Lua
         session_id: Session that sent the update
     """
-    logger.info("Received config update from game (session={})", session_id)
+    logger.info("{}Received config update from game (session={})", log_prefix(req_id, session_id), session_id)
     _get_mirror(session_id).update(payload)
 
 
-async def handle_config_sync(payload: dict[str, Any], session_id: str = "__default__") -> None:
+async def handle_config_sync(payload: dict[str, Any], session_id: str = "__default__", req_id: int = 0) -> None:
     """Handle config.sync message (full config on game load).
 
     Always clears the LLM client cache so any client instantiated before
@@ -189,5 +223,5 @@ async def handle_config_sync(payload: dict[str, Any], session_id: str = "__defau
         payload: Full config dictionary from Lua
         session_id: Session that sent the sync
     """
-    logger.info("Received config sync from game (session={})", session_id)
+    logger.info("{}Received config sync from game (session={})", log_prefix(req_id, session_id), session_id)
     _get_mirror(session_id).sync(payload)

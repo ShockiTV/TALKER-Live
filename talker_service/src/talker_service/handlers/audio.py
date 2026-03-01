@@ -15,6 +15,7 @@ from typing import Any, Optional, TYPE_CHECKING
 from loguru import logger
 
 from ..stt.audio_buffer import AudioBuffer
+from ._log import log_prefix
 
 if TYPE_CHECKING:
     from ..stt.base import STTProvider
@@ -44,7 +45,7 @@ def set_audio_publisher(publisher: "PublisherProtocol") -> None:
     logger.info("Publisher injected into audio handlers")
 
 
-async def handle_audio_chunk(payload: dict[str, Any], session_id: str = "__default__") -> None:
+async def handle_audio_chunk(payload: dict[str, Any], session_id: str = "__default__", req_id: int = 0) -> None:
     """Handle ``mic.audio.chunk`` — buffer a single audio chunk.
 
     Payload::
@@ -58,7 +59,7 @@ async def handle_audio_chunk(payload: dict[str, Any], session_id: str = "__defau
     session_id = payload.get("session_id")
 
     if not audio_b64:
-        logger.warning("mic.audio.chunk: empty audio_b64 (seq={})", seq)
+        logger.warning("{}mic.audio.chunk: empty audio_b64 (seq={})", log_prefix(req_id), seq)
         return
 
     async with _buffer_lock:
@@ -72,7 +73,7 @@ async def handle_audio_chunk(payload: dict[str, Any], session_id: str = "__defau
             # First chunk starts a new buffer implicitly
             _audio_buffer = AudioBuffer()
             _active_session_id = session_id
-            logger.info("AudioBuffer created on first chunk (session={})", session_id)
+            logger.info("{}AudioBuffer created on first chunk (session={})", log_prefix(req_id), session_id)
 
         fmt = payload.get("format", "pcm")
         try:
@@ -85,7 +86,7 @@ async def handle_audio_chunk(payload: dict[str, Any], session_id: str = "__defau
             logger.info("AudioBuffer reset on stale chunk (seq={}, session={})", seq, session_id)
 
 
-async def handle_audio_end(payload: dict[str, Any], session_id: str = "__default__") -> None:
+async def handle_audio_end(payload: dict[str, Any], session_id: str = "__default__", req_id: int = 0) -> None:
     """Handle ``mic.audio.end`` — finalize buffer and run transcription.
 
     Payload::
@@ -136,7 +137,7 @@ async def handle_audio_end(payload: dict[str, Any], session_id: str = "__default
     # Send result back to Lua (bridge proxies it downstream)
     if _publisher:
         await _publisher.publish("mic.result", {"text": text, "session_id": session_id})
-    logger.info("Transcription result sent: '{}' (context={})", text, context_type)
+    logger.info("{}Transcription result sent: '{}' (context={})", log_prefix(req_id), text, context_type)
 
     # Trigger dialogue generation using the standard handler path
     from .events import handle_player_dialogue, handle_player_whisper
