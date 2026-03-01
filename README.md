@@ -1,4 +1,4 @@
-## Talker-live
+## Talker-Live
 
 My personal experiment to enhance the work of previous mod versions and bring it closer to current technical capabilities - opening doors for new levels of immersion and narrative.
 
