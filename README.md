@@ -1,5 +1,9 @@
-# TALKER Expanded
-A fork of [TALKER](https://github.com/danclave/TALKER). See the main repo for full installation instructions and setup guide.
+## Talker-live
+
+My personal experiment to enhance the work of previous mod versions and bring it closer to current technical capabilities - opening doors for new levels of immersion and narrative.
+
+A fork of [TALKER Expanded](https://github.com/Coelacanthiform/TALKER-Expanded/)
+Which is fork of [TALKER](https://github.com/danclave/TALKER). See the main repo for full installation instructions and setup guide.
 
 This is my personal experiment attempting to get more immersion and roleplaying out of the already amazing TALKER mod.
 
