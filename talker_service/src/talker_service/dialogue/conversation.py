@@ -14,8 +14,10 @@ from ..llm import LLMClient, Message
 from ..llm.models import LLMToolResponse, ToolCall
 from ..state.client import StateQueryClient
 from ..state.batch import BatchQuery
-from ..prompts.factions import get_faction_description, resolve_faction_name
+from ..prompts.factions import get_faction_description, resolve_faction_name, COMPANION_FACTION_TENSION_NOTE
 from ..prompts.lookup import resolve_personality, resolve_backstory
+from ..prompts.world_context import build_world_context, get_all_story_ids
+from ..state.models import SceneContext
 
 
 # Tool schemas for LLM function calling
@@ -198,6 +200,8 @@ class ConversationManager:
 
 **Your Faction:** {faction_name}
 {faction_desc}
+
+{COMPANION_FACTION_TENSION_NOTE}
 
 **Your Personality:**
 {personality}
@@ -626,6 +630,28 @@ Example responses:
         personality_text = resolve_personality(personality_id)
         if not personality_text:
             personality_text = f"Generic personality ({personality_id})"
+        
+        # Enrich world context with dynamic faction data and world state
+        try:
+            scene_batch = (
+                BatchQuery()
+                .add("scene", "query.world")
+                .add("alive", "query.characters_alive",
+                     params={"ids": get_all_story_ids()})
+            )
+            scene_result = await self.state_client.execute_batch(scene_batch, timeout=10.0)
+
+            scene_ctx = (
+                SceneContext.from_dict(scene_result["scene"])
+                if scene_result.ok("scene") else SceneContext()
+            )
+            alive_status = scene_result["alive"] if scene_result.ok("alive") else {}
+
+            enriched = await build_world_context(scene_ctx, alive_status=alive_status)
+            if enriched:
+                world = f"{world}\n\n{enriched}"
+        except Exception as e:
+            logger.warning(f"Failed to enrich world context: {e}")
         
         # Build system prompt (task 4.2)
         system_prompt = self._build_system_prompt(faction, personality_text, world)

@@ -102,12 +102,30 @@
   },
   "llm_mocks": [
     {
-      "response": "[SPEAKER: 12345] A Jellyfish. Not bad â€” keep it safe until you can sell it.",
+      "response": "[SPEAKER: 12345] A Jellyfish. Not bad \u00e2\u20ac\u201d keep it safe until you can sell it.",
       "request": "__CAPTURE__"
     }
   ],
   "expected": {
     "state_queries": [
+      {
+        "topic": "state.query.batch",
+        "payload": {
+          "queries": [
+            {
+              "id": "scene",
+              "resource": "query.world"
+            },
+            {
+              "id": "alive",
+              "resource": "query.characters_alive",
+              "params": {
+                "ids": "__ANY_LIST__"
+              }
+            }
+          ]
+        }
+      },
       {
         "topic": "state.query.batch",
         "payload": {
@@ -135,7 +153,7 @@
         "topic": "dialogue.display",
         "payload": {
           "speaker_id": "12345",
-          "dialogue": "A Jellyfish. Not bad â€” keep it safe until you can sell it.",
+          "dialogue": "A Jellyfish. Not bad \u00e2\u20ac\u201d keep it safe until you can sell it.",
           "create_event": true,
           "event_context": {
             "world_context": null

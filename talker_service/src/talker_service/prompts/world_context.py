@@ -9,7 +9,11 @@ from typing import TYPE_CHECKING, Dict, List, Optional, TypedDict
 
 from loguru import logger
 
-from talker_service.prompts.factions import resolve_faction_name
+from talker_service.prompts.factions import (
+    resolve_faction_name,
+    format_faction_standings,
+    format_player_goodwill,
+)
 
 if TYPE_CHECKING:
     from ..state.client import StateQueryClient
@@ -382,5 +386,17 @@ async def build_world_context(
     regional = build_regional_context(current_area)
     if regional:
         sections.append(regional)
+    
+    # Build faction standings section
+    if scene_data and scene_data.faction_standings:
+        standings_text = format_faction_standings(scene_data.faction_standings)
+        if standings_text:
+            sections.append(f"Faction standings:\n{standings_text}")
+    
+    # Build player goodwill section
+    if scene_data and scene_data.player_goodwill:
+        goodwill_text = format_player_goodwill(scene_data.player_goodwill)
+        if goodwill_text:
+            sections.append(f"Player goodwill:\n{goodwill_text}")
     
     return "\n\n".join(sections)

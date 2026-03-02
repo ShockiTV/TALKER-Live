@@ -122,12 +122,30 @@
   },
   "llm_mocks": [
     {
-      "response": "[SPEAKER: 12345] That Vortex nearly had you. Watch your footing out there â€” bolts first, walk second.",
+      "response": "[SPEAKER: 12345] That Vortex nearly had you. Watch your footing out there \u00e2\u20ac\u201d bolts first, walk second.",
       "request": "__CAPTURE__"
     }
   ],
   "expected": {
     "state_queries": [
+      {
+        "topic": "state.query.batch",
+        "payload": {
+          "queries": [
+            {
+              "id": "scene",
+              "resource": "query.world"
+            },
+            {
+              "id": "alive",
+              "resource": "query.characters_alive",
+              "params": {
+                "ids": "__ANY_LIST__"
+              }
+            }
+          ]
+        }
+      },
       {
         "topic": "state.query.batch",
         "payload": {
@@ -155,7 +173,7 @@
         "topic": "dialogue.display",
         "payload": {
           "speaker_id": "12345",
-          "dialogue": "That Vortex nearly had you. Watch your footing out there â€” bolts first, walk second.",
+          "dialogue": "That Vortex nearly had you. Watch your footing out there \u00e2\u20ac\u201d bolts first, walk second.",
           "create_event": true,
           "event_context": {
             "world_context": null

@@ -110,6 +110,16 @@ Serialization of resolved data SHALL use `infra.ws.serializer` module functions 
 #### Scenario: Resource registry maps query.world
 - **WHEN** sub-query has `resource: "query.world"`
 - **THEN** registry SHALL map it to the world context builder (location, time, weather, etc.)
+- **AND** the result SHALL include `faction_standings` from `build_faction_matrix()`
+- **AND** the result SHALL include `player_goodwill` from `build_player_goodwill()`
+
+#### Scenario: query.world includes faction standings
+- **WHEN** sub-query has `resource: "query.world"`
+- **THEN** the result SHALL contain a `faction_standings` key with a flat dict of faction-pair relation values (e.g., `{"dolg_freedom": -1500}`)
+
+#### Scenario: query.world includes player goodwill
+- **WHEN** sub-query has `resource: "query.world"`
+- **THEN** the result SHALL contain a `player_goodwill` key with a dict of per-faction goodwill values (e.g., `{"dolg": 1200}`)
 
 #### Scenario: Unknown resource returns per-query error
 - **WHEN** sub-query has an unrecognized resource name

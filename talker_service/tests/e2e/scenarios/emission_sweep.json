@@ -112,12 +112,30 @@
   },
   "llm_mocks": [
     {
-      "response": "[SPEAKER: 12345] Get to cover â€” NOW. Emission's sweeping through and you don't want to be caught in the open.",
+      "response": "[SPEAKER: 12345] Get to cover \u00e2\u20ac\u201d NOW. Emission's sweeping through and you don't want to be caught in the open.",
       "request": "__CAPTURE__"
     }
   ],
   "expected": {
     "state_queries": [
+      {
+        "topic": "state.query.batch",
+        "payload": {
+          "queries": [
+            {
+              "id": "scene",
+              "resource": "query.world"
+            },
+            {
+              "id": "alive",
+              "resource": "query.characters_alive",
+              "params": {
+                "ids": "__ANY_LIST__"
+              }
+            }
+          ]
+        }
+      },
       {
         "topic": "state.query.batch",
         "payload": {
@@ -145,7 +163,7 @@
         "topic": "dialogue.display",
         "payload": {
           "speaker_id": "12345",
-          "dialogue": "Get to cover â€” NOW. Emission's sweeping through and you don't want to be caught in the open.",
+          "dialogue": "Get to cover \u00e2\u20ac\u201d NOW. Emission's sweeping through and you don't want to be caught in the open.",
           "create_event": true,
           "event_context": {
             "world_context": null

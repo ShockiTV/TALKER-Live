@@ -100,12 +100,30 @@
   },
   "llm_mocks": [
     {
-      "response": "[SPEAKER: 12345] You new around here? Don't get comfortable â€” the Zone has a way of surprising you.",
+      "response": "[SPEAKER: 12345] You new around here? Don't get comfortable \u00e2\u20ac\u201d the Zone has a way of surprising you.",
       "request": "__CAPTURE__"
     }
   ],
   "expected": {
     "state_queries": [
+      {
+        "topic": "state.query.batch",
+        "payload": {
+          "queries": [
+            {
+              "id": "scene",
+              "resource": "query.world"
+            },
+            {
+              "id": "alive",
+              "resource": "query.characters_alive",
+              "params": {
+                "ids": "__ANY_LIST__"
+              }
+            }
+          ]
+        }
+      },
       {
         "topic": "state.query.batch",
         "payload": {
@@ -133,7 +151,7 @@
         "topic": "dialogue.display",
         "payload": {
           "speaker_id": "12345",
-          "dialogue": "You new around here? Don't get comfortable â€” the Zone has a way of surprising you.",
+          "dialogue": "You new around here? Don't get comfortable \u00e2\u20ac\u201d the Zone has a way of surprising you.",
           "create_event": true,
           "event_context": {
             "world_context": null

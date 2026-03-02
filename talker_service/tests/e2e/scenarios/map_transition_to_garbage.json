@@ -122,12 +122,30 @@
   },
   "llm_mocks": [
     {
-      "response": "[SPEAKER: 12345] The Garbage. Watch for bandits near the old depot â€” they've been more aggressive lately.",
+      "response": "[SPEAKER: 12345] The Garbage. Watch for bandits near the old depot \u00e2\u20ac\u201d they've been more aggressive lately.",
       "request": "__CAPTURE__"
     }
   ],
   "expected": {
     "state_queries": [
+      {
+        "topic": "state.query.batch",
+        "payload": {
+          "queries": [
+            {
+              "id": "scene",
+              "resource": "query.world"
+            },
+            {
+              "id": "alive",
+              "resource": "query.characters_alive",
+              "params": {
+                "ids": "__ANY_LIST__"
+              }
+            }
+          ]
+        }
+      },
       {
         "topic": "state.query.batch",
         "payload": {
@@ -155,7 +173,7 @@
         "topic": "dialogue.display",
         "payload": {
           "speaker_id": "12345",
-          "dialogue": "The Garbage. Watch for bandits near the old depot â€” they've been more aggressive lately.",
+          "dialogue": "The Garbage. Watch for bandits near the old depot \u00e2\u20ac\u201d they've been more aggressive lately.",
           "create_event": true,
           "event_context": {
             "world_context": null

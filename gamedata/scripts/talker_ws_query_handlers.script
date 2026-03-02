@@ -401,6 +401,8 @@ resource_registry["query.world"] = function(query)
         campfire = queries_mod.get_nearby_campfire_state and queries_mod.get_nearby_campfire_state() or nil,
         brain_scorcher_disabled = brain_scorcher_disabled,
         miracle_machine_disabled = miracle_machine_disabled,
+        faction_standings = queries_mod.build_faction_matrix(),
+        player_goodwill = queries_mod.build_player_goodwill(),
     }
 
     if query.fields and #query.fields > 0 then

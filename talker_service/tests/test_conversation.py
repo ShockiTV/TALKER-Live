@@ -425,10 +425,14 @@ class TestConversationManager:
             traits=sample_traits,
         )
         
-        # Verify pre-fetch batch query was executed
-        mock_state_client.execute_batch.assert_called_once()
-        batch_arg = mock_state_client.execute_batch.call_args[0][0]
-        queries = batch_arg.build()
+        # Verify batch queries were executed:
+        # 1st call = world context enrichment (query.world + query.characters_alive)
+        # 2nd call = memory pre-fetch (mem_events + mem_summaries)
+        assert mock_state_client.execute_batch.call_count == 2
+        
+        # Check memory pre-fetch batch (second call)
+        memory_batch_arg = mock_state_client.execute_batch.call_args_list[1][0][0]
+        queries = memory_batch_arg.build()
         
         query_ids = [q["id"] for q in queries]
         assert "mem_events" in query_ids
@@ -529,6 +533,76 @@ class TestConversationManager:
         # Should fall back to first candidate
         assert speaker_id == "char_001"
         assert "This dialogue has no speaker tag!" in dialogue_text
+    
+    @pytest.mark.asyncio
+    @patch("talker_service.dialogue.conversation.resolve_personality")
+    @patch("talker_service.dialogue.conversation.get_faction_description")
+    async def test_handle_event_enriches_world_with_faction_data(
+        self,
+        mock_get_faction,
+        mock_resolve_personality,
+        mock_llm_client,
+        mock_state_client,
+        sample_event,
+        sample_candidates,
+        sample_world,
+        sample_traits,
+    ):
+        """Test handle_event enriches world string with dynamic faction data from query.world."""
+        manager = ConversationManager(
+            llm_client=mock_llm_client,
+            state_client=mock_state_client,
+        )
+        
+        mock_get_faction.return_value = "Duty faction..."
+        mock_resolve_personality.return_value = "Zealot personality..."
+        
+        # World enrichment batch returns scene data with faction standings + goodwill
+        scene_result = BatchResult({
+            "scene": {
+                "ok": True,
+                "data": {
+                    "loc": "l03_agroprom",
+                    "weather": "clear",
+                    "faction_standings": {"dolg_freedom": -1500},
+                    "player_goodwill": {"dolg": 1200},
+                },
+            },
+            "alive": {
+                "ok": True,
+                "data": {},
+            },
+        })
+        # Memory pre-fetch returns empty
+        mem_result = BatchResult({
+            "mem_events": {"ok": True, "data": []},
+            "mem_summaries": {"ok": True, "data": []},
+        })
+        mock_state_client.execute_batch.side_effect = [scene_result, mem_result]
+        
+        mock_llm_client.complete_with_tools.return_value = LLMToolResponse(
+            text="[SPEAKER: char_001]\nDuty stands strong!"
+        )
+        
+        await manager.handle_event(
+            event=sample_event,
+            candidates=sample_candidates,
+            world=sample_world,
+            traits=sample_traits,
+        )
+        
+        # Verify the system prompt contains enriched world context
+        call_args = mock_llm_client.complete_with_tools.call_args[0][0]
+        system_msg = call_args[0]
+        assert system_msg.role == "system"
+        # The enriched world should include faction standings
+        assert "Faction standings:" in system_msg.content
+        assert "Hostile" in system_msg.content  # dolg_freedom = -1500 → Hostile
+        # The enriched world should include player goodwill
+        assert "Player goodwill:" in system_msg.content
+        assert "Great" in system_msg.content  # dolg = 1200 → Great
+        # The original world string should still be present
+        assert sample_world in system_msg.content
 
 
 class TestGetCharacterInfoTool:
@@ -753,13 +827,15 @@ class TestGetCharacterInfoTool:
 
         mock_llm_client.complete_with_tools.side_effect = [tool_response, final_response]
 
-        # First call: pre-fetch returns empty memories
-        # Second call: character info query
+        # First call: world context enrichment (no scene data in result → skipped)
+        # Second call: pre-fetch returns empty memories
+        # Third call: character info query
         char_info_data = {
             "character": {"game_id": "char_001", "name": "Fanatic", "faction": "dolg", "gender": "male", "background": None},
             "squad_members": [],
         }
         mock_state_client.execute_batch.side_effect = [
+            BatchResult({}),  # world context enrichment (no scene/alive keys → no enrichment)
             BatchResult({"mem_events": {"ok": True, "data": []}, "mem_summaries": {"ok": True, "data": []}}),
             BatchResult({"char_info": {"ok": True, "data": char_info_data}}),
         ]
@@ -777,8 +853,8 @@ class TestGetCharacterInfoTool:
         # Verify LLM was called twice (tool call + final)
         assert mock_llm_client.complete_with_tools.call_count == 2
 
-        # Verify state client was called for pre-fetch AND character info
-        assert mock_state_client.execute_batch.call_count == 2
+        # Verify state client was called for world enrichment, pre-fetch, AND character info
+        assert mock_state_client.execute_batch.call_count == 3
 
     def test_system_prompt_includes_get_character_info(self, mock_llm_client, mock_state_client):
         """Verify system prompt describes get_character_info tool."""
