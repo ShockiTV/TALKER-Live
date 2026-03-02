@@ -95,8 +95,26 @@ BACKGROUND_TOOL = {
     },
 }
 
+GET_CHARACTER_INFO_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "get_character_info",
+        "description": "Retrieve detailed information about a character including their gender, background, and squad members. Use this when you need to know who else is in a character's squad, or when generating a background for a character you haven't spoken as before.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "character_id": {
+                    "type": "string",
+                    "description": "The unique ID of the character to look up",
+                },
+            },
+            "required": ["character_id"],
+        },
+    },
+}
+
 # All tools available to the LLM during dialogue generation
-TOOLS = [GET_MEMORIES_TOOL, BACKGROUND_TOOL]
+TOOLS = [GET_MEMORIES_TOOL, BACKGROUND_TOOL, GET_CHARACTER_INFO_TOOL]
 
 
 class ConversationManager:
@@ -149,6 +167,7 @@ class ConversationManager:
         self._tool_handlers = {
             "get_memories": self._handle_get_memories,
             "background": self._handle_background,
+            "get_character_info": self._handle_get_character_info,
         }
         
         # Track characters touched during tool loop for compaction scheduling
@@ -193,6 +212,9 @@ You have access to tools to query character memories and background information:
   - action="read": Retrieve existing traits, backstory, connections
   - action="write": Set entire background (requires content with traits, backstory, connections)
   - action="update": Modify a single field (requires field and value)
+- **get_character_info(character_id)**: Get detailed info about a character including gender, background, and squad members
+  - Returns character details (name, faction, rank, gender, background) plus an array of squad members with the same fields
+  - Use when you need squad composition or when generating a background for a character you haven't spoken as before
 
 **Instructions:**
 1. Use tools to query relevant memories/background for characters involved in the event
@@ -422,6 +444,42 @@ Example responses:
         else:
             return {"error": f"Unknown action: {action}"}
     
+    async def _handle_get_character_info(
+        self,
+        character_id: str,
+    ) -> dict[str, Any]:
+        """Tool handler: retrieve detailed character info including squad members.
+
+        Sends a single state.query.batch with query.character_info sub-query.
+        Lua resolves squad members, derives gender, includes backgrounds, and
+        triggers squad discovery side-effects (memory entry creation).
+
+        Args:
+            character_id: Character ID to query.
+
+        Returns:
+            Dict with 'character' and 'squad_members' fields, or error dict.
+        """
+        batch = BatchQuery()
+        batch.add(
+            "char_info",
+            resource="query.character_info",
+            params={"id": character_id},
+        )
+
+        try:
+            result = await self.state_client.execute_batch(batch, timeout=10.0)
+        except Exception as e:
+            logger.warning(f"get_character_info query failed for {character_id}: {e}")
+            return {"error": f"Failed to query character info: {e}"}
+
+        if result.ok("char_info"):
+            return result["char_info"] or {}
+        else:
+            error_msg = result.error("char_info") or "unknown error"
+            logger.warning(f"get_character_info failed for {character_id}: {error_msg}")
+            return {"error": f"Character info query failed: {error_msg}"}
+
     @staticmethod
     def _format_tool_result(tool_name: str, result: Any) -> str:
         """Format a tool handler result as human-readable text for the LLM.
@@ -461,6 +519,46 @@ Example responses:
                     items.append(f"  {entries}")
                 parts.append(header + "\n" + "\n".join(items))
             return "\n\n".join(parts) if parts else json.dumps(result)
+
+        if tool_name == "get_character_info" and isinstance(result, dict):
+            if "error" in result:
+                return json.dumps(result)
+            char = result.get("character", {})
+            squad = result.get("squad_members", [])
+
+            def _fmt_char(c: dict[str, Any]) -> str:
+                name = c.get("name", "Unknown")
+                faction = resolve_faction_name(c.get("faction", "unknown"))
+                gender = c.get("gender", "unknown")
+                rank = c.get("experience", "")
+                bg = c.get("background")
+                line = f"{name} ({faction}, {gender}"
+                if rank:
+                    line += f", {rank}"
+                line += ")"
+                if bg:
+                    traits = bg.get("traits", [])
+                    if traits:
+                        line += f"\n  Traits: {', '.join(str(t) for t in traits)}"
+                    backstory = bg.get("backstory", "")
+                    if backstory:
+                        short = backstory[:150] + "..." if len(backstory) > 150 else backstory
+                        line += f"\n  Backstory: {short}"
+                    connections = bg.get("connections", [])
+                    if connections:
+                        line += f"\n  Connections: {', '.join(str(c) for c in connections)}"
+                else:
+                    line += "\n  No background on record."
+                return line
+
+            parts: list[str] = [f"**Character:** {_fmt_char(char)}"]
+            if squad:
+                parts.append(f"**Squad Members ({len(squad)}):**")
+                for i, m in enumerate(squad, 1):
+                    parts.append(f"{i}. {_fmt_char(m)}")
+            else:
+                parts.append("**Squad:** No squad members.")
+            return "\n\n".join(parts)
 
         # Default: JSON serialize
         return json.dumps(result, default=str)
