@@ -350,9 +350,36 @@ messages:
           ids: { type: array, items: { type: string }, required: true }
         returns: "Object mapping story_id → bool"
       query.world:
-        description: "Query current world context (location, time, weather)"
+        description: "Query current world context (location, time, weather, faction standings)"
         params: {}
         returns: "SceneContext object"
+        response_fields:
+          loc:          { type: string, description: "Level technical name" }
+          poi:          { type: string, nullable: true, description: "Nearest smart terrain display name" }
+          time:         { type: object, description: "Game time {Y, M, D, h, m, s, ms}" }
+          weather:      { type: string, description: "Weather description" }
+          emission:     { type: bool, description: "Emission active" }
+          psy_storm:    { type: bool, description: "Psy storm active" }
+          sheltering:   { type: bool, description: "Player sheltering from rain" }
+          campfire:     { type: string, nullable: true, enum: [lit, unlit], description: "Nearby campfire status" }
+          brain_scorcher_disabled: { type: bool, description: "Brain Scorcher disabled" }
+          miracle_machine_disabled: { type: bool, description: "Miracle Machine disabled" }
+          faction_standings:
+            type: object
+            nullable: true
+            description: >
+              Flat dict of faction-pair relation values from relation_registry.
+              Keys are alphabetically-sorted underscore-delimited pairs (e.g. "dolg_freedom").
+              Values are raw integers. Empty object if relation_registry unavailable.
+            example: { "dolg_freedom": -1500, "army_stalker": 0 }
+          player_goodwill:
+            type: object
+            nullable: true
+            description: >
+              Per-faction player goodwill values from actor:community_goodwill().
+              Keys are faction technical IDs. Values are raw integers.
+              Empty object if db.actor unavailable.
+            example: { "dolg": 1200, "freedom": -300, "stalker": 0 }
       query.events_recent:
         description: "Query recent events since a timestamp"
         params:

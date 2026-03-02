@@ -131,6 +131,24 @@
         "payload": {
           "queries": [
             {
+              "id": "scene",
+              "resource": "query.world"
+            },
+            {
+              "id": "alive",
+              "resource": "query.characters_alive",
+              "params": {
+                "ids": "__ANY_LIST__"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "topic": "state.query.batch",
+        "payload": {
+          "queries": [
+            {
               "id": "mem_events",
               "resource": "memory.events",
               "params": {

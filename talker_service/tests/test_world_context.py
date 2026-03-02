@@ -34,6 +34,8 @@ class MockSceneContext:
     campfire: bool = False
     brain_scorcher_disabled: bool = False
     miracle_machine_disabled: bool = False
+    faction_standings: dict = None
+    player_goodwill: dict = None
 
     def __post_init__(self):
         if self.time is None:
@@ -589,3 +591,48 @@ class TestBuildWorldContext:
         
         assert leaders[0]["name"] in result
         assert "is dead" in result
+
+    @pytest.mark.asyncio
+    async def test_includes_faction_standings(self):
+        """Test that faction standings appear in world context."""
+        all_ids = get_all_story_ids()
+        alive_status = {id_: True for id_ in all_ids}
+
+        scene = MockSceneContext(
+            loc="l03_agroprom",
+            faction_standings={"dolg_freedom": -1500, "army_stalker": 0},
+        )
+
+        result = await build_world_context(scene, alive_status=alive_status)
+
+        assert "Faction standings:" in result
+        assert "Hostile" in result
+
+    @pytest.mark.asyncio
+    async def test_includes_player_goodwill(self):
+        """Test that player goodwill appears in world context."""
+        all_ids = get_all_story_ids()
+        alive_status = {id_: True for id_ in all_ids}
+
+        scene = MockSceneContext(
+            loc="l03_agroprom",
+            player_goodwill={"dolg": 1200, "freedom": -300},
+        )
+
+        result = await build_world_context(scene, alive_status=alive_status)
+
+        assert "Player goodwill:" in result
+        assert "Duty" in result
+
+    @pytest.mark.asyncio
+    async def test_no_faction_sections_when_missing(self):
+        """Test backward compat: no faction sections if data missing."""
+        all_ids = get_all_story_ids()
+        alive_status = {id_: True for id_ in all_ids}
+
+        scene = MockSceneContext(loc="l03_agroprom")
+
+        result = await build_world_context(scene, alive_status=alive_status)
+
+        assert "Faction standings:" not in result
+        assert "Player goodwill:" not in result

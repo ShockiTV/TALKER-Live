@@ -745,6 +745,52 @@ function get_game_time_ms()
 end
 
 --------------------------------------------------------------------------------
+-- FACTION DATA BUILDERS
+--------------------------------------------------------------------------------
+
+-- All gameplay factions that participate in the relation matrix
+GAMEPLAY_FACTIONS = {
+    "stalker", "dolg", "freedom", "csky", "ecolog", "killer",
+    "army", "bandit", "monolith", "renegade", "greh", "isg",
+}
+
+--- Build a flat dict of faction-pair relation values from the live engine data.
+-- Keys are alphabetically-sorted underscore-delimited pairs (e.g. "dolg_freedom").
+-- Values are raw integers from relation_registry.community_relation().
+-- Returns empty table if relation_registry is unavailable.
+function build_faction_matrix()
+    if not relation_registry then return {} end
+
+    local matrix = {}
+    for i = 1, #GAMEPLAY_FACTIONS do
+        for j = i + 1, #GAMEPLAY_FACTIONS do
+            local a, b = GAMEPLAY_FACTIONS[i], GAMEPLAY_FACTIONS[j]
+            -- Ensure alphabetical order for the key
+            if a > b then a, b = b, a end
+            local key = a .. "_" .. b
+            local ok, val = pcall(relation_registry.community_relation, a, b)
+            matrix[key] = ok and val or 0
+        end
+    end
+    return matrix
+end
+
+--- Build a dict of per-faction player goodwill values.
+-- Keys are faction technical IDs. Values are raw integers.
+-- Returns empty table if db.actor is unavailable.
+function build_player_goodwill()
+    local actor = db.actor
+    if not actor then return {} end
+
+    local goodwill = {}
+    for _, faction in ipairs(GAMEPLAY_FACTIONS) do
+        local ok, val = pcall(actor.community_goodwill, actor, faction)
+        goodwill[faction] = ok and val or 0
+    end
+    return goodwill
+end
+
+--------------------------------------------------------------------------------
 -- Load check
 --------------------------------------------------------------------------------
 
