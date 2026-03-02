@@ -6,40 +6,33 @@ local EventType = trigger.EventType
 
 -- Game interfaces
 local queries = talker_game_queries
-local commands = talker_game_commands
 
 AddScriptCallback("talker_player_whispers")
 
 function talker_on_player_whispers(dialogue)
-    -- Get companions list
-    local companions = queries.get_companions()
-    
     -- Validate that companions are present
+    local companions = queries.get_companions()
     if #companions == 0 then
-        -- Display error to player
         logger.error("TALKER Error: whisper failed, no companions are present")
         return
     end
-    
-    -- Get player character
+
     local player = game.get_player_character()
-    
-    -- Display dialogue in game UI (normal behavior)
     game.display_dialogue(player.game_id, dialogue)
-    
-    -- Create whisper event with companions-only witnesses and is_whisper flag
-    local companions_characters = {}
+
+    -- Build companion character list as witnesses
+    local witnesses = {}
     for _, companion_obj in ipairs(companions) do
-        companions_characters[#companions_characters+1] = game.create_character(companion_obj)
+        witnesses[#witnesses + 1] = game.create_character(companion_obj)
     end
-    
-    -- Create typed dialogue event for whisper
+
+    -- Create typed dialogue event and publish (always — player chose to whisper)
     local context = {
-        speaker = player,
+        actor = player,
         text = dialogue,
-        is_whisper = true
+        is_whisper = true,
     }
-    trigger.talker_event(EventType.DIALOGUE, context, companions_characters, true, { is_whisper = true, is_dialogue = true })
+    trigger.publish_event(EventType.DIALOGUE, context, witnesses)
 end
 
 function talker_safely_on_player_whispers(dialogue)
