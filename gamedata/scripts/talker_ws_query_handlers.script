@@ -265,6 +265,49 @@ resource_registry["query.character"] = function(query)
     return result
 end
 
+--- Ensure a character has a memory entry, creating one with global backfill if needed.
+-- Squad discovery side-effect: called for each squad member when query.character_info
+-- is processed. Idempotent — no-op if entry already exists.
+local function ensure_entry_with_backfill(character_id)
+    memory_store_v2:ensure_entry(tostring(character_id))
+end
+
+resource_registry["query.character_info"] = function(query)
+    local id = query.params and query.params.id
+    if not id then
+        error("query.character_info requires params.id")
+    end
+
+    local queries_mod = talker_game_queries
+    if not queries_mod then
+        error("talker_game_queries not available")
+    end
+
+    -- Resolve character via game adapter (returns Character domain object)
+    local char = game_adapter.get_character_by_id(id)
+    if not char then
+        error("Character not found: " .. tostring(id))
+    end
+
+    -- Resolve squad members via game object
+    local game_obj = queries_mod.get_obj_by_id(id)
+    local squad_game_objs = game_obj and queries_mod.get_squad_members(game_obj) or {}
+
+    -- Convert game objects to Character domain objects
+    local squad_members = {}
+    for _, member_obj in ipairs(squad_game_objs) do
+        local member_char = game_adapter.create_character(member_obj)
+        if member_char then
+            -- Squad discovery side-effect: ensure memory entry for each squad member
+            ensure_entry_with_backfill(member_char.game_id)
+            squad_members[#squad_members + 1] = member_char
+        end
+    end
+
+    -- Serialize with gender and background using serializer
+    return serializer.serialize_character_info(char, squad_members, memory_store_v2)
+end
+
 resource_registry["query.characters_nearby"] = function(query)
     local queries_mod = talker_game_queries
     if not queries_mod then

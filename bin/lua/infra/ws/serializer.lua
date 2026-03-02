@@ -119,6 +119,50 @@ function M.serialize_traits(traits)
     return traits or {}
 end
 
+--- Serialize a character with a derived gender field.
+-- Gender is derived from sound_prefix: "woman" → "female", otherwise → "male".
+-- Does NOT modify the Character domain model — gender is a serialization-time field.
+-- @param char  Character table (may be nil)
+-- @return      Serialized character with gender field, or nil if char is nil
+function M.serialize_character_with_gender(char)
+    local base = M.serialize_character(char)
+    if not base then return nil end
+    local prefix = base.sound_prefix or ""
+    base.gender = (prefix == "woman") and "female" or "male"
+    return base
+end
+
+--- Serialize a character with gender and background for the get_character_info tool.
+-- Builds {character: {..., gender, background}, squad_members: [{...}, ...]}
+-- @param char           Character table (main character)
+-- @param squad_members  Array of Character tables (squad members, excluding main)
+-- @param memory_store   memory_store_v2 instance for background lookup
+-- @return               Table with character and squad_members fields
+function M.serialize_character_info(char, squad_members, memory_store)
+    local main = M.serialize_character_with_gender(char)
+    if main and memory_store then
+        local bg = memory_store:query(tostring(char.game_id), "memory.background")
+        main.background = bg  -- nil if no background
+    end
+
+    local members = {}
+    for _, member in ipairs(squad_members or {}) do
+        local entry = M.serialize_character_with_gender(member)
+        if entry and memory_store then
+            local bg = memory_store:query(tostring(member.game_id), "memory.background")
+            entry.background = bg  -- nil if no background
+        end
+        if entry then
+            members[#members + 1] = entry
+        end
+    end
+
+    return {
+        character = main,
+        squad_members = members,
+    }
+end
+
 --- Serialize the v2 game event payload with candidates, world, and traits.
 -- New payload format for tools-based-memory:
 --   {event: {...}, candidates: [...], world: "...", traits: {...}}

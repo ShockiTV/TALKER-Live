@@ -199,6 +199,28 @@ function get_squad(obj)
     return try(get_object_squad, obj)
 end
 
+--- Return an array of game objects for all squad members excluding the given NPC.
+-- Handles edge cases: character not in squad, squad nil, single-member squad.
+-- @param obj  game object of the character whose squad to enumerate
+-- @return     array of game objects (may be empty)
+function get_squad_members(obj)
+    if not obj then return {} end
+    local squad = get_squad(obj)
+    if not squad then return {} end
+
+    local my_id = try(obj.id, obj)
+    local members = {}
+    for member_se in squad:squad_members() do
+        if member_se and member_se.id ~= my_id then
+            local game_obj = try(get_object_by_id, member_se.id)
+            if game_obj and try(game_obj.alive, game_obj) then
+                members[#members + 1] = game_obj
+            end
+        end
+    end
+    return members
+end
+
 function is_companion(npc)
     if not npc then return false end
     return npc:has_info("npcx_is_companion")

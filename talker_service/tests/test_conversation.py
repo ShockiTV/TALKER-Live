@@ -1,11 +1,18 @@
 """Tests for ConversationManager (tool-based dialogue generation)."""
 
+import json
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from talker_service.dialogue.conversation import ConversationManager
+from talker_service.dialogue.conversation import (
+    ConversationManager,
+    GET_CHARACTER_INFO_TOOL,
+    GET_MEMORIES_TOOL,
+    BACKGROUND_TOOL,
+    TOOLS,
+)
 from talker_service.state.batch import BatchResult
-from talker_service.llm.models import LLMToolResponse, Message
+from talker_service.llm.models import LLMToolResponse, Message, ToolCall
 
 
 @pytest.fixture
@@ -522,3 +529,269 @@ class TestConversationManager:
         # Should fall back to first candidate
         assert speaker_id == "char_001"
         assert "This dialogue has no speaker tag!" in dialogue_text
+
+
+class TestGetCharacterInfoTool:
+    """Tests for get_character_info tool schema, handler, and formatting."""
+
+    def test_tool_schema_structure(self):
+        """7.6: Verify GET_CHARACTER_INFO_TOOL schema has correct structure."""
+        assert GET_CHARACTER_INFO_TOOL["type"] == "function"
+        func = GET_CHARACTER_INFO_TOOL["function"]
+        assert func["name"] == "get_character_info"
+        params = func["parameters"]
+        assert params["type"] == "object"
+        assert "character_id" in params["properties"]
+        assert params["properties"]["character_id"]["type"] == "string"
+        assert params["required"] == ["character_id"]
+
+    def test_tools_list_contains_all_three(self):
+        """7.7: Verify TOOLS list contains all 3 tool definitions."""
+        assert len(TOOLS) == 3
+        tool_names = [t["function"]["name"] for t in TOOLS]
+        assert "get_memories" in tool_names
+        assert "background" in tool_names
+        assert "get_character_info" in tool_names
+
+    def test_handler_registered(self, mock_llm_client, mock_state_client):
+        """Verify get_character_info handler is in _tool_handlers."""
+        manager = ConversationManager(
+            llm_client=mock_llm_client,
+            state_client=mock_state_client,
+        )
+        assert "get_character_info" in manager._tool_handlers
+
+    @pytest.mark.asyncio
+    async def test_handle_get_character_info_success(self, mock_state_client):
+        """7.1: Mock state_client, verify batch query structure and response."""
+        manager = ConversationManager(
+            llm_client=MagicMock(),
+            state_client=mock_state_client,
+        )
+
+        char_info_response = {
+            "character": {
+                "game_id": "12467",
+                "name": "Wolf",
+                "faction": "stalker",
+                "gender": "male",
+                "background": {"traits": ["brave"], "backstory": "A veteran", "connections": []},
+            },
+            "squad_members": [
+                {
+                    "game_id": "12468",
+                    "name": "Sidorovich",
+                    "faction": "stalker",
+                    "gender": "male",
+                    "background": None,
+                },
+            ],
+        }
+
+        mock_state_client.execute_batch.return_value = BatchResult({
+            "char_info": {"ok": True, "data": char_info_response},
+        })
+
+        result = await manager._handle_get_character_info(character_id="12467")
+
+        assert result["character"]["game_id"] == "12467"
+        assert result["character"]["gender"] == "male"
+        assert len(result["squad_members"]) == 1
+
+        # Verify batch query structure
+        mock_state_client.execute_batch.assert_called_once()
+        batch_arg = mock_state_client.execute_batch.call_args[0][0]
+        queries = batch_arg.build()
+        assert len(queries) == 1
+        assert queries[0]["id"] == "char_info"
+        assert queries[0]["resource"] == "query.character_info"
+        assert queries[0]["params"]["id"] == "12467"
+
+    @pytest.mark.asyncio
+    async def test_handle_get_character_info_empty_squad(self, mock_state_client):
+        """7.2: Verify squad_members: [] passthrough."""
+        manager = ConversationManager(
+            llm_client=MagicMock(),
+            state_client=mock_state_client,
+        )
+
+        mock_state_client.execute_batch.return_value = BatchResult({
+            "char_info": {
+                "ok": True,
+                "data": {
+                    "character": {"game_id": "100", "name": "Loner", "faction": "stalker", "gender": "male", "background": None},
+                    "squad_members": [],
+                },
+            },
+        })
+
+        result = await manager._handle_get_character_info(character_id="100")
+        assert result["squad_members"] == []
+
+    @pytest.mark.asyncio
+    async def test_handle_get_character_info_failure(self, mock_state_client):
+        """7.3: Verify error dict returned on query failure."""
+        manager = ConversationManager(
+            llm_client=MagicMock(),
+            state_client=mock_state_client,
+        )
+
+        mock_state_client.execute_batch.return_value = BatchResult({
+            "char_info": {"ok": False, "error": "Character not found: 99999"},
+        })
+
+        result = await manager._handle_get_character_info(character_id="99999")
+        assert "error" in result
+
+    @pytest.mark.asyncio
+    async def test_handle_get_character_info_exception(self, mock_state_client):
+        """7.3b: Verify error dict when execute_batch raises."""
+        manager = ConversationManager(
+            llm_client=MagicMock(),
+            state_client=mock_state_client,
+        )
+
+        mock_state_client.execute_batch.side_effect = TimeoutError("timed out")
+
+        result = await manager._handle_get_character_info(character_id="12467")
+        assert "error" in result
+
+    @patch("talker_service.dialogue.conversation.resolve_faction_name")
+    def test_format_tool_result_get_character_info(self, mock_resolve):
+        """7.4: Verify readable formatting with gender and background."""
+        mock_resolve.side_effect = lambda f: {"stalker": "Loners", "dolg": "Duty"}.get(f, f)
+
+        result = {
+            "character": {
+                "game_id": "12467",
+                "name": "Wolf",
+                "faction": "stalker",
+                "experience": "veteran",
+                "gender": "male",
+                "background": {
+                    "traits": ["brave", "cautious"],
+                    "backstory": "A veteran Zone stalker.",
+                    "connections": ["Sidorovich"],
+                },
+            },
+            "squad_members": [
+                {
+                    "game_id": "12468",
+                    "name": "Fanatic",
+                    "faction": "dolg",
+                    "experience": "experienced",
+                    "gender": "female",
+                    "background": None,
+                },
+            ],
+        }
+
+        formatted = ConversationManager._format_tool_result("get_character_info", result)
+
+        assert "Wolf" in formatted
+        assert "Loners" in formatted
+        assert "male" in formatted
+        assert "brave" in formatted
+        assert "A veteran Zone stalker." in formatted
+        assert "Sidorovich" in formatted
+        assert "Fanatic" in formatted
+        assert "Duty" in formatted
+        assert "female" in formatted
+        assert "No background on record" in formatted
+
+    def test_format_tool_result_get_character_info_error(self):
+        """7.4b: Verify error result is JSON-serialized."""
+        result = {"error": "Character not found"}
+        formatted = ConversationManager._format_tool_result("get_character_info", result)
+        parsed = json.loads(formatted)
+        assert parsed["error"] == "Character not found"
+
+    def test_format_tool_result_get_character_info_no_squad(self):
+        """Verify 'No squad members' message when squad is empty."""
+        result = {
+            "character": {"game_id": "1", "name": "Solo", "faction": "stalker", "gender": "male", "background": None},
+            "squad_members": [],
+        }
+        formatted = ConversationManager._format_tool_result("get_character_info", result)
+        assert "No squad members" in formatted
+
+    @pytest.mark.asyncio
+    @patch("talker_service.dialogue.conversation.resolve_personality")
+    @patch("talker_service.dialogue.conversation.get_faction_description")
+    async def test_tool_loop_dispatches_get_character_info(
+        self,
+        mock_get_faction,
+        mock_resolve_personality,
+        mock_llm_client,
+        mock_state_client,
+        sample_event,
+        sample_candidates,
+        sample_world,
+        sample_traits,
+    ):
+        """7.5: Mock complete_with_tools to call get_character_info, verify dispatch."""
+        manager = ConversationManager(
+            llm_client=mock_llm_client,
+            state_client=mock_state_client,
+        )
+
+        mock_get_faction.return_value = "Duty faction..."
+        mock_resolve_personality.return_value = "Zealot personality..."
+
+        # First call: LLM requests get_character_info tool
+        tool_call = ToolCall(
+            id="call_1",
+            name="get_character_info",
+            arguments={"character_id": "char_001"},
+        )
+        tool_response = LLMToolResponse(tool_calls=[tool_call])
+
+        # Second call: LLM produces final dialogue
+        final_response = LLMToolResponse(
+            text="[SPEAKER: char_001]\nI know my squad is nearby."
+        )
+
+        mock_llm_client.complete_with_tools.side_effect = [tool_response, final_response]
+
+        # First call: pre-fetch returns empty memories
+        # Second call: character info query
+        char_info_data = {
+            "character": {"game_id": "char_001", "name": "Fanatic", "faction": "dolg", "gender": "male", "background": None},
+            "squad_members": [],
+        }
+        mock_state_client.execute_batch.side_effect = [
+            BatchResult({"mem_events": {"ok": True, "data": []}, "mem_summaries": {"ok": True, "data": []}}),
+            BatchResult({"char_info": {"ok": True, "data": char_info_data}}),
+        ]
+
+        speaker_id, dialogue_text = await manager.handle_event(
+            event=sample_event,
+            candidates=sample_candidates,
+            world=sample_world,
+            traits=sample_traits,
+        )
+
+        assert speaker_id == "char_001"
+        assert "squad" in dialogue_text.lower()
+
+        # Verify LLM was called twice (tool call + final)
+        assert mock_llm_client.complete_with_tools.call_count == 2
+
+        # Verify state client was called for pre-fetch AND character info
+        assert mock_state_client.execute_batch.call_count == 2
+
+    def test_system_prompt_includes_get_character_info(self, mock_llm_client, mock_state_client):
+        """Verify system prompt describes get_character_info tool."""
+        manager = ConversationManager(
+            llm_client=mock_llm_client,
+            state_client=mock_state_client,
+        )
+
+        prompt = manager._build_system_prompt(
+            faction="stalker",
+            personality="A cautious stalker...",
+            world="Location: Cordon.",
+        )
+
+        assert "get_character_info" in prompt
+        assert "squad" in prompt.lower()
