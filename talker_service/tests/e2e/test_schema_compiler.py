@@ -40,13 +40,14 @@ class TestCompilerProducesValidJsonSchema:
 
     def test_all_topics_present(self, compiled):
         expected = [
-            "game.event", "player.dialogue", "player.whisper",
-            "config.update", "config.sync", "system.heartbeat",
-            "dialogue.display", "memory.update", "event.store",
-            "config.request", "service.heartbeat.ack",
-            "state.query.batch",
-            "state.response",
-        ]
+                "game.event", "player.dialogue", "player.whisper",
+                "config.update", "config.sync", "system.heartbeat",
+                "dialogue.display", "event.store",
+                "config.request", "service.heartbeat.ack",
+                "state.query.batch",
+                "state.response",
+                "state.mutate.batch",
+            ]
         for topic in expected:
             assert topic in compiled, f"Missing compiled topic: {topic}"
 
@@ -133,7 +134,9 @@ class TestValidScenarioPasses:
                 "witnesses": [],
                 "flags": {},
             },
-            "is_important": True,
+            "candidates": [{"game_id": "12345", "name": "Wolf"}],
+            "world": "Location: Cordon. Time: June 1, 1:00 PM. Weather: Clear.",
+            "traits": {"12345": {"personality_id": "gruff_but_fair", "backstory_id": "veteran_stalker"}},
         }
         jsonschema.validate(valid_payload, schema)  # should not raise
 
@@ -145,11 +148,13 @@ class TestInvalidPayloadFieldTypeFails:
         schema = compiled["game.event"]["payload"]
         invalid_payload = {
             "event": {"type": "death"},
-            "is_important": "yes",  # should be bool
+            "candidates": "not_an_array",  # should be array
+            "world": "...",
+            "traits": {},
         }
         with pytest.raises(jsonschema.ValidationError) as exc_info:
             jsonschema.validate(invalid_payload, schema)
-        assert "yes" in str(exc_info.value.message)
+        assert "not_an_array" in str(exc_info.value.instance) or "candidates" in str(exc_info.value.message)
 
 
 class TestMissingRequiredFieldFails:
@@ -157,7 +162,11 @@ class TestMissingRequiredFieldFails:
 
     def test_missing_event_field_fails(self, compiled):
         schema = compiled["game.event"]["payload"]
-        invalid_payload = {"is_important": False}  # missing "event"
+        invalid_payload = {
+            "candidates": [{"game_id": "1", "name": "Wolf"}],
+            "world": "Cordon",
+            "traits": {}
+        }  # missing "event"
         with pytest.raises(jsonschema.ValidationError) as exc_info:
             jsonschema.validate(invalid_payload, schema)
         assert "event" in str(exc_info.value.message)
@@ -176,7 +185,9 @@ class TestExtraFieldsTolerated:
         schema = compiled["game.event"]["payload"]
         payload = {
             "event": {"type": "death"},
-            "is_important": True,
+            "candidates": [{"game_id": "1", "name": "Wolf"}],
+            "world": "Cordon",
+            "traits": {"1": {"personality_id": "generic", "backstory_id": "generic"}},
             "extra_field": "should be ignored",
         }
         jsonschema.validate(payload, schema)  # should not raise
@@ -189,6 +200,9 @@ class TestExtraFieldsTolerated:
                 "context": {"custom_field": "allowed"},
                 "future_field": 42,
             },
+            "candidates": [{"game_id": "1", "name": "Wolf"}],
+            "world": "Cordon",
+            "traits": {"1": {"personality_id": "generic", "backstory_id": "generic"}},
         }
         jsonschema.validate(payload, schema)  # should not raise
 

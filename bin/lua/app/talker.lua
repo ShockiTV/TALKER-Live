@@ -1,5 +1,5 @@
 package.path = package.path .. ";./bin/lua/?.lua;"
-local event_store = require("domain.repo.event_store")
+local memory_store_v2 = require("domain.repo.memory_store_v2")
 local logger = require("framework.logger")
 local game_adapter = require("infra.game_adapter")
 
@@ -10,7 +10,12 @@ local talker = {}
 -- This function only stores events - Python receives them via the WS publisher.
 function talker.register_event(event, is_important)
 	logger.info("talker.register_event")
-	event_store:store_event(event)
+	local actor = event and event.context and event.context.actor
+	if actor and actor.game_id then
+		memory_store_v2:store_event(actor.game_id, event)
+	else
+		logger.warn("register_event: missing context.actor; event not stored")
+	end
 
 	-- Silent events go into the store but don't generate dialogue
 	if event.flags and event.flags.is_silent then

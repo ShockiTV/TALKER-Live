@@ -37,17 +37,15 @@ function on_player_reloads_weapon()
     local player = game.get_player_character()
     local is_silent = (mode_reload == 2)
 
+    -- Get witnesses
+    local witnesses = game.get_characters_near_player()
+
     local context = {
         actor = player
     }
 
-    -- Use new typed event system
-    trigger.talker_event_near_player(
-        EventType.RELOAD,
-        context,
-        true, -- important
-        { is_silent = is_silent }
-    )
+    -- Use new unified trigger system
+    trigger.store_and_publish(EventType.RELOAD, context, witnesses, { is_silent = is_silent })
 
     if is_silent then
         log.info("TALKER: Reload event registered (silent)")

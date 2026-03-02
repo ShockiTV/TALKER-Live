@@ -5,11 +5,9 @@
 package.path = package.path .. ";./bin/lua/?.lua;"
 local logger       = require("framework.logger")
 local game_adapter = require("infra.game_adapter")
-local memory_store = require("domain.repo.memory_store")
-local event_store  = require("domain.repo.event_store")
+local memory_store_v2 = require("domain.repo.memory_store_v2")
 local Event        = require("domain.model.event")
 local EventType    = require("domain.model.event_types")
-local config       = require("interface.config")
 local engine       = require("interface.engine")
 local base64       = require("infra.base64")
 local tts_slot     = require("domain.service.tts_slot")
@@ -61,7 +59,8 @@ local function _create_dialogue_event(speaker_id, dialogue, event_context, creat
             witnesses,
             { is_silent = true }
         )
-        event_store:store_event(dialogue_event)
+        memory_store_v2:store_event(speaker_char.game_id, dialogue_event)
+        memory_store_v2:fan_out(dialogue_event, witnesses)
         logger.debug("Created dialogue event for speaker %s", speaker_id)
     end)
     if not ok then
@@ -190,69 +189,6 @@ local function handle_dialogue_display(payload)
     _create_dialogue_event(speaker_id, dialogue, event_context, create_event)
 end
 
---- Handler for memory.update command
-local function handle_memory_update(payload)
-    local character_id       = payload.character_id
-    local narrative           = payload.narrative
-    local last_event_time_ms = payload.last_event_time_ms
-
-    logger.info("Handling memory.update for character: %s", character_id)
-
-    if not character_id then
-        logger.error("memory.update requires character_id")
-        return
-    end
-
-    local ok, err = pcall(function()
-        if narrative ~= nil then
-            memory_store:update_narrative(character_id, narrative, last_event_time_ms or 0)
-            logger.debug("Updated narrative for character %s, length: %d",
-                character_id,
-                narrative and #narrative or 0)
-        elseif last_event_time_ms then
-            memory_store:update_last_update_time(character_id, last_event_time_ms)
-            logger.debug("Updated last_update_time for character %s to %s",
-                character_id,
-                last_event_time_ms)
-        end
-    end)
-
-    if not ok then
-        logger.error("Failed to update memory: %s", err)
-    end
-end
-
---- Handler for event.store command
-local function handle_event_store(payload)
-    local event_data = payload.event
-
-    logger.info("Handling event.store")
-
-    if not event_data then
-        logger.error("event.store requires event data")
-        return
-    end
-
-    local ok, err = pcall(function()
-        local event = {
-            type            = event_data.type,
-            content         = event_data.content,
-            context         = event_data.context or {},
-            game_time_ms    = event_data.game_time_ms,
-            world_context   = event_data.world_context,
-            witnesses       = event_data.witnesses or {},
-            involved_objects = event_data.involved_objects or {},
-            flags           = event_data.flags or {},
-        }
-        event_store:store_event(event)
-        logger.debug("Stored event, type: %s, time: %s", event.type or "legacy", event.game_time_ms)
-    end)
-
-    if not ok then
-        logger.error("Failed to store event: %s", err)
-    end
-end
-
 --- Handler for config.request command (Python asks Lua for current config)
 local function handle_config_request(payload)
     local reason = payload and payload.reason or "unknown"
@@ -288,8 +224,6 @@ local function register_handlers()
 
     ws.register_command_handler("tts.audio",        handle_tts_audio)
     ws.register_command_handler("dialogue.display", handle_dialogue_display)
-    ws.register_command_handler("memory.update",    handle_memory_update)
-    ws.register_command_handler("event.store",      handle_event_store)
     ws.register_command_handler("config.request",   handle_config_request)
     ws.register_command_handler("service.heartbeat.ack", handle_heartbeat_ack)
 

@@ -11,6 +11,19 @@ import asyncio
 import numpy as np
 import soundfile as sf
 import websockets
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Load env config with fallback: explicit override > .env.local > .env
+env_local = Path(__file__).parent / ".env.local"
+env_file = Path(__file__).parent / ".env"
+env_override = os.environ.get("TALKER_BRIDGE_ENV_FILE", "").strip()
+if env_override:
+    load_dotenv(Path(env_override), override=True)
+elif env_local.exists():
+    load_dotenv(env_local, override=True)
+elif env_file.exists():
+    load_dotenv(env_file, override=True)
 
 from banner import print_banner
 
@@ -19,7 +32,7 @@ from banner import print_banner
 ####################################################################################################
 
 logging.basicConfig(
-    level=logging.INFO,
+    level=getattr(logging, os.environ.get("BRIDGE_LOG_LEVEL", "INFO").upper(), logging.INFO),
     format="%(asctime)s [%(levelname)s] %(message)s",
     handlers=[
         logging.StreamHandler(sys.stdout),
@@ -29,10 +42,13 @@ logging.basicConfig(
 
 BRIDGE_WS_PORT = 5558       # talker_bridge WS server ← Lua connects here
 
-# Default upstream URL — overridden by MCM config.sync / config.update at runtime
-_DEFAULT_SERVICE_URL = os.environ.get("SERVICE_WS_URL", "wss://talker-live.duckdns.org/ws")
-_service_url: str = _DEFAULT_SERVICE_URL  # mutable — updated from MCM
+# Default upstream URL — can be pinned via env to override MCM
+_DEFAULT_SERVICE_URL = "wss://talker-live.duckdns.org/ws"
+_PINNED_SERVICE_URL = os.environ.get("SERVICE_WS_URL", "").strip()  # if set, MCM cannot override
+_service_url: str = _PINNED_SERVICE_URL or _DEFAULT_SERVICE_URL  # mutable if not pinned
 _service_token: str = ""                  # auth token from MCM (ws_token)
+_service_url_last_forwarded: str = ""     # Cache: track the last *forwarded* config to avoid re-closing
+_service_token_last_forwarded: str = ""   # Cache for token
 
 # Topics handled locally by the bridge (not proxied upstream)
 LOCAL_TOPICS = {"mic.start", "mic.stop"}
@@ -83,12 +99,21 @@ async def send_to_service(topic: str, payload: dict) -> None:
 async def forward_raw_to_service(raw: str) -> None:
     """Forward a raw JSON string to talker_service."""
     if _service_ws is None:
-        logging.debug("No service connection — queuing not implemented, dropping message")
+        topic = "unknown"
+        try:
+            topic = json.loads(raw).get("t", "unknown")
+        except Exception:
+            pass
+        logging.warning("No service connection — dropping proxied topic: %s", topic)
         return
     try:
+        logging.debug("Forwarding to service: %s bytes", len(raw))
         await _service_ws.send(raw)
-    except Exception:
-        logging.warning("Failed to forward message to service")
+        logging.debug("Sent to service successfully")
+    except websockets.ConnectionClosed:
+        logging.debug("Service connection closed during forward (normal during reconnect)")
+    except Exception as exc:
+        logging.warning("Failed to forward message to service: %s", exc)
 
 
 async def forward_raw_to_lua(raw: str) -> None:
@@ -125,27 +150,58 @@ def _build_service_url(base_url: str, token: str) -> str:
 
 
 def _apply_mcm_service_config(service_url: str | None, ws_token: str | None) -> None:
-    """Update the upstream URL from MCM values and trigger reconnect if changed."""
+    """Update the upstream URL from MCM values and trigger reconnect if changed.
+    
+    If SERVICE_WS_URL is set in .env.local, it is pinned and MCM cannot override it
+    (server-authority pattern, like talker_service pins).
+    
+    Uses caching to avoid redundant config processing when receiving duplicate
+    config.sync messages in rapid succession.
+    """
     global _service_url, _service_token, _service_ws
+    global _service_url_last_forwarded, _service_token_last_forwarded
 
-    new_url = (service_url or "").strip() or _DEFAULT_SERVICE_URL
+    # If SERVICE_WS_URL is pinned in env, ignore MCM service_url
+    if _PINNED_SERVICE_URL:
+        new_url = _PINNED_SERVICE_URL
+    else:
+        new_url = (service_url or "").strip() or _DEFAULT_SERVICE_URL
+    
     new_token = (ws_token or "").strip()
 
+    # **EARLY RETURN**: If this exact config was already forwarded, skip processing
+    # This prevents redundant connection closes when rapid config.sync messagesarrive
+    if new_url == _service_url_last_forwarded and new_token == _service_token_last_forwarded:
+        logging.debug("Config identical to last forwarded—skipping redundant apply_mcm_service_config")
+        return
+
+    # Now compute the full URLs for comparison with current running config
     old_full = _build_service_url(_service_url, _service_token)
     new_full = _build_service_url(new_url, new_token)
 
     if old_full == new_full:
+        logging.debug("No config change detected (old=%s, new=%s)", mask_token(old_full), mask_token(new_full))
+        # Still update the cache so we don't reprocess this same config again
+        _service_url_last_forwarded = new_url
+        _service_token_last_forwarded = new_token
         return  # no change
 
     _service_url = new_url
     _service_token = new_token
+    _service_url_last_forwarded = new_url
+    _service_token_last_forwarded = new_token
 
     logging.info("Service URL updated → %s", mask_token(new_full))
 
     # Close current connection — service_reader() retry loop will reconnect
     ws = _service_ws
     if ws is not None:
-        asyncio.ensure_future(ws.close())
+        logging.debug("Closing service connection to trigger reconnect")
+        try:
+            asyncio.ensure_future(ws.close())
+        except Exception as exc:
+            logging.warning("Error scheduling service close: %s", exc)
+
 
 
 ####################################################################################################
@@ -381,49 +437,87 @@ def main() -> None:
         _lua_ws = websocket
         logging.info("Lua game client connected")
         try:
+            logging.debug("Entering message loop")
+            message_count = 0
             async for raw in websocket:
+                message_count += 1
+                logging.debug("Received raw message #%d: %s bytes", message_count, len(raw))
+                envelope = None
+                topic = None
                 try:
-                    envelope = json.loads(raw)
-                except (json.JSONDecodeError, TypeError):
-                    logging.warning("Malformed WS frame from Lua: %s", str(raw)[:80])
-                    continue
-
-                topic = envelope.get("t")
-                if not topic:
-                    logging.warning("WS frame missing 't' field")
-                    continue
-
-                payload = envelope.get("p", {})
-
-                if topic in LOCAL_TOPICS:
-                    # Handle locally (mic control, TTS)
-                    await handle_local_message(topic, payload)
-                elif topic == "config.sync":
-                    # Peek at full config for service_url / ws_token, then proxy
-                    _apply_mcm_service_config(
-                        payload.get("service_url"),
-                        payload.get("ws_token"),
-                    )
-                    await forward_raw_to_service(raw)
-                elif topic == "config.update":
-                    # Peek at individual key change, then proxy
-                    key = payload.get("key", "")
-                    if key in ("service_url", "ws_token"):
-                        # Fetch latest values — for a single key change we
-                        # only update that one field, keeping the other as-is
-                        val = payload.get("value", "")
-                        if key == "service_url":
-                            _apply_mcm_service_config(val, _service_token)
+                    # Parse JSON envelope
+                    try:
+                        envelope = json.loads(raw)
+                        topic = envelope.get("t")
+                        if not topic:
+                            logging.warning("WS frame missing 't' field")
+                            continue
+                    except (json.JSONDecodeError, TypeError) as exc:
+                        logging.warning("Malformed WS frame from Lua: %s | %s", str(raw)[:80], exc)
+                        continue  # Skip malformed, continue to next message
+                    
+                    # Extract payload safely
+                    payload = envelope.get("p", {})
+                    
+                    # Route message based on topic
+                    try:
+                        if topic in LOCAL_TOPICS:
+                            # Handle locally (mic control, TTS)
+                            await handle_local_message(topic, payload)
+                        elif topic == "config.sync":
+                            # Peek at full config for service_url / ws_token, then proxy
+                            logging.debug("Processing config.sync (#%d)", message_count)
+                            try:
+                                _apply_mcm_service_config(
+                                    payload.get("service_url"),
+                                    payload.get("ws_token"),
+                                )
+                                logging.debug("Config applied")
+                            except Exception:
+                                logging.exception("Error applying MCM config (continuing)")
+                            # Always forward to service, even if config apply failed
+                            await forward_raw_to_service(raw)
+                            logging.debug("config.sync forwarded to service")
+                        elif topic == "config.update":
+                            # Peek at individual key change, then proxy
+                            key = payload.get("key", "")
+                            if key in ("service_url", "ws_token"):
+                                # Fetch latest values — for a single key change we
+                                # only update that one field, keeping the other as-is
+                                val = payload.get("value", "")
+                                try:
+                                    if key == "service_url":
+                                        _apply_mcm_service_config(val, _service_token)
+                                    else:
+                                        _apply_mcm_service_config(_service_url, val)
+                                except Exception:
+                                    logging.exception("Error applying MCM config update (continuing)")
+                            await forward_raw_to_service(raw)
                         else:
-                            _apply_mcm_service_config(_service_url, val)
-                    await forward_raw_to_service(raw)
-                else:
-                    # Proxy transparently to talker_service
-                    await forward_raw_to_service(raw)
+                            # Proxy transparently to talker_service
+                            if topic == "game.event":
+                                logging.info("Proxying game.event to service")
+                            await forward_raw_to_service(raw)
+                        
+                        logging.debug("Processed topic=%s (message #%d)", topic, message_count)
+                    except Exception:
+                        logging.exception("Error routing message (topic=%s)", topic)
+                        # Don't re-raise — continue processing next message
+                
+                except Exception:
+                    # Outer catch-all for ANY exception in message handling
+                    logging.exception("FATAL: Uncaught exception in message processing (topic=%s)", topic)
+                    # Don't re-raise — stay connected and process next message
+
+            
+            logging.debug("Message loop exited normally (websocket closed by client)")
 
         except websockets.ConnectionClosed:
             logging.info("Lua game client disconnected")
+        except Exception:
+            logging.exception("Fatal error in Lua WS handler")
         finally:
+            logging.info("Lua handler exiting, cleaning up")
             _lua_ws = None
 
     # ── Launch ──────────────────────────────────────────────

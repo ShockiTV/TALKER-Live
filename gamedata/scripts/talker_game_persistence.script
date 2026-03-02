@@ -2,7 +2,6 @@
 
 package.path = package.path .. ";./bin/lua/?.lua;"
 local memory_store = require("domain.repo.memory_store")
-local event_store = require("domain.repo.event_store")
 local personality_store = require("domain.repo.personalities")
 local backstories_store = require("domain.repo.backstories")
 local levels_store = require("domain.repo.levels")
@@ -23,7 +22,6 @@ end
 function save_state(saved_data)
     log.info("Saving state...")
     saved_data.compressed_memories = memory_store:get_save_data()
-    saved_data.events = event_store:get_save_data()
     saved_data.personalities = personality_store:get_save_data()
     saved_data.backstories = backstories_store:get_save_data()
     saved_data.levels = levels_store.get_save_data()
@@ -38,9 +36,6 @@ function load_state(saved_data)
     end
     if (saved_data.compressed_memories) then
          memory_store:load_save_data(saved_data.compressed_memories)
-    end
-    if (saved_data.events) then
-        event_store:load_save_data(saved_data.events)
     end
     if (saved_data.personalities) then
         personality_store.load_save_data(saved_data.personalities)

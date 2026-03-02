@@ -116,6 +116,12 @@ class LuaSimulator:
         "query.world": "state.query.world",
         "query.characters_alive": "state.query",
         "query.characters_nearby": "state.query.nearby",
+        # Tool-based conversation resources (ConversationManager)
+        "memory.events": "state.query.events",
+        "memory.summaries": "state.query.summaries",
+        "memory.background": "state.query.background",
+        "personality": "state.query.personality",
+        "backstory": "state.query.backstory",
     }
 
     async def _respond_to_state_query(

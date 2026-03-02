@@ -5,6 +5,9 @@ from .harness import RunResult
 # Sentinel value used in scenario JSON to indicate "any non-empty list"
 _ANY_LIST_SENTINEL = "__ANY_LIST__"
 
+# Sentinel value for llm_mocks request body: skip exact request assertion
+_CAPTURE_SENTINEL = "__CAPTURE__"
+
 
 def assert_scenario(result: RunResult, scenario: dict) -> None:
     """Assert RunResult matches all declared expected keys in the scenario.
@@ -66,6 +69,8 @@ def _assert_llm_mock_requests(http_calls, llm_mocks: list[dict]) -> None:
     """Assert each llm_mock's 'request' body matches the corresponding HTTP call.
 
     'request' is REQUIRED on every llm_mocks entry — missing it is a test error.
+    If 'request' is the sentinel "__CAPTURE__", that entry is skipped (useful
+    during scenario development when exact request bodies aren't yet known).
     """
     assert len(http_calls) == len(llm_mocks), (
         f"Expected {len(llm_mocks)} HTTP call(s) (matching llm_mocks), got {len(http_calls)}."
@@ -75,6 +80,8 @@ def _assert_llm_mock_requests(http_calls, llm_mocks: list[dict]) -> None:
             f"llm_mocks[{i}] is missing a 'request' field — "
             f"all scenario llm_mocks entries must declare expected request bodies."
         )
+        if mock["request"] == _CAPTURE_SENTINEL:
+            continue
         assert call.body == mock["request"], (
             f"LLM mock {i}: request body mismatch.\n"
             f"Expected: {mock['request']}\n"

@@ -37,6 +37,9 @@ function actor_on_hit_callback(obj, amount, local_direction, who, bone_index)
     local is_silent = cd:check("default", queries.get_game_time_ms(), mode_injury)
     if is_silent == nil then return end -- Cooldown active or mode Off
 
+    -- Get witnesses
+    local witnesses = game.get_characters_near_player()
+
     -- Create typed event context
     local context = {
         actor = player
@@ -44,13 +47,8 @@ function actor_on_hit_callback(obj, amount, local_direction, who, bone_index)
 
     logger.info("%s: Player critically injured", script_name)
 
-    -- Use new typed event system
-    trigger.talker_event_near_player(
-        EventType.INJURY,
-        context,
-        true, -- important
-        { is_silent = is_silent }
-    )
+    -- Use new unified trigger system
+    trigger.store_and_publish(EventType.INJURY, context, witnesses, { is_silent = is_silent })
 
     if is_silent then
         logger.info("TALKER: Injury event registered (silent)")

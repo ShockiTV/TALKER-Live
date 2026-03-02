@@ -18,18 +18,16 @@ function actor_on_weapon_jammed()
     local player = game.get_player_character()
     local is_silent = (mode_weapon_jam == 2)
 
+    -- Get witnesses
+    local witnesses = game.get_characters_near_player()
+
     -- Create typed event context
     local context = {
         actor = player
     }
 
-    -- Use new typed event system
-    trigger.talker_event_near_player(
-        EventType.WEAPON_JAM,
-        context,
-        true, -- important
-        { is_silent = is_silent }
-    )
+    -- Use new unified trigger system
+    trigger.store_and_publish(EventType.WEAPON_JAM, context, witnesses, { is_silent = is_silent })
 
     if is_silent then
         log.info("TALKER: Weapon jam event registered (silent)")

@@ -1,4 +1,4 @@
-"""E2e test harness — wires WSRouter + LuaSimulator + DialogueGenerator.
+"""E2e test harness - wires WSRouter + LuaSimulator + ConversationManager.
 
 Uses a MockWebSocket (in-memory asyncio queues, no TCP ports needed) and
 respx for HTTP interception.  All external payloads are captured for deep
@@ -23,8 +23,8 @@ from fastapi import WebSocketDisconnect
 
 from talker_service.transport.ws_router import WSRouter
 from talker_service.state.client import StateQueryClient
-from talker_service.dialogue.generator import DialogueGenerator
-from talker_service.llm.openai_client import OpenAIClient
+from talker_service.dialogue.conversation import ConversationManager
+from talker_service.llm.factory import get_llm_client
 from talker_service.handlers import events as event_handlers
 
 from .lua_simulator import LuaSimulator
@@ -63,7 +63,6 @@ class E2eHarness:
         self._router: WSRouter | None = None
         self._mock_ws: MockWebSocket | None = None
         self._lua_sim: LuaSimulator | None = None
-        self._generator: DialogueGenerator | None = None
         self._ws_task: asyncio.Task | None = None
         self._started = False
         self.last_result: RunResult | None = None
@@ -80,18 +79,23 @@ class E2eHarness:
         # Wire up production handlers exactly as __main__.py does
         state_client = StateQueryClient(router=self._router, timeout=5.0)
 
-        # Real OpenAI client — respx intercepts at httpx transport layer
-        llm_client = OpenAIClient(api_key="test-key-respx-will-intercept")
+        # Create ConversationManager with mocked LLM — respx intercepts at httpx layer
+        # Force the default OpenAI endpoint so respx can intercept it deterministically
+        # (otherwise OPENAI_ENDPOINT env var may redirect to a different URL)
+        llm_client = get_llm_client(
+            provider=0,
+            api_key="test-key-respx-will-intercept",
+            endpoint="https://api.openai.com/v1/chat/completions",
+            force_new=True,
+        )
 
-        self._generator = DialogueGenerator(
+        conversation_manager = ConversationManager(
             llm_client=llm_client,
             state_client=state_client,
-            publisher=self._router,
-            llm_timeout=5.0,
         )
 
         # Inject into event handler globals (same path as production)
-        event_handlers.set_dialogue_generator(self._generator)
+        event_handlers.set_conversation_manager(conversation_manager)
         event_handlers.set_publisher(self._router)
 
         # Register handlers on router
@@ -210,7 +214,7 @@ class E2eHarness:
             return
 
         # Reset event handler globals
-        event_handlers.set_dialogue_generator(None)
+        event_handlers.set_conversation_manager(None)
         event_handlers.set_publisher(None)
 
         # Signal MockWebSocket to disconnect (breaks WSRouter receive loop)

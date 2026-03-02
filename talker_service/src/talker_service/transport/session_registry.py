@@ -1,4 +1,4 @@
-"""Session registry — per-session ConfigMirror, SpeakerSelector, and SessionContext."""
+"""Session registry — per-session ConfigMirror and SessionContext."""
 
 from __future__ import annotations
 
@@ -7,13 +7,12 @@ from typing import Any
 from loguru import logger
 
 from ..handlers.config import ConfigMirror
-from ..dialogue.speaker import SpeakerSelector
 from .session import SessionContext
 from .outbox import Outbox
 
 
 class SessionRegistry:
-    """Manages per-session state: config, speaker selector, and session context.
+    """Manages per-session state: config and session context.
 
     Provides get-or-create semantics: first access for a ``session_id``
     creates default instances; subsequent accesses return the same objects.
@@ -26,7 +25,6 @@ class SessionRegistry:
         outbox_max_size: int = 500,
     ) -> None:
         self._configs: dict[str, ConfigMirror] = {}
-        self._speakers: dict[str, SpeakerSelector] = {}
         self._sessions: dict[str, SessionContext] = {}
         self._outbox_ttl_seconds = outbox_ttl_seconds
         self._outbox_max_size = outbox_max_size
@@ -41,17 +39,6 @@ class SessionRegistry:
             self._configs[session_id] = ConfigMirror()
             logger.debug("Created ConfigMirror for session {}", session_id)
         return self._configs[session_id]
-
-    # ------------------------------------------------------------------
-    # Speaker selector
-    # ------------------------------------------------------------------
-
-    def get_speaker_selector(self, session_id: str) -> SpeakerSelector:
-        """Return the :class:`SpeakerSelector` for *session_id*, creating if needed."""
-        if session_id not in self._speakers:
-            self._speakers[session_id] = SpeakerSelector()
-            logger.debug("Created SpeakerSelector for session {}", session_id)
-        return self._speakers[session_id]
 
     # ------------------------------------------------------------------
     # Session context
@@ -78,7 +65,6 @@ class SessionRegistry:
     def remove_session(self, session_id: str) -> None:
         """Remove all state for *session_id*."""
         self._configs.pop(session_id, None)
-        self._speakers.pop(session_id, None)
         self._sessions.pop(session_id, None)
         logger.info("Removed session state for {}", session_id)
 
@@ -88,9 +74,9 @@ class SessionRegistry:
 
     @property
     def session_ids(self) -> list[str]:
-        """All known session IDs (union of configs, speakers, sessions)."""
+        """All known session IDs (union of configs and sessions)."""
         return list(
-            set(self._configs) | set(self._speakers) | set(self._sessions)
+            set(self._configs) | set(self._sessions)
         )
 
     @property

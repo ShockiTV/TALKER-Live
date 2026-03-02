@@ -4,7 +4,6 @@ import pytest
 
 from talker_service.transport.session_registry import SessionRegistry
 from talker_service.handlers.config import ConfigMirror
-from talker_service.dialogue.speaker import SpeakerSelector
 
 
 class TestSessionRegistryConfig:
@@ -34,33 +33,6 @@ class TestSessionRegistryConfig:
         assert bob_cfg.get("model_method") == 0  # default
 
 
-class TestSessionRegistrySpeaker:
-    def test_get_speaker_selector_creates_default(self):
-        reg = SessionRegistry()
-        ss = reg.get_speaker_selector("alice")
-        assert isinstance(ss, SpeakerSelector)
-
-    def test_get_speaker_selector_returns_same_instance(self):
-        reg = SessionRegistry()
-        s1 = reg.get_speaker_selector("alice")
-        s2 = reg.get_speaker_selector("alice")
-        assert s1 is s2
-
-    def test_different_sessions_independent_selectors(self):
-        reg = SessionRegistry()
-        alice_ss = reg.get_speaker_selector("alice")
-        bob_ss = reg.get_speaker_selector("bob")
-        assert alice_ss is not bob_ss
-
-    def test_cooldown_isolation(self):
-        reg = SessionRegistry()
-        alice_ss = reg.get_speaker_selector("alice")
-        bob_ss = reg.get_speaker_selector("bob")
-        alice_ss.set_spoke("npc_1", 1000)
-        assert alice_ss.is_on_cooldown("npc_1", 1500)
-        assert not bob_ss.is_on_cooldown("npc_1", 1500)
-
-
 class TestSessionRegistrySession:
     def test_get_session_creates_context(self):
         reg = SessionRegistry()
@@ -86,7 +58,6 @@ class TestSessionRegistryRemove:
     def test_remove_session_clears_all_state(self):
         reg = SessionRegistry()
         reg.get_config("alice")
-        reg.get_speaker_selector("alice")
         reg.get_session("alice")
         assert "alice" in reg.session_ids
         reg.remove_session("alice")
@@ -108,7 +79,7 @@ class TestSessionRegistryIntrospection:
     def test_session_ids(self):
         reg = SessionRegistry()
         reg.get_config("alice")
-        reg.get_speaker_selector("bob")
+        reg.get_session("bob")
         ids = reg.session_ids
         assert "alice" in ids
         assert "bob" in ids

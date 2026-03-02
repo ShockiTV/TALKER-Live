@@ -175,3 +175,106 @@ class StateQueryClient:
         )
 
         return BatchResult(results_raw)
+    
+    async def query_batch(
+        self,
+        queries: list[dict[str, Any]],
+        *,
+        timeout: float | None = None,
+        session: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """Execute a batch of queries (simplified interface).
+        
+        Args:
+            queries: List of query dicts with 'query' field and params
+            timeout: Optional timeout override
+            session: Optional session_id
+        
+        Returns:
+            List of response dicts in same order as queries
+        
+        Raises:
+            StateQueryTimeout: If query times out
+            ConnectionError: If publish fails
+        """
+        request_id = self._generate_request_id()
+        effective_timeout = timeout or self.timeout
+        
+        future = self.router.create_request(request_id, effective_timeout)
+        
+        payload = {
+            "request_id": request_id,
+            "queries": queries,
+        }
+        
+        success = await self.router.publish("state.query.batch", payload, r=request_id, session=session)
+        if not success:
+            raise ConnectionError("Failed to publish batch query")
+        
+        logger.debug(f"Sent simple batch query ({len(queries)} queries, request_id={request_id})")
+        
+        try:
+            response = await future
+        except TimeoutError:
+            raise StateQueryTimeout(
+                f"Batch query timed out (request_id={request_id})",
+                topic="state.query.batch",
+            ) from None
+        
+        # Extract results as list
+        data = response.get("data", response)
+        results = data.get("results", []) if isinstance(data, dict) else []
+        
+        return results
+    
+    async def mutate_batch(
+        self,
+        mutations: list[dict[str, Any]],
+        *,
+        timeout: float | None = None,
+        session: str | None = None,
+    ) -> bool:
+        """Execute a batch of state mutations.
+        
+        Sends state.mutate.batch message to Lua with mutation operations.
+        Each mutation has: character_id, verb, resource, data.
+        
+        Args:
+            mutations: List of mutation dicts
+            timeout: Optional timeout override
+            session: Optional session_id
+        
+        Returns:
+            True if mutation succeeded
+        
+        Raises:
+            StateQueryTimeout: If mutation times out
+            ConnectionError: If publish fails
+        """
+        request_id = self._generate_request_id()
+        effective_timeout = timeout or self.timeout
+        
+        future = self.router.create_request(request_id, effective_timeout)
+        
+        payload = {
+            "request_id": request_id,
+            "mutations": mutations,
+        }
+        
+        success = await self.router.publish("state.mutate.batch", payload, r=request_id, session=session)
+        if not success:
+            raise ConnectionError("Failed to publish mutation batch")
+        
+        logger.debug(f"Sent mutation batch ({len(mutations)} mutations, request_id={request_id})")
+        
+        try:
+            response = await future
+        except TimeoutError:
+            raise StateQueryTimeout(
+                f"Mutation batch timed out (request_id={request_id})",
+                topic="state.mutate.batch",
+            ) from None
+        
+        # Check success status
+        data = response.get("data", response)
+        return data.get("success", False)

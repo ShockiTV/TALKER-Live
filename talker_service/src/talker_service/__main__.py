@@ -18,8 +18,7 @@ from .transport.ws_router import WSRouter
 from .handlers import events as event_handlers
 from .handlers import config as config_handlers
 from .handlers import audio as audio_handlers
-from .dialogue import DialogueGenerator, SpeakerSelector
-from .dialogue.retry_queue import DialogueRetryQueue
+from .dialogue.conversation import ConversationManager
 from .state.client import StateQueryClient
 from .llm import get_llm_client
 from .tts import TTS_AVAILABLE, TTSEngine, TTSRemoteClient
@@ -42,14 +41,14 @@ atexit.register(_force_exit)
 
 # Global instances
 ws_router: WSRouter | None = None
-dialogue_generator: DialogueGenerator | None = None
+conversation_manager: ConversationManager | None = None
 tts_engine: TTSEngine | None = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Manage application lifespan - startup and shutdown."""
-    global ws_router, dialogue_generator, tts_engine
+    global ws_router, conversation_manager, tts_engine
     
     # Startup
     logger.info("Starting TALKER Service v0.4.0 (WebSocket transport)")
@@ -124,26 +123,16 @@ async def lifespan(app: FastAPI):
         timeout=settings.state_query_timeout,
     )
     
-    # Create retry queue for deferred dialogue generation
-    retry_queue = DialogueRetryQueue(
-        max_retries=5,
-        heartbeat_interval=5.0,
-    )
-    
-    # Create dialogue generator with factory function and TTS engine
-    dialogue_generator = DialogueGenerator(
-        llm_client=get_current_llm_client,  # Pass factory, not client
+    # Create conversation manager for tool-based dialogue
+    conversation_manager = ConversationManager(
+        llm_client=get_current_llm_client(),  # Get client instance
         state_client=state_client,
-        publisher=ws_router,
         llm_timeout=settings.llm_timeout,
-        retry_queue=retry_queue,
-        tts_engine=tts_engine,  # Pass TTS engine if available
     )
     
-    # Inject generator into event handlers
-    event_handlers.set_dialogue_generator(dialogue_generator)
+    # Inject conversation manager into event handlers
+    event_handlers.set_conversation_manager(conversation_manager)
     event_handlers.set_publisher(ws_router)  # For heartbeat acks
-    event_handlers.set_retry_queue(retry_queue)
     
     # Wire config changes to TTS engine volume
     if tts_engine:

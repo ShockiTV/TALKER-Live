@@ -7,6 +7,9 @@ package.path = package.path .. ";./bin/lua/?.lua;"
 local logger  = require("framework.logger")
 local config  = require("interface.config")
 
+-- Register custom callbacks so SendScriptCallback can find them
+AddScriptCallback("publish_game_event_v2")
+
 -- Single WS channel to talker_bridge
 local bridge_channel  = nil
 local is_initialized  = false
@@ -207,6 +210,27 @@ function publish_game_event(event, is_important)
     return true
 end
 
+--- Publish game event (v2 format) with candidates, world, and traits.
+-- New unified format for tools-based-memory architecture.
+-- @param event       Event object
+-- @param candidates  Array of Character objects
+-- @param world       World description string
+-- @param traits      Traits map {character_id → {personality_id, backstory_id}}
+function publish_game_event_v2(event, candidates, world, traits)
+    if not init_channels() then return false end
+
+    if bridge_channel.get_status() ~= "connected" then
+        logger.debug("WS not connected - event queued")
+    end
+
+    -- Use the serializer to build the v2 payload
+    local serializer = require("infra.ws.serializer")
+    local payload = serializer.serialize_game_event_v2(event, candidates, world, traits)
+
+    bridge_channel.publish("game.event", payload)
+    return true
+end
+
 function publish_player_dialogue(text, context)
     if not init_channels() then return false end
 
@@ -302,6 +326,7 @@ function on_game_start()
     RegisterScriptCallback("on_game_load", on_game_load)
     RegisterScriptCallback("save_state", on_game_save)
     RegisterScriptCallback("actor_on_net_destroy", on_game_end)
+    RegisterScriptCallback("publish_game_event_v2", publish_game_event_v2)
 
     if ui_mcm and ui_mcm.register_callback then
         ui_mcm.register_callback("talker", on_mcm_changed)

@@ -35,6 +35,7 @@ talker_mic.exe
 # ── Secrets ──
 *.key
 .env
+.env.local
 openai_api_key.txt
 
 # ── Python environments & caches ──

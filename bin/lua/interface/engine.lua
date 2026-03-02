@@ -223,9 +223,9 @@ function M.describe_mutant(obj)
     return q and q.describe_mutant(obj) or ""
 end
 
-function M.describe_world()
+function M.describe_world(speaker, listener)
     local q = get_q()
-    return q and q.describe_world() or ""
+    return q and q.describe_world(speaker, listener) or ""
 end
 
 function M.describe_current_time()
