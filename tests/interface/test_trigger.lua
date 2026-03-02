@@ -1,5 +1,5 @@
 -- tests/interface/test_trigger.lua
--- Tests for trigger.store_and_publish() function (task 3.1)
+-- Tests for trigger.store_event() and trigger.publish_event() (consolidated trigger API)
 package.path = package.path .. ';./bin/lua/?.lua;./bin/lua/*/?.lua'
 require("tests.test_bootstrap")
 
@@ -13,19 +13,18 @@ local function setup()
 	memory_store_v2:clear()
 end
 
-------------------------------------------------------------
--- Tests: Basic store_and_publish Flow
-------------------------------------------------------------
+-- ══════════════════════════════════════════════════════════
+-- store_event: Memory Only (no WS publish)
+-- ══════════════════════════════════════════════════════════
 
-function testStoreAndPublishCreatesEvent()
+function testStoreEventCreatesEvent()
 	setup()
 	local context = {
 		actor = { game_id = "char_1", name = "Speaker", faction = "stalker" },
 		victim = { game_id = "char_2", name = "Victim", faction = "stalker" },
 	}
-	local witnesses = {}
 
-	local event = trigger.store_and_publish(EventType.DEATH, context, witnesses)
+	local event = trigger.store_event(EventType.DEATH, context, {})
 
 	luaunit.assertNotNil(event)
 	luaunit.assertEquals(event.type, EventType.DEATH)
@@ -33,110 +32,151 @@ function testStoreAndPublishCreatesEvent()
 	luaunit.assertEquals(event.context.victim.game_id, "char_2")
 end
 
-function testStoreAndPublishStoresInMemory()
+function testStoreEventStoresInMemory()
 	setup()
 	local speaker = { game_id = "char_1", name = "Speaker", faction = "stalker" }
 	local context = { actor = speaker }
 
-	trigger.store_and_publish(EventType.IDLE, context, {})
+	trigger.store_event(EventType.IDLE, context, {})
 
-	-- Verify event stored in speaker's memory
 	local events, _ = memory_store_v2:query("char_1", "memory.events", {})
 	luaunit.assertEquals(#events, 1)
 	luaunit.assertEquals(events[1].type, EventType.IDLE)
 end
 
-function testStoreAndPublishFansOutToWitnesses()
+function testStoreEventFansOutToWitnesses()
 	setup()
 	local speaker = { game_id = "char_1", name = "Speaker" }
 	local witness1 = { game_id = "char_2", name = "Witness1" }
 	local witness2 = { game_id = "char_3", name = "Witness2" }
 	local context = { actor = speaker, victim = speaker }
-	local witnesses = { witness1, witness2 }
 
-	trigger.store_and_publish(EventType.DEATH, context, witnesses)
+	trigger.store_event(EventType.DEATH, context, { witness1, witness2 })
 
-	-- Verify each witness has the event
 	local w1_events, _ = memory_store_v2:query("char_2", "memory.events", {})
 	local w2_events, _ = memory_store_v2:query("char_3", "memory.events", {})
-
 	luaunit.assertEquals(#w1_events, 1)
 	luaunit.assertEquals(#w2_events, 1)
 	luaunit.assertEquals(w1_events[1].type, EventType.DEATH)
 end
 
-------------------------------------------------------------
--- Tests: Error Handling
-------------------------------------------------------------
-
-function testStoreAndPublishRequiresEventType()
-	setup()
-	local context = { actor = { game_id = "char_1" } }
-
-	local result = trigger.store_and_publish(nil, context, {})
-
-	luaunit.assertNil(result)
-end
-
-function testStoreAndPublishRequiresSpeaker()
-	setup()
-	local context = {} -- No actor
-
-	local result = trigger.store_and_publish(EventType.DEATH, context, {})
-
-	luaunit.assertNil(result)
-end
-
-function testStoreAndPublishRequiresSpeakerId()
-	setup()
-	local context = { actor = { name = "No ID" } } -- Missing game_id
-
-	local result = trigger.store_and_publish(EventType.DEATH, context, {})
-
-	luaunit.assertNil(result)
-end
-
-------------------------------------------------------------
--- Tests: Event Type and Flags
-------------------------------------------------------------
-
-function testStoreAndPublishPreservesEventType()
+function testStoreEventEmptyFlags()
 	setup()
 	local speaker = { game_id = "char_1" }
-	for event_type_key, event_type_val in pairs(EventType) do
+	local context = { actor = speaker }
+
+	local event = trigger.store_event(EventType.DEATH, context, {})
+
+	-- Flags should be empty table (deprecated)
+	luaunit.assertNotNil(event.flags)
+	luaunit.assertEquals(next(event.flags), nil) -- empty table
+end
+
+-- ══════════════════════════════════════════════════════════
+-- publish_event: Memory + WS Publish
+-- ══════════════════════════════════════════════════════════
+
+function testPublishEventCreatesEvent()
+	setup()
+	local context = {
+		actor = { game_id = "char_1", name = "Speaker", faction = "stalker" },
+		victim = { game_id = "char_2", name = "Victim", faction = "stalker" },
+	}
+
+	local event = trigger.publish_event(EventType.DEATH, context, {})
+
+	luaunit.assertNotNil(event)
+	luaunit.assertEquals(event.type, EventType.DEATH)
+end
+
+function testPublishEventStoresInMemory()
+	setup()
+	local speaker = { game_id = "char_1", name = "Speaker", faction = "stalker" }
+	local context = { actor = speaker }
+
+	trigger.publish_event(EventType.IDLE, context, {})
+
+	local events, _ = memory_store_v2:query("char_1", "memory.events", {})
+	luaunit.assertEquals(#events, 1)
+	luaunit.assertEquals(events[1].type, EventType.IDLE)
+end
+
+function testPublishEventFansOutToWitnesses()
+	setup()
+	local speaker = { game_id = "char_1", name = "Speaker" }
+	local witness1 = { game_id = "char_2", name = "Witness1" }
+	local witness2 = { game_id = "char_3", name = "Witness2" }
+	local context = { actor = speaker, victim = speaker }
+
+	trigger.publish_event(EventType.DEATH, context, { witness1, witness2 })
+
+	local w1_events, _ = memory_store_v2:query("char_2", "memory.events", {})
+	local w2_events, _ = memory_store_v2:query("char_3", "memory.events", {})
+	luaunit.assertEquals(#w1_events, 1)
+	luaunit.assertEquals(#w2_events, 1)
+end
+
+-- ══════════════════════════════════════════════════════════
+-- Error Handling (shared validation)
+-- ══════════════════════════════════════════════════════════
+
+function testStoreEventRequiresEventType()
+	setup()
+	local context = { actor = { game_id = "char_1" } }
+	luaunit.assertNil(trigger.store_event(nil, context, {}))
+end
+
+function testStoreEventRequiresSpeaker()
+	setup()
+	luaunit.assertNil(trigger.store_event(EventType.DEATH, {}, {}))
+end
+
+function testStoreEventRequiresSpeakerId()
+	setup()
+	local context = { actor = { name = "No ID" } }
+	luaunit.assertNil(trigger.store_event(EventType.DEATH, context, {}))
+end
+
+function testPublishEventRequiresEventType()
+	setup()
+	local context = { actor = { game_id = "char_1" } }
+	luaunit.assertNil(trigger.publish_event(nil, context, {}))
+end
+
+function testPublishEventRequiresSpeaker()
+	setup()
+	luaunit.assertNil(trigger.publish_event(EventType.DEATH, {}, {}))
+end
+
+-- ══════════════════════════════════════════════════════════
+-- Event Type Preservation
+-- ══════════════════════════════════════════════════════════
+
+function testStoreEventPreservesAllEventTypes()
+	setup()
+	local speaker = { game_id = "char_1" }
+	for _, event_type_val in pairs(EventType) do
 		if type(event_type_val) == "number" then
 			local context = { actor = speaker }
-			local event = trigger.store_and_publish(event_type_val, context, {})
+			local event = trigger.store_event(event_type_val, context, {})
 			luaunit.assertEquals(event.type, event_type_val)
-			setup() -- Clear for next iteration
+			setup()
 		end
 	end
 end
 
-function testStoreAndPublishPreservesFlags()
-	setup()
-	local speaker = { game_id = "char_1" }
-	local context = { actor = speaker }
-	local flags = { is_silent = true, special_flag = "value" }
+-- ══════════════════════════════════════════════════════════
+-- Sequence Numbers
+-- ══════════════════════════════════════════════════════════
 
-	local event = trigger.store_and_publish(EventType.DEATH, context, {}, flags)
-
-	luaunit.assertEquals(event.flags.is_silent, true)
-	luaunit.assertEquals(event.flags.special_flag, "value")
-end
-
-------------------------------------------------------------
--- Tests: Sequence Numbers and Ordering
-------------------------------------------------------------
-
-function testStoreAndPublishAssignsSequentialSeqs()
+function testStoreEventAssignsSequentialSeqs()
 	setup()
 	local speaker = { game_id = "char_1" }
 	local context = { actor = speaker }
 
-	trigger.store_and_publish(EventType.DEATH, context, {})
-	trigger.store_and_publish(EventType.IDLE, context, {})
-	trigger.store_and_publish(EventType.ARTIFACT, context, {})
+	trigger.store_event(EventType.DEATH, context, {})
+	trigger.store_event(EventType.IDLE, context, {})
+	trigger.store_event(EventType.ARTIFACT, context, {})
 
 	local events, _ = memory_store_v2:query("char_1", "memory.events", {})
 	luaunit.assertEquals(#events, 3)
@@ -145,11 +185,25 @@ function testStoreAndPublishAssignsSequentialSeqs()
 	luaunit.assertEquals(events[3].seq, 3)
 end
 
-------------------------------------------------------------
--- Tests: Complex Context
-------------------------------------------------------------
+function testPublishEventAssignsSequentialSeqs()
+	setup()
+	local speaker = { game_id = "char_1" }
+	local context = { actor = speaker }
 
-function testStoreAndPublishComplexContext()
+	trigger.publish_event(EventType.DEATH, context, {})
+	trigger.publish_event(EventType.IDLE, context, {})
+
+	local events, _ = memory_store_v2:query("char_1", "memory.events", {})
+	luaunit.assertEquals(#events, 2)
+	luaunit.assertEquals(events[1].seq, 1)
+	luaunit.assertEquals(events[2].seq, 2)
+end
+
+-- ══════════════════════════════════════════════════════════
+-- Complex Context
+-- ══════════════════════════════════════════════════════════
+
+function testStoreEventComplexContext()
 	setup()
 	local speaker = { game_id = "char_1", name = "Killer", faction = "stalker" }
 	local victim = { game_id = "char_2", name = "Victim", faction = "loner" }
@@ -160,7 +214,7 @@ function testStoreAndPublishComplexContext()
 		companions = { companion },
 	}
 
-	local event = trigger.store_and_publish(EventType.DEATH, context, {})
+	local event = trigger.store_event(EventType.DEATH, context, {})
 
 	luaunit.assertEquals(event.context.actor.name, "Killer")
 	luaunit.assertEquals(event.context.victim.name, "Victim")
@@ -168,18 +222,34 @@ function testStoreAndPublishComplexContext()
 	luaunit.assertEquals(event.context.companions[1].name, "Companion")
 end
 
-------------------------------------------------------------
--- Tests: Timestamp Assignment
-------------------------------------------------------------
+-- ══════════════════════════════════════════════════════════
+-- Timestamp
+-- ══════════════════════════════════════════════════════════
 
-function testStoreAndPublishAssignsTimestamp()
+function testStoreEventAssignsTimestamp()
 	setup()
 	local speaker = { game_id = "char_1" }
 	local context = { actor = speaker }
 
-	local event = trigger.store_and_publish(EventType.DEATH, context, {})
+	local event = trigger.store_event(EventType.DEATH, context, {})
 
 	luaunit.assertTrue(event.game_time_ms >= 0)
+end
+
+-- ══════════════════════════════════════════════════════════
+-- store_and_publish is gone
+-- ══════════════════════════════════════════════════════════
+
+function testStoreAndPublishRemoved()
+	luaunit.assertNil(trigger.store_and_publish)
+end
+
+function testTalkerEventNearPlayerRemoved()
+	luaunit.assertNil(trigger.talker_event_near_player)
+end
+
+function testTalkerEventRemoved()
+	luaunit.assertNil(trigger.talker_event)
 end
 
 -- Run all tests

@@ -64,10 +64,17 @@ local c = {}
 -- static values
 c.EVENT_WITNESS_RANGE  = cfg("witness_distance")
 c.NPC_SPEAK_DISTANCE   = cfg("npc_speak_distance")
-c.BASE_DIALOGUE_CHANCE = cfg("base_dialogue_chance")
 c.player_speaks = false
 c.SHOW_HUD_MESSAGES = true
 c.PROXY_API_KEY = "VerysecretKey"
+
+--- Public generic getter for any MCM key (dynamic read).
+-- Used by domain/service/chance.lua and trigger scripts.
+-- @param key  string  MCM key (e.g. "triggers/death/chance_player")
+-- @return any  The config value, with defaults fallback
+function c.get(key)
+	return cfg(key)
+end
 
 function c.get_openai_api_key()
 	if not c._openai_api_key then
@@ -201,7 +208,6 @@ function c.get_all_config()
 		-- General settings
 		action_descriptions     = cfg("action_descriptions"),
 		female_gender           = cfg("female_gender"),
-		base_dialogue_chance    = cfg("base_dialogue_chance"),
 		witness_distance        = cfg("witness_distance"),
 		npc_speak_distance      = cfg("npc_speak_distance"),
 		time_gap                = cfg("time_gap"),

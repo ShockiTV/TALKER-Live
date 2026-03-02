@@ -20,7 +20,8 @@ The MCM defaults table SHALL be extracted to `interface/config_defaults.lua` as 
 
 #### Scenario: Defaults table covers all MCM keys
 - **WHEN** the defaults table is loaded
-- **THEN** it contains defaults for at least: `debug_logging`, `witness_distance`, `npc_speak_distance`, `base_dialogue_chance`, `ai_model_method`, `custom_ai_model`, `custom_ai_model_fast`, `zmq_port`, `zmq_heartbeat_interval`, `llm_timeout`, `state_query_timeout`, `language`, `input_option`, `speak_key`, `gpt_version`, `reasoning_level`, `voice_provider`, `service_url`, `ws_token`
+- **THEN** it contains defaults for at least: `debug_logging`, `witness_distance`, `npc_speak_distance`, `ai_model_method`, `custom_ai_model`, `custom_ai_model_fast`, `zmq_port`, `zmq_heartbeat_interval`, `llm_timeout`, `state_query_timeout`, `language`, `input_option`, `speak_key`, `gpt_version`, `reasoning_level`, `voice_provider`, `service_url`, `ws_token`
+- **AND** it SHALL contain defaults for all `triggers/*` keys: enable, cooldown, and chance per trigger type
 
 ### Requirement: MCM service_url input field
 

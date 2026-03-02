@@ -21,7 +21,6 @@ local defaults = {
     -- Gameplay
     action_descriptions     = false,
     female_gender           = false,
-    base_dialogue_chance    = 0.25,
     witness_distance        = 25,
     npc_speak_distance      = 30,
     time_gap                = 4,
@@ -45,44 +44,86 @@ local defaults = {
     reset_backstory         = false,
     reset_personality       = false,
 
-    -- Trigger settings
-    recent_speech_threshold         = 120,
-    idle_question_chance            = 0.5,
-    idle_conversation_cooldown      = 600,
-    enable_trigger_idle             = true,
-    enable_trigger_callout          = true,
-    max_callout_distance            = 30,
-    callout_cooldown                = 30,
-    repeated_callout_cooldown       = 240,
-    enable_trigger_taunt            = true,
-    taunt_cooldown                  = 120,
-    enable_trigger_death_player     = 0,
-    death_cooldown_player           = 90,
-    enable_trigger_death_npc        = 0,
-    death_cooldown_npc              = 90,
-    enable_trigger_reload           = 0,
-    reload_notice_chance            = 0.1,
-    enable_trigger_injury           = 0,
-    injury_threshold                = 0.4,
-    injury_cooldown                 = 20,
-    enable_trigger_emission         = 0,
-    enable_trigger_map_transition   = 0,
-    enable_trigger_task             = 0,
-    task_cooldown                   = 40,
-    task_notice_chance              = 0.1,
-    enable_trigger_sleep            = 0,
-    enable_trigger_weapon_jam       = 0,
-    enable_trigger_proximity_anomalies = 0,
-    max_rank_for_warning            = 1,
-    anomaly_proximity_comment_cd    = 40,
-    enable_trigger_damage_anomalies = 0,
-    anomaly_damage_comment_cd       = 40,
-    enable_trigger_artifact_pickup  = 0,
-    artifact_pickup_comment_cd      = 40,
-    enable_trigger_artifact_use     = 0,
-    artifact_use_comment_cd         = 40,
-    enable_trigger_artifact_equip   = 0,
-    artifact_equip_comment_cd       = 40,
+    -- General trigger settings
+    recent_speech_threshold = 120,
+    anti_spam_cd            = 10,
+
+    -- Per-trigger settings: triggers/<type>/<setting>
+    -- Death (player)
+    ["triggers/death/enable_player"]   = true,
+    ["triggers/death/cooldown_player"] = 90,
+    ["triggers/death/chance_player"]   = 25,
+    -- Death (NPC)
+    ["triggers/death/enable_npc"]      = true,
+    ["triggers/death/cooldown_npc"]    = 90,
+    ["triggers/death/chance_npc"]      = 25,
+    -- Injury
+    ["triggers/injury/enable"]         = true,
+    ["triggers/injury/cooldown"]       = 20,
+    ["triggers/injury/chance"]         = 25,
+    ["triggers/injury/threshold"]      = 0.4,
+    -- Artifact (pickup)
+    ["triggers/artifact/enable_pickup"]   = true,
+    ["triggers/artifact/cooldown_pickup"] = 40,
+    ["triggers/artifact/chance_pickup"]   = 100,
+    -- Artifact (use)
+    ["triggers/artifact/enable_use"]      = true,
+    ["triggers/artifact/cooldown_use"]    = 40,
+    ["triggers/artifact/chance_use"]      = 100,
+    -- Artifact (equip)
+    ["triggers/artifact/enable_equip"]    = true,
+    ["triggers/artifact/cooldown_equip"]  = 40,
+    ["triggers/artifact/chance_equip"]    = 100,
+    -- Anomaly (proximity)
+    ["triggers/anomaly/enable_proximity"]   = true,
+    ["triggers/anomaly/cooldown_proximity"] = 40,
+    ["triggers/anomaly/chance_proximity"]   = 25,
+    ["triggers/anomaly/max_rank_for_warning"] = 1,
+    -- Anomaly (damage)
+    ["triggers/anomaly/enable_damage"]     = true,
+    ["triggers/anomaly/cooldown_damage"]   = 40,
+    ["triggers/anomaly/chance_damage"]     = 25,
+    -- Callout
+    ["triggers/callout/enable"]            = true,
+    ["triggers/callout/cooldown"]          = 30,
+    ["triggers/callout/chance"]            = 100,
+    ["triggers/callout/max_distance"]      = 30,
+    ["triggers/callout/repeated_cooldown"] = 240,
+    -- Taunt
+    ["triggers/taunt/enable"]              = true,
+    ["triggers/taunt/cooldown"]            = 120,
+    ["triggers/taunt/chance"]              = 25,
+    -- Emission
+    ["triggers/emission/enable"]           = true,
+    ["triggers/emission/chance"]           = 100,
+    -- Idle
+    ["triggers/idle/enable"]               = true,
+    ["triggers/idle/cooldown"]             = 600,
+    ["triggers/idle/chance"]               = 100,
+    ["triggers/idle/question_chance"]       = 50,
+    -- Idle sub-modes
+    ["triggers/idle/enable_during_emission"]     = true,
+    ["triggers/idle/cooldown_during_emission"]   = 30,
+    ["triggers/idle/chance_during_emission"]     = 100,
+    ["triggers/idle/enable_during_psy_storm"]    = true,
+    ["triggers/idle/cooldown_during_psy_storm"]  = 30,
+    ["triggers/idle/chance_during_psy_storm"]    = 100,
+    -- Map transition
+    ["triggers/map_transition/enable"]     = true,
+    ["triggers/map_transition/chance"]     = 100,
+    -- Sleep
+    ["triggers/sleep/enable"]              = true,
+    ["triggers/sleep/chance"]              = 100,
+    -- Reload
+    ["triggers/reload/enable"]             = true,
+    ["triggers/reload/chance"]             = 10,
+    -- Task
+    ["triggers/task/enable"]               = true,
+    ["triggers/task/cooldown"]             = 40,
+    ["triggers/task/chance"]               = 10,
+    -- Weapon jam
+    ["triggers/weapon_jam/enable"]         = true,
+    ["triggers/weapon_jam/chance"]         = 25,
 }
 
 return defaults
