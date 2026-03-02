@@ -1,49 +1,38 @@
 --------------------------------------------------------------------------------------------
 -- PLAYER INTERACTS WITH ANOMALY
--- Not damaged by it, but affected by it
--- Typically this is a gravitational anomaly or radiation
--- This script was a port from STALKER 1 and may need cleanup
 --------------------------------------------------------------------------------------------
 package.path = package.path .. ";./bin/lua/?.lua;"
 local log      = require("framework.logger")
 local game     = require("infra.game_adapter")
 local trigger  = require("interface.trigger")
+local config   = require("interface.config")
 local Cooldown = require("domain.service.cooldown")
--- Import game interface modules
-local queries = talker_game_queries
-local mcm = talker_mcm
+local chance   = require("domain.service.chance")
 
--- EventType shorthand for cleaner code
+local queries  = talker_game_queries
 local EventType = trigger.EventType
 
 ----------------------------------------------------------------------------------------------------
 -- Constants
 ----------------------------------------------------------------------------------------------------
 local INTERACTION_DISTANCE = 1
-local ANOMALY_PROXIMITY_COMMENT_CD = mcm.get("anomaly_proximity_comment_cd") * 1000
-local ANOMALY_DAMAGE_COMMENT_CD = mcm.get("anomaly_damage_comment_cd") * 1000
-local MAX_RANK_FOR_WARNING = mcm.get("max_rank_for_warning")
+local ANTI_SPAM_CD = config.get("anti_spam_cd") * 1000
 
-local mode_proximity = tonumber(mcm.get("enable_trigger_proximity_anomalies") or "0")
-local mode_damage = tonumber(mcm.get("enable_trigger_damage_anomalies") or "0")
-local ANTI_SPAM_CD = mcm.get("anti_spam_cd") * 1000
+-- Two CooldownManagers (one per sub-type), both share ANTI_SPAM_CD
+local cd_damage    = Cooldown.new({ cooldown_ms = config.get("triggers/anomaly/cooldown_damage") * 1000,    anti_spam_ms = ANTI_SPAM_CD })
+local cd_proximity = Cooldown.new({ cooldown_ms = config.get("triggers/anomaly/cooldown_proximity") * 1000, anti_spam_ms = ANTI_SPAM_CD })
 
 ----------------------------------------------------------------------------------------------------
 -- Conditions
 ----------------------------------------------------------------------------------------------------
--- Two CooldownManagers replace the 4 LAST_* timer variables and get_silence_status().
--- Each has its own per-event cooldown; both share ANTI_SPAM_CD.
-local cd_damage    = Cooldown.new({ cooldown_ms = ANOMALY_DAMAGE_COMMENT_CD,    anti_spam_ms = ANTI_SPAM_CD })
-local cd_proximity = Cooldown.new({ cooldown_ms = ANOMALY_PROXIMITY_COMMENT_CD, anti_spam_ms = ANTI_SPAM_CD })
 
 function is_valid_proximity_event(anomaly)
     local player = queries.get_player()
-    
-    -- Rank Check: Only warn inexperienced players
     local player_rank_name = queries.get_rank(player)
     local player_rank_val = queries.get_rank_value(player_rank_name)
+    local max_rank = config.get("triggers/anomaly/max_rank_for_warning")
 
-    if player_rank_val > MAX_RANK_FOR_WARNING then
+    if player_rank_val > max_rank then
         return false
     end
 
@@ -51,28 +40,31 @@ function is_valid_proximity_event(anomaly)
 end
 
 ----------------------------------------------------------------------------------------------------
--- Function
+-- Helper: create and dispatch anomaly event
 ----------------------------------------------------------------------------------------------------
 
-function create_anomaly_interaction_event(section, is_damage, is_silent)
+local function create_anomaly_event(section, cd_manager, chance_key)
+    -- Cooldown check
+    local cd_result = cd_manager:check("default", queries.get_game_time_ms(), 0)
+    if cd_result == nil then return end
+
     local player = game.get_player_character()
-
-    -- Get witnesses
     local witnesses = game.get_characters_near_player()
-
-    -- Create typed event context
-    -- anomaly_type holds the technical section name (e.g. "zone_vortex");
-    -- Python resolves it to a display string via texts/anomaly_sections.py
     local context = {
         actor = player,
         anomaly_type = section
     }
 
-    -- Use new unified trigger system
-    trigger.store_and_publish(EventType.ANOMALY, context, witnesses, { is_silent = is_silent })
+    if cd_result == true then
+        trigger.store_event(EventType.ANOMALY, context, witnesses)
+        return
+    end
 
-    if is_silent then
-        log.info("TALKER: Anomaly event registered (silent)")
+    -- Player-only event: chance determines publish vs store
+    if chance.check(chance_key) then
+        trigger.publish_event(EventType.ANOMALY, context, witnesses)
+    else
+        trigger.store_event(EventType.ANOMALY, context, witnesses)
     end
 end
 
@@ -82,41 +74,33 @@ end
 
 -- Anomaly interaction (Proximity)
 function actor_on_feeling_anomaly(anomaly)
-    if mode_proximity == 1 then return end
+    if not config.get("triggers/anomaly/enable_proximity") then return end
 
     local section = anomaly:section()
     if string.find(section, "radioactive") or string.find(section, "radiation") then
         return
     end
 
-    if not queries.is_anomaly_section(section) then return end -- Not a supported anomaly
+    if not queries.is_anomaly_section(section) then return end
 
-    -- Skip if the anomaly is not close enough OR if player rank is too high
     if is_valid_proximity_event(anomaly) then
-        local is_silent = cd_proximity:check("default", queries.get_game_time_ms(), mode_proximity)
-        if is_silent ~= nil then
-            create_anomaly_interaction_event(section, false, is_silent)
-        end
+        create_anomaly_event(section, cd_proximity, "triggers/anomaly/chance_proximity")
     end
 end
 
 -- Anomaly hit (Damage)
 function actor_on_hit_callback(obj, amount, local_direction, who, bone_index)
-    if mode_damage == 1 then return end
+    if not config.get("triggers/anomaly/enable_damage") then return end
     if not who then return end
-    
-    -- Check if the source of damage is an anomaly we recognize
+
     local section = who:section()
-    if not queries.is_anomaly_section(section) then return end -- Not a supported anomaly
+    if not queries.is_anomaly_section(section) then return end
 
     if string.find(section, "radioactive") or string.find(section, "radiation") then
         return
     end
 
-    local is_silent = cd_damage:check("default", queries.get_game_time_ms(), mode_damage)
-    if is_silent ~= nil then
-        create_anomaly_interaction_event(section, true, is_silent)
-    end
+    create_anomaly_event(section, cd_damage, "triggers/anomaly/chance_damage")
 end
 
 ----------------------------------------------------------------------------------------------------
@@ -142,11 +126,6 @@ function on_game_start()
     RegisterScriptCallback("actor_on_hit_callback", safe_actor_on_hit_callback)
 end
 
--- Module loaded check
 function is_loaded()
     return true
-end
-
-function insert_interface(new_interface)
-    interface = new_interface
 end

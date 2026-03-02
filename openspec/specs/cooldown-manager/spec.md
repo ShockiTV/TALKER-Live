@@ -29,6 +29,8 @@ The `check(slot_name, current_time, mode)` method SHALL return one of three valu
 - `true` — silent (cooldown active or mode==Silent)
 - `false` — speak (cooldown elapsed and mode==On)
 
+The method signature and return semantics are **unchanged**. However, callers SHALL no longer pass `mode=2` (Silent). The consolidated trigger flow uses `mode=0` (On) exclusively — the store-vs-publish decision is made by the caller based on the chance roll result, not by the cooldown manager's mode parameter.
+
 #### Scenario: Mode Off aborts
 - **WHEN** `cd:check("default", 1000, 1)` is called with mode=1 (Off)
 - **THEN** it returns `nil`

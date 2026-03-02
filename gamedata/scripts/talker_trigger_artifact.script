@@ -6,69 +6,69 @@ package.path = package.path .. ";./bin/lua/?.lua;"
 local game     = require("infra.game_adapter")
 local trigger  = require("interface.trigger")
 local logger   = require("framework.logger")
+local config   = require("interface.config")
 local Cooldown = require("domain.service.cooldown")
+local chance   = require("domain.service.chance")
 
 local queries  = talker_game_queries
 local commands = talker_game_commands
-local mcm      = talker_mcm
-
--- EventType shorthand for cleaner code
 local EventType = trigger.EventType
 
 ----------------------------------------------------------------------------------------------------
 -- Constants
 ----------------------------------------------------------------------------------------------------
-local ARTIFACT_PICKUP_COMMENT_CD = mcm.get("artifact_pickup_comment_cd") * 1000
-local ARTIFACT_USE_COMMENT_CD = mcm.get("artifact_use_comment_cd") * 1000
-local ARTIFACT_EQUIP_COMMENT_CD = mcm.get("artifact_equip_comment_cd") * 1000
-
-local mode_pickup = tonumber(mcm.get("enable_trigger_artifact_pickup") or "0")
-local mode_use = tonumber(mcm.get("enable_trigger_artifact_use") or "0")
-local mode_equip = tonumber(mcm.get("enable_trigger_artifact_equip") or "0")
-local ANTI_SPAM_CD = mcm.get("anti_spam_cd") * 1000
-
+local ANTI_SPAM_CD = config.get("anti_spam_cd") * 1000
 local LOAD_SAFE = false
+
 ----------------------------------------------------------------------------------------------------
 -- Conditions
 ----------------------------------------------------------------------------------------------------
 local function is_excluded_artifact(name)
     if not name then return false end
     local lower_name = string.lower(name)
-    if string.find(lower_name, "oxygen") or string.find(lower_name, "filter") then
-        return true
-    end
-    return false
+    return string.find(lower_name, "oxygen") or string.find(lower_name, "filter")
 end
 
--- Three CooldownManagers (one per slot type) replace the 6 LAST_* timer variables
--- and the multi-branch get_silence_status() function.
--- Each shares ANTI_SPAM_CD; each has its own per-action dialogue cooldown.
-local cd_pickup = Cooldown.new({ cooldown_ms = ARTIFACT_PICKUP_COMMENT_CD, anti_spam_ms = ANTI_SPAM_CD })
-local cd_use    = Cooldown.new({ cooldown_ms = ARTIFACT_USE_COMMENT_CD,    anti_spam_ms = ANTI_SPAM_CD })
-local cd_equip  = Cooldown.new({ cooldown_ms = ARTIFACT_EQUIP_COMMENT_CD,  anti_spam_ms = ANTI_SPAM_CD })
+-- Three CooldownManagers (one per action type), each shares ANTI_SPAM_CD
+local cd_pickup = Cooldown.new({ cooldown_ms = config.get("triggers/artifact/cooldown_pickup") * 1000, anti_spam_ms = ANTI_SPAM_CD })
+local cd_use    = Cooldown.new({ cooldown_ms = config.get("triggers/artifact/cooldown_use") * 1000,    anti_spam_ms = ANTI_SPAM_CD })
+local cd_equip  = Cooldown.new({ cooldown_ms = config.get("triggers/artifact/cooldown_equip") * 1000,  anti_spam_ms = ANTI_SPAM_CD })
 
 ----------------------------------------------------------------------------------------------------
--- Helper: Create artifact event with typed system
+-- Helpers
 ----------------------------------------------------------------------------------------------------
 
-local function create_artifact_event(action, artifact_name, is_silent)
+local function get_artifact_name(obj)
+    local section = obj:section()
+    local name = queries.load_xml(section)
+    if name == "" then name = queries.get_item_name(obj) end
+    return name
+end
+
+--- Create and dispatch artifact event (shared helper).
+local function create_artifact_event(action, artifact_name, cd_manager, chance_key)
+    -- Cooldown check
+    local cd_result = cd_manager:check("default", queries.get_game_time_ms(), 0)
+    if cd_result == nil then return end
+
     local player = game.get_player_character()
-
-    -- Get witnesses
     local witnesses = game.get_characters_near_player()
-
-    -- Create typed event context
     local context = {
         actor = player,
         action = action,
         item_name = artifact_name
     }
 
-    -- Use new unified trigger system
-    trigger.store_and_publish(EventType.ARTIFACT, context, witnesses, { is_silent = is_silent })
+    if cd_result == true then
+        trigger.store_event(EventType.ARTIFACT, context, witnesses)
+        return
+    end
 
-    if is_silent then
-        logger.info("TALKER: Artifact event registered (silent)")
+    -- Player-only event: chance determines publish vs store
+    if chance.check(chance_key) then
+        trigger.publish_event(EventType.ARTIFACT, context, witnesses)
+    else
+        trigger.store_event(EventType.ARTIFACT, context, witnesses)
     end
 end
 
@@ -76,90 +76,47 @@ end
 -- Handlers
 ----------------------------------------------------------------------------------------------------
 
-
 local function actor_on_item_use(obj, str)
-    if not LOAD_SAFE or mode_use == 1 then return end
+    if not LOAD_SAFE then return end
+    if not config.get("triggers/artifact/enable_use") then return end
     if not queries.is_artifact(obj) then return end
-    
-    local section = obj:section()
-    local artifact_description = queries.load_xml(section)
-    if artifact_description == "" then
-        artifact_description = queries.get_item_name(obj)
-    end
-
-    if is_excluded_artifact(artifact_description) then return end
-
-    local is_silent = cd_use:check("default", queries.get_game_time_ms(), mode_use)
-    if is_silent == nil then return end
-
-    create_artifact_event("use", artifact_description, is_silent)
+    local name = get_artifact_name(obj)
+    if is_excluded_artifact(name) then return end
+    create_artifact_event("use", name, cd_use, "triggers/artifact/chance_use")
 end
 
 local function actor_item_to_belt(obj)
-    if not LOAD_SAFE or mode_equip == 1 then return end
+    if not LOAD_SAFE then return end
+    if not config.get("triggers/artifact/enable_equip") then return end
     if not queries.is_artifact(obj) then return end
-    
-    local section = obj:section()
-    local artifact_description = queries.load_xml(section)
-    if artifact_description == "" then
-        artifact_description = queries.get_item_name(obj)
-    end
-
-    if is_excluded_artifact(artifact_description) then return end
-
-    local is_silent = cd_equip:check("default", queries.get_game_time_ms(), mode_equip)
-    if is_silent == nil then return end
-
-    create_artifact_event("equip", artifact_description, is_silent)
+    local name = get_artifact_name(obj)
+    if is_excluded_artifact(name) then return end
+    create_artifact_event("equip", name, cd_equip, "triggers/artifact/chance_equip")
 end
 
 local function actor_on_item_to_slot(obj)
-    if not LOAD_SAFE or mode_equip == 1 then return end
+    if not LOAD_SAFE then return end
+    if not config.get("triggers/artifact/enable_equip") then return end
     if not queries.is_artifact(obj) then return end
-    
-    local section = obj:section()
-    local artifact_description = queries.load_xml(section)
-    if artifact_description == "" then
-        artifact_description = queries.get_item_name(obj)
-    end
-
-    if is_excluded_artifact(artifact_description) then return end
-
-    local is_silent = cd_equip:check("default", queries.get_game_time_ms(), mode_equip)
-    if is_silent == nil then return end
-
-    create_artifact_event("equip", artifact_description, is_silent)
+    local name = get_artifact_name(obj)
+    if is_excluded_artifact(name) then return end
+    create_artifact_event("equip", name, cd_equip, "triggers/artifact/chance_equip")
 end
 
 local function actor_on_item_before_pickup(obj)
-    if not LOAD_SAFE or mode_pickup == 1 then return end
+    if not LOAD_SAFE then return end
+    if not config.get("triggers/artifact/enable_pickup") then return end
     if not queries.is_artifact(obj) then return end
-
-    local section = obj:section()
-    local artifact_description = queries.load_xml(section)
-    
-    -- If load_xml returns an empty string, fall back to the basic item name
-    if artifact_description == "" then
-        artifact_description = queries.get_item_name(obj)
-    end
-    
-    if is_excluded_artifact(artifact_description) then return end
-
-    local is_silent = cd_pickup:check("default", queries.get_game_time_ms(), mode_pickup)
-    if is_silent == nil then return end
-
-    create_artifact_event("pickup", artifact_description, is_silent)
+    local name = get_artifact_name(obj)
+    if is_excluded_artifact(name) then return end
+    create_artifact_event("pickup", name, cd_pickup, "triggers/artifact/chance_pickup")
 end
-
-
 
 ----------------------------------------------------------------------------------------------------
 -- Setup
 ----------------------------------------------------------------------------------------------------
 
 local function on_loading_screen_dismissed()
-    -- Wait 3 seconds after loading screen is gone before enabling triggers
-    -- to avoid engine-driven equipment calls
     CreateTimeEvent("talker_artifact_load", "safe_enable", 3, function()
         LOAD_SAFE = true
         logger.info("Artifact triggers are now LOAD_SAFE and active.")

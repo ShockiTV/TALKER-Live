@@ -3,52 +3,32 @@
 -- Occasional comments by NPCs, or enemies saying that they can push the player
 --------------------------------------------------------------------------------------------
 package.path = package.path .. ";./bin/lua/?.lua;"
-local log = require("framework.logger")
-local game = require("infra.game_adapter")
+local log     = require("framework.logger")
+local game    = require("infra.game_adapter")
 local trigger = require("interface.trigger")
-local mcm = talker_mcm
+local config  = require("interface.config")
+local chance  = require("domain.service.chance")
 
--- EventType shorthand for cleaner code
 local EventType = trigger.EventType
-
-----------------------------------------------------------------------------------------------------
--- Constants
-----------------------------------------------------------------------------------------------------
-local NOTICE_CHANCE = mcm.get("reload_notice_chance")
-local mode_reload = tonumber(mcm.get("enable_trigger_reload") or "0")
 
 ----------------------------------------------------------------------------------------------------
 -- Function
 ----------------------------------------------------------------------------------------------------
 
--- Player reload event handler
 function on_player_reloads_weapon()
-    if mode_reload == 1 then return end
+    if not config.get("triggers/reload/enable") then return end
 
-    -- Logic: If random > chance, we ignore it to prevent event store bloat
-    if math.random() > NOTICE_CHANCE then
-        log.info("TALKER: Ignoring reload event (failed chance check)")
-        return
-    end
-
-    log.info("TALKER: Player is reloading weapon")
-
-    -- Create event context
     local player = game.get_player_character()
-    local is_silent = (mode_reload == 2)
-
-    -- Get witnesses
     local witnesses = game.get_characters_near_player()
+    local context = { actor = player }
 
-    local context = {
-        actor = player
-    }
-
-    -- Use new unified trigger system
-    trigger.store_and_publish(EventType.RELOAD, context, witnesses, { is_silent = is_silent })
-
-    if is_silent then
-        log.info("TALKER: Reload event registered (silent)")
+    -- No cooldown for reloads; chance determines publish vs store
+    if chance.check("triggers/reload/chance") then
+        trigger.publish_event(EventType.RELOAD, context, witnesses)
+        log.info("TALKER: Reload event published")
+    else
+        trigger.store_event(EventType.RELOAD, context, witnesses)
+        log.info("TALKER: Reload event stored (chance failed)")
     end
 end
 
@@ -67,12 +47,6 @@ function on_game_start()
     RegisterScriptCallback("actor_on_weapon_reload", safe_on_player_reloads_weapon)
 end
 
--- Module loaded check
 function is_loaded()
     return true
-end
-
-function insert_mocks(mock_interface, mock_game)
-    interface = mock_interface
-    game = mock_game
 end

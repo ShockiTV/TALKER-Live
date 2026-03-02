@@ -2,38 +2,44 @@ package.path = package.path .. ";./bin/lua/?.lua;"
 local game       = require("infra.game_adapter")
 local trigger    = require("interface.trigger")
 local log        = require("framework.logger")
+local config     = require("interface.config")
 local Cooldown   = require("domain.service.cooldown")
-local mcm        = talker_mcm
--- Game interfaces
-local queries = talker_game_queries
+local chance     = require("domain.service.chance")
+local importance = require("domain.service.importance")
 
--- EventType shorthand for cleaner code
-local EventType = trigger.EventType
+local queries    = talker_game_queries
+local EventType  = trigger.EventType
 
-local mode_player = tonumber(mcm.get("enable_trigger_death_player") or "0")
-local mode_npc = tonumber(mcm.get("enable_trigger_death_npc") or "0")
+-- CooldownManagers: one per kill sub-type
+local cd_player = Cooldown.new({ cooldown_ms = config.get("triggers/death/cooldown_player") * 1000 })
+local cd_npc    = Cooldown.new({ cooldown_ms = config.get("triggers/death/cooldown_npc") * 1000 })
 
-local DEATH_COOLDOWN_CD_PLAYER = mcm.get("death_cooldown_player") * 1000 -- default 90 seconds cooldown to prevent spam
-local DEATH_COOLDOWN_CD_NPC = mcm.get("death_cooldown_npc") * 1000 -- default 90 seconds cooldown to prevent spam
+--- Build importance flags for a game object.
+local function build_flags(obj)
+    return {
+        is_player    = (obj:id() == 0),
+        is_companion = queries.is_companion(obj),
+        is_unique    = queries.is_unique_character_by_id(obj:id()),
+        rank         = queries.get_rank(obj),
+    }
+end
 
--- CooldownManagers replace the old LAST_DEATH_TIME_PLAYER/NPC variables and get_silence_status()
-local cd_player = Cooldown.new({ cooldown_ms = DEATH_COOLDOWN_CD_PLAYER })
-local cd_npc    = Cooldown.new({ cooldown_ms = DEATH_COOLDOWN_CD_NPC })
 --------------------------------------------------------------------------------------------
 -- CALLBACK
 --------------------------------------------------------------------------------------------
 
 function on_creature_death(victim_obj, killer_obj)
-    local is_player = killer_obj and killer_obj:id() == 0
-    local mode = is_player and mode_player or mode_npc
-    
-    if mode == 1 then return end -- Mode 1 = Off: Exit immediately
-
     -- Environmental deaths (no killer) don't trigger dialogue
     if not killer_obj then
         log.debug("TALKER: Environmental death (no killer), skipping")
         return
     end
+
+    local is_player_kill = killer_obj:id() == 0
+
+    -- Dynamic enable check per sub-type
+    local enable_key = is_player_kill and "triggers/death/enable_player" or "triggers/death/enable_npc"
+    if not config.get(enable_key) then return end
 
     -- Get and combine witnesses from both locations
     local witnesses_near_victim = game.get_characters_near(victim_obj)
@@ -44,24 +50,34 @@ function on_creature_death(victim_obj, killer_obj)
     local killer = game.create_character(killer_obj)
     local victim = game.create_character(victim_obj)
 
-    -- Determine if this should be a silent event based on mode and cooldown
-    local cd = is_player and cd_player or cd_npc
-    local flags = {}
-    flags.is_silent = cd:check("default", queries.get_game_time_ms(), mode)
-
     -- Create event context (killer is the actor/speaker)
     local context = {
         actor = killer,
         victim = victim
     }
 
-    -- Use new unified trigger system
-    trigger.store_and_publish(EventType.DEATH, context, witnesses, flags)
+    -- Cooldown check (always mode 0 — enable check above handles Off)
+    local cd = is_player_kill and cd_player or cd_npc
+    local cd_result = cd:check("default", queries.get_game_time_ms(), 0)
+    if cd_result == nil then return end
+    if cd_result == true then
+        trigger.store_event(EventType.DEATH, context, witnesses)
+        log.info("TALKER: Death event stored (on cooldown)")
+        return
+    end
 
-    if flags.is_silent then
-        log.info("TALKER: Death event registered (silent)")
+    -- Off cooldown: check victim/killer importance, then chance
+    local victim_important = importance.is_important_person(build_flags(victim_obj))
+    local killer_important = not is_player_kill and importance.is_important_person(build_flags(killer_obj))
+
+    local chance_key = is_player_kill and "triggers/death/chance_player" or "triggers/death/chance_npc"
+
+    if victim_important or killer_important or chance.check(chance_key) then
+        trigger.publish_event(EventType.DEATH, context, witnesses)
+        log.info("TALKER: Death event published")
     else
-        log.info("TALKER: Death event registered")
+        trigger.store_event(EventType.DEATH, context, witnesses)
+        log.info("TALKER: Death event stored (chance failed)")
     end
 end
 
@@ -70,9 +86,7 @@ end
 --------------------------------------------------------------------------------------------
 
 local function safe_on_creature_death(victim_obj, killer_obj)
-    local status, err = pcall(function()
-        on_creature_death(victim_obj, killer_obj)
-    end)
+    local status, err = pcall(on_creature_death, victim_obj, killer_obj)
     if not status then
         log.error("Error in victim_on_death_callback: " .. err)
     end

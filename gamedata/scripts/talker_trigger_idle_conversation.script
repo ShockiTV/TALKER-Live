@@ -1,27 +1,63 @@
 ---@diagnostic disable: undefined-global
 package.path = package.path .. ";./bin/lua/?.lua;"
 
+local trigger    = require("interface.trigger")
+local EventType  = trigger.EventType
+local game       = require("infra.game_adapter")
+local log        = require("framework.logger")
+local config     = require("interface.config")
+local chance     = require("domain.service.chance")
+local importance = require("domain.service.importance")
+local timers     = require("domain.repo.timers")
 
-local trigger = require("interface.trigger")
-local EventType = trigger.EventType
-local game = require("infra.game_adapter")
-local log = require("framework.logger")
-local mcm = talker_mcm
-local timers = require("domain.repo.timers")
+local queries    = talker_game_queries
 
--- Import game interface modules
-local queries = talker_game_queries
+-- Manual cooldown timer (idle needs special reset behavior on combat/sleep)
+local last_idle_time_ms = 0
+
+---------------------------------------------------------------------------------------------
+-- WEATHER MODE DETECTION
+--------------------------------------------------------------------------------------------
+
+--- Detect the active weather mode for idle conversations.
+-- @return "during_psy_storm", "during_emission", or nil (base mode)
+local function get_weather_mode()
+    if psi_storm_manager and psi_storm_manager.get_surge_manager then
+        local sm = psi_storm_manager.get_surge_manager()
+        if sm and sm.started then return "during_psy_storm" end
+    end
+    if surge_manager and surge_manager.get_surge_manager then
+        local sm = surge_manager.get_surge_manager()
+        if sm and sm.started then return "during_emission" end
+    end
+    return nil
+end
+
+--- Get the enable, cooldown, and chance keys for the current idle sub-mode.
+local function get_idle_settings()
+    local mode = get_weather_mode()
+    if mode then
+        return {
+            enable   = "triggers/idle/enable_" .. mode,
+            cooldown = "triggers/idle/cooldown_" .. mode,
+            chance   = "triggers/idle/chance_" .. mode,
+        }
+    end
+    return {
+        enable   = "triggers/idle/enable",
+        cooldown = "triggers/idle/cooldown",
+        chance   = "triggers/idle/chance",
+    }
+end
+
 ---------------------------------------------------------------------------------------------
 -- CONDITIONS
 --------------------------------------------------------------------------------------------
-local last_idle_conversation_time_ms = 0
-local idle_conversation_time_cooldown_ms = mcm.get("idle_conversation_cooldown") * 1000 -- default 10 minutes
 
-local function cooldown_ready()
-    return queries.get_game_time_ms() - last_idle_conversation_time_ms > idle_conversation_time_cooldown_ms
+local function cooldown_ready(cooldown_ms)
+    return queries.get_game_time_ms() - last_idle_time_ms > cooldown_ms
 end
 
--- Fisher-Yates shuffle to randomize the order of candidates
 local function shuffle(tbl)
     for i = #tbl, 2, -1 do
         local j = math.random(i)
@@ -29,29 +65,25 @@ local function shuffle(tbl)
     end
 end
 
--- Check if a character has spoken recently by looking at dialogue events in the event store.
--- This replaces the AI_request.get_last_spoke_time() call, making it work with both
--- Lua AI and Python AI modes.
 ---------------------------------------------------------------------------------------------
 -- IDLE CONVERSATION
 --------------------------------------------------------------------------------------------
 function on_every_10_seconds()
-    if not mcm.get("enable_trigger_idle") then return end
+    local settings = get_idle_settings()
+    if not config.get(settings.enable) then return end
 
-    -- If the player is in combat or sleeping, reset the idle conversation cooldown and abort.
-    -- This prevents an idle conversation from starting immediately after combat ends, immediately after waking up, or while the player is sleeping.
-    -- Safety check for db.actor
     if not db.actor then return end
 
+    -- Reset cooldown if player is in combat or sleeping (prevents idle right after)
     local is_player_in_combat = #queries.get_enemies_fighting_player() ~= 0
     if is_player_in_combat or db.actor:has_info("actor_is_sleeping") then
-        last_idle_conversation_time_ms = queries.get_game_time_ms()
+        last_idle_time_ms = queries.get_game_time_ms()
         return
     end
- 
-   if not cooldown_ready() then return end
 
-    --- create event
+    local cooldown_ms = config.get(settings.cooldown) * 1000
+    if not cooldown_ready(cooldown_ms) then return end
+
     local all_candidates = game.get_characters_near_player()
     if not all_candidates or #all_candidates == 0 then return end
 
@@ -64,39 +96,40 @@ function on_every_10_seconds()
         end
     end
 
-    -- If no valid candidates are left, do nothing.
     if #valid_candidates == 0 then return end
 
-    -- Shuffle candidates to try them in a random order.
     shuffle(valid_candidates)
 
-    local conversation_triggered = false
     for _, npc_obj in ipairs(valid_candidates) do
-
         local speaker_name = queries.get_name(npc_obj)
         local speaker_character = game.create_character(npc_obj)
-        
-        -- Create typed idle conversation event
-        -- CRITICAL: Only the speaker should witness this instruction event.
+
         local context = {
             actor = speaker_character,
             instruction = string.format("%s begins an idle conversation to pass the time.", speaker_name)
         }
         local witnesses = { speaker_character }
-        trigger.store_and_publish(EventType.IDLE, context, witnesses, { is_idle = true })
 
-        -- We assume success if we sent the event
-        if true then
-            log.debug("TALKER: Idle chatter triggered for " .. speaker_name)
-            conversation_triggered = true
-            break -- Exit the loop on the first success
+        -- NPC-driven event: importance of speaker or chance
+        local speaker_flags = {
+            is_player    = false,
+            is_companion = queries.is_companion(npc_obj),
+            is_unique    = queries.is_unique_character_by_id(npc_obj:id()),
+            rank         = queries.get_rank(npc_obj),
+        }
+
+        if importance.is_important_person(speaker_flags) or chance.check(settings.chance) then
+            trigger.publish_event(EventType.IDLE, context, witnesses)
+        else
+            trigger.store_event(EventType.IDLE, context, witnesses)
         end
 
+        log.debug("TALKER: Idle chatter triggered for " .. speaker_name)
+        break
     end
 
-    -- An attempt to start a conversation was made. Reset the main cooldown to prevent spamming.
-    -- This happens whether we succeeded or failed after trying all candidates.
-    last_idle_conversation_time_ms = queries.get_game_time_ms()
+    -- Reset cooldown after attempt (whether succeeded or failed)
+    last_idle_time_ms = queries.get_game_time_ms()
 end
 
 --------------------------------------------------------------------------------------------
@@ -104,15 +137,13 @@ end
 --------------------------------------------------------------------------------------------
 
 local function safe_on_every_10_seconds()
-    local status, err = pcall(function()
-        on_every_10_seconds()
-    end)
+    local status, err = pcall(on_every_10_seconds)
     if not status then
         log.error("Error in safe_on_every_10_seconds: " .. err)
     end
 end
 
--- keep track of a timer and only do a real check every 10 seconds
+-- 10-second polling interval
 local CHECK_INTERVAL_MS = 10 * 1000
 local function on_every_ms()
     if queries.get_game_time_ms() - timers.get_idle_last_check_time() < CHECK_INTERVAL_MS then return end
@@ -122,8 +153,7 @@ end
 
 function on_game_start()
     -- Reset the idle conversation cooldown to the current game time upon loading.
-    -- This prevents an idle conversation from firing immediately after loading a save.
-    last_idle_conversation_time_ms = queries.get_game_time_ms()
+    last_idle_time_ms = queries.get_game_time_ms()
     RegisterScriptCallback("actor_on_update", on_every_ms)
 end
 
