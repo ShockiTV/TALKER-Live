@@ -3,12 +3,13 @@
 import asyncio
 import os
 from pathlib import Path
+from typing import Any
 
 import httpx
 from loguru import logger
 
 from .base import BaseLLMClient, LLMError, RateLimitError, AuthenticationError
-from .models import Message, LLMOptions
+from .models import LLMOptions, LLMToolResponse, Message
 
 
 class OpenAIClient(BaseLLMClient):
@@ -137,4 +138,70 @@ class OpenAIClient(BaseLLMClient):
                 raise LLMError(f"OpenAI request failed: {e}") from e
         
         # Exhausted retries
+        raise last_error or LLMError("Max retries exceeded")
+
+    async def complete_with_tools(
+        self,
+        messages: list[Message],
+        tools: list[dict[str, Any]],
+        opts: LLMOptions | None = None,
+    ) -> LLMToolResponse:
+        """Generate completion with tool/function calling support.
+
+        Adds ``tools`` to the request body and parses tool-call responses.
+        Reuses the same retry logic as ``complete()``.
+        """
+        if not self.api_key:
+            raise AuthenticationError("OpenAI API key not configured")
+
+        opts = opts or LLMOptions()
+        timeout = self._get_timeout(opts)
+
+        request_body: dict[str, Any] = {
+            "model": opts.model or self.default_model,
+            "messages": [m.to_dict() for m in messages],
+            "temperature": opts.temperature,
+            "tools": tools,
+        }
+
+        if opts.max_tokens:
+            request_body["max_tokens"] = opts.max_tokens
+
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+
+        last_error: Exception | None = None
+        for attempt in range(self.max_retries):
+            try:
+                async with httpx.AsyncClient(timeout=timeout) as client:
+                    response = await client.post(
+                        self.api_url,
+                        json=request_body,
+                        headers=headers,
+                    )
+
+                if response.status_code == 200:
+                    data = response.json()
+                    return self._build_tool_response(data)
+
+                elif response.status_code == 429:
+                    wait_time = 2 ** attempt
+                    logger.warning(f"OpenAI rate limited, retry {attempt + 1}/{self.max_retries} after {wait_time}s")
+                    await asyncio.sleep(wait_time)
+                    last_error = RateLimitError(f"Rate limited: {response.text}")
+                    continue
+
+                elif response.status_code == 401:
+                    raise AuthenticationError(f"Invalid API key: {response.text}")
+
+                else:
+                    raise LLMError(f"OpenAI API error {response.status_code}: {response.text}")
+
+            except httpx.TimeoutException as e:
+                raise TimeoutError(f"OpenAI request timed out after {timeout}s") from e
+            except httpx.RequestError as e:
+                raise LLMError(f"OpenAI request failed: {e}") from e
+
         raise last_error or LLMError("Max retries exceeded")

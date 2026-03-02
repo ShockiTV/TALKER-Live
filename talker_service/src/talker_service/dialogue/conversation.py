@@ -5,11 +5,13 @@ The LLM receives event context and uses tools to query memories/background,
 then generates dialogue with speaker selection in a single conversational turn.
 """
 
+import json
 from typing import Any
 
 from loguru import logger
 
 from ..llm import LLMClient, Message
+from ..llm.models import LLMToolResponse, ToolCall
 from ..state.client import StateQueryClient
 from ..state.batch import BatchQuery
 from ..prompts.factions import get_faction_description, resolve_faction_name
@@ -43,23 +45,58 @@ GET_MEMORIES_TOOL = {
     },
 }
 
-GET_BACKGROUND_TOOL = {
+BACKGROUND_TOOL = {
     "type": "function",
     "function": {
-        "name": "get_background",
-        "description": "Retrieve background information for a character (traits, backstory, connections).",
+        "name": "background",
+        "description": "Read, write, or update background information for a character (traits, backstory, connections).",
         "parameters": {
             "type": "object",
             "properties": {
                 "character_id": {
                     "type": "string",
-                    "description": "The unique ID of the character whose background to retrieve",
+                    "description": "The unique ID of the character whose background to read/write/update",
+                },
+                "action": {
+                    "type": "string",
+                    "enum": ["read", "write", "update"],
+                    "description": "Action to perform: 'read' retrieves existing background, 'write' sets entire background, 'update' modifies a single field",
+                },
+                "content": {
+                    "type": "object",
+                    "description": "For 'write' action: full background content with traits, backstory, connections",
+                    "properties": {
+                        "traits": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "Character personality traits",
+                        },
+                        "backstory": {
+                            "type": "string",
+                            "description": "Character backstory text",
+                        },
+                        "connections": {
+                            "type": "array",
+                            "items": {"type": "string"},
+                            "description": "Known relationships with other characters",
+                        },
+                    },
+                },
+                "field": {
+                    "type": "string",
+                    "description": "For 'update' action: which field to update (traits, backstory, connections)",
+                },
+                "value": {
+                    "description": "For 'update' action: new value for the field",
                 },
             },
-            "required": ["character_id"],
+            "required": ["character_id", "action"],
         },
     },
 }
+
+# All tools available to the LLM during dialogue generation
+TOOLS = [GET_MEMORIES_TOOL, BACKGROUND_TOOL]
 
 
 class ConversationManager:
@@ -111,7 +148,7 @@ class ConversationManager:
         # Tool registry maps tool name → handler function
         self._tool_handlers = {
             "get_memories": self._handle_get_memories,
-            "get_background": self._handle_get_background,
+            "background": self._handle_background,
         }
         
         # Track characters touched during tool loop for compaction scheduling
@@ -152,7 +189,10 @@ You have access to tools to query character memories and background information:
   - "summaries": Compressed summaries of past events
   - "digests": Medium-term compressed memories
   - "cores": Long-term persistent memories
-- **get_background(character_id)**: Retrieve traits, backstory, and connections
+- **background(character_id, action)**: Read, write, or update character background
+  - action="read": Retrieve existing traits, backstory, connections
+  - action="write": Set entire background (requires content with traits, backstory, connections)
+  - action="update": Modify a single field (requires field and value)
 
 **Instructions:**
 1. Use tools to query relevant memories/background for characters involved in the event
@@ -312,34 +352,119 @@ Example responses:
         
         return memories
     
-    async def _handle_get_background(
+    async def _handle_background(
         self,
         character_id: str,
+        action: str = "read",
+        content: dict[str, Any] | None = None,
+        field: str | None = None,
+        value: Any = None,
     ) -> dict[str, Any]:
-        """Tool handler: retrieve background for a character.
-        
+        """Tool handler: read, write, or update background for a character.
+
         Args:
-            character_id: Character ID to query
-            
+            character_id: Character ID to operate on.
+            action: One of "read", "write", "update".
+            content: Full background content (for "write").
+            field: Field name to update (for "update").
+            value: New value for the field (for "update").
+
         Returns:
-            Background data (traits, backstory, connections)
+            Background data (read) or success confirmation (write/update).
         """
-        batch = BatchQuery()
-        batch.add(
-            "background",
-            resource="memory.background",
-            params={"character_id": character_id},
-        )
-        
-        result = await self.state_client.execute_batch(batch, timeout=10.0)
-        
-        if result.ok("background"):
-            return result["background"] or {}
+        if action == "read":
+            batch = BatchQuery()
+            batch.add(
+                "background",
+                resource="memory.background",
+                params={"character_id": character_id},
+            )
+
+            result = await self.state_client.execute_batch(batch, timeout=10.0)
+
+            if result.ok("background"):
+                return result["background"] or {}
+            else:
+                error_msg = result.error("background") or "unknown error"
+                logger.warning(f"background read failed for {character_id}: {error_msg}")
+                return {}
+
+        elif action == "write":
+            if content is None:
+                return {"error": "content is required for write action"}
+
+            mutations = [
+                {
+                    "character_id": character_id,
+                    "verb": "set",
+                    "resource": "memory.background",
+                    "data": content,
+                }
+            ]
+            success = await self.state_client.mutate_batch(mutations, timeout=10.0)
+            return {"success": success, "action": "write", "character_id": character_id}
+
+        elif action == "update":
+            if field is None or value is None:
+                return {"error": "field and value are required for update action"}
+
+            mutations = [
+                {
+                    "character_id": character_id,
+                    "verb": "update",
+                    "resource": "memory.background",
+                    "data": {field: value},
+                }
+            ]
+            success = await self.state_client.mutate_batch(mutations, timeout=10.0)
+            return {"success": success, "action": "update", "character_id": character_id, "field": field}
+
         else:
-            error_msg = result.error("background") or "unknown error"
-            logger.warning(f"get_background failed for {character_id}: {error_msg}")
-            return {}
+            return {"error": f"Unknown action: {action}"}
     
+    @staticmethod
+    def _format_tool_result(tool_name: str, result: Any) -> str:
+        """Format a tool handler result as human-readable text for the LLM.
+
+        Memory tier data is rendered as readable text with descriptions.
+        Background data and errors are JSON-serialized.
+
+        Args:
+            tool_name: Name of the tool that produced the result.
+            result: Raw handler result (dict or other).
+
+        Returns:
+            JSON-serialized string suitable for a tool-result message.
+        """
+        if tool_name == "get_memories" and isinstance(result, dict):
+            parts: list[str] = []
+            for tier, entries in result.items():
+                if not entries:
+                    parts.append(f"[{tier.upper()}] No {tier} available for this character.")
+                    continue
+                header = f"[{tier.upper()}] {len(entries)} entries:"
+                items: list[str] = []
+                if isinstance(entries, list):
+                    for entry in entries:
+                        if isinstance(entry, dict):
+                            ts = entry.get("timestamp", entry.get("ts", ""))
+                            desc = entry.get("description", entry.get("text", str(entry)))
+                            etype = entry.get("type", "")
+                            line = f"  - [{ts}]" if ts else "  -"
+                            if etype:
+                                line += f" ({etype})"
+                            line += f" {desc}"
+                            items.append(line)
+                        else:
+                            items.append(f"  - {entry}")
+                else:
+                    items.append(f"  {entries}")
+                parts.append(header + "\n" + "\n".join(items))
+            return "\n\n".join(parts) if parts else json.dumps(result)
+
+        # Default: JSON serialize
+        return json.dumps(result, default=str)
+
     async def _execute_tool_call(
         self,
         tool_name: str,
@@ -438,23 +563,56 @@ Example responses:
         except Exception as e:
             logger.warning(f"Failed to pre-fetch memories for {speaker_id}: {e}")
         
-        # Call LLM to generate dialogue
-        # NOTE (task 4.5): True tool-calling loop would require LLM client API updates
-        # to support tools parameter and parse tool_call responses. For now, we pre-fetch
-        # memories and rely on the LLM to respond in [SPEAKER: id] format based on the
-        # system prompt instructions.
-        #
-        # Full implementation would:
-        # 1. Pass tools=[GET_MEMORIES_TOOL, GET_BACKGROUND_TOOL] to complete()
-        # 2. Check response for tool_calls
-        # 3. Execute tools via _execute_tool_call()
-        # 4. Append tool results as messages
-        # 5. Repeat until final text response
-        
-        logger.debug("Calling LLM for dialogue generation")
-        response = await self.llm_client.complete(messages)
-        
-        dialogue_text = response.strip()
+        # Tool-calling loop: call LLM with tools, execute tool calls, repeat
+        logger.debug("Starting tool-calling loop for dialogue generation")
+        dialogue_text: str | None = None
+
+        for iteration in range(self.max_tool_iterations):
+            logger.debug(f"Tool loop iteration {iteration + 1}/{self.max_tool_iterations}")
+
+            response: LLMToolResponse = await self.llm_client.complete_with_tools(
+                messages, tools=TOOLS,
+            )
+
+            if not response.has_tool_calls:
+                # LLM produced a final text response — extract dialogue
+                dialogue_text = (response.text or "").strip()
+                break
+
+            # Process all tool calls in this response
+            # Append the assistant message with its tool_calls to history
+            assistant_msg = Message(
+                role="assistant",
+                content="",
+                tool_calls=response.tool_calls,
+            )
+            messages.append(assistant_msg)
+
+            for tc in response.tool_calls:
+                logger.debug(f"Executing tool call: {tc.name}({tc.arguments})")
+
+                # Track characters touched for compaction scheduling
+                char_id_arg = tc.arguments.get("character_id")
+                if char_id_arg:
+                    self._characters_touched.add(str(char_id_arg))
+
+                result = await self._execute_tool_call(tc.name, tc.arguments)
+                formatted = self._format_tool_result(tc.name, result)
+
+                # Append tool result message
+                messages.append(Message.tool_result(tc.id, tc.name, formatted))
+
+        else:
+            # Exhausted max iterations without getting text
+            logger.error(
+                f"Tool loop exhausted {self.max_tool_iterations} iterations "
+                "without generating dialogue text"
+            )
+            return (speaker_id, "")
+
+        if not dialogue_text:
+            logger.warning("LLM returned empty dialogue text")
+            return (speaker_id, "")
         
         # Extract speaker and dialogue from [SPEAKER: id] formatted response
         if dialogue_text.startswith("[SPEAKER:"):

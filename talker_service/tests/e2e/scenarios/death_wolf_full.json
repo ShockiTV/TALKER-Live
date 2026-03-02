@@ -170,24 +170,7 @@
   "llm_mocks": [
     {
       "response": "[SPEAKER: 12345] Another bandit down. Good riddance.",
-      "request": {
-        "model": "gpt-4o-mini",
-        "messages": [
-          {
-            "role": "system",
-            "content": "You are generating dialogue for NPCs in the Zone (STALKER universe).\n\n**Current Context:** Location: Rookie Village. Time: June 15, 2:30 PM. Weather: Clear.\n\n**Your Faction:** Loner\nIndependent stalkers (Loners) who survive in the Zone through scavenging, artifact hunting, and odd jobs. No central leadership, just mutual aid.\n\n**Your Personality:**\nmorose\n\nYou have access to tools to query character memories and background information:\n- **get_memories(character_id, tiers)**: Retrieve memories from specified tiers\n  - \"events\": Recent raw events (last ~100)\n  - \"summaries\": Compressed summaries of past events\n  - \"digests\": Medium-term compressed memories\n  - \"cores\": Long-term persistent memories\n- **get_background(character_id)**: Retrieve traits, backstory, and connections\n\n**Instructions:**\n1. Use tools to query relevant memories/background for characters involved in the event\n2. Consider relationships, past events, and character personalities\n3. Choose the most appropriate speaker from the candidates list based on context\n4. Generate authentic dialogue that reflects the character's faction, personality, and memories\n5. Keep dialogue concise and realistic (1-2 sentences typical for reactions)\n\n**Response Format:**\nYour final response MUST start with the speaker ID in brackets, followed by the dialogue:\n[SPEAKER: character_id] dialogue text here\n\nExample responses:\n[SPEAKER: 0] What the hell? Did you see that?\n[SPEAKER: npc_123] Damn mutants... never a quiet day in the Zone.\n[SPEAKER: wolf] Finally got that bastard. One less Monolith freak to worry about."
-          },
-          {
-            "role": "system",
-            "content": "Your recent memories: EVENTS: 1 entries"
-          },
-          {
-            "role": "user",
-            "content": "**EVENT: DEATH**\n\nWolf (faction: stalker) killed Bandit_001 (faction: bandit)\n\n**CANDIDATE SPEAKERS (2 total):**\n\n1. **Wolf** (ID: 12345)\n   Faction: Loner\n\n2. **Petruha** (ID: 11111)\n   Faction: Loner\n\n**Task:** Choose the most appropriate speaker and generate their reaction to this event."
-          }
-        ],
-        "temperature": 0.7
-      }
+      "request": "__CAPTURE__"
     }
   ],
   "expected": {

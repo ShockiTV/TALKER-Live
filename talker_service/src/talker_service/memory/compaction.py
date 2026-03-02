@@ -15,6 +15,8 @@ from typing import TYPE_CHECKING
 
 from loguru import logger
 
+from ..llm.models import Message
+
 if TYPE_CHECKING:
     from ..llm.base import LLMClient
     from ..state.client import StateQueryClient
@@ -206,7 +208,7 @@ class CompactionEngine:
         
         try:
             compressed_text = await self.llm_client.complete([
-                {"role": "system", "content": prompt}
+                Message(role="system", content=prompt)
             ])
         except Exception as e:
             logger.error(f"LLM compaction failed for {character_id} {source_tier}: {e}")

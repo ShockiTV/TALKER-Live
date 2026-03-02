@@ -1,12 +1,13 @@
 """Proxy client for custom OpenAI-compatible endpoints."""
 
 import os
+from typing import Any
 
 import httpx
 from loguru import logger
 
 from .base import BaseLLMClient, LLMError, AuthenticationError
-from .models import Message, LLMOptions
+from .models import LLMOptions, LLMToolResponse, Message
 
 
 class ProxyClient(BaseLLMClient):
@@ -104,6 +105,63 @@ class ProxyClient(BaseLLMClient):
             else:
                 raise LLMError(f"Proxy API error {response.status_code}: {response.text}")
                 
+        except httpx.TimeoutException as e:
+            raise TimeoutError(f"Proxy request timed out after {timeout}s") from e
+        except httpx.RequestError as e:
+            raise LLMError(f"Proxy request failed: {e}") from e
+
+    async def complete_with_tools(
+        self,
+        messages: list[Message],
+        tools: list[dict[str, Any]],
+        opts: LLMOptions | None = None,
+    ) -> LLMToolResponse:
+        """Generate completion with tool/function calling support.
+
+        Uses OpenAI-compatible format.  Falls back to text-only if the
+        endpoint doesn't return ``tool_calls``.
+        """
+        if not self.endpoint:
+            raise LLMError("Proxy endpoint not configured")
+
+        opts = opts or LLMOptions()
+        timeout = self._get_timeout(opts)
+
+        request_body: dict[str, Any] = {
+            "model": opts.model or self.default_model,
+            "messages": [m.to_dict() for m in messages],
+            "temperature": opts.temperature,
+            "tools": tools,
+        }
+
+        if opts.max_tokens:
+            request_body["max_tokens"] = opts.max_tokens
+
+        headers: dict[str, str] = {
+            "Content-Type": "application/json",
+        }
+
+        if self.api_key:
+            headers["Authorization"] = f"Bearer {self.api_key}"
+
+        try:
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                response = await client.post(
+                    self.endpoint,
+                    json=request_body,
+                    headers=headers,
+                )
+
+            if response.status_code == 200:
+                data = response.json()
+                return self._build_tool_response(data)
+
+            elif response.status_code == 401:
+                raise AuthenticationError(f"Proxy authentication failed: {response.text}")
+
+            else:
+                raise LLMError(f"Proxy API error {response.status_code}: {response.text}")
+
         except httpx.TimeoutException as e:
             raise TimeoutError(f"Proxy request timed out after {timeout}s") from e
         except httpx.RequestError as e:

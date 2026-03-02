@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from talker_service.dialogue.conversation import ConversationManager
 from talker_service.state.batch import BatchResult
-from talker_service.llm.models import Message
+from talker_service.llm.models import LLMToolResponse, Message
 
 
 @pytest.fixture
@@ -13,6 +13,9 @@ def mock_llm_client():
     """Mock LLM client that returns [SPEAKER: id] dialogue."""
     client = MagicMock()
     client.complete = AsyncMock(return_value="[SPEAKER: char_001]\nGet out of here, stalker!")
+    client.complete_with_tools = AsyncMock(
+        return_value=LLMToolResponse(text="[SPEAKER: char_001]\nGet out of here, stalker!")
+    )
     return client
 
 
@@ -106,7 +109,7 @@ class TestConversationManager:
         assert manager.max_tool_iterations == 5
         assert manager.llm_timeout == 60.0
         assert "get_memories" in manager._tool_handlers
-        assert "get_background" in manager._tool_handlers
+        assert "background" in manager._tool_handlers
     
     @pytest.mark.asyncio
     async def test_handle_get_memories_success(self, mock_state_client):
@@ -185,7 +188,7 @@ class TestConversationManager:
     
     @pytest.mark.asyncio
     async def test_handle_get_background_success(self, mock_state_client):
-        """Test _handle_get_background retrieves background data."""
+        """Test _handle_background(action='read') retrieves background data."""
         manager = ConversationManager(
             llm_client=MagicMock(),
             state_client=mock_state_client,
@@ -202,7 +205,7 @@ class TestConversationManager:
             },
         })
         
-        result = await manager._handle_get_background(character_id="char_001")
+        result = await manager._handle_background(character_id="char_001", action="read")
         
         assert "traits" in result
         assert result["traits"]["personality_id"] == "duty_zealot"
@@ -221,7 +224,7 @@ class TestConversationManager:
     
     @pytest.mark.asyncio
     async def test_handle_get_background_failure(self, mock_state_client):
-        """Test _handle_get_background returns empty dict on failure."""
+        """Test _handle_background(action='read') returns empty dict on failure."""
         manager = ConversationManager(
             llm_client=MagicMock(),
             state_client=mock_state_client,
@@ -234,7 +237,7 @@ class TestConversationManager:
             },
         })
         
-        result = await manager._handle_get_background(character_id="char_001")
+        result = await manager._handle_background(character_id="char_001", action="read")
         
         assert result == {}
     
@@ -267,7 +270,7 @@ class TestConversationManager:
         assert "Zealous ideologue" in prompt
         assert "Location: Garbage" in prompt
         assert "get_memories" in prompt  # Tool instructions
-        assert "get_background" in prompt
+        assert "background" in prompt
         assert "[SPEAKER:" in prompt  # Response format (with game_id placeholder)
         
         mock_get_faction.assert_called_once_with("dolg")
@@ -336,8 +339,10 @@ class TestConversationManager:
         mock_get_faction.return_value = "Duty faction description..."
         mock_resolve_personality.return_value = "Zealot personality..."
         
-        # Mock LLM response with [SPEAKER: id] format
-        mock_llm_client.complete.return_value = "[SPEAKER: char_001]\nAnother Freedom scum eliminated!"
+        # Mock LLM response with [SPEAKER: id] format via complete_with_tools
+        mock_llm_client.complete_with_tools.return_value = LLMToolResponse(
+            text="[SPEAKER: char_001]\nAnother Freedom scum eliminated!"
+        )
         
         # Mock empty memories (no pre-fetch data)
         mock_state_client.execute_batch.return_value = BatchResult({
@@ -356,8 +361,8 @@ class TestConversationManager:
         assert "Another Freedom scum eliminated!" in dialogue_text
         
         # Verify LLM was called with proper messages
-        mock_llm_client.complete.assert_called_once()
-        call_args = mock_llm_client.complete.call_args[0][0]
+        mock_llm_client.complete_with_tools.assert_called_once()
+        call_args = mock_llm_client.complete_with_tools.call_args[0][0]
         assert isinstance(call_args, list)
         assert call_args[0].role == "system"
         assert call_args[1].role == "user"
@@ -402,7 +407,9 @@ class TestConversationManager:
             },
         })
         
-        mock_llm_client.complete.return_value = "[SPEAKER: char_001]\nFreedom eliminated!"
+        mock_llm_client.complete_with_tools.return_value = LLMToolResponse(
+            text="[SPEAKER: char_001]\nFreedom eliminated!"
+        )
         
         speaker_id, dialogue_text = await manager.handle_event(
             event=sample_event,
@@ -421,7 +428,7 @@ class TestConversationManager:
         assert "mem_summaries" in query_ids
         
         # Verify LLM messages include memory context
-        call_args = mock_llm_client.complete.call_args[0][0]
+        call_args = mock_llm_client.complete_with_tools.call_args[0][0]
         assert len(call_args) == 3  # system, memory context, event
         assert call_args[1].role == "system"
         # Memory context shows entry counts, not full text
@@ -452,7 +459,9 @@ class TestConversationManager:
         mock_resolve_personality.return_value = "Zealot personality..."
         
         # Mock LLM returning speaker NOT in candidates list
-        mock_llm_client.complete.return_value = "[SPEAKER: char_999]\nInvalid speaker!"
+        mock_llm_client.complete_with_tools.return_value = LLMToolResponse(
+            text="[SPEAKER: char_999]\nInvalid speaker!"
+        )
         
         mock_state_client.execute_batch.return_value = BatchResult({
             "mem_events": {"ok": True, "data": []},
@@ -494,7 +503,9 @@ class TestConversationManager:
         mock_resolve_personality.return_value = "Zealot personality..."
         
         # Mock LLM returning plain text without speaker tag
-        mock_llm_client.complete.return_value = "This dialogue has no speaker tag!"
+        mock_llm_client.complete_with_tools.return_value = LLMToolResponse(
+            text="This dialogue has no speaker tag!"
+        )
         
         mock_state_client.execute_batch.return_value = BatchResult({
             "mem_events": {"ok": True, "data": []},
