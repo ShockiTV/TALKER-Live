@@ -4,3 +4,4 @@ soundfile
 websockets
 httpx
 requests
+python-dotenv

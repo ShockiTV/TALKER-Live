@@ -5,9 +5,8 @@
 -- so WSRouter can resolve the pending future.
 
 package.path = package.path .. ";./bin/lua/?.lua;"
-local logger        = require("framework.logger")
-local memory_store  = require("domain.repo.memory_store")
-local event_store   = require("domain.repo.event_store")
+local logger         = require("framework.logger")
+local memory_store_v2 = require("domain.repo.memory_store_v2")
 local game_adapter  = require("infra.game_adapter")
 local filter_engine = require("infra.query.filter_engine")
 local personalities = require("domain.repo.personalities")
@@ -74,56 +73,6 @@ local function is_sobj_alive(sobj)
     return true
 end
 
---------------------------------------------------------------------------------
--- Event Iterator with Binary-Search Pre-Scan
---------------------------------------------------------------------------------
-
-local function create_events_iterator(filter)
-    local start_ms = nil
-    local inclusive = false
-
-    if filter and filter.game_time_ms and type(filter.game_time_ms) == "table" then
-        if filter.game_time_ms["$gt"] then
-            start_ms = filter.game_time_ms["$gt"]
-            inclusive = false
-        elseif filter.game_time_ms["$gte"] then
-            start_ms = filter.game_time_ms["$gte"]
-            inclusive = true
-        end
-    end
-
-    local sorted_keys = event_store.sorted_keys
-    local events = event_store.events
-    local i
-
-    if start_ms then
-        local low, high = 1, #sorted_keys
-        while low <= high do
-            local mid = math.floor((low + high) / 2)
-            if sorted_keys[mid] < start_ms then
-                low = mid + 1
-            else
-                high = mid - 1
-            end
-        end
-        i = low
-        if not inclusive then
-            while i <= #sorted_keys and sorted_keys[i] == start_ms do
-                i = i + 1
-            end
-        end
-    else
-        i = 1
-    end
-
-    return function()
-        if i > #sorted_keys then return nil end
-        local key = sorted_keys[i]
-        i = i + 1
-        return events[key]
-    end
-end
-
 local function apply_pipeline_and_projection(source_iter, query)
     local results = filter_engine.execute_pipeline(
         source_iter,
@@ -171,26 +120,51 @@ local function extract_character_ids_from_query(query)
     return ids
 end
 
-resource_registry["store.events"] = function(query)
-    local iter = create_events_iterator(query.filter)
-    local results = apply_pipeline_and_projection(iter, query)
-    local serialized = {}
-    for _, event in ipairs(results) do
-        serialized[#serialized + 1] = serialize_event(event)
-    end
-    return serialized
-end
+-- Old flat-narrative resolvers removed: replaced by memory.events, memory.summaries, memory.digests, memory.cores, memory.background
 
-resource_registry["store.memories"] = function(query)
+resource_registry["memory.events"] = function(query)
     local character_id = query.params and query.params.character_id
     if not character_id then
-        error("store.memories requires params.character_id")
+        error("memory.events requires params.character_id")
     end
-    local mem = memory_store:get_narrative(character_id)
-    return {
-        narrative = mem and mem.narrative or nil,
-        last_update_time_ms = mem and mem.last_update_time_ms or 0,
-    }
+    local params = query.params or {}
+    return memory_store_v2:query(character_id, "memory.events", params)
+end
+
+resource_registry["memory.summaries"] = function(query)
+    local character_id = query.params and query.params.character_id
+    if not character_id then
+        error("memory.summaries requires params.character_id")
+    end
+    local params = query.params or {}
+    return memory_store_v2:query(character_id, "memory.summaries", params)
+end
+
+resource_registry["memory.digests"] = function(query)
+    local character_id = query.params and query.params.character_id
+    if not character_id then
+        error("memory.digests requires params.character_id")
+    end
+    local params = query.params or {}
+    return memory_store_v2:query(character_id, "memory.digests", params)
+end
+
+resource_registry["memory.cores"] = function(query)
+    local character_id = query.params and query.params.character_id
+    if not character_id then
+        error("memory.cores requires params.character_id")
+    end
+    local params = query.params or {}
+    return memory_store_v2:query(character_id, "memory.cores", params)
+end
+
+resource_registry["memory.background"] = function(query)
+    local character_id = query.params and query.params.character_id
+    if not character_id then
+        error("memory.background requires params.character_id")
+    end
+    local params = query.params or {}
+    return memory_store_v2:query(character_id, "memory.background", params)
 end
 
 resource_registry["store.personalities"] = function(query)
@@ -396,6 +370,38 @@ end
 -- Batch Dispatcher
 --------------------------------------------------------------------------------
 
+--- Handle a batch mutation request (state.mutate.batch).
+-- Dispatches mutations to memory_store_v2:mutate() and collects results.
+local function handle_batch_mutation(payload, request_r)
+    local request_id = payload.request_id -- Also in payload for backward compat
+    local mutations = payload.mutations or {}
+
+    logger.debug("Handling batch mutation with %d mutations (r=%s, request_id=%s)",
+        #mutations, tostring(request_r), tostring(request_id))
+
+    local results = {}
+
+    for _, mutation in ipairs(mutations) do
+        local mutation_id = mutation.id or tostring(#results + 1)
+        local result = memory_store_v2:mutate(mutation)
+        results[mutation_id] = result
+    end
+
+    -- Publish batch response with the r-field echoed back
+    local ws = get_ws_integration()
+    local channel = ws and ws.get_bridge_channel and ws.get_bridge_channel()
+    if channel then
+        local response_payload = {
+            request_id = request_id or request_r,
+            results    = results,
+            timestamp  = os.time() * 1000,
+        }
+        channel.publish("state.response", response_payload, request_r)
+    else
+        logger.warn("Bridge channel not available for mutation response")
+    end
+end
+
 --- Handle a batch query request.
 -- The handler receives (payload, request_r) where request_r is the r-field
 -- from the incoming WS envelope (set by Python's StateQueryClient).
@@ -471,9 +477,10 @@ local function register_handlers()
         return false
     end
 
-    logger.info("Registering WS query handlers...")
+    logger.info("Registering WS query/mutation handlers...")
     ws.register_command_handler("state.query.batch", handle_batch_query)
-    logger.info("WS query handlers registered successfully")
+    ws.register_command_handler("state.mutate.batch", handle_batch_mutation)
+    logger.info("WS query/mutation handlers registered successfully")
     return true
 end
 

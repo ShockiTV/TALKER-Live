@@ -20,12 +20,8 @@ local EventType = trigger.EventType
 -- CONDITIONS
 --------------------------------------------------------------------------------------------
 
-
-local event_store = require("domain.repo.event_store")
-
 local last_callout_time_ms = 0
 local callout_cooldown_ms = mcm.get("callout_cooldown") * 1000 -- default 30 seconds, for ANY callout.
-local repeated_callout_cooldown_ms = mcm.get("repeated_callout_cooldown") * 1000 -- default 4 minutes, for callouts of enemies with the same name.
 local MAX_CALLOUT_DISTANCE = mcm.get("max_callout_distance")  -- default 30 meters, max distance of callout in meters
 
 function is_valid_callout(npc_obj, target_obj)
@@ -52,37 +48,6 @@ function is_valid_callout(npc_obj, target_obj)
     if queries.is_companion(target_obj) and not queries.are_enemies(db.actor, npc_obj) then
         return false
     end
-
-
-    -- Anti-spam check
-    -- We check the event store for recent events where a creature with the same name was spotted.
-    local target_name = queries.get_name(target_obj)
-    local since_time = queries.get_game_time_ms() - repeated_callout_cooldown_ms
-    local recent_events = event_store:get_events_since(since_time)    
-    for _, event in ipairs(recent_events) do
-        if event.type == EventType.CALLOUT then
-            -- Nil-safe traversal: event.context.target.name
-            local event_target_name = event.context and event.context.target and event.context.target.name
-            if event_target_name == target_name then
-                local time_ago = queries.get_game_time_ms() - event.game_time_ms
-                
-                -- Check if the event actually resulted in a callout (dialogue generated)
-                -- Or if it's very recent (pending), give it a chance (e.g. 15 seconds)
-                local PENDING_WINDOW_MS = 15 * 1000
-                
-                if event.dialogue_generated then
-                     log.info("Blocking repeated callout for %s. Similar target spotted %s ms ago (dialogue generated).", target_name, time_ago)
-                     return false
-                elseif time_ago < PENDING_WINDOW_MS then
-                    log.info("Blocking repeated callout for %s. Similar target spotted %s ms ago (pending).", target_name, time_ago)
-                    return false
-                end
-            end
-        end
-    end
-
-
-
     -- All checks passed.
     return true
 end
@@ -109,22 +74,16 @@ function on_enemy_eval(npc_obj, target_obj)
     -- create callout event
     local witnesses = {spotter}
 
-    -- Create typed event context
+    -- Create typed event context (spotter is the actor)
     local context = {
-        spotter = spotter,
+        actor = spotter,
         target = enemy
     }
     
     log.info(spotter.name .. " spotted " .. enemy.name)
 
-    -- Use new typed event system
-    trigger.talker_event(
-        EventType.CALLOUT,
-        context,
-        witnesses,
-        true, -- important
-        { is_callout = true, target_name = enemy.name }
-    )
+    -- Use new unified trigger system
+    trigger.store_and_publish(EventType.CALLOUT, context, witnesses, { is_callout = true, target_name = enemy.name })
 
     -- Update global timer
     last_callout_time_ms = queries.get_game_time_ms()

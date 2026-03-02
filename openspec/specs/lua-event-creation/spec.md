@@ -6,56 +6,47 @@ Event creation in Lua, including Event entity and interface layer event registra
 
 ## Requirements
 
-### Requirement: Event Creation Without World Context
+### Requirement: Event creation function
 
-The system SHALL create events without a world_context field.
+`Event.create(type, context, game_time_ms, witnesses)` SHALL create a new event object with:
+- `type` – EventType enum value
+- `context` – table of key-value pairs describing the event
+- `game_time_ms` – integer game timestamp
+- `witnesses` – array of character objects who observed the event
 
-Event.create() signature:
-```lua
-Event.create(type, context, game_time_ms, witnesses, flags)
-```
+The function SHALL NOT accept a `flags` parameter.
 
-Events SHALL NOT include world_context. Scene context is queried JIT during prompt building.
+Trigger scripts SHALL delegate business logic (cooldown checks) to `bin/lua/` domain modules rather than implementing them inline. The trigger scripts SHALL retain only engine callback registration, engine data fetching, and event wiring.
 
-Trigger scripts SHALL delegate business logic (cooldown checks, importance classification) to `bin/lua/` domain modules rather than implementing them inline. The trigger scripts SHALL retain only engine callback registration, engine data fetching, and event wiring.
+#### Scenario: Create an event without flags
+- **WHEN** `Event.create("DEATH", {actor = char_a, victim = char_b}, 1000, {char_c, char_d})` is called
+- **THEN** the returned event SHALL have `type = "DEATH"`, `context = {actor = char_a, victim = char_b}`, `game_time_ms = 1000`, `witnesses = {char_c, char_d}`
+- **AND** the event SHALL NOT have a `flags` field
 
-#### Scenario: Create death event without world_context
-- **WHEN** trigger creates DEATH event via Event.create
-- **THEN** event contains type, context, game_time_ms, witnesses, flags
-- **AND** event does NOT contain world_context field
-- **AND** cooldown check is performed via `domain.service.cooldown` CooldownManager
-- **AND** importance check is performed via `domain.service.importance` module
+#### Scenario: Create event with empty witnesses
+- **WHEN** `Event.create("EMISSION", {}, 2000, {})` is called
+- **THEN** the returned event SHALL have `witnesses` as an empty array
 
 #### Scenario: Create artifact event with cooldown delegation
 - **WHEN** artifact trigger fires
 - **THEN** cooldown/anti-spam check is performed via CooldownManager with slots "pickup", "use", "equip"
 - **AND** the event is created only if cooldown allows it
 
-#### Scenario: Create dialogue event without world_context
-- **WHEN** talker creates DIALOGUE event
-- **THEN** event structure has no world_context
-- **AND** content derived from type and context only
-
-#### Scenario: Interface layer does not query world context
-- **WHEN** interface.lua processes an event trigger
-- **THEN** it does NOT call query.describe_world()
-- **AND** passes nil or omits world_context parameter
-
 ### Requirement: Event Serialization Without World Context
 
-The system SHALL serialize events for ZMQ without world_context field.
+The system SHALL serialize events for WS without world_context field.
 
 #### Scenario: Event serialized to JSON
-- **WHEN** event is published via ZMQ
-- **THEN** JSON payload includes type, context, game_time_ms, witnesses, flags
-- **AND** JSON payload does NOT include world_context key
+- **WHEN** event is published via WS
+- **THEN** JSON payload includes type, context, game_time_ms, witnesses
+- **AND** JSON payload does NOT include world_context key or flags key
 
 ### Requirement: Event Module Scope
 
-The Event module SHALL focus on event creation and metadata, not text rendering.
+The Event module SHALL contain only the `Event` entity and `TEMPLATES` table. It SHALL NOT contain flags, importance logic, or speaker selection hints.
 
 Event module provides:
-- `Event.create(type, context, game_time_ms, witnesses, flags)` - create events
+- `Event.create(type, context, game_time_ms, witnesses)` - create events
 - `Event.TYPE` - EventType enum reference
 - `Event.get_involved_characters(event)` - extract characters from context
 - `Event.is_junk_event(event)` - check if low-value for narrative
@@ -64,43 +55,36 @@ Event module provides:
 
 Event module does NOT provide text rendering (handled by Python).
 
-#### Scenario: Event module exports creation functions
-- **WHEN** Event module is loaded
-- **THEN** Event.create is available
-- **AND** Event.TYPE is available
-- **AND** Event.describe does NOT exist
+#### Scenario: No flags in event module
+- **GIVEN** the event module source code
+- **THEN** it SHALL NOT define or reference `flags`, `is_important`, `is_silent`, or `importance`
 
-### Requirement: MAP_TRANSITION Event Context Structure
+### Requirement: MAP_TRANSITION context
 
-MAP_TRANSITION events SHALL include technical location IDs and travel metadata.
+The MAP_TRANSITION event context SHALL include:
+- `from` – source level name
+- `to` – destination level name
 
-Context fields:
-- `actor`: Character who traveled (player)
-- `source`: Technical location ID of origin (e.g., `l01_escape`)
-- `destination`: Technical location ID of arrival (e.g., `l02_garbage`)
-- `visit_count`: Integer count of times player has visited destination
-- `companions`: Array of Character objects who traveled with the player
+No flags are needed to indicate importance — all events are treated equally in the tool-based system.
 
-The event SHALL NOT include `destination_description` - descriptions are resolved by Python.
+#### Scenario: MAP_TRANSITION event
+- **WHEN** `Event.create("MAP_TRANSITION", {from = "l01_escape", to = "l02_garbage"}, 5000, {})` is called
+- **THEN** the event SHALL have the expected type, context, and no flags
 
-#### Scenario: Map transition with companions
-- **WHEN** player travels from Cordon to Garbage with companion Hip
-- **THEN** event.context.source equals "l01_escape"
-- **AND** event.context.destination equals "l02_garbage"
-- **AND** event.context.visit_count equals number of previous visits + 1
-- **AND** event.context.companions contains Hip's Character object
-- **AND** event.context does NOT contain destination_description
+### Requirement: Trigger store-and-publish API
 
-#### Scenario: Map transition without companions
-- **WHEN** player travels alone from Jupiter to Zaton
-- **THEN** event.context.source equals "jupiter"
-- **AND** event.context.destination equals "zaton"
-- **AND** event.context.companions is empty array
+Trigger scripts SHALL use a unified `trigger.store_and_publish(event_type, context, witnesses)` function that:
+1. Creates an event via `Event.create()`
+2. Stores it in the speaker's memory_store (per-NPC events tier)
+3. Fans out a copy to all witness NPCs' memory_stores
+4. Publishes the event over WebSocket with candidates, world, and traits
 
-#### Scenario: First visit to location
-- **WHEN** player visits a location for the first time
-- **THEN** event.context.visit_count equals 1
+#### Scenario: DEATH event store and publish
+- **WHEN** `trigger.store_and_publish("DEATH", {actor = killer, victim = victim}, {npc1, npc2})` is called
+- **THEN** the event SHALL be stored in killer's memory_store events tier
+- **AND** the event SHALL be fanned out to npc1 and npc2's memory_stores
+- **AND** the event SHALL be published over WS with `candidates`, `world`, and `traits`
 
-#### Scenario: Subsequent visit to location
-- **WHEN** player visits a location they've been to 3 times before
-- **THEN** event.context.visit_count equals 4
+#### Scenario: No flags in trigger API
+- **GIVEN** the trigger API
+- **THEN** `store_and_publish` SHALL NOT accept `flags` or `is_important` parameters

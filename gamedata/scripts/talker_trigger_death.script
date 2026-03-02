@@ -3,7 +3,6 @@ local game       = require("infra.game_adapter")
 local trigger    = require("interface.trigger")
 local log        = require("framework.logger")
 local Cooldown   = require("domain.service.cooldown")
-local importance = require("domain.service.importance")
 local mcm        = talker_mcm
 -- Game interfaces
 local queries = talker_game_queries
@@ -30,65 +29,39 @@ function on_creature_death(victim_obj, killer_obj)
     
     if mode == 1 then return end -- Mode 1 = Off: Exit immediately
 
-    -- get and combine witnesses
+    -- Environmental deaths (no killer) don't trigger dialogue
+    if not killer_obj then
+        log.debug("TALKER: Environmental death (no killer), skipping")
+        return
+    end
+
+    -- Get and combine witnesses from both locations
     local witnesses_near_victim = game.get_characters_near(victim_obj)
-    local witnesses_near_killer = {}
-    if killer_obj then
-        witnesses_near_killer = game.get_characters_near(killer_obj)
-    end
+    local witnesses_near_killer = game.get_characters_near(killer_obj)
     local witnesses = queries.join_tables(witnesses_near_victim, witnesses_near_killer)
-    -- make characters
-    local killer = nil
-    if killer_obj then
-        killer = game.create_character(killer_obj)
-    end
+
+    -- Create character objects
+    local killer = game.create_character(killer_obj)
     local victim = game.create_character(victim_obj)
 
-    -- decide if a character is important
-    local function is_important_person(char_obj, char_data)
-        if not char_obj or not char_data then return false end
-        return importance.is_important_person({
-            is_player    = queries.is_player(char_obj),
-            is_companion = queries.is_companion(char_obj),
-            is_unique    = queries.is_unique_character_by_id(char_obj:id()),
-            rank         = char_data.experience,
-        })
-    end
-    
-    -- Important events always generate dialogue, non-important events use base dialogue chance (default 25%)
-    local important_event = false
-    if is_important_person(victim_obj, victim) or is_important_person(killer_obj, killer) then
-        important_event = true
-    end
-    
-    -- Flag if the death is important for use later
-    local important_death = false
-    if is_important_person(victim_obj, victim) then
-        important_death = true
-    end
-    local flags = { important_death = important_death }
-    
     -- Determine if this should be a silent event based on mode and cooldown
     local cd = is_player and cd_player or cd_npc
+    local flags = {}
     flags.is_silent = cd:check("default", queries.get_game_time_ms(), mode)
 
-    -- Create typed event context
+    -- Create event context (killer is the actor/speaker)
     local context = {
-        victim = victim,
-        killer = killer -- may be nil for environmental deaths
+        actor = killer,
+        victim = victim
     }
 
-    -- Use new typed event system
-    trigger.talker_event(
-        EventType.DEATH,
-        context,
-        witnesses,
-        important_event,
-        flags
-    )
+    -- Use new unified trigger system
+    trigger.store_and_publish(EventType.DEATH, context, witnesses, flags)
 
     if flags.is_silent then
         log.info("TALKER: Death event registered (silent)")
+    else
+        log.info("TALKER: Death event registered")
     end
 end
 

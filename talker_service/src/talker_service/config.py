@@ -1,16 +1,21 @@
 """Service configuration using pydantic-settings."""
 
+import os
 from typing import Optional
 from pathlib import Path
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+_ENV_FILE_OVERRIDE = os.getenv("TALKER_SERVICE_ENV_FILE", "").strip()
+_ENV_FILES = _ENV_FILE_OVERRIDE or (".env.local", ".env")
+
+
 class Settings(BaseSettings):
     """TALKER Service configuration."""
     
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=_ENV_FILES,
         env_file_encoding="utf-8",
         extra="ignore",
     )

@@ -172,10 +172,12 @@ messages:
   game.event:
     channel: bridge
     direction: lua→bridge→service
-    description: "Game events (death, dialogue, artifacts, etc.)"
+    description: "Game events (death, dialogue, artifacts, etc.) with tool-based dialogue context"
     payload:
-      event:        { $ref: Event, required: true }
-      is_important: { type: bool, default: false }
+      event:      { $ref: Event, required: true, description: "Event data" }
+      candidates: { type: array, items: { $ref: Character }, required: true, description: "Possible speakers (first is primary)" }
+      world:      { type: string, required: true, description: "World context string (location, time, weather)" }
+      traits:     { type: object, required: true, description: "Map of character_id → {personality_id, backstory_id}" }
 
   player.dialogue:
     channel: bridge
@@ -241,14 +243,7 @@ messages:
       create_event:  { type: bool, default: true, description: "Whether to create a DIALOGUE event in event_store" }
       event_context: { type: object, description: "Additional context merged into the created event" }
 
-  memory.update:
-    channel: bridge
-    direction: service→bridge→lua
-    description: "Update a character's narrative memory"
-    payload:
-      character_id:       { type: string, required: true }
-      narrative:          { type: string, description: "Full narrative text. If null, only timestamp is updated." }
-      last_event_time_ms: { type: int, description: "Game time of last compressed event" }
+
 
   event.store:
     channel: bridge
@@ -302,36 +297,42 @@ messages:
           error: { type: string, description: "Error message (when ok=false)" }
 
     resource_registry:
-      store.memories:
-        description: "Query character memory context"
+      memory.events:
+        description: "Query events for a character from the events tier (recent raw events)"
         params:
           character_id: { type: string, required: true }
-        returns: "MemoryContext object (narrative, new_events, etc.)"
-      store.events:
-        description: "Query event store entries"
+          from_timestamp: { type: int, description: "Optional filter: return events after this timestamp" }
+        returns: "Array of Event objects"
+      memory.summaries:
+        description: "Query summaries for a character (compressed recent events)"
         params:
           character_id: { type: string, required: true }
-        returns: "Array of Event objects (supports filter/sort/limit)"
-      store.personalities:
-        description: "Query character personality text"
+        returns: "Array of summary objects"
+      memory.digests:
+        description: "Query digests for a character (medium-term compressed memory)"
         params:
           character_id: { type: string, required: true }
-        returns: "Personality string for the character"
-      store.backstories:
-        description: "Query character backstory text"
+        returns: "Array of digest objects"
+      memory.cores:
+        description: "Query cores for a character (long-term narrative cores)"
         params:
           character_id: { type: string, required: true }
-        returns: "Backstory string for the character"
-      store.levels:
-        description: "Query compression levels for a character"
+        returns: "Array of core narrative objects"
+      memory.background:
+        description: "Query background entities for a character (persistent context)"
         params:
           character_id: { type: string, required: true }
-        returns: "Compression level information"
-      store.timers:
-        description: "Query timer information for a character"
+        returns: "Background object"
+      personality:
+        description: "Query character personality text by personality_id"
         params:
-          character_id: { type: string, required: true }
-        returns: "Timer data"
+          personality_id: { type: string, required: true, description: "Personality ID in format faction.key (e.g., bandit.3)" }
+        returns: "Personality text string"
+      backstory:
+        description: "Query character backstory text by backstory_id"
+        params:
+          backstory_id: { type: string, required: true, description: "Backstory ID in format faction.key (e.g., loner.3)" }
+        returns: "Backstory text string"
       query.character:
         description: "Query character information by game ID"
         params:
@@ -400,18 +401,53 @@ messages:
       example: '{"game_time_ms": {"$gt": "$ref:mem.last_update_time_ms"}}'
       constraint: "Referenced query must appear earlier in the queries array"
 
+  # ── State Mutations ────────────────────────────────────────────
+
+  # (state.mutate.batch is defined above in the request/response section)
+
   # ── State Response ──────────────────────────────────────────
+
+  state.mutate.batch:
+    channel: bridge
+    direction: service→bridge→lua→bridge→service
+    description: >
+      Batch state mutation — multiple memory store updates in a single roundtrip.
+      Python sends with a unique 'r' field. Lua processes all mutations
+      and responds on 'state.response' echoing the same 'r' value.
+    request:
+      request_id: { type: string, required: true, description: "Unique request identifier" }
+      mutations:
+        type: array
+        required: true
+        description: "Ordered list of mutations"
+        items:
+          id:         { type: string, required: true, description: "Mutation operation ID" }
+          character_id: { type: string, required: true, description: "Character to mutate" }
+          verb:       { type: string, required: true, enum: [append, delete, set, update], description: "Operation type" }
+          resource:   { type: string, required: true, enum: [events, summaries, digests, cores, background], description: "Target memory tier" }
+          data:       { type: any, description: "Data payload (depends on verb and resource)" }
+          seq_lte:    { type: int, description: "For delete verb: delete all with seq <= this value" }
+    response:
+      type: object
+      required: true
+      description: "Response published on state.response with r-field echoed"
+      properties:
+        request_id: { type: string, description: "Echoed from the original request" }
+        response_type: { type: string, description: "Mutation type that produced this response" }
+        results: { type: object, description: "Map of mutation id → result object" }
+        timestamp: { type: int }
 
   state.response:
     channel: service
     direction: lua→bridge→service
     description: >
-      Response to a state.query.batch. The 'r' field in the envelope
+      Response to a state.query.batch or state.mutate.batch. The 'r' field in the envelope
       carries the original request_id for correlation.
     payload:
-      request_id:    { type: string, required: true, description: "Echoed from the original query (also in envelope.r)" }
-      response_type: { type: string, description: "Query type that produced this response" }
-      data:          { type: object, description: "Response payload (present on success)" }
+      request_id:    { type: string, required: true, description: "Echoed from the original request (also in envelope.r)" }
+      response_type: { type: string, description: "Query or mutation type that produced this response" }
+      results:       { type: object, description: "Map of sub-operation id → result (for batch responses)" }
+      data:          { type: any, description: "Response payload (for single responses)" }
       error:         { type: string, description: "Error message (present on failure, mutually exclusive with data)" }
       timestamp:     { type: int }
 

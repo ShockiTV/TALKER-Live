@@ -97,4 +97,43 @@ function M.serialize_events(events)
     return result
 end
 
+--- Serialize an array of candidate characters.
+-- @param candidates  Array of Character objects
+-- @return            Array of serialized characters
+function M.serialize_candidates(candidates)
+    if not candidates then return {} end
+    local result = {}
+    for _, char in ipairs(candidates) do
+        if char then
+            table.insert(result, M.serialize_character(char))
+        end
+    end
+    return result
+end
+
+--- Serialize traits map (already wire-ready, just validate structure).
+-- Traits map: character_id → {personality_id, backstory_id}
+-- @param traits  Traits map table
+-- @return        Wire-ready traits map (passed through as-is)
+function M.serialize_traits(traits)
+    return traits or {}
+end
+
+--- Serialize the v2 game event payload with candidates, world, and traits.
+-- New payload format for tools-based-memory:
+--   {event: {...}, candidates: [...], world: "...", traits: {...}}
+-- @param event       Event object
+-- @param candidates  Array of Character objects (speaker + witnesses)
+-- @param world       World description string
+-- @param traits      Traits map {character_id → {personality_id, backstory_id}}
+-- @return            Complete v2 payload table
+function M.serialize_game_event_v2(event, candidates, world, traits)
+    return {
+        event = M.serialize_event(event),
+        candidates = M.serialize_candidates(candidates),
+        world = world or "",
+        traits = M.serialize_traits(traits),
+    }
+end
+
 return M

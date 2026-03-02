@@ -43,7 +43,6 @@ local core_libs = {
     "domain.model.event",
     "infra.STALKER.factions",
     "infra.game_adapter",
-    "domain.repo.event_store",
     "domain.repo.memory_store",
     "domain.repo.backstories",
     "domain.repo.personalities",

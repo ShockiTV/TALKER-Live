@@ -54,6 +54,9 @@ local cd_equip  = Cooldown.new({ cooldown_ms = ARTIFACT_EQUIP_COMMENT_CD,  anti_
 local function create_artifact_event(action, artifact_name, is_silent)
     local player = game.get_player_character()
 
+    -- Get witnesses
+    local witnesses = game.get_characters_near_player()
+
     -- Create typed event context
     local context = {
         actor = player,
@@ -61,13 +64,8 @@ local function create_artifact_event(action, artifact_name, is_silent)
         item_name = artifact_name
     }
 
-    -- Use new typed event system
-    trigger.talker_event_near_player(
-        EventType.ARTIFACT,
-        context,
-        true, -- important
-        { is_silent = is_silent }
-    )
+    -- Use new unified trigger system
+    trigger.store_and_publish(EventType.ARTIFACT, context, witnesses, { is_silent = is_silent })
 
     if is_silent then
         logger.info("TALKER: Artifact event registered (silent)")

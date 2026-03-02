@@ -54,14 +54,8 @@ function fire_wake_up_event(hours)
     logger.info("%s: Firing sleep event for %d hours", script_name, hours)
     local is_silent = (mode_sleep == 2)
 
-    -- Use new typed event system
-    trigger.talker_event(
-        EventType.SLEEP,
-        context,
-        witnesses,
-        true, -- important
-        { is_silent = is_silent }
-    )
+    -- Use new unified trigger system
+    trigger.store_and_publish(EventType.SLEEP, context, witnesses, { is_silent = is_silent })
 
     if is_silent then
         logger.info("TALKER: Sleep event registered (silent)")

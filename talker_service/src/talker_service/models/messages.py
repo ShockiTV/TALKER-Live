@@ -1,4 +1,4 @@
-"""ZMQ message schemas."""
+"""WebSocket message schemas for the Lua ↔ Python wire protocol."""
 
 from datetime import datetime
 from typing import Any, Optional
@@ -22,6 +22,7 @@ class CharacterData(BaseModel):
     reputation: int = 0
     weapon: Optional[str] = None
     visual_faction: Optional[str] = None
+    story_id: Optional[str] = None  # Story ID for notable character matching (e.g. "actor")
     sound_prefix: Optional[str] = None  # Voice theme ID, e.g. "stalker_1"
 
     @model_validator(mode="before")
@@ -49,20 +50,16 @@ class EventContext(BaseModel):
 
 
 class GameEventMessage(BaseMessage):
-    """Game event message from Lua (typed event structure)."""
+    """Game event message from Lua (v2 tool-based format).
     
-    type: Optional[str] = None  # EventType enum value (DEATH, DIALOGUE, etc.)
-    context: Optional[EventContext | dict] = None  # Event-specific context
-    game_time_ms: Optional[int] = None
-    world_context: Optional[str] = None  # Location/time description
-    witnesses: list[CharacterData] = Field(default_factory=list)
-    flags: Optional[dict[str, Any] | list] = None  # Lua empty table can be [] or {}
+    New format contains event, candidates list, world context, and traits.
+    """
     
-    def get_flags(self) -> dict[str, Any]:
-        """Get flags as dict, handling Lua's empty table serialization."""
-        if self.flags is None or isinstance(self.flags, list):
-            return {}
-        return self.flags
+    # v2 format fields
+    event: Optional[dict[str, Any]] = None          # {type, context, game_time_ms, ...}
+    candidates: list[CharacterData] = Field(default_factory=list)  # [Speaker, Witness1, ...]
+    world: Optional[str] = None                     # World context string
+    traits: Optional[dict[str, dict[str, str]]] = None  # {char_id: {personality_id, backstory_id}, ...}
 
 
 class PlayerDialogueMessage(BaseMessage):
@@ -117,10 +114,31 @@ class BatchQueryMessage(BaseMessage):
     queries: list[BatchSubQuery]
 
 
-class BatchSubResult(BaseModel):
-    """Result for a single sub-query within a batch response."""
+class BatchSubMutation(BaseModel):
+    """A single mutation within a batch mutation request."""
+    
+    id: str
+    character_id: str
+    verb: str  # append, delete, set, update
+    resource: str  # events, summaries, digests, cores, background
+    data: Optional[Any] = None
+    seq_lte: Optional[int] = None  # For delete verb
 
-    ok: bool
+
+class BatchMutationMessage(BaseMessage):
+    """Batch mutation request published on ``state.mutate.batch``.
+    
+    Contains an array of mutations applied to memory tiers.
+    """
+    
+    request_id: str
+    mutations: list[BatchSubMutation]
+
+
+class BatchSubResult(BaseModel):
+    """A single result within a batch response."""
+
+    response_type: str  # success, error, not_found
     data: Optional[Any] = None
     error: Optional[str] = None
 
