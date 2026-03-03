@@ -133,6 +133,7 @@ async def lifespan(app: FastAPI):
     # Inject conversation manager into event handlers
     event_handlers.set_conversation_manager(conversation_manager)
     event_handlers.set_publisher(ws_router)  # For heartbeat acks
+    event_handlers.set_tts_engine(tts_engine)  # For TTS audio dispatch
     
     # Wire config changes to TTS engine volume
     if tts_engine:

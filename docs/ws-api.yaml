@@ -223,10 +223,12 @@ messages:
   dialogue.display:
     channel: bridge
     direction: service→bridge→lua
-    description: "Display NPC dialogue in-game"
+    description: "Display NPC dialogue in-game (text-only fallback when TTS is unavailable)"
     payload:
       speaker_id:    { type: string, required: true }
       dialogue:      { type: string, required: true }
+      dialogue_id:   { type: int, required: true, description: "Monotonic counter for end-to-end correlation" }
+      voice_id:      { type: string, description: "Voice identifier (may be empty when no TTS voice available)" }
       create_event:  { type: bool, default: true, description: "Whether to create a DIALOGUE event in event_store" }
       event_context: { type: object, description: "Additional context merged into the created event" }
 
@@ -239,6 +241,7 @@ messages:
       dialogue:      { type: string, required: true, description: "Dialogue text (included for logging/fallback)" }
       dialogue_id:   { type: int, required: true, description: "Monotonic counter for end-to-end correlation" }
       audio_b64:     { type: string, required: true, description: "Base64-encoded OGG Vorbis audio data" }
+      duration_ms:   { type: int, required: true, description: "Audio duration in milliseconds" }
       voice_id:      { type: string, required: true, description: "Voice identifier used for TTS generation" }
       create_event:  { type: bool, default: true, description: "Whether to create a DIALOGUE event in event_store" }
       event_context: { type: object, description: "Additional context merged into the created event" }
