@@ -51,6 +51,7 @@ talker.log
 
 # ── Binary DLLs (shipped separately) ──
 bin/pollnet/
+!bin/pollnet/talker_audio.dll
 
 # ── Voice model files (baked locally via voice triage pipeline) ──
 talker_service/voices/*
