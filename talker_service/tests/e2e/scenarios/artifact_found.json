@@ -153,6 +153,7 @@
         "topic": "dialogue.display",
         "payload": {
           "speaker_id": "12345",
+          "dialogue_id": 1,
           "dialogue": "A Jellyfish. Not bad \u00e2\u20ac\u201d keep it safe until you can sell it.",
           "create_event": true,
           "event_context": {

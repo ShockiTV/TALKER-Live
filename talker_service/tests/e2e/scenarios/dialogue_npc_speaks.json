@@ -172,6 +172,7 @@
         "topic": "dialogue.display",
         "payload": {
           "speaker_id": "12345",
+          "dialogue_id": 1,
           "dialogue": "Barkeep's not wrong. Emissions have been coming every other day. Something's stirring up north.",
           "create_event": true,
           "event_context": {

@@ -118,8 +118,9 @@ def _assert_ws_published(actual: list[dict], expected: list[dict]) -> None:
         )
         # Strip dynamic fields before comparison
         act_payload = {k: v for k, v in act["payload"].items() if k not in _DYNAMIC_FIELDS}
-        assert act_payload == exp["payload"], (
+        exp_payload = {k: v for k, v in exp["payload"].items() if k not in _DYNAMIC_FIELDS}
+        assert act_payload == exp_payload, (
             f"WS publish {i} ({act['topic']}): payload mismatch.\n"
-            f"Expected: {exp['payload']}\n"
+            f"Expected: {exp_payload}\n"
             f"Actual:   {act_payload}"
         )
