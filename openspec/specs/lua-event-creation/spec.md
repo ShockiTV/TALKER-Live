@@ -65,26 +65,36 @@ The MAP_TRANSITION event context SHALL include:
 - `from` – source level name
 - `to` – destination level name
 
-No flags are needed to indicate importance — all events are treated equally in the tool-based system.
+No flags are stored on the Event entity itself. Importance is evaluated at the trigger level (via `importance.is_important_person()`) to decide `store_event` vs `publish_event` — not carried as event data.
 
 #### Scenario: MAP_TRANSITION event
 - **WHEN** `Event.create("MAP_TRANSITION", {from = "l01_escape", to = "l02_garbage"}, 5000, {})` is called
 - **THEN** the event SHALL have the expected type, context, and no flags
 
-### Requirement: Trigger store-and-publish API
+### Requirement: Trigger store / publish API
 
-Trigger scripts SHALL use a unified `trigger.store_and_publish(event_type, context, witnesses)` function that:
-1. Creates an event via `Event.create()`
-2. Stores it in the speaker's memory_store (per-NPC events tier)
-3. Fans out a copy to all witness NPCs' memory_stores
-4. Publishes the event over WebSocket with candidates, world, and traits
+The `interface/trigger.lua` module SHALL export two event-creation functions:
 
-#### Scenario: DEATH event store and publish
-- **WHEN** `trigger.store_and_publish("DEATH", {actor = killer, victim = victim}, {npc1, npc2})` is called
+1. `trigger.store_event(event_type, context, witnesses)` — creates an Event, stores it in the speaker's memory_store events tier, and fans out to all witness NPCs. Does NOT publish over WS.
+2. `trigger.publish_event(event_type, context, witnesses)` — calls `store_event` internally, then publishes to the Python service via `publisher.send_game_event(event, candidates, world, traits)`.
+
+Trigger scripts decide which to call based on the consolidated flow: cooldown-active → `store_event`; importance or chance passes → `publish_event`; otherwise → `store_event`. The `importance.is_important_person(flags)` predicate in `domain/service/importance.lua` is used by trigger scripts to gate publish vs store — important characters always trigger dialogue regardless of the chance roll.
+
+Neither function accepts a `flags` or `is_important` parameter. Events are created with an empty flags table `{}`.
+
+#### Scenario: DEATH event store only (cooldown active)
+- **WHEN** cooldown is active and `trigger.store_event(EventType.DEATH, context, witnesses)` is called
 - **THEN** the event SHALL be stored in killer's memory_store events tier
-- **AND** the event SHALL be fanned out to npc1 and npc2's memory_stores
-- **AND** the event SHALL be published over WS with `candidates`, `world`, and `traits`
+- **AND** the event SHALL be fanned out to witnesses' memory_stores
+- **AND** no WS publish SHALL occur
+
+#### Scenario: DEATH event publish (importance or chance)
+- **WHEN** cooldown passes and importance or chance succeeds
+- **AND** `trigger.publish_event(EventType.DEATH, context, witnesses)` is called
+- **THEN** the event SHALL be stored in memory (same as store_event)
+- **AND** `publisher.send_game_event(event, candidates, world, traits)` SHALL be called
 
 #### Scenario: No flags in trigger API
-- **GIVEN** the trigger API
-- **THEN** `store_and_publish` SHALL NOT accept `flags` or `is_important` parameters
+- **GIVEN** the trigger API functions `store_event` and `publish_event`
+- **THEN** neither SHALL accept `flags` or `is_important` parameters
+- **AND** the old `store_and_publish` function SHALL NOT exist on the trigger module
