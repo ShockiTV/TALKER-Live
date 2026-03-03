@@ -21,6 +21,8 @@ from .handlers import audio as audio_handlers
 from .dialogue.conversation import ConversationManager
 from .state.client import StateQueryClient
 from .llm import get_llm_client
+from .memory.compaction import CompactionEngine
+from .memory.scheduler import CompactionScheduler
 from .tts import TTS_AVAILABLE, TTSEngine, TTSRemoteClient
 from .stt import STT_AVAILABLE
 from .transport.session_registry import SessionRegistry
@@ -123,10 +125,19 @@ async def lifespan(app: FastAPI):
         timeout=settings.state_query_timeout,
     )
     
+    # Create compaction engine + budget-pool scheduler
+    compaction_engine = CompactionEngine(
+        state_client=state_client,
+        llm_client=get_current_llm_client(),
+    )
+    compaction_scheduler = CompactionScheduler(compaction_engine)
+
     # Create conversation manager for tool-based dialogue
     conversation_manager = ConversationManager(
         llm_client=get_current_llm_client(),  # Get client instance
         state_client=state_client,
+        compaction_engine=compaction_engine,
+        compaction_scheduler=compaction_scheduler,
         llm_timeout=settings.llm_timeout,
     )
     
