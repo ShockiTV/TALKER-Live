@@ -94,6 +94,11 @@ local function tick()
     if bridge_channel then
         bridge_channel.tick()
     end
+    -- Drain native audio DLL ring buffer (no-op when DLL absent)
+    local audio_tick = safe_require("infra.mic.audio_tick")
+    if audio_tick then
+        audio_tick.tick()
+    end
     return false -- continue timer
 end
 
