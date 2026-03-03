@@ -20,6 +20,82 @@ from ..prompts.world_context import build_world_context, get_all_story_ids
 from ..state.models import SceneContext
 
 
+# ---------------------------------------------------------------------------
+# Event-type display name mapping (shared between event message and witness text)
+# ---------------------------------------------------------------------------
+_EVENT_DISPLAY_NAMES: dict[str | int, str] = {
+    # String keys (canonical wire format from Lua)
+    "death": "DEATH",
+    "dialogue": "DIALOGUE",
+    "callout": "CALLOUT",
+    "taunt": "TAUNT",
+    "artifact": "ARTIFACT",
+    "anomaly": "ANOMALY",
+    "map_transition": "MAP_TRANSITION",
+    "emission": "EMISSION",
+    "injury": "INJURY",
+    "sleep": "SLEEP",
+    "task": "TASK",
+    "weapon_jam": "WEAPON_JAM",
+    "reload": "RELOAD",
+    "idle": "IDLE",
+    "action": "ACTION",
+    # Numeric keys (legacy / future-proofing)
+    0: "DEATH", 1: "DIALOGUE", 2: "CALLOUT", 3: "TAUNT",
+    4: "ARTIFACT", 5: "ANOMALY", 6: "MAP_TRANSITION", 7: "EMISSION",
+    8: "INJURY", 9: "SLEEP", 10: "TASK", 11: "WEAPON_JAM",
+    12: "RELOAD", 13: "IDLE", 14: "ACTION",
+}
+
+
+def _resolve_event_display_name(event_type: str | int) -> str:
+    """Resolve an event type to its uppercase display name."""
+    return _EVENT_DISPLAY_NAMES.get(
+        event_type,
+        event_type.upper() if isinstance(event_type, str) else f"EVENT_{event_type}",
+    )
+
+
+# ---------------------------------------------------------------------------
+# Witness event text builder
+# ---------------------------------------------------------------------------
+_VERB_MAP: dict[str, str] = {
+    "DEATH": "killed",
+    "INJURY": "injured",
+}
+
+
+def build_witness_text(event: dict[str, Any]) -> str:
+    """Build a short witness event description from an event dict.
+
+    Format: ``"Witnessed: {TYPE} — {actor} {verb} {victim}"``
+    When there is no victim the suffix is omitted.
+
+    Args:
+        event: Event data dict with ``type`` and ``context`` keys.
+
+    Returns:
+        Short templated witness text string.
+    """
+    event_type = event.get("type", "unknown")
+    event_name = _resolve_event_display_name(event_type)
+
+    context = event.get("context", {})
+    actor = context.get("actor") or context.get("killer")
+    victim = context.get("victim")
+
+    actor_name = actor.get("name", "Unknown") if isinstance(actor, dict) else str(actor) if actor else None
+    victim_name = victim.get("name", "Unknown") if isinstance(victim, dict) else str(victim) if victim else None
+
+    if actor_name and victim_name:
+        verb = _VERB_MAP.get(event_name, "affected")
+        return f"Witnessed: {event_name} — {actor_name} {verb} {victim_name}"
+    elif actor_name:
+        return f"Witnessed: {event_name} — {actor_name}"
+    else:
+        return f"Witnessed: {event_name}"
+
+
 # Tool schemas for LLM function calling
 GET_MEMORIES_TOOL = {
     "type": "function",
@@ -147,6 +223,7 @@ class ConversationManager:
         state_client: StateQueryClient,
         *,
         compaction_engine: Any = None,  # Optional CompactionEngine for memory compression
+        compaction_scheduler: Any = None,  # Optional CompactionScheduler (preferred over raw engine)
         max_tool_iterations: int = 5,
         llm_timeout: float = 60.0,
     ):
@@ -155,13 +232,15 @@ class ConversationManager:
         Args:
             llm_client: LLM client for generating dialogue
             state_client: State query client for tool dispatch
-            compaction_engine: Optional CompactionEngine for triggering memory compression
+            compaction_engine: Optional CompactionEngine (kept for backward compat)
+            compaction_scheduler: Optional CompactionScheduler for budget-limited compaction
             max_tool_iterations: Maximum tool call iterations before forcing response
             llm_timeout: Timeout for each LLM call in seconds
         """
         self.llm_client = llm_client
         self.state_client = state_client
         self.compaction_engine = compaction_engine
+        self.compaction_scheduler = compaction_scheduler
         self.max_tool_iterations = max_tool_iterations
         self.llm_timeout = llm_timeout
         
@@ -171,9 +250,6 @@ class ConversationManager:
             "background": self._handle_background,
             "get_character_info": self._handle_get_character_info,
         }
-        
-        # Track characters touched during tool loop for compaction scheduling
-        self._characters_touched: set[str] = set()
     
     def _build_system_prompt(
         self,
@@ -255,33 +331,8 @@ Example responses:
         event_type = event.get("type", "unknown")
         context = event.get("context", {})
         
-        # Map event type to readable display name.
-        # Lua sends lowercase strings ("death", "callout", etc.) on the wire.
-        # Numeric IDs are kept for backward compatibility.
-        _EVENT_DISPLAY_NAMES: dict[str | int, str] = {
-            # String keys (canonical wire format from Lua)
-            "death": "DEATH",
-            "dialogue": "DIALOGUE",
-            "callout": "CALLOUT",
-            "taunt": "TAUNT",
-            "artifact": "ARTIFACT",
-            "anomaly": "ANOMALY",
-            "map_transition": "MAP_TRANSITION",
-            "emission": "EMISSION",
-            "injury": "INJURY",
-            "sleep": "SLEEP",
-            "task": "TASK",
-            "weapon_jam": "WEAPON_JAM",
-            "reload": "RELOAD",
-            "idle": "IDLE",
-            "action": "ACTION",
-            # Numeric keys (legacy / future-proofing)
-            0: "DEATH", 1: "DIALOGUE", 2: "CALLOUT", 3: "TAUNT",
-            4: "ARTIFACT", 5: "ANOMALY", 6: "MAP_TRANSITION", 7: "EMISSION",
-            8: "INJURY", 9: "SLEEP", 10: "TASK", 11: "WEAPON_JAM",
-            12: "RELOAD", 13: "IDLE", 14: "ACTION",
-        }
-        event_name = _EVENT_DISPLAY_NAMES.get(event_type, event_type if isinstance(event_type, str) else f"EVENT_{event_type}")
+        # Use module-level event display name mapping
+        event_name = _resolve_event_display_name(event_type)
         
         # Extract key characters from context
         # Lua sends "actor" on the wire, but handle "killer" as a fallback alias
@@ -591,7 +642,48 @@ Example responses:
         except Exception as e:
             logger.error(f"Tool {tool_name} failed: {e}")
             return {"error": str(e)}
-    
+
+    async def _inject_witness_events(
+        self,
+        event: dict[str, Any],
+        candidates: list[dict[str, Any]],
+    ) -> None:
+        """Store the triggering event in every alive candidate's events tier.
+
+        Builds one ``append`` mutation per alive candidate and sends them all
+        in a single ``state.mutate.batch`` roundtrip.  Failure is logged but
+        does not propagate — witness injection is fire-and-forget.
+
+        Args:
+            event: Event data dict (type, context, ...).
+            candidates: Candidate speaker dicts from the game payload.
+        """
+        witness_text = build_witness_text(event)
+
+        mutations: list[dict[str, Any]] = []
+        for cand in candidates:
+            if not cand.get("is_alive", True):
+                continue
+            char_id = cand.get("game_id")
+            if not char_id:
+                continue
+            mutations.append({
+                "character_id": str(char_id),
+                "verb": "append",
+                "resource": "events",
+                "data": {"text": witness_text},
+            })
+
+        if not mutations:
+            logger.debug("No alive candidates for witness injection")
+            return
+
+        try:
+            await self.state_client.mutate_batch(mutations, timeout=10.0)
+            logger.debug(f"Injected witness event for {len(mutations)} candidates")
+        except Exception as e:
+            logger.warning(f"Witness event injection failed: {e}")
+
     async def handle_event(
         self,
         event: dict[str, Any],
@@ -715,11 +807,6 @@ Example responses:
             for tc in response.tool_calls:
                 logger.debug(f"Executing tool call: {tc.name}({tc.arguments})")
 
-                # Track characters touched for compaction scheduling
-                char_id_arg = tc.arguments.get("character_id")
-                if char_id_arg:
-                    self._characters_touched.add(str(char_id_arg))
-
                 result = await self._execute_tool_call(tc.name, tc.arguments)
                 formatted = self._format_tool_result(tc.name, result)
 
@@ -755,16 +842,14 @@ Example responses:
             logger.warning(f"LLM response missing [SPEAKER: id] format, defaulting to first candidate")
         
         logger.info(f"Generated dialogue for {speaker_id}: {dialogue_text[:50]}...")
-        
-        # Schedule compaction for touched characters (task 6.4: budget-pool trigger)
-        if self.compaction_engine and self._characters_touched:
-            logger.debug(f"Scheduling compaction check for {len(self._characters_touched)} characters")
-            from ..memory.compaction import create_compaction_task
-            
-            for char_id in self._characters_touched:
-                create_compaction_task(self.compaction_engine, char_id)
-            
-            # Reset for next event
-            self._characters_touched.clear()
-        
+
+        # Post-dialogue: inject witness events for all alive candidates
+        await self._inject_witness_events(event, candidates)
+
+        # Schedule budget-limited compaction for all candidates
+        if self.compaction_scheduler:
+            candidate_ids = {str(c.get("game_id")) for c in candidates if c.get("game_id")}
+            import asyncio
+            asyncio.create_task(self.compaction_scheduler.schedule(candidate_ids))
+
         return (speaker_id, dialogue_text)

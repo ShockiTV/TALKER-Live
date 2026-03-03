@@ -605,8 +605,8 @@ class TestConversationManagerToolLoop:
         assert mock_llm_client.complete_with_tools.call_count == manager.max_tool_iterations
 
     @pytest.mark.asyncio
-    async def test_characters_touched_tracking(self, manager, mock_llm_client, event_data, candidates, traits):
-        """Tool calls with character_id are tracked for compaction."""
+    async def test_tool_calls_dispatched_for_character(self, manager, mock_llm_client, event_data, candidates, traits):
+        """Tool calls with character_id are dispatched to handlers."""
         tc = ToolCall(id="c1", name="get_memories", arguments={"character_id": "npc_99", "tiers": ["events"]})
 
         mock_llm_client.complete_with_tools.side_effect = [
@@ -616,9 +616,8 @@ class TestConversationManagerToolLoop:
 
         await manager.handle_event(event_data, candidates, "W", traits)
 
-        # _characters_touched should be cleared after the event, but npc_99 was tracked
-        # (cleared inside handle_event if compaction_engine is None, which it is)
-        # The tracking happened — we verify by checking the tool call was dispatched
+        # Tool call was dispatched — verify by checking the LLM received 2 calls
+        assert mock_llm_client.complete_with_tools.call_count == 2
 
 
 # -----------------------------------------------------------------------

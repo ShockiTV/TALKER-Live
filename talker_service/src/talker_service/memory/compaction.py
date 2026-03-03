@@ -63,6 +63,25 @@ class CompactionEngine:
         self._active_compactions: set[str] = set()
         self._lock = asyncio.Lock()
     
+    @staticmethod
+    def score_character(tiers: dict[str, int]) -> int:
+        """Compute how over-cap a character's memory tiers are.
+
+        Used by ``CompactionScheduler`` to prioritise which characters most
+        urgently need compaction.
+
+        Args:
+            tiers: Mapping of tier name → current item count
+                   (e.g. ``{"events": 120, "summaries": 5, ...}``).
+
+        Returns:
+            Sum of ``max(0, count - cap)`` across all known tiers.
+        """
+        return sum(
+            max(0, tiers.get(tier, 0) - cap)
+            for tier, cap in TIER_CAPS.items()
+        )
+
     async def check_and_compact(self, character_id: str) -> None:
         """Check if compaction is needed for a character and run it if so.
         
