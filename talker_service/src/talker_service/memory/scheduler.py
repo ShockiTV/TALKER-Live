@@ -55,7 +55,7 @@ class CompactionScheduler:
         # Use a stable ordering so zip(ids, results) aligns correctly.
         id_list = sorted(character_ids)
         queries = [
-            {"query": "npc.memories.tiers", "character_id": cid}
+            {"query": "memory.tiers", "character_id": cid}
             for cid in id_list
         ]
 

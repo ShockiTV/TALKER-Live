@@ -709,6 +709,13 @@ Example responses:
         if not candidates:
             raise ValueError("No candidates provided for dialogue")
         
+        # Filter out player (game_id "0") — player is never a dialogue candidate
+        npc_candidates = [c for c in candidates if str(c.get("game_id", "")) != "0"]
+        if not npc_candidates:
+            logger.warning("All candidates are player (game_id=0), skipping dialogue")
+            return ("0", "")
+        candidates = npc_candidates
+        
         # Extract speaker (first candidate = event actor)
         speaker = candidates[0]
         speaker_id = speaker.get("game_id", "unknown")
@@ -792,7 +799,9 @@ Example responses:
 
             if not response.has_tool_calls:
                 # LLM produced a final text response — extract dialogue
-                dialogue_text = (response.text or "").strip()
+                raw_text = (response.text or "").strip()
+                logger.info(f"LLM raw response ({len(raw_text)} chars): {raw_text[:200]}")
+                dialogue_text = raw_text
                 break
 
             # Process all tool calls in this response

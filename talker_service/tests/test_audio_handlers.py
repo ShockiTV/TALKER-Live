@@ -335,7 +335,7 @@ class TestOpusEndToEnd:
         assert audio_mod._audio_buffer is not None
         assert audio_mod._audio_buffer.chunk_count == 3
 
-        # Mock the Opus decode path (opuslib may not be installed in CI)
+        # Mock the Opus decode path (PyAV may not be installed in CI)
         fake_pcm = b"\x00\x01" * 960  # 3 frames × 320 samples
         with patch("talker_service.stt.audio_buffer.OPUS_AVAILABLE", True), \
              patch("talker_service.stt.audio_buffer.create_decoder", return_value=object()), \

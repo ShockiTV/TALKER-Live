@@ -170,20 +170,11 @@ async def lifespan(app: FastAPI):
         ws_router.on("mic.audio.end", audio_handlers.handle_audio_end)
         logger.info("STT audio handlers registered")
         
-        # Lazily initialise the STT provider on first config sync so we know
-        # which method the user picked (local / api / proxy).
-        _stt_initialised = False
-        
-        def _init_stt_on_config(cfg):
-            nonlocal _stt_initialised
-            if _stt_initialised:
-                return
-            _stt_initialised = True
+        # Eagerly initialise the STT provider if stt_method is pinned;
+        # otherwise lazily on first config sync so we know the user's choice.
+        def _init_stt(stt_method: str) -> None:
             try:
                 from .stt.factory import get_stt_provider
-                stt_method = config_mirror.get("stt_method", "local")
-                # Pass stt_endpoint so WhisperAPIProvider can target a local
-                # faster-whisper-server container instead of OpenAI cloud.
                 stt_kwargs = {}
                 if settings.stt_endpoint:
                     stt_kwargs["endpoint"] = settings.stt_endpoint
@@ -191,8 +182,24 @@ async def lifespan(app: FastAPI):
                 audio_handlers.set_stt_provider(provider)
             except Exception as exc:
                 logger.error("Failed to initialise STT provider: {}", exc)
-        
-        session_registry.on_any_config_change(_init_stt_on_config)
+
+        pinned_stt = config_mirror.get("stt_method")
+        if pinned_stt:
+            # Server-authority pin — init immediately, no need to wait for Lua
+            _init_stt(pinned_stt)
+        else:
+            # No pin — init on first config sync
+            _stt_initialised = False
+
+            def _init_stt_on_config(cfg):
+                nonlocal _stt_initialised
+                if _stt_initialised:
+                    return
+                _stt_initialised = True
+                stt_method = config_mirror.get("stt_method", "local")
+                _init_stt(stt_method)
+
+            session_registry.on_any_config_change(_init_stt_on_config)
     else:
         logger.info("STT not available — mic.audio.* topics will be ignored")
     

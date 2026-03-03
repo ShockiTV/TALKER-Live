@@ -20,6 +20,8 @@ local _recording    = false
 local _session_id   = 0
 -- Context type for the current capture session ("dialogue" or "whisper").
 local _context_type = "dialogue"
+-- Whether ta_open() has been called (one-time PortAudio init).
+local _opened       = false
 
 --- Returns true if the mic is actively capturing audio.
 function mic.is_recording()
@@ -46,14 +48,37 @@ end
 -- If already recording, this is a no-op (use stop_capture() first or call
 -- from recorder which handles the toggle).
 -- @param context_type  string  "dialogue" or "whisper" (stored for downstream use)
+-- @return boolean  true if capture started, false if DLL unavailable or error
 function mic.start_capture(context_type)
-    if _recording then return end
+    if _recording then return true end
+    if not ta.is_available() then
+        logger.warn("mic.start_capture: native DLL not available")
+        return false
+    end
+
+    -- Lazy one-time PortAudio init
+    if not _opened then
+        local rc = ta.open()
+        if rc ~= 0 then
+            logger.error("mic.start_capture: ta_open() failed (rc=%d)", rc)
+            return false
+        end
+        _opened = true
+        logger.info("mic: PortAudio initialized (ta_open)")
+    end
+
+    local rc = ta.start()
+    if rc ~= 0 then
+        logger.error("mic.start_capture: ta_start() failed (rc=%d)", rc)
+        return false
+    end
+
     _session_id = _session_id + 1
     _recording = true
     _context_type = context_type or "dialogue"
-    ta.start()
     logger.info("mic.start_capture (native DLL, session=%d, context=%s)",
                 _session_id, tostring(context_type or "dialogue"))
+    return true
 end
 
 --- Graceful stop — end capture, remaining frames drain via ta_poll().

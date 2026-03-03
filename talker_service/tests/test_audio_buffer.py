@@ -174,7 +174,7 @@ class TestAddChunkOpus:
         assert buf.chunk_count == 5
 
     def test_opus_finalize_without_opuslib_returns_empty(self):
-        """When opuslib is not available, Opus frames are discarded with a warning."""
+        """When PyAV is not available, Opus frames are discarded with a warning."""
         buf = AudioBuffer()
         fake_opus = base64.b64encode(b"\x00\x01\x02\x03").decode("ascii")
         buf.add_chunk(1, fake_opus, fmt="opus")
@@ -201,7 +201,7 @@ class TestAddChunkOpus:
         assert buf.is_active is True
 
 
-# ── Opus decode integration (requires opuslib) ──────────────────────────────
+# ── Opus decode integration (requires PyAV) ─────────────────────────────────
 
 
 class TestOpusDecode:

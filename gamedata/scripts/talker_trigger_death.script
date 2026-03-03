@@ -50,6 +50,11 @@ function on_creature_death(victim_obj, killer_obj)
     local killer = game.create_character(killer_obj)
     local victim = game.create_character(victim_obj)
 
+    if not killer then
+        log.debug("TALKER: Could not create killer character (stale object?), skipping death event")
+        return
+    end
+
     -- Create event context (killer is the actor/speaker)
     local context = {
         actor = killer,

@@ -103,6 +103,7 @@ function on_every_10_seconds()
     for _, npc_obj in ipairs(valid_candidates) do
         local speaker_name = queries.get_name(npc_obj)
         local speaker_character = game.create_character(npc_obj)
+        if not speaker_character then break end
 
         local context = {
             actor = speaker_character,

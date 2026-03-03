@@ -5,10 +5,12 @@ local luaunit = require('tests.utils.luaunit')
 
 local ta_start_calls = 0
 local ta_stop_calls  = 0
+local ta_open_calls  = 0
 
 local mock_ta = {}
 mock_ta._available = true
 function mock_ta.is_available() return mock_ta._available end
+function mock_ta.open()  ta_open_calls  = ta_open_calls  + 1; return 0 end
 function mock_ta.start() ta_start_calls = ta_start_calls + 1; return 0 end
 function mock_ta.stop()  ta_stop_calls  = ta_stop_calls  + 1; return 0 end
 
@@ -16,6 +18,7 @@ local mock_logger = {}
 function mock_logger.info(...) end
 function mock_logger.debug(...) end
 function mock_logger.error(...) end
+function mock_logger.warn(...) end
 
 package.preload["infra.mic.talker_audio_ffi"] = function() return mock_ta end
 package.preload["framework.logger"]           = function() return mock_logger end
@@ -27,11 +30,13 @@ local mic = require('infra.mic.microphone')
 local function reset()
     ta_start_calls = 0
     ta_stop_calls  = 0
+    ta_open_calls  = 0
     -- Force internal _recording off
     if mic.is_recording() then
         mic.stop_capture()
         ta_start_calls = 0
         ta_stop_calls  = 0
+        ta_open_calls  = 0
     end
 end
 
