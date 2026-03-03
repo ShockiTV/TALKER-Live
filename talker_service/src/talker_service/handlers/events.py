@@ -1,6 +1,7 @@
 """Event handlers for game events, player input, and heartbeat."""
 
 import asyncio
+import base64
 import time
 from datetime import datetime
 from typing import Any, Optional, Protocol, TYPE_CHECKING
@@ -43,6 +44,12 @@ _conversation_manager: Optional["ConversationManager"] = None
 # Publisher for sending heartbeat acks (injected by main)
 _publisher: Optional[PublisherProtocol] = None
 
+# TTS engine (injected by main — TTSRemoteClient, TTSEngine, or None)
+_tts_engine: Any = None
+
+# Monotonic counter for dialogue_id (correlates Python ↔ Lua logs)
+_dialogue_id: int = 0
+
 
 def set_conversation_manager(manager: "ConversationManager") -> None:
     """Set the conversation manager instance."""
@@ -56,6 +63,13 @@ def set_publisher(publisher: PublisherProtocol) -> None:
     global _publisher
     _publisher = publisher
     logger.info("Publisher injected into event handlers")
+
+
+def set_tts_engine(engine: Any) -> None:
+    """Set the TTS engine instance (TTSRemoteClient, TTSEngine, or None)."""
+    global _tts_engine
+    _tts_engine = engine
+    logger.info("TTS engine injected into event handlers: {}", type(engine).__name__ if engine else None)
 
 
 def get_last_heartbeat() -> Optional[str]:
@@ -172,18 +186,86 @@ async def _handle_event_v2(
                 logger.warning(f"{pfx}Publisher not available; cannot send dialogue.display")
                 return
 
-            payload = {
-                "speaker_id": str(speaker_id),
-                "dialogue": dialogue_text,
-                "create_event": True,
-                "event_context": {"world_context": None},
-                "voice_id": "",
-            }
-            await _publisher.publish("dialogue.display", payload, session=session_id)
-            logger.debug(f"{pfx}Published dialogue.display for speaker={speaker_id}")
+            # Increment monotonic dialogue_id for this dispatch
+            global _dialogue_id
+            _dialogue_id += 1
+            current_dialogue_id = _dialogue_id
+
+            # Resolve voice_id from the speaker's sound_prefix in candidates
+            voice_id = ""
+            for c in candidates:
+                if str(c.get("game_id", "")) == str(speaker_id):
+                    voice_id = c.get("sound_prefix") or ""
+                    break
+
+            # Attempt TTS generation if engine is available
+            await _dispatch_dialogue(
+                speaker_id=str(speaker_id),
+                dialogue_text=dialogue_text,
+                voice_id=voice_id,
+                dialogue_id=current_dialogue_id,
+                session_id=session_id,
+                pfx=pfx,
+            )
             
         except Exception as e:
             logger.opt(exception=True).error(f"{pfx}Failed to generate dialogue: {e}")
+
+
+async def _dispatch_dialogue(
+    *,
+    speaker_id: str,
+    dialogue_text: str,
+    voice_id: str,
+    dialogue_id: int,
+    session_id: str | None,
+    pfx: str,
+) -> None:
+    """Dispatch dialogue as TTS audio or text-only, depending on engine availability.
+
+    If ``_tts_engine`` is set, attempts ``generate_audio()``.  On success the
+    OGG bytes are base64-encoded and published as ``tts.audio``.  On failure
+    (or when no engine is injected) the text-only ``dialogue.display`` topic
+    is published as a fallback.
+    """
+    assert _publisher is not None  # caller already checked
+
+    base_payload = {
+        "speaker_id": speaker_id,
+        "dialogue": dialogue_text,
+        "create_event": True,
+        "event_context": {"world_context": None},
+        "voice_id": voice_id,
+        "dialogue_id": dialogue_id,
+    }
+
+    if _tts_engine is not None:
+        try:
+            result = await _tts_engine.generate_audio(dialogue_text, voice_id)
+            if result is not None:
+                ogg_bytes, duration_ms = result
+                audio_b64 = base64.b64encode(ogg_bytes).decode("ascii")
+                tts_payload = {
+                    **base_payload,
+                    "audio_b64": audio_b64,
+                    "duration_ms": duration_ms,
+                }
+                await _publisher.publish("tts.audio", tts_payload, session=session_id)
+                logger.debug(
+                    f"{pfx}Published tts.audio for speaker={speaker_id} "
+                    f"(dialogue_id={dialogue_id}, {len(ogg_bytes)}B ogg, {duration_ms}ms)"
+                )
+                return
+            else:
+                logger.warning(f"{pfx}TTS returned None — falling back to dialogue.display")
+        except Exception:
+            logger.opt(exception=True).warning(
+                f"{pfx}TTS generation failed — falling back to dialogue.display"
+            )
+
+    # Fallback: text-only
+    await _publisher.publish("dialogue.display", base_payload, session=session_id)
+    logger.debug(f"{pfx}Published dialogue.display for speaker={speaker_id} (dialogue_id={dialogue_id})")
 
 
 async def handle_player_dialogue(payload: dict[str, Any], session_id: str = "__default__", req_id: int = 0) -> None:
