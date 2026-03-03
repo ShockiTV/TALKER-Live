@@ -511,18 +511,20 @@ messages:
 
   mic.audio.chunk:
     channel: service
-    direction: bridge→service
-    description: "Stream a chunk of OGG/Vorbis compressed audio from bridge to service"
+    direction: lua→service
+    description: "Stream a chunk of encoded audio to the service for STT. Sent by Lua (native DLL via audio_tick) or bridge."
     payload:
-      audio_b64: { type: string, required: true, description: "Base64-encoded audio chunk (OGG/Vorbis compressed by default)" }
-      seq:       { type: int, required: true, description: "1-based sequence number for ordering" }
-      format:    { type: string, enum: [ogg, pcm], default: pcm, description: "Audio encoding format. 'ogg' = OGG/Vorbis compressed, 'pcm' = raw int16 mono 16kHz" }
+      audio_b64:   { type: string, required: true, description: "Base64-encoded audio chunk" }
+      seq:         { type: int, required: true, description: "1-based sequence number for ordering" }
+      session_id:  { type: int, required: false, description: "Capture session counter (increments per start_capture). Used to discard stale buffers." }
+      format:      { type: string, enum: [pcm, ogg, opus], default: pcm, description: "Audio encoding format. 'opus' = individual Opus frames (from native DLL), 'ogg' = OGG/Vorbis (from bridge), 'pcm' = raw int16 mono 16kHz" }
 
   mic.audio.end:
     channel: service
-    direction: bridge→service
-    description: "Signal end of audio stream. Triggers transcription in the service."
+    direction: lua→service
+    description: "Signal end of audio stream. Sent by Lua (audio_tick on VAD/manual stop) or bridge. Triggers transcription in the service."
     payload:
+      session_id: { type: int, required: false, description: "Matching session counter from mic.audio.chunk" }
       context:
         type: object
         description: "Recording context"

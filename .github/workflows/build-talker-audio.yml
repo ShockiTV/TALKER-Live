@@ -1,0 +1,46 @@
+name: Build talker_audio.dll
+
+on:
+  push:
+    paths:
+      - 'native/**'
+      - '.github/workflows/build-talker-audio.yml'
+  pull_request:
+    paths:
+      - 'native/**'
+      - '.github/workflows/build-talker-audio.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    env:
+      VCPKG_DEFAULT_TRIPLET: x64-windows-static
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgDirectory: ${{ github.workspace }}/vcpkg
+          vcpkgGitCommitId: '962e5e39f8a25f42522f51fffc574e05a3efd26b'  # 2024.11.16
+
+      - name: Configure CMake
+        run: |
+          cmake -B build -S native `
+            -DCMAKE_TOOLCHAIN_FILE="${{ github.workspace }}/vcpkg/scripts/buildsystems/vcpkg.cmake" `
+            -DVCPKG_TARGET_TRIPLET=x64-windows-static `
+            -DCMAKE_BUILD_TYPE=Release `
+            -A x64
+
+      - name: Build
+        run: cmake --build build --config Release
+
+      - name: Upload DLL artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: talker_audio
+          path: build/Release/talker_audio.dll
+          if-no-files-found: error

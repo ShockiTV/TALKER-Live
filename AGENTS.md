@@ -7,9 +7,11 @@
 This is a **triple-component project**:
 - **Lua** (game integration) - Runs inside the STALKER: Anomaly game engine
 - **talker_service** (AI processing) - Python FastAPI service for LLM calls, STT, speaker selection, memory compression
-- **talker_bridge** (WS proxy + audio capture) - Lightweight Python bridge between Lua and talker_service; handles mic/TTS locally
+- **talker_bridge** (WS proxy + TTS) - Lightweight Python bridge between Lua and talker_service; handles TTS locally
 
-**Phase 2+ Architecture**: Lua connects to talker_bridge (port 5558) via a single WebSocket. The bridge proxies game messages to talker_service (port 5557) and handles mic/TTS topics locally. STT (speech-to-text) runs inside talker_service; audio is streamed from the bridge as base64 PCM chunks.
+**Native Mic Capture**: Microphone audio is captured by a native C DLL (`talker_audio.dll`) loaded via LuaJIT FFI. The DLL handles PortAudio capture, energy-based VAD, and Opus encoding. Lua polls the DLL on each game tick and streams base64-encoded Opus frames directly to `talker_service` via WebSocket. The bridge is **not required** for mic input.
+
+**Phase 2+ Architecture**: Lua connects to talker_bridge (port 5558) via a single WebSocket. The bridge proxies game messages to talker_service (port 5557) and handles TTS topics locally. STT (speech-to-text) runs inside talker_service; audio is streamed from Lua as base64 Opus frames (or from the bridge as OGG/PCM for legacy setups).
 
 ## Architecture
 
@@ -81,6 +83,7 @@ talker_service/
 │   │   ├── base.py             # STTProvider protocol
 │   │   ├── factory.py          # get_stt_provider(method)
 │   │   ├── audio_buffer.py     # Sequence-ordered chunk accumulator
+│   │   ├── opus_decode.py      # Opus frame decoder (opuslib wrapper)
 │   │   ├── whisper_local.py    # Local faster-whisper provider
 │   │   ├── whisper_api.py      # OpenAI Whisper API provider
 │   │   └── gemini_proxy.py     # LiteLLM Gemini proxy provider
@@ -88,6 +91,10 @@ talker_service/
 │       ├── events.py           # Game event handlers (triggers dialogue)
 │       ├── audio.py            # mic.audio.chunk/end → STT transcription
 │       └── config.py           # ConfigMirror class
+├── native/                     # Native C DLL source
+│   ├── talker_audio.c          # PortAudio capture + Opus encode + VAD + SPSC ring buffer
+│   ├── CMakeLists.txt          # MSVC/vcpkg build (static CRT, static libs)
+│   └── vcpkg.json              # portaudio + opus dependencies
 └── tests/                      # pytest test suite (~130 tests)
 ```
 
@@ -98,8 +105,12 @@ Lua (Game)              talker_bridge              talker_service
     │                        │                           │
     │  WS (5558)  ◄────────► │  WS (5557/ws)  ◄────────► │
     │  JSON {t,p,r,ts}       │  proxies game msgs        │  /ws
-    │  game.event, etc.      │  handles mic/tts locally   │
-    │                        │  streams audio chunks ───► │  STT
+    │  game.event, etc.      │  handles tts locally       │
+    │                        │                           │
+    │  talker_audio.dll      │                           │
+    │  (FFI: capture+opus)   │                           │
+    │  ──── mic.audio.chunk ─────────────────────────────►│  STT
+    │  ──── mic.audio.end ───────────────────────────────►│
     │                        │                           │
     │                        │  HTTP 5557/health  ──────► │  FastAPI
 ```
@@ -385,6 +396,9 @@ Edit files in `talker_service/src/talker_service/prompts/`:
 - [`bin/lua/domain/data/ranks.lua`](bin/lua/domain/data/ranks.lua) - Rank values, reputation tiers, `format_character_info(char)` formatting
 - [`bin/lua/domain/service/cooldown.lua`](bin/lua/domain/service/cooldown.lua) - Generic `CooldownManager` used by all 5 trigger scripts; supports named slots + anti-spam
 - [`bin/lua/domain/service/importance.lua`](bin/lua/domain/service/importance.lua) - Pure `is_important_person(flags)` predicate
+- [`bin/lua/infra/mic/talker_audio_ffi.lua`](bin/lua/infra/mic/talker_audio_ffi.lua) - LuaJIT FFI binding for `talker_audio.dll`, graceful fallback when DLL absent
+- [`bin/lua/infra/mic/audio_tick.lua`](bin/lua/infra/mic/audio_tick.lua) - Poll loop: drains Opus frames from DLL, base64-encodes, publishes `mic.audio.chunk`
+- [`bin/lua/infra/mic/microphone.lua`](bin/lua/infra/mic/microphone.lua) - Mic start/stop via FFI calls, session tracking
 - [`bin/lua/infra/ws/serializer.lua`](bin/lua/infra/ws/serializer.lua) - Wire-format serialization (character, context, event, events list)
 - [`bin/lua/interface/world_description.lua`](bin/lua/interface/world_description.lua) - Pure string assembly for world context (`build_description`, `time_of_day`, etc.)
 - [`bin/lua/framework/utils.lua`](bin/lua/framework/utils.lua) - Common utilities: `must_exist`, `try`, `join_tables`, `Set`, `shuffle`, `safely`, `array_iter`
@@ -406,6 +420,8 @@ Edit files in `talker_service/src/talker_service/prompts/`:
 - [`talker_service/src/talker_service/handlers/events.py`](talker_service/src/talker_service/handlers/events.py) - Event handlers
 - [`talker_service/src/talker_service/handlers/audio.py`](talker_service/src/talker_service/handlers/audio.py) - Audio chunk/STT handlers
 - [`talker_service/src/talker_service/stt/factory.py`](talker_service/src/talker_service/stt/factory.py) - STT provider factory
+- [`talker_service/src/talker_service/stt/audio_buffer.py`](talker_service/src/talker_service/stt/audio_buffer.py) - Sequence-ordered chunk accumulator
+- [`talker_service/src/talker_service/stt/opus_decode.py`](talker_service/src/talker_service/stt/opus_decode.py) - Opus frame decoder (opuslib wrapper)
 - [`talker_service/src/talker_service/state/client.py`](talker_service/src/talker_service/state/client.py) - State query client
 
 ### Documentation
@@ -418,15 +434,27 @@ Edit files in `talker_service/src/talker_service/prompts/`:
 - See [`.github/copilot-instructions.md`](.github/copilot-instructions.md) for additional AI coding agent instructions
 - See [`README.md`](README.md) for user-facing documentation and model recommendations
 
-## talker_bridge (Audio + WS Proxy)
+## talker_bridge (TTS + WS Proxy)
 
 Located in `talker_bridge/python/`:
-- `main.py` - WS proxy server (port 5558) + audio capture + TTS playback
-- `AudioStreamer` - sounddevice capture with energy-based VAD, streams base64 PCM chunks
-- Proxies all non-mic/tts topics transparently between Lua and talker_service
-- Handles `mic.start`, `mic.stop`, `mic.cancel`, `tts.speak` locally
+- `main.py` - WS proxy server (port 5558) + TTS playback
+- Proxies all non-tts topics transparently between Lua and talker_service
+- Handles `tts.speak` locally
+- Legacy mode: can still stream OGG/PCM audio for mic if native DLL unavailable
 
 Launch via `launch_talker_bridge.bat`, not directly.
+
+## Native Mic Capture DLL
+
+`talker_audio.dll` (built from `native/talker_audio.c`) provides in-process audio capture:
+- **PortAudio** callback captures 16 kHz mono PCM on a dedicated thread
+- **Opus encoder** compresses 20 ms frames (default 24 kbps, complexity 5)
+- **SPSC ring buffer** (256 slots) holds encoded frames for lock-free polling
+- **Energy-based VAD** auto-stops recording after sustained silence (default 2 s)
+- Lua polls `ta_poll()` on each game tick via `audio_tick.lua`, draining up to 20 frames
+- Frames are base64-encoded and published as `mic.audio.chunk` messages with `format: "opus"`
+- DLL loaded via LuaJIT FFI in `bin/lua/infra/mic/talker_audio_ffi.lua`
+- Graceful fallback: if DLL is absent, `is_available()` returns false and mic features are disabled
 
 ## Launch Commands
 
@@ -435,7 +463,7 @@ Launch via `launch_talker_bridge.bat`, not directly.
 launch_talker_service.bat
 ```
 
-**talker_bridge** (required for mic/TTS, recommended for all use):
+**talker_bridge** (required for TTS, recommended for all use):
 ```batch
 launch_talker_bridge.bat
 ```

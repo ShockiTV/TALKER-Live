@@ -1,14 +1,13 @@
 -- infra/bridge/channel.lua
 -- Unified communication channel over WebSocket to talker_bridge.
--- Combines service-channel features (request/response correlation,
--- on_reconnect callback) with mic-channel features (session-scoped
--- handlers for mic.status / mic.result).
+-- Handles service-channel features (request/response correlation,
+-- on_reconnect callback).
 --
 -- State machine: DISCONNECTED → CONNECTING → CONNECTED → RECONNECTING
 -- Handles outbound queue, exponential backoff, topic handlers, and
 -- tick-based message drain.
 --
--- All game traffic (events, config, dialogue, mic, TTS) flows through
+-- All game traffic (events, config, dialogue, mic audio, TTS) flows through
 -- this single connection to talker_bridge, which proxies to talker_service.
 
 local log       = require("framework.logger")
@@ -47,10 +46,6 @@ local _was_connected    = false
 local _backoff_attempt  = 0
 local _backoff_deadline = 0
 local _initialized      = false
-
--- Session-scoped mic handlers (auto-cleaned on mic.result)
-local _mic_on_status    = nil
-local _mic_on_result    = nil
 
 -- ── ID generation ────────────────────────────────────────────────────────────
 
@@ -110,20 +105,7 @@ local function dispatch(envelope)
         return
     end
 
-    -- 2. Session-scoped mic handlers
-    if envelope.t == "mic.result" and _mic_on_result then
-        local fn = _mic_on_result
-        _mic_on_status = nil
-        _mic_on_result = nil
-        pcall(fn, envelope.p)
-        return
-    end
-    if envelope.t == "mic.status" and _mic_on_status then
-        pcall(_mic_on_status, envelope.p)
-        return
-    end
-
-    -- 3. General topic handlers
+    -- 2. General topic handlers
     local handlers = _handlers[envelope.t]
     if handlers then
         for _, fn in ipairs(handlers) do
@@ -169,8 +151,6 @@ function M.init(url)
     _pending         = {}
     _on_reconnect    = nil
     _was_connected   = false
-    _mic_on_status   = nil
-    _mic_on_result   = nil
     _backoff_attempt = 0
     _backoff_deadline = 0
     _initialized     = true
@@ -267,16 +247,6 @@ function M.request(topic, payload, callback)
     end
 end
 
---- Register session-scoped handlers for one recording session.
--- Clears any previous session handlers before registering new ones.
--- on_result auto-cleans up session handlers when mic.result is received.
--- @param on_status  function  Handler for mic.status: fn(payload)
--- @param on_result  function  Handler for mic.result: fn(payload)
-function M.start_session(on_status, on_result)
-    _mic_on_status = on_status
-    _mic_on_result = on_result
-end
-
 --- Register a callback fired on reconnect (not first connect).
 -- @param fn  function  Callback: fn()
 function M.set_on_reconnect(fn)
@@ -292,8 +262,6 @@ function M.shutdown()
     _state = STATE.DISCONNECTED
     _queue = {}
     _pending = {}
-    _mic_on_status = nil
-    _mic_on_result = nil
     _initialized = false
 end
 
@@ -315,8 +283,6 @@ function M._reset()
     _pending          = {}
     _on_reconnect     = nil
     _was_connected    = false
-    _mic_on_status    = nil
-    _mic_on_result    = nil
     _backoff_attempt  = 0
     _backoff_deadline = 0
     _initialized      = false

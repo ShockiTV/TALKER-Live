@@ -1,8 +1,9 @@
-"""Tests for AudioBuffer — sequence ordering, dedup, finalize, OGG decoding."""
+"""Tests for AudioBuffer — sequence ordering, dedup, finalize, OGG/Opus decoding."""
 
 import base64
 import io
 import struct
+from unittest.mock import patch
 
 import pytest
 
@@ -150,3 +151,101 @@ class TestReset:
         buf.add_chunk(1, _pcm_b64([99]))
         pcm = buf.finalize()
         assert struct.unpack("<h", pcm)[0] == 99
+
+
+# ── add_chunk (Opus) ─────────────────────────────────────────────────────────
+
+
+class TestAddChunkOpus:
+    """Opus frames stored raw, decoded to PCM in finalize()."""
+
+    def test_opus_chunk_stored(self):
+        buf = AudioBuffer()
+        # Opus frames are just raw bytes from the encoder
+        fake_opus = base64.b64encode(b"\x00\x01\x02\x03").decode("ascii")
+        buf.add_chunk(1, fake_opus, fmt="opus")
+        assert buf.chunk_count == 1
+
+    def test_multiple_opus_chunks_counted(self):
+        buf = AudioBuffer()
+        for i in range(5):
+            fake = base64.b64encode(bytes([i] * 10)).decode("ascii")
+            buf.add_chunk(i + 1, fake, fmt="opus")
+        assert buf.chunk_count == 5
+
+    def test_opus_finalize_without_opuslib_returns_empty(self):
+        """When opuslib is not available, Opus frames are discarded with a warning."""
+        buf = AudioBuffer()
+        fake_opus = base64.b64encode(b"\x00\x01\x02\x03").decode("ascii")
+        buf.add_chunk(1, fake_opus, fmt="opus")
+        # Patch OPUS_AVAILABLE to False at the module level
+        with patch("talker_service.stt.audio_buffer.OPUS_AVAILABLE", False):
+            pcm = buf.finalize()
+        # No PCM chunks and Opus decode unavailable → empty
+        assert pcm == b""
+
+    def test_opus_add_after_finalize_raises(self):
+        buf = AudioBuffer()
+        fake = base64.b64encode(b"\x00").decode("ascii")
+        buf.add_chunk(1, fake, fmt="opus")
+        buf.finalize()
+        with pytest.raises(ValueError, match="finalized"):
+            buf.add_chunk(2, fake, fmt="opus")
+
+    def test_reset_clears_opus_chunks(self):
+        buf = AudioBuffer()
+        fake = base64.b64encode(b"\xab\xcd").decode("ascii")
+        buf.add_chunk(1, fake, fmt="opus")
+        buf.reset()
+        assert buf.chunk_count == 0
+        assert buf.is_active is True
+
+
+# ── Opus decode integration (requires opuslib) ──────────────────────────────
+
+
+class TestOpusDecode:
+    """Integration tests for Opus→PCM decode path.
+
+    These tests use mock decoder to verify the finalize flow without
+    requiring a real libopus install in CI.
+    """
+
+    def test_opus_finalize_calls_decoder(self):
+        """Verify that finalize creates a decoder and calls decode_frames."""
+        buf = AudioBuffer()
+        frame1 = base64.b64encode(b"\x01\x02\x03").decode("ascii")
+        frame2 = base64.b64encode(b"\x04\x05\x06").decode("ascii")
+        buf.add_chunk(1, frame1, fmt="opus")
+        buf.add_chunk(2, frame2, fmt="opus")
+
+        fake_pcm = b"\x00\x01" * 320  # 320 int16 samples = 20ms at 16kHz
+        mock_decoder = object()
+
+        with patch("talker_service.stt.audio_buffer.OPUS_AVAILABLE", True), \
+             patch("talker_service.stt.audio_buffer.create_decoder", return_value=mock_decoder), \
+             patch("talker_service.stt.audio_buffer.decode_frames", return_value=fake_pcm) as mock_df:
+            pcm = buf.finalize()
+
+        mock_df.assert_called_once()
+        call_args = mock_df.call_args
+        assert call_args[0][0] is mock_decoder
+        assert len(call_args[0][1]) == 2  # two ordered frames
+        assert call_args[0][1][0] == b"\x01\x02\x03"  # seq=1 first
+        assert call_args[0][1][1] == b"\x04\x05\x06"  # seq=2 second
+        assert pcm == fake_pcm
+
+    def test_opus_frames_ordered_by_seq(self):
+        """Verify out-of-order Opus chunks are sorted before decode."""
+        buf = AudioBuffer()
+        buf.add_chunk(3, base64.b64encode(b"C").decode(), fmt="opus")
+        buf.add_chunk(1, base64.b64encode(b"A").decode(), fmt="opus")
+        buf.add_chunk(2, base64.b64encode(b"B").decode(), fmt="opus")
+
+        with patch("talker_service.stt.audio_buffer.OPUS_AVAILABLE", True), \
+             patch("talker_service.stt.audio_buffer.create_decoder", return_value=object()), \
+             patch("talker_service.stt.audio_buffer.decode_frames", return_value=b"") as mock_df:
+            buf.finalize()
+
+        frames = mock_df.call_args[0][1]
+        assert frames == [b"A", b"B", b"C"]

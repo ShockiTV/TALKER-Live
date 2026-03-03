@@ -58,4 +58,43 @@ function M.decode(str)
     return table.concat(result)
 end
 
+--- Encode raw binary bytes to a base64 string (RFC 4648).
+-- @param str string  Raw binary bytes
+-- @return string     Base64-encoded string with = padding
+function M.encode(str)
+    if not str or str == "" then
+        return ""
+    end
+
+    local result = {}
+    local i = 1
+    local len = #str
+
+    while i <= len do
+        local a = string.byte(str, i)
+        local b = (i + 1 <= len) and string.byte(str, i + 1) or 0
+        local c = (i + 2 <= len) and string.byte(str, i + 2) or 0
+        local remaining = len - i + 1
+
+        local n = a * 65536 + b * 256 + c
+
+        result[#result + 1] = alphabet:sub(math.floor(n / 262144) + 1, math.floor(n / 262144) + 1)
+        result[#result + 1] = alphabet:sub(math.floor(n / 4096) % 64 + 1, math.floor(n / 4096) % 64 + 1)
+        if remaining >= 2 then
+            result[#result + 1] = alphabet:sub(math.floor(n / 64) % 64 + 1, math.floor(n / 64) % 64 + 1)
+        else
+            result[#result + 1] = "="
+        end
+        if remaining >= 3 then
+            result[#result + 1] = alphabet:sub(n % 64 + 1, n % 64 + 1)
+        else
+            result[#result + 1] = "="
+        end
+
+        i = i + 3
+    end
+
+    return table.concat(result)
+end
+
 return M

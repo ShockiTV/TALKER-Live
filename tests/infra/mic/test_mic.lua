@@ -3,40 +3,36 @@ local luaunit = require('tests.utils.luaunit')
 
 -- ── Mock dependencies before loading microphone ─────────────────────────────
 
-local publish_calls = {}   -- records publish(topic, payload) calls
+local ta_start_calls = 0
+local ta_stop_calls  = 0
 
-local mock_channel = {}
-function mock_channel.publish(topic, payload)
-    table.insert(publish_calls, { topic = topic, payload = payload })
-end
+local mock_ta = {}
+mock_ta._available = true
+function mock_ta.is_available() return mock_ta._available end
+function mock_ta.start() ta_start_calls = ta_start_calls + 1; return 0 end
+function mock_ta.stop()  ta_stop_calls  = ta_stop_calls  + 1; return 0 end
 
 local mock_logger = {}
 function mock_logger.info(...) end
 function mock_logger.debug(...) end
 function mock_logger.error(...) end
 
-package.preload["infra.bridge.channel"]  = function() return mock_channel end
-package.preload["framework.logger"]  = function() return mock_logger end
+package.preload["infra.mic.talker_audio_ffi"] = function() return mock_ta end
+package.preload["framework.logger"]           = function() return mock_logger end
 
 local mic = require('infra.mic.microphone')
 
 -- ── Helpers ──────────────────────────────────────────────────────────────────
 
 local function reset()
-    publish_calls = {}
+    ta_start_calls = 0
+    ta_stop_calls  = 0
     -- Force internal _recording off
     if mic.is_recording() then
         mic.stop_capture()
-        publish_calls = {}
+        ta_start_calls = 0
+        ta_stop_calls  = 0
     end
-end
-
-local function published_topics()
-    local topics = {}
-    for _, c in ipairs(publish_calls) do
-        table.insert(topics, c.topic)
-    end
-    return topics
 end
 
 -- ── Tests ────────────────────────────────────────────────────────────────────
@@ -51,40 +47,27 @@ function testStartCaptureRecording()
     luaunit.assertTrue(mic.is_recording())
 end
 
-function testStartCapturePublishesMicStart()
+function testStartCaptureCallsTaStart()
     reset()
     mic.start_capture("dialogue")
-    luaunit.assertItemsEquals(published_topics(), { "mic.start" })
+    luaunit.assertEquals(ta_start_calls, 1)
 end
 
-function testStartCapturePublishesContextType()
+function testStartCaptureIncrementsSessionId()
     reset()
-    mic.start_capture("whisper")
-    local pub
-    for _, c in ipairs(publish_calls) do
-        if c.topic == "mic.start" then pub = c end
-    end
-    luaunit.assertNotNil(pub)
-    luaunit.assertEquals(pub.payload.context_type, "whisper")
-end
-
-function testStartCaptureDefaultsToDialogue()
-    reset()
-    mic.start_capture()  -- no context_type
-    local pub
-    for _, c in ipairs(publish_calls) do
-        if c.topic == "mic.start" then pub = c end
-    end
-    luaunit.assertNotNil(pub)
-    luaunit.assertEquals(pub.payload.context_type, "dialogue")
+    local s1 = mic.session_id()
+    mic.start_capture("dialogue")
+    luaunit.assertEquals(mic.session_id(), s1 + 1)
 end
 
 function testStartCaptureWhenAlreadyRecordingIsNoop()
     reset()
     mic.start_capture("dialogue")
-    publish_calls = {}
+    local s = mic.session_id()
+    ta_start_calls = 0
     mic.start_capture("dialogue")  -- should be ignored
-    luaunit.assertEquals(#publish_calls, 0)
+    luaunit.assertEquals(ta_start_calls, 0)
+    luaunit.assertEquals(mic.session_id(), s) -- no increment
     luaunit.assertTrue(mic.is_recording())
 end
 
@@ -95,29 +78,29 @@ function testStopCaptureEndsRecording()
     luaunit.assertFalse(mic.is_recording())
 end
 
-function testStopCapturePublishesMicStop()
+function testStopCaptureCallsTaStop()
     reset()
     mic.start_capture("dialogue")
-    publish_calls = {}
+    ta_stop_calls = 0
     mic.stop_capture()
-    luaunit.assertItemsEquals(published_topics(), { "mic.stop" })
+    luaunit.assertEquals(ta_stop_calls, 1)
 end
 
 function testStopCaptureWhenNotRecordingIsNoop()
     reset()
     luaunit.assertFalse(mic.is_recording())
     mic.stop_capture()
-    luaunit.assertEquals(#publish_calls, 0)
+    luaunit.assertEquals(ta_stop_calls, 0)
 end
 
 function testStartAfterStopWorks()
     reset()
     mic.start_capture("dialogue")
     mic.stop_capture()
-    publish_calls = {}
+    ta_start_calls = 0
     mic.start_capture("dialogue")
     luaunit.assertTrue(mic.is_recording())
-    luaunit.assertItemsEquals(published_topics(), { "mic.start" })
+    luaunit.assertEquals(ta_start_calls, 1)
 end
 
 function testOnStoppedResetsRecording()
@@ -128,29 +111,42 @@ function testOnStoppedResetsRecording()
     luaunit.assertFalse(mic.is_recording())
 end
 
-function testOnStoppedNoPublish()
+function testOnStoppedDoesNotCallTaStop()
     reset()
     mic.start_capture("dialogue")
-    publish_calls = {}
+    ta_stop_calls = 0
     mic.on_stopped()
-    -- on_stopped should NOT publish anything (bridge already knows)
-    luaunit.assertEquals(#publish_calls, 0)
+    -- on_stopped should NOT call ta_stop (DLL already stopped)
+    luaunit.assertEquals(ta_stop_calls, 0)
 end
 
 function testOnStoppedWhenNotRecordingIsNoop()
     reset()
     mic.on_stopped()
-    luaunit.assertEquals(#publish_calls, 0)
+    luaunit.assertEquals(ta_stop_calls, 0)
 end
 
 function testStartAfterOnStoppedWorks()
     reset()
     mic.start_capture("dialogue")
     mic.on_stopped()
-    publish_calls = {}
+    ta_start_calls = 0
     mic.start_capture("dialogue")
     luaunit.assertTrue(mic.is_recording())
-    luaunit.assertItemsEquals(published_topics(), { "mic.start" })
+    luaunit.assertEquals(ta_start_calls, 1)
+end
+
+function testIsAvailableDelegatesToFFI()
+    luaunit.assertTrue(mic.is_available())
+    mock_ta._available = false
+    luaunit.assertFalse(mic.is_available())
+    mock_ta._available = true  -- restore
+end
+
+function testSessionIdStartsAtZero()
+    -- session_id is module-level, already incremented by tests above
+    -- just verify it's a number
+    luaunit.assertTrue(type(mic.session_id()) == "number")
 end
 
 os.exit(luaunit.LuaUnit.run())
