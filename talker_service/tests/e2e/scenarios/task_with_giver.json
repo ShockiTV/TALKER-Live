@@ -160,6 +160,7 @@
         "topic": "dialogue.display",
         "payload": {
           "speaker_id": "33333",
+          "dialogue_id": 1,
           "dialogue": "A task done for Duty. Not bad, stalker.",
           "create_event": true,
           "event_context": {

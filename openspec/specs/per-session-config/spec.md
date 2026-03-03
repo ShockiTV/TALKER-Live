@@ -8,7 +8,7 @@ ConfigMirror keyed by session_id so each player has independent MCM settings and
 
 ### Requirement: Session registry manages per-session state
 
-A `SessionRegistry` SHALL provide access to per-session `ConfigMirror` and `SpeakerSelector` instances. Calling `get_config(session_id)` SHALL return the ConfigMirror for that session, creating one with defaults if it does not exist. Calling `get_speaker_selector(session_id)` SHALL return the SpeakerSelector for that session.
+A `SessionRegistry` SHALL provide access to per-session `ConfigMirror` and `SpeakerSelector` instances. Calling `get_config(session_id)` SHALL return the ConfigMirror for that session, creating one with defaults if it does not exist. When creating a new ConfigMirror, it SHALL wire all callbacks previously registered via `on_any_config_change()` into the new mirror. Calling `get_speaker_selector(session_id)` SHALL return the SpeakerSelector for that session.
 
 #### Scenario: First access creates default config
 
@@ -27,6 +27,12 @@ A `SessionRegistry` SHALL provide access to per-session `ConfigMirror` and `Spea
 - **WHEN** `get_speaker_selector("alice")` and `get_speaker_selector("bob")` are called
 - **THEN** they SHALL return different `SpeakerSelector` instances
 - **AND** speaker cooldowns SHALL be independent between sessions
+
+#### Scenario: New mirror inherits global callbacks
+
+- **WHEN** `on_any_config_change(cb)` was registered before any sessions connect
+- **AND** `get_config("new_player")` is called
+- **THEN** the newly created ConfigMirror SHALL have `cb` in its `on_change` list
 
 ### Requirement: Config sync scoped to session
 

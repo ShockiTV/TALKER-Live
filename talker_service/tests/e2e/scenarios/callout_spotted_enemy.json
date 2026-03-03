@@ -178,6 +178,7 @@
         "topic": "dialogue.display",
         "payload": {
           "speaker_id": "12345",
+          "dialogue_id": 1,
           "dialogue": "Bloodsucker on the flank! Don't let it get close!",
           "create_event": true,
           "event_context": {

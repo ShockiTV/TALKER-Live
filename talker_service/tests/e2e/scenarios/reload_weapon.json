@@ -151,6 +151,7 @@
         "topic": "dialogue.display",
         "payload": {
           "speaker_id": "12345",
+          "dialogue_id": 1,
           "dialogue": "Stay sharp, we're not done yet.",
           "create_event": true,
           "event_context": {

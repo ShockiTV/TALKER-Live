@@ -173,6 +173,7 @@
         "topic": "dialogue.display",
         "payload": {
           "speaker_id": "12345",
+          "dialogue_id": 1,
           "dialogue": "The Garbage. Watch for bandits near the old depot \u00e2\u20ac\u201d they've been more aggressive lately.",
           "create_event": true,
           "event_context": {

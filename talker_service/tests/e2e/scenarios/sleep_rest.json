@@ -152,6 +152,7 @@
         "topic": "dialogue.display",
         "payload": {
           "speaker_id": "12345",
+          "dialogue_id": 1,
           "dialogue": "Get some sleep. We'll keep watch.",
           "create_event": true,
           "event_context": {

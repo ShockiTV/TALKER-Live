@@ -173,6 +173,7 @@
         "topic": "dialogue.display",
         "payload": {
           "speaker_id": "12345",
+          "dialogue_id": 1,
           "dialogue": "That Vortex nearly had you. Watch your footing out there \u00e2\u20ac\u201d bolts first, walk second.",
           "create_event": true,
           "event_context": {

@@ -171,6 +171,7 @@
         "topic": "dialogue.display",
         "payload": {
           "speaker_id": "12345",
+          "dialogue_id": 1,
           "dialogue": "Ignore him. Butcher just likes to talk.",
           "create_event": true,
           "event_context": {

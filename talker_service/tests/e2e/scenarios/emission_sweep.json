@@ -163,6 +163,7 @@
         "topic": "dialogue.display",
         "payload": {
           "speaker_id": "12345",
+          "dialogue_id": 1,
           "dialogue": "Get to cover \u00e2\u20ac\u201d NOW. Emission's sweeping through and you don't want to be caught in the open.",
           "create_event": true,
           "event_context": {

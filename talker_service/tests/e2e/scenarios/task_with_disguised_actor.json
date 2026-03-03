@@ -154,6 +154,7 @@
         "topic": "dialogue.display",
         "payload": {
           "speaker_id": "44444",
+          "dialogue_id": 1,
           "dialogue": "You looked like a Duty soldier to me. Clever.",
           "create_event": true,
           "event_context": {

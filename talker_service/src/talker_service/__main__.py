@@ -142,7 +142,7 @@ async def lifespan(app: FastAPI):
             if vol is not None:
                 tts_engine.volume_boost = float(vol)
                 logger.info(f"TTS volume boost updated to {tts_engine.volume_boost}")
-        config_mirror.on_change(_on_config_change)
+        session_registry.on_any_config_change(_on_config_change)
     
     # Register handlers
     ws_router.on("game.event", event_handlers.handle_game_event)
@@ -181,7 +181,7 @@ async def lifespan(app: FastAPI):
             except Exception as exc:
                 logger.error("Failed to initialise STT provider: {}", exc)
         
-        config_mirror.on_change(_init_stt_on_config)
+        session_registry.on_any_config_change(_init_stt_on_config)
     else:
         logger.info("STT not available — mic.audio.* topics will be ignored")
     

@@ -172,6 +172,7 @@
         "topic": "dialogue.display",
         "payload": {
           "speaker_id": "12345",
+          "dialogue_id": 1,
           "dialogue": "That's a bad one. Get those wounds patched before they go septic.",
           "create_event": true,
           "event_context": {
