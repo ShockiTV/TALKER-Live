@@ -12,7 +12,7 @@ add_library(talker_audio SHARED talker_audio.c)
 
 target_link_libraries(talker_audio
     PRIVATE
-        portaudio
+        $<IF:$<TARGET_EXISTS:portaudio_static>,portaudio_static,portaudio>
         Opus::opus
 )
 
