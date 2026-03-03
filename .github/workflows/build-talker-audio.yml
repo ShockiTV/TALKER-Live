@@ -1,14 +1,6 @@
 name: Build talker_audio.dll
 
 on:
-  push:
-    paths:
-      - 'native/**'
-      - '.github/workflows/build-talker-audio.yml'
-  pull_request:
-    paths:
-      - 'native/**'
-      - '.github/workflows/build-talker-audio.yml'
   workflow_dispatch:
 
 jobs:
