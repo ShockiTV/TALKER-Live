@@ -184,9 +184,13 @@ class StateQueryClient:
         session: str | None = None,
     ) -> list[dict[str, Any]]:
         """Execute a batch of queries (simplified interface).
+
+        Accepts old-style dicts with ``query`` and top-level params,
+        auto-generates ``id`` fields, and translates to the batch
+        protocol format expected by ``handle_batch_query`` in Lua.
         
         Args:
-            queries: List of query dicts with 'query' field and params
+            queries: List of query dicts with 'query' (or 'resource') field and params
             timeout: Optional timeout override
             session: Optional session_id
         
@@ -199,19 +203,40 @@ class StateQueryClient:
         """
         request_id = self._generate_request_id()
         effective_timeout = timeout or self.timeout
-        
+
+        # Translate simplified format to batch protocol format
+        translated: list[dict[str, Any]] = []
+        ordered_ids: list[str] = []
+        for idx, q in enumerate(queries):
+            qid = q.get("id") or f"q{idx}"
+            ordered_ids.append(qid)
+
+            resource = q.get("resource") or q.get("query", "")
+            # Gather remaining keys as params (exclude protocol keys)
+            params = q.get("params")
+            if params is None:
+                params = {
+                    k: v for k, v in q.items()
+                    if k not in ("id", "resource", "query", "filter", "sort", "limit", "fields")
+                }
+            translated.append({
+                "id": qid,
+                "resource": resource,
+                "params": params or {},
+            })
+
         future = self.router.create_request(request_id, effective_timeout)
         
         payload = {
             "request_id": request_id,
-            "queries": queries,
+            "queries": translated,
         }
         
         success = await self.router.publish("state.query.batch", payload, r=request_id, session=session)
         if not success:
             raise ConnectionError("Failed to publish batch query")
         
-        logger.debug(f"Sent simple batch query ({len(queries)} queries, request_id={request_id})")
+        logger.debug(f"Sent simple batch query ({len(translated)} queries, request_id={request_id})")
         
         try:
             response = await future
@@ -221,9 +246,18 @@ class StateQueryClient:
                 topic="state.query.batch",
             ) from None
         
-        # Extract results as list
+        # Extract results dict keyed by qid, then convert to ordered list
         data = response.get("data", response)
-        results = data.get("results", []) if isinstance(data, dict) else []
+        results_map = data.get("results", {}) if isinstance(data, dict) else {}
+
+        # Return results as ordered list matching input query order
+        results: list[dict[str, Any]] = []
+        for qid in ordered_ids:
+            entry = results_map.get(qid, {})
+            if isinstance(entry, dict) and entry.get("ok"):
+                results.append(entry.get("data", {}))
+            else:
+                results.append(entry)
         
         return results
     

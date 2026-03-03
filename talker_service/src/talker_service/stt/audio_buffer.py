@@ -134,7 +134,7 @@ class AudioBuffer:
                         logger.error("AudioBuffer: Opus decoder creation failed — "
                                      "{} frames discarded", len(ordered_opus))
                 else:
-                    logger.error("AudioBuffer: opuslib not available — "
+                    logger.error("AudioBuffer: PyAV (av) not available — "
                                  "{} Opus frames discarded", len(ordered_opus))
 
             # Append PCM/OGG chunks (already decoded)

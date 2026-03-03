@@ -167,6 +167,19 @@ resource_registry["memory.background"] = function(query)
     return memory_store_v2:query(character_id, "memory.background", params)
 end
 
+resource_registry["memory.tiers"] = function(query)
+    local character_id = query.params and query.params.character_id
+    if not character_id then
+        error("memory.tiers requires params.character_id")
+    end
+    local counts = memory_store_v2:get_tier_counts(character_id)
+    if not counts then
+        return { tiers = { events = 0, summaries = 0, digests = 0, cores = 0 } }
+    end
+    return { tiers = counts }
+end
+
+
 resource_registry["store.personalities"] = function(query)
     local requested_ids = extract_character_ids_from_query(query)
     for _, char_id in ipairs(requested_ids) do
@@ -460,9 +473,16 @@ local function handle_batch_query(payload, request_r)
 
     local results = {}
 
-    for _, query in ipairs(sub_queries) do
-        local qid = query.id
-        local resource = query.resource
+    for idx, query in ipairs(sub_queries) do
+        local qid = query.id or ("_auto_" .. tostring(idx))
+        local resource = query.resource or query.query  -- legacy compat: "query" field
+
+        if not query.id then
+            logger.warn("Sub-query #%d missing 'id' field, auto-assigned '%s'", idx, qid)
+        end
+        if not query.resource and query.query then
+            logger.warn("Sub-query '%s' uses legacy 'query' field instead of 'resource'", qid)
+        end
 
         -- Resolve $ref strings in filter and params
         if query.filter then

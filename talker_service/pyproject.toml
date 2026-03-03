@@ -32,7 +32,7 @@ stt = [
     "openai>=1.0.0",
     "numpy>=1.24.0",
     "soundfile>=0.12.0",
-    "opuslib>=3.0.0",
+    "av>=13.0.0",
 ]
 tts = [
     "pocket_tts>=0.1.0",

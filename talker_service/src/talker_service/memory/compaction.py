@@ -118,7 +118,7 @@ class CompactionEngine:
         """
         # Query current tier counts
         result = await self.state_client.query_batch([
-            {"query": "npc.memories.tiers", "character_id": character_id}
+            {"query": "memory.tiers", "character_id": character_id}
         ])
         
         if not result or not result[0].get("tiers"):
@@ -188,9 +188,8 @@ class CompactionEngine:
         # Step 1: Read source items
         result = await self.state_client.query_batch([
             {
-                "query": "npc.memories.tier",
+                "query": f"memory.{source_tier}",
                 "character_id": character_id,
-                "tier": source_tier,
                 "limit": batch_size,
             }
         ])

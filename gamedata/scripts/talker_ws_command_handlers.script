@@ -150,6 +150,9 @@ local function handle_tts_audio(payload)
 
             -- 6. Play audio on NPC (fire-and-forget)
             local npc_obj = engine.get_obj_by_id(speaker_id)
+            if not npc_obj then
+                logger.warn("[D#%s] get_obj_by_id(%s) returned nil (type=%s)", dialogue_id, tostring(speaker_id), type(speaker_id))
+            end
             tts_slot.play_on_npc(slot_num, npc_obj)
             logger.info("[D#%s] Display + play complete (slot=%d)", dialogue_id, slot_num)
         end)

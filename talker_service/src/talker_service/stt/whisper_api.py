@@ -30,12 +30,16 @@ class WhisperAPIProvider:
         self._endpoint = endpoint or ""
 
         if self._endpoint:
-            # Local faster-whisper-server — api_key not needed but required by client
+            # Local faster-whisper-server — api_key not needed but required by client.
+            # Auto-append /v1 if missing (OpenAI-compatible servers expect /v1/audio/...).
+            base_url = self._endpoint.rstrip("/")
+            if not base_url.endswith("/v1"):
+                base_url += "/v1"
             self._client = openai.OpenAI(
-                base_url=self._endpoint,
+                base_url=base_url,
                 api_key=self._api_key or "unused",
             )
-            logger.info("Whisper API provider initialized (endpoint: {})", self._endpoint)
+            logger.info("Whisper API provider initialized (endpoint: {})", base_url)
         else:
             # Default OpenAI cloud
             if not self._api_key:

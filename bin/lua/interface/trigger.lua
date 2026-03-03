@@ -62,11 +62,24 @@ function m.publish_event(event_type, context, witnesses)
 	if not event then return nil end
 
 	local speaker = context.actor
+	local is_player = tostring(speaker.game_id) == "0"
 
-	-- Build candidates list (speaker first, then witnesses)
-	local candidates = { speaker }
+	-- Build candidates list (NPC speakers/witnesses only — never the player).
+	-- The player's input is already in the event context; candidates are NPCs
+	-- who may *respond*.
+	local candidates = {}
+	if not is_player then
+		table.insert(candidates, speaker)
+	end
 	for _, witness in ipairs(witnesses or {}) do
-		table.insert(candidates, witness)
+		if tostring(witness.game_id) ~= "0" then
+			table.insert(candidates, witness)
+		end
+	end
+
+	if #candidates == 0 then
+		log.debug("publish_event: no NPC candidates after filtering player, skipping publish")
+		return event
 	end
 
 	-- Build traits map for all candidates

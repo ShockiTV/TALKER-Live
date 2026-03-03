@@ -135,11 +135,16 @@ function recorder.toggle(callback)
 
     -- idle or transcribing → start new capture
     -- (if transcribing, old result will still be delivered via mic.result handler)
-    _state = STATE_CAPTURING
     local names  = get_names_of_nearby_characters()
     local prompt = create_transcription_prompt(names)
+    local started = mic.start_capture("dialogue")
+    if not started then
+        engine.display_hud_message("MIC NOT AVAILABLE", 5)
+        logger.warn("recorder: mic.start_capture failed — DLL not loaded or init error")
+        return
+    end
+    _state = STATE_CAPTURING
     engine.display_hud_message("RECORDING", 15)
-    mic.start_capture("dialogue")
     logger.info("recorder: capture started (state was %s)", _state)
 end
 

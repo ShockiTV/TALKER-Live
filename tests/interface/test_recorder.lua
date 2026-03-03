@@ -29,6 +29,7 @@ function mock_mic.context_type() return "dialogue" end
 function mock_mic.start_capture(ctx)
     mic_start_calls = mic_start_calls + 1
     mic_recording = true
+    return true
 end
 function mock_mic.stop_capture()
     mic_stop_calls = mic_stop_calls + 1
@@ -70,6 +71,7 @@ local mock_logger = {}
 function mock_logger.info(...) end
 function mock_logger.debug(...) end
 function mock_logger.error(...) end
+function mock_logger.warn(...) end
 
 -- Wire up mocks
 package.preload["infra.bridge.channel"]     = function() return mock_channel end

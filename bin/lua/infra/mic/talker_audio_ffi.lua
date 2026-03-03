@@ -49,8 +49,9 @@ void ta_set_opus_complexity(int complexity);
 ]]
 
 -- ── Load DLL ─────────────────────────────────────────────────────────────────
+-- CWD in Anomaly is <game>/bin/ — match pollnet.lua's working LIBDIR pattern.
 
-local LIBDIR = "./bin/pollnet/"
+local LIBDIR = "./pollnet/"
 
 local _lib       -- FFI library object (nil if load failed)
 local _available  -- boolean
@@ -61,6 +62,11 @@ if ok then
     _available = true
 else
     _available = false
+    -- Log the error so it shows up in talker_debug.log for diagnostics
+    local log_ok, log = pcall(require, "framework.logger")
+    if log_ok then
+        log.warn("talker_audio.dll failed to load: " .. tostring(lib_or_err))
+    end
 end
 
 -- ── Reusable poll buffer (4096 bytes covers any Opus frame) ──────────────────
