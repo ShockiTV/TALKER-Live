@@ -6,7 +6,7 @@ then generates dialogue with speaker selection in a single conversational turn.
 """
 
 import json
-from typing import Any
+from typing import Any, Callable, TYPE_CHECKING
 
 from loguru import logger
 
@@ -18,6 +18,9 @@ from ..prompts.factions import get_faction_description, resolve_faction_name, CO
 from ..prompts.lookup import resolve_personality, resolve_backstory
 from ..prompts.world_context import build_world_context, get_all_story_ids
 from ..state.models import SceneContext
+
+if TYPE_CHECKING:
+    from ..transport.session_registry import SessionRegistry
 
 
 # ---------------------------------------------------------------------------
@@ -96,18 +99,40 @@ def build_witness_text(event: dict[str, Any]) -> str:
         return f"Witnessed: {event_name}"
 
 
+# ---------------------------------------------------------------------------
+# Helper for batch tool parameter normalisation
+# ---------------------------------------------------------------------------
+
+def _normalise_character_ids(
+    character_ids: str | list[str] | None,
+    character_id: str | None = None,
+) -> list[str]:
+    """Collapse the new ``character_ids`` and legacy ``character_id`` args into a list.
+
+    Accepts singular strings, lists, or ``None``.  The legacy ``character_id``
+    parameter is only used when ``character_ids`` is ``None`` (backward compat).
+    """
+    if character_ids is not None:
+        if isinstance(character_ids, str):
+            return [character_ids]
+        return list(character_ids)
+    if character_id is not None:
+        return [character_id]
+    return []
+
+
 # Tool schemas for LLM function calling
 GET_MEMORIES_TOOL = {
     "type": "function",
     "function": {
         "name": "get_memories",
-        "description": "Retrieve memories for a character from their four-tier memory system (events, summaries, digests, cores).",
+        "description": "Retrieve memories for THE CHOSEN SPEAKER ONLY. Do NOT use for candidate evaluation\u2014use backgrounds instead.",
         "parameters": {
             "type": "object",
             "properties": {
                 "character_id": {
                     "type": "string",
-                    "description": "The unique ID of the character whose memories to retrieve",
+                    "description": "The character ID of the speaker you've chosen",
                 },
                 "tiers": {
                     "type": "array",
@@ -115,25 +140,28 @@ GET_MEMORIES_TOOL = {
                         "type": "string",
                         "enum": ["events", "summaries", "digests", "cores"],
                     },
-                    "description": "Which memory tiers to retrieve (events=recent raw, summaries=compressed recent, digests=medium-term, cores=long-term)"
+                    "description": "Which memory tiers to retrieve. If omitted, returns all tiers."
                 },
             },
-            "required": ["character_id", "tiers"],
+            "required": ["character_id"],
         },
     },
 }
+
+_MAX_BATCH_SIZE = 10
 
 BACKGROUND_TOOL = {
     "type": "function",
     "function": {
         "name": "background",
-        "description": "Read, write, or update background information for a character (traits, backstory, connections).",
+        "description": "Read, write, or update background information. Supports batch reads for up to 10 characters.",
         "parameters": {
             "type": "object",
             "properties": {
-                "character_id": {
-                    "type": "string",
-                    "description": "The unique ID of the character whose background to read/write/update",
+                "character_ids": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Character IDs to query (max 10 per call)",
                 },
                 "action": {
                     "type": "string",
@@ -168,7 +196,7 @@ BACKGROUND_TOOL = {
                     "description": "For 'update' action: new value for the field",
                 },
             },
-            "required": ["character_id", "action"],
+            "required": ["character_ids", "action"],
         },
     },
 }
@@ -177,16 +205,17 @@ GET_CHARACTER_INFO_TOOL = {
     "type": "function",
     "function": {
         "name": "get_character_info",
-        "description": "Retrieve detailed information about a character including their gender, background, and squad members. Use this when you need to know who else is in a character's squad, or when generating a background for a character you haven't spoken as before.",
+        "description": "Get detailed info about characters including gender, background, and squad members. Supports batch queries for up to 10 characters.",
         "parameters": {
             "type": "object",
             "properties": {
-                "character_id": {
-                    "type": "string",
-                    "description": "The unique ID of the character to look up",
+                "character_ids": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Character IDs to query (max 10 per call)",
                 },
             },
-            "required": ["character_id"],
+            "required": ["character_ids"],
         },
     },
 }
@@ -222,6 +251,8 @@ class ConversationManager:
         llm_client: LLMClient,
         state_client: StateQueryClient,
         *,
+        session_registry: "SessionRegistry | None" = None,
+        llm_client_factory: Callable[[], LLMClient] | None = None,
         compaction_engine: Any = None,  # Optional CompactionEngine for memory compression
         compaction_scheduler: Any = None,  # Optional CompactionScheduler (preferred over raw engine)
         max_tool_iterations: int = 5,
@@ -230,8 +261,10 @@ class ConversationManager:
         """Initialize conversation manager.
         
         Args:
-            llm_client: LLM client for generating dialogue
+            llm_client: Fallback LLM client (used when no session registry or session lacks a client)
             state_client: State query client for tool dispatch
+            session_registry: Optional session registry for per-session LLM clients
+            llm_client_factory: Optional factory to create per-session LLM clients
             compaction_engine: Optional CompactionEngine (kept for backward compat)
             compaction_scheduler: Optional CompactionScheduler for budget-limited compaction
             max_tool_iterations: Maximum tool call iterations before forcing response
@@ -239,6 +272,8 @@ class ConversationManager:
         """
         self.llm_client = llm_client
         self.state_client = state_client
+        self.session_registry = session_registry
+        self.llm_client_factory = llm_client_factory
         self.compaction_engine = compaction_engine
         self.compaction_scheduler = compaction_scheduler
         self.max_tool_iterations = max_tool_iterations
@@ -283,18 +318,38 @@ class ConversationManager:
 {personality}
 
 You have access to tools to query character memories and background information:
-- **get_memories(character_id, tiers)**: Retrieve memories from specified tiers
+- **get_memories(character_id, tiers)**: Retrieve memories for the chosen speaker
   - "events": Recent raw events (last ~100)
   - "summaries": Compressed summaries of past events
   - "digests": Medium-term compressed memories
   - "cores": Long-term persistent memories
-- **background(character_id, action)**: Read, write, or update character background
+- **background(character_ids, action)**: Read, write, or update character backgrounds
+  - Supports batch reads for up to 10 characters at once
   - action="read": Retrieve existing traits, backstory, connections
-  - action="write": Set entire background (requires content with traits, backstory, connections)
-  - action="update": Modify a single field (requires field and value)
-- **get_character_info(character_id)**: Get detailed info about a character including gender, background, and squad members
+  - action="write": Set entire background (requires content with traits, backstory, connections) — single character only
+  - action="update": Modify a single field (requires field and value) — single character only
+- **get_character_info(character_ids)**: Get detailed info about characters including gender, background, and squad members
+  - Supports batch queries for up to 10 characters at once
   - Returns character details (name, faction, rank, gender, background) plus an array of squad members with the same fields
   - Use when you need squad composition or when generating a background for a character you haven't spoken as before
+
+**Tool Usage Rules:**
+1. **background(character_ids)**: Use this to evaluate ALL candidates before choosing a speaker
+   - You can fetch backgrounds for multiple characters at once
+   - Example: background(character_ids=["0", "npc_123", "npc_456"], action="read")
+
+2. **get_memories(character_id, tiers)**: ONLY use AFTER choosing the speaker
+   - You can ONLY fetch memories for the character you've decided will speak
+   - Do NOT fetch memories for candidates you're evaluating
+   - Memories are expensive; use backgrounds for speaker selection
+   - The `tiers` parameter is optional; omit it to fetch all memory tiers
+
+3. **Workflow:**
+   a. Read event context + candidate list
+   b. Fetch backgrounds for candidates (if needed) via background(character_ids=[...], action="read")
+   c. Choose speaker based on faction, personality, background
+   d. Fetch memories ONLY for chosen speaker via get_memories(character_id=...)
+   e. Generate dialogue for that speaker
 
 **Instructions:**
 1. Use tools to query relevant memories/background for characters involved in the event
@@ -393,17 +448,21 @@ Example responses:
     async def _handle_get_memories(
         self,
         character_id: str,
-        tiers: list[str],
+        tiers: list[str] | None = None,
     ) -> dict[str, Any]:
-        """Tool handler: retrieve memories for a character.
+        """Tool handler: retrieve memories for the chosen speaker.
         
         Args:
             character_id: Character ID to query
-            tiers: List of tier names to retrieve (events, summaries, digests, cores)
+            tiers: List of tier names to retrieve. Defaults to all four tiers.
             
         Returns:
             Dict mapping tier name → memory data
         """
+        if tiers is None:
+            tiers = ["events", "summaries", "digests", "cores"]
+
+        logger.info("Fetching memories for speaker {} (tiers: {})", character_id, tiers)
         batch = BatchQuery()
         
         for tier in tiers:
@@ -431,55 +490,83 @@ Example responses:
     
     async def _handle_background(
         self,
-        character_id: str,
+        character_ids: str | list[str] | None = None,
+        character_id: str | None = None,
         action: str = "read",
         content: dict[str, Any] | None = None,
         field: str | None = None,
         value: Any = None,
     ) -> dict[str, Any]:
-        """Tool handler: read, write, or update background for a character.
+        """Tool handler: read, write, or update background for character(s).
+
+        Supports batch reads: ``character_ids`` can be a list of up to
+        ``_MAX_BATCH_SIZE`` IDs.  For backward compatibility, also accepts
+        the old singular ``character_id`` parameter.  Write/update actions
+        require exactly one character.
 
         Args:
-            character_id: Character ID to operate on.
+            character_ids: Character ID(s) to operate on (list or single string).
+            character_id: **Deprecated** singular alias kept for backward compat.
             action: One of "read", "write", "update".
             content: Full background content (for "write").
             field: Field name to update (for "update").
             value: New value for the field (for "update").
 
         Returns:
-            Background data (read) or success confirmation (write/update).
+            Background data dict. For batch reads: ``{char_id: data, ...}``.
         """
+        # --- normalise IDs -------------------------------------------------
+        ids: list[str] = _normalise_character_ids(character_ids, character_id)
+        if not ids:
+            return {"error": "character_ids (or character_id) is required"}
+        if len(ids) > _MAX_BATCH_SIZE:
+            return {"error": f"Batch size limit: {_MAX_BATCH_SIZE} NPCs max"}
+        # De-duplicate while preserving order
+        ids = list(dict.fromkeys(ids))
+        logger.debug("background batch query for {} characters", len(ids))
+
         if action == "read":
             batch = BatchQuery()
-            batch.add(
-                "background",
-                resource="memory.background",
-                params={"character_id": character_id},
-            )
+            for cid in ids:
+                batch.add(
+                    f"bg_{cid}",
+                    resource="memory.background",
+                    params={"character_id": cid},
+                )
 
             result = await self.state_client.execute_batch(batch, timeout=10.0)
 
-            if result.ok("background"):
-                return result["background"] or {}
-            else:
-                error_msg = result.error("background") or "unknown error"
-                logger.warning(f"background read failed for {character_id}: {error_msg}")
-                return {}
+            backgrounds: dict[str, Any] = {}
+            for cid in ids:
+                qid = f"bg_{cid}"
+                if result.ok(qid):
+                    backgrounds[cid] = result[qid] or {}
+                else:
+                    error_msg = result.error(qid) or "unknown error"
+                    logger.warning("background read failed for {}: {}", cid, error_msg)
+                    backgrounds[cid] = {"error": error_msg}
+            return backgrounds
 
-        elif action == "write":
+        # Write/update require exactly one character
+        if len(ids) > 1:
+            return {"error": f"'{action}' action only supports a single character"}
+
+        single_id = ids[0]
+
+        if action == "write":
             if content is None:
                 return {"error": "content is required for write action"}
 
             mutations = [
                 {
-                    "character_id": character_id,
+                    "character_id": single_id,
                     "verb": "set",
                     "resource": "memory.background",
                     "data": content,
                 }
             ]
             success = await self.state_client.mutate_batch(mutations, timeout=10.0)
-            return {"success": success, "action": "write", "character_id": character_id}
+            return {"success": success, "action": "write", "character_id": single_id}
 
         elif action == "update":
             if field is None or value is None:
@@ -487,53 +574,68 @@ Example responses:
 
             mutations = [
                 {
-                    "character_id": character_id,
+                    "character_id": single_id,
                     "verb": "update",
                     "resource": "memory.background",
                     "data": {field: value},
                 }
             ]
             success = await self.state_client.mutate_batch(mutations, timeout=10.0)
-            return {"success": success, "action": "update", "character_id": character_id, "field": field}
+            return {"success": success, "action": "update", "character_id": single_id, "field": field}
 
         else:
             return {"error": f"Unknown action: {action}"}
     
     async def _handle_get_character_info(
         self,
-        character_id: str,
+        character_ids: str | list[str] | None = None,
+        character_id: str | None = None,
     ) -> dict[str, Any]:
-        """Tool handler: retrieve detailed character info including squad members.
+        """Tool handler: retrieve detailed character info for one or more NPCs.
 
-        Sends a single state.query.batch with query.character_info sub-query.
-        Lua resolves squad members, derives gender, includes backgrounds, and
-        triggers squad discovery side-effects (memory entry creation).
+        Sends ``query.character_info`` sub-queries for each ID in a single
+        ``BatchQuery``.  Accepts both the new ``character_ids`` list and the
+        old singular ``character_id`` for backward compatibility.
 
         Args:
-            character_id: Character ID to query.
+            character_ids: Character ID(s) to query (list or single string).
+            character_id: **Deprecated** singular alias kept for backward compat.
 
         Returns:
-            Dict with 'character' and 'squad_members' fields, or error dict.
+            Dict mapping character ID → info dict (or error dict).
         """
+        ids: list[str] = _normalise_character_ids(character_ids, character_id)
+        if not ids:
+            return {"error": "character_ids (or character_id) is required"}
+        if len(ids) > _MAX_BATCH_SIZE:
+            return {"error": f"Batch size limit: {_MAX_BATCH_SIZE} NPCs max"}
+        ids = list(dict.fromkeys(ids))
+        logger.debug("get_character_info batch query for {} characters", len(ids))
+
         batch = BatchQuery()
-        batch.add(
-            "char_info",
-            resource="query.character_info",
-            params={"id": character_id},
-        )
+        for cid in ids:
+            batch.add(
+                f"ci_{cid}",
+                resource="query.character_info",
+                params={"id": cid},
+            )
 
         try:
             result = await self.state_client.execute_batch(batch, timeout=10.0)
         except Exception as e:
-            logger.warning(f"get_character_info query failed for {character_id}: {e}")
+            logger.warning("get_character_info batch query failed: {}", e)
             return {"error": f"Failed to query character info: {e}"}
 
-        if result.ok("char_info"):
-            return result["char_info"] or {}
-        else:
-            error_msg = result.error("char_info") or "unknown error"
-            logger.warning(f"get_character_info failed for {character_id}: {error_msg}")
-            return {"error": f"Character info query failed: {error_msg}"}
+        infos: dict[str, Any] = {}
+        for cid in ids:
+            qid = f"ci_{cid}"
+            if result.ok(qid):
+                infos[cid] = result[qid] or {}
+            else:
+                error_msg = result.error(qid) or "unknown error"
+                logger.warning("get_character_info failed for {}: {}", cid, error_msg)
+                infos[cid] = {"error": f"Character info query failed: {error_msg}"}
+        return infos
 
     @staticmethod
     def _format_tool_result(tool_name: str, result: Any) -> str:
@@ -578,8 +680,6 @@ Example responses:
         if tool_name == "get_character_info" and isinstance(result, dict):
             if "error" in result:
                 return json.dumps(result)
-            char = result.get("character", {})
-            squad = result.get("squad_members", [])
 
             def _fmt_char(c: dict[str, Any]) -> str:
                 name = c.get("name", "Unknown")
@@ -606,14 +706,33 @@ Example responses:
                     line += "\n  No background on record."
                 return line
 
-            parts: list[str] = [f"**Character:** {_fmt_char(char)}"]
-            if squad:
-                parts.append(f"**Squad Members ({len(squad)}):**")
-                for i, m in enumerate(squad, 1):
-                    parts.append(f"{i}. {_fmt_char(m)}")
-            else:
-                parts.append("**Squad:** No squad members.")
-            return "\n\n".join(parts)
+            def _fmt_single(data: dict[str, Any]) -> str:
+                char = data.get("character", {})
+                squad = data.get("squad_members", [])
+                parts_inner: list[str] = [f"**Character:** {_fmt_char(char)}"]
+                if squad:
+                    parts_inner.append(f"**Squad Members ({len(squad)}):**")
+                    for i, m in enumerate(squad, 1):
+                        parts_inner.append(f"{i}. {_fmt_char(m)}")
+                else:
+                    parts_inner.append("**Squad:** No squad members.")
+                return "\n\n".join(parts_inner)
+
+            # Batch format: {char_id: {character: ..., squad_members: ...}}
+            # Detect batch vs legacy by checking for 'character' key (legacy)
+            if "character" in result:
+                # Legacy single-character format (backward compat)
+                return _fmt_single(result)
+
+            sections: list[str] = []
+            for cid, data in result.items():
+                if isinstance(data, dict) and "error" in data:
+                    sections.append(f"**{cid}:** Error — {data['error']}")
+                elif isinstance(data, dict):
+                    sections.append(f"--- {cid} ---\n{_fmt_single(data)}")
+                else:
+                    sections.append(f"**{cid}:** {data}")
+            return "\n\n".join(sections)
 
         # Default: JSON serialize
         return json.dumps(result, default=str)
@@ -642,6 +761,25 @@ Example responses:
         except Exception as e:
             logger.error(f"Tool {tool_name} failed: {e}")
             return {"error": str(e)}
+
+    def _get_llm_client(self, session_id: str | None) -> LLMClient:
+        """Return the LLM client for a given session.
+
+        Lifecycle:
+        - If a session_registry is configured and the session already has an
+          ``llm_client``, return it.
+        - If the session exists but has no client yet, create one via the
+          factory and store it on the session for reuse.
+        - Falls back to ``self.llm_client`` when no registry/factory is
+          available (backward-compat).
+        """
+        if session_id and self.session_registry and self.llm_client_factory:
+            session = self.session_registry.get_session(session_id)
+            if session.llm_client is None:
+                session.llm_client = self.llm_client_factory()
+                logger.info("Created per-session LLM client for session {}", session_id)
+            return session.llm_client
+        return self.llm_client
 
     async def _inject_witness_events(
         self,
@@ -690,6 +828,8 @@ Example responses:
         candidates: list[dict[str, Any]],
         world: str,
         traits: dict[str, dict[str, str]],
+        *,
+        session_id: str | None = None,
     ) -> tuple[str, str]:
         """Handle an event and generate dialogue using tool-based conversation.
         
@@ -698,6 +838,7 @@ Example responses:
             candidates: List of candidate speakers
             world: World description string
             traits: Traits map {character_id → {personality_id, backstory_id}}
+            session_id: WebSocket session for per-tenant LLM client
             
         Returns:
             Tuple of (speaker_id, dialogue_text)
@@ -706,6 +847,8 @@ Example responses:
             ValueError: If no candidates or invalid event data
             TimeoutError: If LLM calls timeout
         """
+        # Resolve per-session LLM client (falls back to singleton)
+        llm_client = self._get_llm_client(session_id)
         if not candidates:
             raise ValueError("No candidates provided for dialogue")
         
@@ -788,49 +931,23 @@ Example responses:
         
         # Tool-calling loop: call LLM with tools, execute tool calls, repeat
         logger.debug("Starting tool-calling loop for dialogue generation")
-        dialogue_text: str | None = None
 
-        for iteration in range(self.max_tool_iterations):
-            logger.debug(f"Tool loop iteration {iteration + 1}/{self.max_tool_iterations}")
+        async def _tool_executor(tc: ToolCall) -> str:
+            logger.debug(f"Executing tool call: {tc.name}({tc.arguments})")
+            result = await self._execute_tool_call(tc.name, tc.arguments)
+            return self._format_tool_result(tc.name, result)
 
-            response: LLMToolResponse = await self.llm_client.complete_with_tools(
-                messages, tools=TOOLS,
-            )
+        response: LLMToolResponse = await llm_client.complete_with_tool_loop(
+            messages,
+            tools=TOOLS,
+            tool_executor=_tool_executor,
+            max_iterations=self.max_tool_iterations,
+        )
 
-            if not response.has_tool_calls:
-                # LLM produced a final text response — extract dialogue
-                raw_text = (response.text or "").strip()
-                logger.info(f"LLM raw response ({len(raw_text)} chars): {raw_text[:200]}")
-                dialogue_text = raw_text
-                break
-
-            # Process all tool calls in this response
-            # Append the assistant message with its tool_calls to history
-            assistant_msg = Message(
-                role="assistant",
-                content="",
-                tool_calls=response.tool_calls,
-            )
-            messages.append(assistant_msg)
-
-            for tc in response.tool_calls:
-                logger.debug(f"Executing tool call: {tc.name}({tc.arguments})")
-
-                result = await self._execute_tool_call(tc.name, tc.arguments)
-                formatted = self._format_tool_result(tc.name, result)
-
-                # Append tool result message
-                messages.append(Message.tool_result(tc.id, tc.name, formatted))
-
+        dialogue_text = (response.text or "").strip()
+        if dialogue_text:
+            logger.info(f"LLM raw response ({len(dialogue_text)} chars): {dialogue_text[:200]}")
         else:
-            # Exhausted max iterations without getting text
-            logger.error(
-                f"Tool loop exhausted {self.max_tool_iterations} iterations "
-                "without generating dialogue text"
-            )
-            return (speaker_id, "")
-
-        if not dialogue_text:
             logger.warning("LLM returned empty dialogue text")
             return (speaker_id, "")
         

@@ -178,6 +178,7 @@ async def _handle_event_v2(
                 candidates=candidates,
                 world=world,
                 traits=traits,
+                session_id=session_id,
             )
             
             logger.info(f"{pfx}Dialogue generated: speaker={speaker_id}, text={dialogue_text[:60]}...")

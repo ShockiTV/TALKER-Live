@@ -23,6 +23,9 @@ def mock_llm_client():
     client.complete_with_tools = AsyncMock(
         return_value=LLMToolResponse(text="[SPEAKER: char_001]\nGet out of here, stalker!")
     )
+    client.complete_with_tool_loop = AsyncMock(
+        return_value=LLMToolResponse(text="[SPEAKER: char_001]\nGet out of here, stalker!")
+    )
     return client
 
 
@@ -202,7 +205,7 @@ class TestConversationManager:
         )
         
         mock_state_client.execute_batch.return_value = BatchResult({
-            "background": {
+            "bg_char_001": {
                 "ok": True,
                 "data": {
                     "traits": {"personality_id": "duty_zealot"},
@@ -214,9 +217,12 @@ class TestConversationManager:
         
         result = await manager._handle_background(character_id="char_001", action="read")
         
-        assert "traits" in result
-        assert result["traits"]["personality_id"] == "duty_zealot"
-        assert "backstory" in result
+        # Batch handler returns {char_id: data}
+        assert "char_001" in result
+        char_data = result["char_001"]
+        assert "traits" in char_data
+        assert char_data["traits"]["personality_id"] == "duty_zealot"
+        assert "backstory" in char_data
         
         # Verify batch query
         mock_state_client.execute_batch.assert_called_once()
@@ -224,21 +230,21 @@ class TestConversationManager:
         queries = batch_arg.build()
         
         query_ids = [q["id"] for q in queries]
-        assert "background" in query_ids
+        assert "bg_char_001" in query_ids
         
-        bg_query = next(q for q in queries if q["id"] == "background")
+        bg_query = next(q for q in queries if q["id"] == "bg_char_001")
         assert bg_query["resource"] == "memory.background"
     
     @pytest.mark.asyncio
     async def test_handle_get_background_failure(self, mock_state_client):
-        """Test _handle_background(action='read') returns empty dict on failure."""
+        """Test _handle_background(action='read') returns error in result dict on failure."""
         manager = ConversationManager(
             llm_client=MagicMock(),
             state_client=mock_state_client,
         )
         
         mock_state_client.execute_batch.return_value = BatchResult({
-            "background": {
+            "bg_char_001": {
                 "ok": False,
                 "error": "Character not found",
             },
@@ -246,7 +252,8 @@ class TestConversationManager:
         
         result = await manager._handle_background(character_id="char_001", action="read")
         
-        assert result == {}
+        assert "char_001" in result
+        assert "error" in result["char_001"]
     
     @patch("talker_service.dialogue.conversation.resolve_personality")
     @patch("talker_service.dialogue.conversation.get_faction_description")
@@ -346,8 +353,8 @@ class TestConversationManager:
         mock_get_faction.return_value = "Duty faction description..."
         mock_resolve_personality.return_value = "Zealot personality..."
         
-        # Mock LLM response with [SPEAKER: id] format via complete_with_tools
-        mock_llm_client.complete_with_tools.return_value = LLMToolResponse(
+        # Mock LLM response with [SPEAKER: id] format via complete_with_tool_loop
+        mock_llm_client.complete_with_tool_loop.return_value = LLMToolResponse(
             text="[SPEAKER: char_001]\nAnother Freedom scum eliminated!"
         )
         
@@ -368,8 +375,8 @@ class TestConversationManager:
         assert "Another Freedom scum eliminated!" in dialogue_text
         
         # Verify LLM was called with proper messages
-        mock_llm_client.complete_with_tools.assert_called_once()
-        call_args = mock_llm_client.complete_with_tools.call_args[0][0]
+        mock_llm_client.complete_with_tool_loop.assert_called_once()
+        call_args = mock_llm_client.complete_with_tool_loop.call_args[0][0]
         assert isinstance(call_args, list)
         assert call_args[0].role == "system"
         assert call_args[1].role == "user"
@@ -414,7 +421,7 @@ class TestConversationManager:
             },
         })
         
-        mock_llm_client.complete_with_tools.return_value = LLMToolResponse(
+        mock_llm_client.complete_with_tool_loop.return_value = LLMToolResponse(
             text="[SPEAKER: char_001]\nFreedom eliminated!"
         )
         
@@ -439,7 +446,7 @@ class TestConversationManager:
         assert "mem_summaries" in query_ids
         
         # Verify LLM messages include memory context
-        call_args = mock_llm_client.complete_with_tools.call_args[0][0]
+        call_args = mock_llm_client.complete_with_tool_loop.call_args[0][0]
         assert len(call_args) == 3  # system, memory context, event
         assert call_args[1].role == "system"
         # Memory context shows entry counts, not full text
@@ -470,7 +477,7 @@ class TestConversationManager:
         mock_resolve_personality.return_value = "Zealot personality..."
         
         # Mock LLM returning speaker NOT in candidates list
-        mock_llm_client.complete_with_tools.return_value = LLMToolResponse(
+        mock_llm_client.complete_with_tool_loop.return_value = LLMToolResponse(
             text="[SPEAKER: char_999]\nInvalid speaker!"
         )
         
@@ -514,7 +521,7 @@ class TestConversationManager:
         mock_resolve_personality.return_value = "Zealot personality..."
         
         # Mock LLM returning plain text without speaker tag
-        mock_llm_client.complete_with_tools.return_value = LLMToolResponse(
+        mock_llm_client.complete_with_tool_loop.return_value = LLMToolResponse(
             text="This dialogue has no speaker tag!"
         )
         
@@ -580,7 +587,7 @@ class TestConversationManager:
         })
         mock_state_client.execute_batch.side_effect = [scene_result, mem_result]
         
-        mock_llm_client.complete_with_tools.return_value = LLMToolResponse(
+        mock_llm_client.complete_with_tool_loop.return_value = LLMToolResponse(
             text="[SPEAKER: char_001]\nDuty stands strong!"
         )
         
@@ -592,7 +599,7 @@ class TestConversationManager:
         )
         
         # Verify the system prompt contains enriched world context
-        call_args = mock_llm_client.complete_with_tools.call_args[0][0]
+        call_args = mock_llm_client.complete_with_tool_loop.call_args[0][0]
         system_msg = call_args[0]
         assert system_msg.role == "system"
         # The enriched world should include faction standings
@@ -615,9 +622,9 @@ class TestGetCharacterInfoTool:
         assert func["name"] == "get_character_info"
         params = func["parameters"]
         assert params["type"] == "object"
-        assert "character_id" in params["properties"]
-        assert params["properties"]["character_id"]["type"] == "string"
-        assert params["required"] == ["character_id"]
+        assert "character_ids" in params["properties"]
+        assert params["properties"]["character_ids"]["type"] == "array"
+        assert params["required"] == ["character_ids"]
 
     def test_tools_list_contains_all_three(self):
         """7.7: Verify TOOLS list contains all 3 tool definitions."""
@@ -663,21 +670,23 @@ class TestGetCharacterInfoTool:
         }
 
         mock_state_client.execute_batch.return_value = BatchResult({
-            "char_info": {"ok": True, "data": char_info_response},
+            "ci_12467": {"ok": True, "data": char_info_response},
         })
 
         result = await manager._handle_get_character_info(character_id="12467")
 
-        assert result["character"]["game_id"] == "12467"
-        assert result["character"]["gender"] == "male"
-        assert len(result["squad_members"]) == 1
+        # Batch handler returns {char_id: data}
+        assert "12467" in result
+        assert result["12467"]["character"]["game_id"] == "12467"
+        assert result["12467"]["character"]["gender"] == "male"
+        assert len(result["12467"]["squad_members"]) == 1
 
         # Verify batch query structure
         mock_state_client.execute_batch.assert_called_once()
         batch_arg = mock_state_client.execute_batch.call_args[0][0]
         queries = batch_arg.build()
         assert len(queries) == 1
-        assert queries[0]["id"] == "char_info"
+        assert queries[0]["id"] == "ci_12467"
         assert queries[0]["resource"] == "query.character_info"
         assert queries[0]["params"]["id"] == "12467"
 
@@ -690,7 +699,7 @@ class TestGetCharacterInfoTool:
         )
 
         mock_state_client.execute_batch.return_value = BatchResult({
-            "char_info": {
+            "ci_100": {
                 "ok": True,
                 "data": {
                     "character": {"game_id": "100", "name": "Loner", "faction": "stalker", "gender": "male", "background": None},
@@ -700,7 +709,7 @@ class TestGetCharacterInfoTool:
         })
 
         result = await manager._handle_get_character_info(character_id="100")
-        assert result["squad_members"] == []
+        assert result["100"]["squad_members"] == []
 
     @pytest.mark.asyncio
     async def test_handle_get_character_info_failure(self, mock_state_client):
@@ -711,11 +720,12 @@ class TestGetCharacterInfoTool:
         )
 
         mock_state_client.execute_batch.return_value = BatchResult({
-            "char_info": {"ok": False, "error": "Character not found: 99999"},
+            "ci_99999": {"ok": False, "error": "Character not found: 99999"},
         })
 
         result = await manager._handle_get_character_info(character_id="99999")
-        assert "error" in result
+        assert "99999" in result
+        assert "error" in result["99999"]
 
     @pytest.mark.asyncio
     async def test_handle_get_character_info_exception(self, mock_state_client):
@@ -728,7 +738,7 @@ class TestGetCharacterInfoTool:
         mock_state_client.execute_batch.side_effect = TimeoutError("timed out")
 
         result = await manager._handle_get_character_info(character_id="12467")
-        assert "error" in result
+        assert "error" in result  # top-level error when entire batch fails
 
     @patch("talker_service.dialogue.conversation.resolve_faction_name")
     def test_format_tool_result_get_character_info(self, mock_resolve):
@@ -803,7 +813,7 @@ class TestGetCharacterInfoTool:
         sample_world,
         sample_traits,
     ):
-        """7.5: Mock complete_with_tools to call get_character_info, verify dispatch."""
+        """7.5: Verify tool_executor dispatches get_character_info to state client."""
         manager = ConversationManager(
             llm_client=mock_llm_client,
             state_client=mock_state_client,
@@ -812,30 +822,30 @@ class TestGetCharacterInfoTool:
         mock_get_faction.return_value = "Duty faction..."
         mock_resolve_personality.return_value = "Zealot personality..."
 
-        # First call: LLM requests get_character_info tool
+        # Simulate the tool loop calling get_character_info via the executor
         tool_call = ToolCall(
             id="call_1",
             name="get_character_info",
             arguments={"character_id": "char_001"},
         )
-        tool_response = LLMToolResponse(tool_calls=[tool_call])
 
-        # Second call: LLM produces final dialogue
-        final_response = LLMToolResponse(
-            text="[SPEAKER: char_001]\nI know my squad is nearby."
-        )
-
-        mock_llm_client.complete_with_tools.side_effect = [tool_response, final_response]
-
-        # First call: world context enrichment (no scene data in result → skipped)
-        # Second call: pre-fetch returns empty memories
-        # Third call: character info query
         char_info_data = {
             "character": {"game_id": "char_001", "name": "Fanatic", "faction": "dolg", "gender": "male", "background": None},
             "squad_members": [],
         }
+
+        async def _simulate_tool_loop(messages, *, tools=None, tool_executor=None, max_iterations=5):
+            """Mock complete_with_tool_loop that invokes the executor once."""
+            if tool_executor:
+                await tool_executor(tool_call)
+            return LLMToolResponse(
+                text="[SPEAKER: char_001]\nI know my squad is nearby."
+            )
+
+        mock_llm_client.complete_with_tool_loop = AsyncMock(side_effect=_simulate_tool_loop)
+
         mock_state_client.execute_batch.side_effect = [
-            BatchResult({}),  # world context enrichment (no scene/alive keys → no enrichment)
+            BatchResult({}),  # world context enrichment
             BatchResult({"mem_events": {"ok": True, "data": []}, "mem_summaries": {"ok": True, "data": []}}),
             BatchResult({"char_info": {"ok": True, "data": char_info_data}}),
         ]
@@ -850,8 +860,8 @@ class TestGetCharacterInfoTool:
         assert speaker_id == "char_001"
         assert "squad" in dialogue_text.lower()
 
-        # Verify LLM was called twice (tool call + final)
-        assert mock_llm_client.complete_with_tools.call_count == 2
+        # Verify complete_with_tool_loop was called once (loop runs inside)
+        mock_llm_client.complete_with_tool_loop.assert_called_once()
 
         # Verify state client was called for world enrichment, pre-fetch, AND character info
         assert mock_state_client.execute_batch.call_count == 3
