@@ -137,6 +137,12 @@ The game will show HUD notifications if the Python service becomes unavailable:
 - **"TALKER: Python service not responding. AI dialogue disabled."** - Shown when the service hasn't responded for 15 seconds
 - **"TALKER: Python service reconnected. AI dialogue restored."** - Shown when connection is restored
 
+### Native Microphone Capture
+
+Microphone input is handled by a native DLL (`talker_audio.dll`) loaded directly by the game — **no separate bridge process is required for mic capture**. The DLL handles PortAudio capture, energy-based voice activity detection (VAD), and Opus encoding. Audio is streamed directly to the Python service for speech-to-text transcription.
+
+If the DLL is not present, mic features are automatically disabled and the game continues normally.
+
 ### Documentation
 
 See [docs/Python_Service_Setup.md](docs/Python_Service_Setup.md) for detailed setup instructions and configuration options.

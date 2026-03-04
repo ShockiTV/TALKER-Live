@@ -17,7 +17,7 @@
 
 - [x] 2.1 Create `.github/workflows/build-talker-audio.yml` — trigger on `native/**` and workflow file changes
 - [x] 2.2 Configure workflow: `windows-latest`, vcpkg cache, `cmake --build` with MSVC, upload `talker_audio.dll` artifact
-- [ ] 2.3 Verify CI produces a working x64 DLL; commit initial binary to `bin/pollnet/talker_audio.dll`
+- [x] 2.3 Verify CI produces a working x64 DLL; commit initial binary to `bin/pollnet/talker_audio.dll`
 
 ## 3. Lua FFI Binding Module
 

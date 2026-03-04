@@ -1,9 +1,8 @@
-```markdown
 # mic-toggle-state-machine
 
 ## Purpose
 
-Lua-side toggle state machine (`recorder.lua`) that orchestrates mic capture sessions — handles overlapping capture+transcription, VAD auto-stop transitions, HUD priority, and callback delivery. The thin `microphone.lua` wrapper handles hardware state only.
+Lua-side toggle state machine (recorder.lua) that orchestrates mic capture sessions — handles overlapping capture+transcription, VAD auto-stop transitions, HUD priority, and callback delivery. The thin microphone.lua wrapper handles hardware state via native DLL FFI calls.
 
 ## Requirements
 
@@ -13,15 +12,13 @@ Lua-side toggle state machine (`recorder.lua`) that orchestrates mic capture ses
 #### Scenario: Toggle from idle starts capture
 - **WHEN** `recorder.toggle(callback)` is called
 - **AND** the current state is `idle`
-- **THEN** `microphone.start_capture()` is called
-- **AND** `bridge_channel.publish("mic.start", ...)` is sent
+- **THEN** `microphone.start_capture()` is called (which calls `ta_start()` via FFI)
 - **AND** the state transitions to `capturing`
 
 #### Scenario: Toggle from capturing stops and transcribes
 - **WHEN** `recorder.toggle(callback)` is called
 - **AND** the current state is `capturing`
-- **THEN** `microphone.stop_capture()` is called
-- **AND** `bridge_channel.publish("mic.stop", {})` is sent
+- **THEN** `microphone.stop_capture()` is called (which calls `ta_stop()` via FFI)
 - **AND** the state transitions to `transcribing`
 
 #### Scenario: Toggle from transcribing starts new capture
@@ -31,19 +28,25 @@ Lua-side toggle state machine (`recorder.lua`) that orchestrates mic capture ses
 - **AND** the state transitions to `capturing`
 - **AND** the previous transcription callback remains active for delivery
 
-### Requirement: Permanent handler registration
-`recorder.lua` SHALL register permanent handlers via `bridge_channel.on()` for `mic.status`, `mic.stopped`, and `mic.result` topics. These handlers SHALL NOT be session-scoped and SHALL persist across multiple recording sessions.
+### Requirement: VAD auto-stop transition via ta_poll return code
+When the audio tick loop detects `ta_poll() == -1` (VAD silence), it SHALL notify the recorder to transition from `capturing` to `transcribing`. This replaces the previous `bridge_channel.on("mic.stopped", ...)` handler.
 
-#### Scenario: Handlers survive session completion
-- **WHEN** a capture session completes (mic.result received)
-- **AND** a new session is started
-- **THEN** the `mic.status`, `mic.stopped`, and `mic.result` handlers are still active without re-registration
+#### Scenario: VAD silence triggers state transition
+- **WHEN** the audio tick loop detects `ta_poll()` returned `-1`
+- **AND** the recorder's current state is `capturing`
+- **THEN** `microphone.on_stopped()` is called
+- **AND** the state transitions to `transcribing`
+
+#### Scenario: VAD signal while not capturing is ignored
+- **WHEN** the audio tick loop detects `ta_poll()` returned `-1`
+- **AND** the recorder's current state is NOT `capturing`
+- **THEN** no state change occurs
 
 ### Requirement: Callback delivery on mic.result
-When `mic.result` is received with a non-empty `text` field, the recorder SHALL invoke the most recently registered callback with the transcription text and transition to `idle`.
+When `mic.result` is received over the WebSocket from `talker_service`, the recorder SHALL invoke the most recently registered callback with the transcription text and transition to `idle`.
 
 #### Scenario: Result delivered and state transitions
-- **WHEN** `mic.result` arrives with `{text: "Hello world"}`
+- **WHEN** `mic.result` arrives over the service channel WebSocket with `{text: "Hello world"}`
 - **AND** the current state is `transcribing`
 - **THEN** `callback("Hello world")` is invoked
 - **AND** the state transitions to `idle`
@@ -58,22 +61,21 @@ When `mic.result` is received with a non-empty `text` field, the recorder SHALL 
 - **WHEN** `mic.result` arrives with `{text: ""}`
 - **THEN** the callback is NOT invoked
 
-### Requirement: VAD auto-stop transition via mic.stopped
-When `mic.stopped` is received while in `capturing` state, the recorder SHALL transition to `transcribing` (STT is already in progress on the service side).
+### Requirement: Handler registration via service channel
+`recorder.lua` SHALL register a permanent handler via the service channel (not bridge channel) for the `mic.result` topic. The `mic.stopped` and `mic.status` bridge channel handlers are removed â€” VAD auto-stop is handled via `ta_poll()` return codes and status updates come from the service channel.
 
-#### Scenario: VAD silence triggers state transition
-- **WHEN** `mic.stopped` arrives with `{reason: "vad"}`
-- **AND** the current state is `capturing`
-- **THEN** `microphone.on_stopped()` is called
-- **AND** the state transitions to `transcribing`
+#### Scenario: mic.result handler registered on service channel
+- **WHEN** `recorder.register_handlers()` is called
+- **THEN** a handler for `mic.result` is registered on the service channel
+- **AND** no handlers are registered on the bridge channel for mic topics
 
-#### Scenario: mic.stopped while not capturing is ignored
-- **WHEN** `mic.stopped` arrives
-- **AND** the current state is NOT `capturing`
-- **THEN** no state change occurs
+#### Scenario: Handlers survive session completion
+- **WHEN** a capture session completes (mic.result received)
+- **AND** a new session is started
+- **THEN** the `mic.result` handler is still active without re-registration
 
-### Requirement: HUD priority — RECORDING suppresses mic.status
-The `mic.status` handler SHALL suppress incoming status updates when the current state is `capturing`. The "RECORDING" HUD message set by `toggle()` SHALL take priority over any background transcription status.
+### Requirement: HUD priority â€” RECORDING suppresses mic.status
+The `mic.status` handler (if present on the service channel) SHALL suppress incoming status updates when the current state is `capturing`. The "RECORDING" HUD message set by `toggle()` SHALL take priority over any background transcription status.
 
 #### Scenario: mic.status suppressed during capture
 - **WHEN** `mic.status` arrives with `{status: "TRANSCRIBING"}`
@@ -86,32 +88,33 @@ The `mic.status` handler SHALL suppress incoming status updates when the current
 - **THEN** the HUD message is updated to "TRANSCRIBING"
 
 ### Requirement: Thin microphone hardware wrapper
-`microphone.lua` SHALL expose `start_capture(context_type)`, `stop_capture()`, `is_recording()`, and `on_stopped()` as a thin hardware abstraction with no session management or state machine logic.
+`microphone.lua` SHALL expose `start_capture(context_type)`, `stop_capture()`, `is_recording()`, and `on_stopped()` as a thin hardware abstraction. Internally, these call `ta_start()`, `ta_stop()`, etc. via FFI instead of publishing bridge messages.
 
-#### Scenario: start_capture sets recording flag
+#### Scenario: start_capture calls ta_start
 - **WHEN** `microphone.start_capture("dialogue")` is called
-- **THEN** `microphone.is_recording()` returns `true`
+- **THEN** `ta_start()` is called via FFI
+- **AND** `microphone.is_recording()` returns `true`
 
-#### Scenario: stop_capture clears recording flag
+#### Scenario: stop_capture calls ta_stop
 - **WHEN** `microphone.stop_capture()` is called
-- **THEN** `microphone.is_recording()` returns `false`
+- **THEN** `ta_stop()` is called via FFI
+- **AND** `microphone.is_recording()` returns `false`
 
-#### Scenario: on_stopped resets recording without publishing
+#### Scenario: on_stopped resets recording without FFI call
 - **WHEN** `microphone.on_stopped()` is called while recording
 - **THEN** `microphone.is_recording()` returns `false`
-- **AND** no message is published to the bridge
+- **AND** no FFI call is made (DLL already stopped via VAD)
 
 ### Requirement: Game script calls toggle
-`talker_input_mic.script` SHALL call `recorder.toggle(callback)` on key press, replacing the previous `recorder.start()` call.
+`talker_input_mic.script` SHALL call `recorder.toggle(callback)` on key press.
 
 #### Scenario: Key press invokes toggle
 - **WHEN** the player presses the mic capture key
 - **THEN** `recorder.toggle(transcribe_finished_callback)` is called
 
 ### Requirement: Test reset function
-`recorder._reset()` SHALL reset the recorder state to `idle` for test isolation. This replaces the removed `recorder.cancel()`.
+`recorder._reset()` SHALL reset the recorder state to `idle` for test isolation.
 
 #### Scenario: Reset clears state
 - **WHEN** `recorder._reset()` is called
 - **THEN** `recorder.state()` returns `"idle"`
-```

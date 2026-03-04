@@ -22,7 +22,7 @@ Lua tick: ta_poll() == -1 → VAD stopped → WS send mic.audio.end → service
 **Goals:**
 - Eliminate `talker_bridge` as a dependency for mic capture workflows
 - Ship a native DLL with PortAudio + Opus statically linked, built via GitHub Actions
-- Provide a complete poll-based C API (16 functions) covering capture lifecycle, VAD config, device selection, and Opus tuning
+- Provide a complete poll-based C API (14 functions) covering capture lifecycle, VAD config, device selection, and Opus tuning
 - Maintain the existing recorder state machine (`idle → capturing → transcribing`) and user-facing behavior
 - Accept Opus-encoded audio in `talker_service` STT pipeline
 - Graceful fallback when DLL is absent (mic features disabled, no crash)
@@ -73,9 +73,9 @@ The DLL drains all remaining buffered chunks before returning the stop signal, e
 
 **Rationale:** This eliminates any need for callbacks, shared memory signals, or IPC. The polling model maps naturally to the existing `bridge_channel.tick()` cadence.
 
-### Decision 5: Full API surface from day one (16 functions)
+### Decision 5: Full API surface from day one (14 functions)
 
-**Choice:** Export all 16 functions including device selection and Opus config, even though defaults suffice for Phase 1.
+**Choice:** Export all 14 functions including device selection and Opus config, even though defaults suffice for Phase 1.
 
 **Rationale:** Changing a DLL's exported API is more disruptive than changing Lua code (binary compatibility). Unused setters cost ~3 lines of C each. The Lua side can call them later without requiring a new DLL build.
 
@@ -96,7 +96,7 @@ The DLL drains all remaining buffered chunks before returning the stop signal, e
 
 ## Risks / Trade-offs
 
-**[Audio device conflicts]** → PortAudio and the game engine both access audio hardware. PortAudio uses a separate capture device (microphone) while the game uses playback devices, so conflicts are unlikely. If issues arise, PortAudio's device enumeration API (`ta_list_devices()`, `ta_set_device()`) allows explicit device selection.
+**[Audio device conflicts]** → PortAudio and the game engine both access audio hardware. PortAudio uses a separate capture device (microphone) while the game uses playback devices, so conflicts are unlikely. If issues arise, PortAudio's device enumeration API (`ta_get_device_count()`, `ta_get_device_name()`, `ta_set_device()`) allows explicit device selection.
 
 **[Game hitches during capture]** → If the game stutters (>2s), the ring buffer may fill. Mitigation: 4-second ring buffer (~200 Opus frames at 20ms each). If it overflows, oldest frames are dropped — acceptable for voice capture. VAD silence timer would also trigger during a stall, which is correct behavior.
 
