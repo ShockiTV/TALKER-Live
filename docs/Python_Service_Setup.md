@@ -268,6 +268,64 @@ LOG_FILE=logs/talker_service.log
 
 
 
+### Conversation Growing Too Large
+
+
+
+If you see "Pruning conversation" in the logs frequently, the context window is being managed automatically. This is normal for long play sessions. If you experience issues:
+
+1. Check logs for `Pruning conversation: X tokens > Y threshold` messages
+2. The service automatically prunes to 50% of context when reaching 75% capacity (96k/128k tokens)
+3. System prompts and recent dialogue are always preserved
+4. To disable pruning, set `ENABLE_CONTEXT_PRUNING=false` in `.env`
+5. To disable conversation persistence entirely, set `ENABLE_CONVERSATION_PERSISTENCE=false`
+
+
+
+## Conversation Persistence
+
+
+
+Each connected game session maintains its own persistent conversation history with the LLM. This means NPCs retain context from previous events within the same session — the LLM remembers what dialogue it generated earlier and can reference past interactions.
+
+
+
+### How It Works
+
+
+
+- When a game connects via WebSocket, a **per-session LLM client** is created
+- Each event (death, artifact found, etc.) appends messages to the session's conversation
+- The LLM sees the full conversation history, enabling it to generate more contextual dialogue
+- When the session disconnects (game closes), the conversation is discarded
+
+
+
+### Context Window Management
+
+
+
+The LLM has a finite context window (128k tokens for GPT-4o). To prevent exceeding it:
+
+- **Threshold**: At 75% capacity (~96k tokens), automatic pruning triggers
+- **Target**: Conversation is pruned down to 50% capacity (~64k tokens)
+- **Priority**: System prompts and recent messages are always kept; older dialogue and tool results are removed first
+
+Pruning events are logged at INFO level in the service logs.
+
+
+
+### Feature Flags
+
+
+
+| Environment Variable | Description | Default |
+|---------------------|-------------|---------|
+| `ENABLE_CONVERSATION_PERSISTENCE` | Keep conversation history across events | `true` |
+| `ENABLE_CONTEXT_PRUNING` | Auto-prune when context window fills up | `true` |
+
+
+
 ## Architecture
 
 ```

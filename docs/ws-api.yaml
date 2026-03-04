@@ -404,6 +404,42 @@ messages:
         description: "Query player rank and reputation"
         params: {}
         returns: "Object with rank and reputation fields"
+      query.character_info:
+        description: "Query detailed character info including gender, background, and squad members. Supports batch queries (one sub-query per character)."
+        params:
+          id: { type: string, required: true, description: "Character game_id" }
+        returns: >
+          Object with 'character' (Character object with gender, background,
+          experience, faction) and 'squad_members' (array of Character objects).
+
+    batch_patterns:
+      description: >
+        ConversationManager uses LLM tool-calling with these batch patterns.
+        The LLM decides which tools to call; the service dispatches them to
+        state.query.batch sub-queries.
+      background_batch:
+        description: >
+          The 'background' tool accepts character_ids (array, max 10) for
+          batch reads. Each ID becomes a memory.background sub-query with
+          id="bg_{character_id}". Returns {character_id: background_data}.
+        example_tool_call: >
+          background(character_ids=["npc_1", "npc_2", "npc_3"], action="read")
+      get_character_info_batch:
+        description: >
+          The 'get_character_info' tool accepts character_ids (array, max 10).
+          Each ID becomes a query.character_info sub-query with
+          id="ci_{character_id}". Returns {character_id: info_data}.
+        example_tool_call: >
+          get_character_info(character_ids=["npc_1", "npc_2"])
+      get_memories_single:
+        description: >
+          The 'get_memories' tool accepts a single character_id (the chosen
+          speaker) and an optional 'tiers' array. If tiers is omitted, all
+          four tiers are returned: events, summaries, digests, cores.
+          Each tier becomes a memory.{tier} sub-query.
+        example_tool_call: >
+          get_memories(character_id="npc_1")
+          get_memories(character_id="npc_1", tiers=["events", "cores"])
 
     filter_document:
       description: "MongoDB-style query filter applied to result arrays"

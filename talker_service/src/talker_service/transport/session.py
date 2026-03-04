@@ -4,11 +4,14 @@ from __future__ import annotations
 
 import time
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 from fastapi import WebSocket
 
 from .outbox import Outbox
+
+if TYPE_CHECKING:
+    from ..llm.base import LLMClient
 
 
 # Default session_id when auth is disabled (local single-player mode)
@@ -41,6 +44,9 @@ class SessionContext:
 
     last_activity: float = field(default_factory=time.monotonic)
     """Monotonic timestamp of last inbound or outbound activity."""
+
+    llm_client: LLMClient | None = field(default=None, repr=False)
+    """Per-session LLM client with isolated conversation state."""
 
     def touch(self) -> None:
         """Update last_activity to now."""

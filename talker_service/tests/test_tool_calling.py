@@ -5,14 +5,16 @@ Covers:
 - Message.tool_result() factory and Message.to_dict() with tool fields (5.2)
 - BaseLLMClient._parse_tool_calls() (5.3)
 - BaseLLMClient._build_tool_response() (5.4)
-- OpenAIClient.complete_with_tools() (5.5)
+- OpenAIClient.complete_with_tools() via Responses API (5.5)
 - OllamaClient.complete_with_tools() (5.6)
-- ConversationManager tool loop (5.7)
-- _handle_background() handler (5.8)
+- OpenAIClient.complete_with_tool_loop() native Responses API tool loop (5.7)
+- ConversationManager tool loop (5.8)
+- _handle_background() handler (5.9)
 """
 
 import json
 
+import openai
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -22,7 +24,7 @@ from talker_service.llm.models import (
     ToolCall,
     ToolResult,
 )
-from talker_service.llm.base import BaseLLMClient, LLMError
+from talker_service.llm.base import BaseLLMClient, LLMError, RateLimitError
 from talker_service.llm.openai_client import OpenAIClient
 from talker_service.llm.openrouter_client import OpenRouterClient
 from talker_service.llm.ollama_client import OllamaClient
@@ -314,12 +316,41 @@ class TestBuildToolResponse:
 
 
 # -----------------------------------------------------------------------
-# 5.5  OpenAIClient.complete_with_tools()
+# 5.5  OpenAIClient.complete_with_tools() — Responses API
 # -----------------------------------------------------------------------
 
 
+def _mock_function_call(call_id="call_abc", name="get_memories", arguments='{"character_id": "1", "tiers": ["events"]}'):
+    """Build a mock ResponseFunctionToolCall object."""
+    item = MagicMock()
+    item.type = "function_call"
+    item.call_id = call_id
+    item.name = name
+    item.arguments = arguments
+    return item
+
+
+def _mock_output_message(text="[SPEAKER: npc1] Hello"):
+    """Build a mock ResponseOutputMessage object."""
+    content_item = MagicMock()
+    content_item.type = "output_text"
+    content_item.text = text
+    msg = MagicMock()
+    msg.type = "message"
+    msg.content = [content_item]
+    return msg
+
+
+def _mock_responses_api(response_id="resp_abc123", output=None):
+    """Build a mock Responses API Response object."""
+    resp = MagicMock()
+    resp.id = response_id
+    resp.output = output or []
+    return resp
+
+
 class TestOpenAICompleteWithTools:
-    """Tests for OpenAIClient.complete_with_tools()."""
+    """Tests for OpenAIClient.complete_with_tools() via Responses API."""
 
     @pytest.fixture
     def tools(self):
@@ -341,58 +372,35 @@ class TestOpenAICompleteWithTools:
     async def test_tool_call_response(self, sample_messages, tools):
         client = OpenAIClient(api_key="test-key", timeout=10.0)
 
-        api_response = {
-            "choices": [
-                {
-                    "message": {
-                        "content": None,
-                        "tool_calls": [
-                            {
-                                "id": "call_abc",
-                                "type": "function",
-                                "function": {
-                                    "name": "get_memories",
-                                    "arguments": '{"character_id": "1", "tiers": ["events"]}',
-                                },
-                            }
-                        ],
-                    }
-                }
-            ]
-        }
+        tool_call_item = _mock_function_call(
+            call_id="call_abc",
+            name="get_memories",
+            arguments='{"character_id": "1", "tiers": ["events"]}',
+        )
+        mock_resp = _mock_responses_api(response_id="resp_1", output=[tool_call_item])
+        client._client.responses.create = AsyncMock(return_value=mock_resp)
 
-        mock_resp = MagicMock()
-        mock_resp.status_code = 200
-        mock_resp.json.return_value = api_response
-
-        with patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
-            mock_post.return_value = mock_resp
-            result = await client.complete_with_tools(sample_messages, tools)
+        result = await client.complete_with_tools(sample_messages, tools)
 
         assert result.has_tool_calls
         assert result.tool_calls[0].name == "get_memories"
+        assert result.tool_calls[0].id == "call_abc"
 
-        # Verify tools were in the request body
-        call_kwargs = mock_post.call_args
-        body = call_kwargs[1]["json"]
-        assert "tools" in body
-        assert body["tools"] == tools
+        # Verify tools were converted and passed
+        call_kwargs = client._client.responses.create.call_args[1]
+        assert "tools" in call_kwargs
+        # Converted to Responses format: no nested "function" key
+        assert call_kwargs["tools"][0]["name"] == "get_memories"
 
     @pytest.mark.asyncio
     async def test_text_response(self, sample_messages, tools):
         client = OpenAIClient(api_key="test-key", timeout=10.0)
 
-        api_response = {
-            "choices": [{"message": {"content": "[SPEAKER: npc1] Hello"}}]
-        }
+        text_item = _mock_output_message("[SPEAKER: npc1] Hello")
+        mock_resp = _mock_responses_api(response_id="resp_2", output=[text_item])
+        client._client.responses.create = AsyncMock(return_value=mock_resp)
 
-        mock_resp = MagicMock()
-        mock_resp.status_code = 200
-        mock_resp.json.return_value = api_response
-
-        with patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
-            mock_post.return_value = mock_resp
-            result = await client.complete_with_tools(sample_messages, tools)
+        result = await client.complete_with_tools(sample_messages, tools)
 
         assert not result.has_tool_calls
         assert result.text == "[SPEAKER: npc1] Hello"
@@ -401,26 +409,379 @@ class TestOpenAICompleteWithTools:
     async def test_rate_limit_retry(self, sample_messages, tools):
         client = OpenAIClient(api_key="test-key", timeout=10.0, max_retries=2)
 
-        rate_resp = MagicMock()
-        rate_resp.status_code = 429
-        rate_resp.text = "Rate limited"
+        text_item = _mock_output_message("ok")
+        ok_resp = _mock_responses_api(response_id="resp_ok", output=[text_item])
 
-        ok_resp = MagicMock()
-        ok_resp.status_code = 200
-        ok_resp.json.return_value = {"choices": [{"message": {"content": "ok"}}]}
+        rate_err = openai.RateLimitError(
+            message="Rate limited",
+            response=MagicMock(status_code=429, headers={}),
+            body=None,
+        )
+        client._client.responses.create = AsyncMock(side_effect=[rate_err, ok_resp])
 
-        with patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
-            mock_post.side_effect = [rate_resp, ok_resp]
-            with patch("asyncio.sleep", new_callable=AsyncMock):
-                result = await client.complete_with_tools(sample_messages, tools)
+        with patch("asyncio.sleep", new_callable=AsyncMock):
+            result = await client.complete_with_tools(sample_messages, tools)
 
         assert result.text == "ok"
-        assert mock_post.call_count == 2
+        assert client._client.responses.create.call_count == 2
+
+
+class TestConvertTools:
+    """Tests for OpenAIClient._convert_tools()."""
+
+    def test_converts_chat_completions_format(self):
+        """Chat Completions tools are flattened for Responses API."""
+        tools = [
+            {
+                "type": "function",
+                "function": {
+                    "name": "get_memories",
+                    "description": "Recall memories",
+                    "parameters": {"type": "object", "properties": {"id": {"type": "string"}}},
+                },
+            }
+        ]
+        result = OpenAIClient._convert_tools(tools)
+        assert len(result) == 1
+        assert result[0]["type"] == "function"
+        assert result[0]["name"] == "get_memories"
+        assert result[0]["description"] == "Recall memories"
+        assert "function" not in result[0]
+
+    def test_passthrough_already_flat(self):
+        """Tools already in Responses format pass through."""
+        tools = [{"type": "function", "name": "t", "parameters": {}}]
+        result = OpenAIClient._convert_tools(tools)
+        assert result == tools
+
+    def test_empty_list(self):
+        assert OpenAIClient._convert_tools([]) == []
+
+
+class TestResponseIdThreading:
+    """Tests for previous_response_id conversation threading."""
+
+    @pytest.fixture
+    def tools(self):
+        return [{"type": "function", "function": {"name": "t", "parameters": {}}}]
+
+    @pytest.fixture
+    def sample_messages(self):
+        return [Message.system("sys"), Message.user("hi")]
+
+    @pytest.mark.asyncio
+    async def test_first_call_has_no_previous_id(self, sample_messages, tools):
+        client = OpenAIClient(api_key="test-key", timeout=10.0)
+        assert client._last_response_id is None
+
+        text_item = _mock_output_message("first")
+        mock_resp = _mock_responses_api(response_id="resp_1", output=[text_item])
+        client._client.responses.create = AsyncMock(return_value=mock_resp)
+
+        await client.complete_with_tools(sample_messages, tools)
+
+        call_kwargs = client._client.responses.create.call_args[1]
+        assert "previous_response_id" not in call_kwargs
+        assert client._last_response_id == "resp_1"
+
+    @pytest.mark.asyncio
+    async def test_second_call_threads_previous_id(self, sample_messages, tools):
+        client = OpenAIClient(api_key="test-key", timeout=10.0)
+
+        resp1 = _mock_responses_api(response_id="resp_1", output=[_mock_output_message("first")])
+        resp2 = _mock_responses_api(response_id="resp_2", output=[_mock_output_message("second")])
+        client._client.responses.create = AsyncMock(side_effect=[resp1, resp2])
+
+        await client.complete_with_tools(sample_messages, tools)
+        await client.complete_with_tools(sample_messages, tools)
+
+        second_call_kwargs = client._client.responses.create.call_args_list[1][1]
+        assert second_call_kwargs["previous_response_id"] == "resp_1"
+        assert client._last_response_id == "resp_2"
+
+
+class TestNotFoundErrorRecovery:
+    """Tests for NotFoundError recovery (expired/invalid previous_response_id)."""
+
+    @pytest.fixture
+    def tools(self):
+        return [{"type": "function", "function": {"name": "t", "parameters": {}}}]
+
+    @pytest.fixture
+    def sample_messages(self):
+        return [Message.system("sys"), Message.user("hi")]
+
+    @pytest.mark.asyncio
+    async def test_not_found_clears_thread_and_retries(self, sample_messages, tools):
+        client = OpenAIClient(api_key="test-key", timeout=10.0, max_retries=3)
+        client._last_response_id = "resp_expired"
+
+        text_item = _mock_output_message("recovered")
+        ok_resp = _mock_responses_api(response_id="resp_new", output=[text_item])
+
+        not_found_err = openai.NotFoundError(
+            message="Response not found",
+            response=MagicMock(status_code=404, headers={}),
+            body=None,
+        )
+        client._client.responses.create = AsyncMock(side_effect=[not_found_err, ok_resp])
+
+        result = await client.complete_with_tools(sample_messages, tools)
+
+        assert result.text == "recovered"
+        assert client._last_response_id == "resp_new"
+        # First call had previous_response_id, second did not
+        first_call_kwargs = client._client.responses.create.call_args_list[0][1]
+        second_call_kwargs = client._client.responses.create.call_args_list[1][1]
+        assert first_call_kwargs["previous_response_id"] == "resp_expired"
+        assert "previous_response_id" not in second_call_kwargs
+
+    @pytest.mark.asyncio
+    async def test_reset_conversation_clears_thread_id(self):
+        client = OpenAIClient(api_key="test-key", timeout=10.0)
+        client._last_response_id = "resp_123"
+        client._conversation = [Message.system("sys")]
+
+        client.reset_conversation()
+
+        assert client._last_response_id is None
+        assert client.get_conversation() == []
+
+    @pytest.mark.asyncio
+    async def test_bad_request_with_stale_thread_clears_and_retries(self, sample_messages, tools):
+        """BadRequestError from stale previous_response_id clears state and retries."""
+        client = OpenAIClient(api_key="test-key", timeout=10.0, max_retries=3)
+        client._last_response_id = "resp_stale_with_unresolved_tools"
+
+        text_item = _mock_output_message("recovered")
+        ok_resp = _mock_responses_api(response_id="resp_fresh", output=[text_item])
+
+        bad_request_err = openai.BadRequestError(
+            message="No tool output found for function call call_abc",
+            response=MagicMock(status_code=400, headers={}),
+            body=None,
+        )
+        client._client.responses.create = AsyncMock(side_effect=[bad_request_err, ok_resp])
+
+        result = await client.complete_with_tools(sample_messages, tools)
+
+        assert result.text == "recovered"
+        assert client._last_response_id == "resp_fresh"
+        # First call had previous_response_id, second did not
+        first_kwargs = client._client.responses.create.call_args_list[0][1]
+        second_kwargs = client._client.responses.create.call_args_list[1][1]
+        assert first_kwargs["previous_response_id"] == "resp_stale_with_unresolved_tools"
+        assert "previous_response_id" not in second_kwargs
+
+    @pytest.mark.asyncio
+    async def test_bad_request_without_thread_raises(self, sample_messages, tools):
+        """BadRequestError without an active thread is not recoverable."""
+        client = OpenAIClient(api_key="test-key", timeout=10.0, max_retries=3)
+        client._last_response_id = None  # No active thread
+
+        bad_request_err = openai.BadRequestError(
+            message="Invalid parameter",
+            response=MagicMock(status_code=400, headers={}),
+            body=None,
+        )
+        client._client.responses.create = AsyncMock(side_effect=bad_request_err)
+
+        with pytest.raises(LLMError, match="OpenAI API error"):
+            await client.complete_with_tools(sample_messages, tools)
 
 
 # -----------------------------------------------------------------------
-# 5.6  OllamaClient.complete_with_tools() — synthetic ID generation
+# 5.7  OpenAIClient.complete_with_tool_loop() — native Responses API
 # -----------------------------------------------------------------------
+
+
+class TestNativeToolLoop:
+    """Tests for OpenAIClient.complete_with_tool_loop() native Responses API loop."""
+
+    @pytest.fixture
+    def tools(self):
+        return [{"type": "function", "function": {"name": "get_memories", "parameters": {}}}]
+
+    @pytest.fixture
+    def sample_messages(self):
+        return [Message.system("sys"), Message.user("event")]
+
+    @staticmethod
+    async def _dummy_executor(tc: ToolCall) -> str:
+        return '{"events": []}'
+
+    @pytest.mark.asyncio
+    async def test_text_response_no_tools(self, sample_messages, tools):
+        """LLM returns text directly without calling any tools."""
+        client = OpenAIClient(api_key="test-key", timeout=10.0)
+        text_item = _mock_output_message("[SPEAKER: npc1] Hello")
+        resp = _mock_responses_api(response_id="resp_1", output=[text_item])
+        client._client.responses.create = AsyncMock(return_value=resp)
+
+        result = await client.complete_with_tool_loop(
+            sample_messages, tools, tool_executor=self._dummy_executor,
+        )
+
+        assert result.text == "[SPEAKER: npc1] Hello"
+        assert not result.has_tool_calls
+        assert client._last_response_id == "resp_1"
+        assert client._client.responses.create.call_count == 1
+
+    @pytest.mark.asyncio
+    async def test_tool_call_then_text(self, sample_messages, tools):
+        """LLM calls a tool, gets result, then produces text."""
+        client = OpenAIClient(api_key="test-key", timeout=10.0)
+
+        tool_item = _mock_function_call(call_id="call_1", name="get_memories", arguments='{}')
+        resp1 = _mock_responses_api(response_id="resp_1", output=[tool_item])
+        text_item = _mock_output_message("[SPEAKER: npc1] Done")
+        resp2 = _mock_responses_api(response_id="resp_2", output=[text_item])
+        client._client.responses.create = AsyncMock(side_effect=[resp1, resp2])
+
+        result = await client.complete_with_tool_loop(
+            sample_messages, tools, tool_executor=self._dummy_executor,
+        )
+
+        assert result.text == "[SPEAKER: npc1] Done"
+        assert client._last_response_id == "resp_2"
+        assert client._client.responses.create.call_count == 2
+
+    @pytest.mark.asyncio
+    async def test_function_call_output_sent_natively(self, sample_messages, tools):
+        """Tool results are sent as native function_call_output items."""
+        client = OpenAIClient(api_key="test-key", timeout=10.0)
+
+        tool_item = _mock_function_call(call_id="call_abc", name="get_memories", arguments='{}')
+        resp1 = _mock_responses_api(response_id="resp_1", output=[tool_item])
+        text_item = _mock_output_message("ok")
+        resp2 = _mock_responses_api(response_id="resp_2", output=[text_item])
+        client._client.responses.create = AsyncMock(side_effect=[resp1, resp2])
+
+        async def executor(tc: ToolCall) -> str:
+            return '{"events": ["saw wolf"]}'
+
+        await client.complete_with_tool_loop(
+            sample_messages, tools, tool_executor=executor,
+        )
+
+        # Second call should have function_call_output items + previous_response_id
+        second_kwargs = client._client.responses.create.call_args_list[1][1]
+        assert second_kwargs["previous_response_id"] == "resp_1"
+        assert len(second_kwargs["input"]) == 1
+        assert second_kwargs["input"][0] == {
+            "type": "function_call_output",
+            "call_id": "call_abc",
+            "output": '{"events": ["saw wolf"]}',
+        }
+
+    @pytest.mark.asyncio
+    async def test_multiple_tool_calls_all_outputs_sent(self, sample_messages, tools):
+        """Multiple tool calls in one response produce multiple function_call_output items."""
+        client = OpenAIClient(api_key="test-key", timeout=10.0)
+
+        tc1 = _mock_function_call(call_id="call_1", name="get_memories", arguments='{}')
+        tc2 = _mock_function_call(call_id="call_2", name="background", arguments='{}')
+        resp1 = _mock_responses_api(response_id="resp_1", output=[tc1, tc2])
+        text_item = _mock_output_message("done")
+        resp2 = _mock_responses_api(response_id="resp_2", output=[text_item])
+        client._client.responses.create = AsyncMock(side_effect=[resp1, resp2])
+
+        called_ids = []
+        async def executor(tc: ToolCall) -> str:
+            called_ids.append(tc.id)
+            return f'result_{tc.id}'
+
+        await client.complete_with_tool_loop(
+            sample_messages, tools, tool_executor=executor,
+        )
+
+        assert called_ids == ["call_1", "call_2"]
+        second_input = client._client.responses.create.call_args_list[1][1]["input"]
+        assert len(second_input) == 2
+        assert second_input[0]["call_id"] == "call_1"
+        assert second_input[1]["call_id"] == "call_2"
+
+    @pytest.mark.asyncio
+    async def test_max_iterations_returns_empty(self, sample_messages, tools):
+        """Exhausting max iterations returns empty text."""
+        client = OpenAIClient(api_key="test-key", timeout=10.0)
+
+        tool_item = _mock_function_call(call_id="call_1", name="t", arguments='{}')
+        # Always return tool calls
+        client._client.responses.create = AsyncMock(
+            return_value=_mock_responses_api(response_id="resp_loop", output=[tool_item])
+        )
+
+        result = await client.complete_with_tool_loop(
+            sample_messages, tools, tool_executor=self._dummy_executor,
+            max_iterations=2,
+        )
+
+        assert result.text == ""
+        assert client._client.responses.create.call_count == 2
+
+    @pytest.mark.asyncio
+    async def test_cross_event_threading(self, tools):
+        """The first call in a new event uses the previous event's response_id."""
+        client = OpenAIClient(api_key="test-key", timeout=10.0)
+
+        # Simulate a previous event having set _last_response_id
+        client._last_response_id = "resp_prev_event"
+
+        text_item = _mock_output_message("reply")
+        resp = _mock_responses_api(response_id="resp_new", output=[text_item])
+        client._client.responses.create = AsyncMock(return_value=resp)
+
+        await client.complete_with_tool_loop(
+            [Message.system("sys"), Message.user("new_event")],
+            tools, tool_executor=self._dummy_executor,
+        )
+
+        first_kwargs = client._client.responses.create.call_args_list[0][1]
+        assert first_kwargs["previous_response_id"] == "resp_prev_event"
+        assert client._last_response_id == "resp_new"
+
+    @pytest.mark.asyncio
+    async def test_not_found_recovery_on_first_call(self, sample_messages, tools):
+        """NotFoundError on first call recovers by clearing stale state."""
+        client = OpenAIClient(api_key="test-key", timeout=10.0, max_retries=3)
+        client._last_response_id = "resp_expired"
+
+        not_found_err = openai.NotFoundError(
+            message="Not found", response=MagicMock(status_code=404, headers={}), body=None,
+        )
+        text_item = _mock_output_message("recovered")
+        ok_resp = _mock_responses_api(response_id="resp_fresh", output=[text_item])
+        client._client.responses.create = AsyncMock(side_effect=[not_found_err, ok_resp])
+
+        result = await client.complete_with_tool_loop(
+            sample_messages, tools, tool_executor=self._dummy_executor,
+        )
+
+        assert result.text == "recovered"
+        assert client._last_response_id == "resp_fresh"
+
+    @pytest.mark.asyncio
+    async def test_rate_limit_retry_in_loop(self, sample_messages, tools):
+        """Rate limit on continuation call is retried."""
+        client = OpenAIClient(api_key="test-key", timeout=10.0, max_retries=3)
+
+        tool_item = _mock_function_call(call_id="call_1", name="t", arguments='{}')
+        resp1 = _mock_responses_api(response_id="resp_1", output=[tool_item])
+        rate_err = openai.RateLimitError(
+            message="Rate limited", response=MagicMock(status_code=429, headers={}), body=None,
+        )
+        text_item = _mock_output_message("done")
+        resp3 = _mock_responses_api(response_id="resp_2", output=[text_item])
+        client._client.responses.create = AsyncMock(side_effect=[resp1, rate_err, resp3])
+
+        with patch("asyncio.sleep", new_callable=AsyncMock):
+            result = await client.complete_with_tool_loop(
+                sample_messages, tools, tool_executor=self._dummy_executor,
+            )
+
+        assert result.text == "done"
+        assert client._client.responses.create.call_count == 3
 
 
 class TestOllamaCompleteWithTools:
@@ -488,7 +849,7 @@ class TestOllamaCompleteWithTools:
 
 
 # -----------------------------------------------------------------------
-# 5.7  ConversationManager tool loop
+# 5.8  ConversationManager tool loop
 # -----------------------------------------------------------------------
 
 
@@ -545,7 +906,7 @@ class TestConversationManagerToolLoop:
     @pytest.mark.asyncio
     async def test_direct_text_response_no_tools(self, manager, mock_llm_client, event_data, candidates, traits):
         """LLM returns text directly without calling any tools."""
-        mock_llm_client.complete_with_tools.return_value = LLMToolResponse(
+        mock_llm_client.complete_with_tool_loop.return_value = LLMToolResponse(
             text="[SPEAKER: wolf] That's what you get!",
             tool_calls=[],
         )
@@ -554,74 +915,65 @@ class TestConversationManagerToolLoop:
 
         assert speaker_id == "wolf"
         assert "That's what you get!" in dialogue
-        mock_llm_client.complete_with_tools.assert_called_once()
+        mock_llm_client.complete_with_tool_loop.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_tool_call_then_text(self, manager, mock_llm_client, event_data, candidates, traits):
-        """LLM calls a tool, gets result, then produces text."""
-        tool_call = ToolCall(id="call_1", name="get_memories", arguments={"character_id": "wolf", "tiers": ["events"]})
-
-        # First call: tool request.  Second call: text response.
-        mock_llm_client.complete_with_tools.side_effect = [
-            LLMToolResponse(text=None, tool_calls=[tool_call]),
-            LLMToolResponse(text="[SPEAKER: wolf] I remember that bastard.", tool_calls=[]),
-        ]
+        """LLM tool loop returns final text (loop handled inside client)."""
+        mock_llm_client.complete_with_tool_loop.return_value = LLMToolResponse(
+            text="[SPEAKER: wolf] I remember that bastard.",
+            tool_calls=[],
+        )
 
         speaker_id, dialogue = await manager.handle_event(event_data, candidates, "Rostok", traits)
 
         assert speaker_id == "wolf"
         assert "I remember that bastard." in dialogue
-        assert mock_llm_client.complete_with_tools.call_count == 2
+        mock_llm_client.complete_with_tool_loop.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_multiple_tool_calls_single_response(self, manager, mock_llm_client, event_data, candidates, traits):
-        """LLM requests multiple tools in one message."""
-        tc1 = ToolCall(id="call_1", name="get_memories", arguments={"character_id": "wolf", "tiers": ["events"]})
-        tc2 = ToolCall(id="call_2", name="background", arguments={"character_id": "wolf", "action": "read"})
-
-        mock_llm_client.complete_with_tools.side_effect = [
-            LLMToolResponse(text=None, tool_calls=[tc1, tc2]),
-            LLMToolResponse(text="[SPEAKER: wolf] Die!", tool_calls=[]),
-        ]
+        """LLM tool loop handles multiple tools and returns final text."""
+        mock_llm_client.complete_with_tool_loop.return_value = LLMToolResponse(
+            text="[SPEAKER: wolf] Die!",
+            tool_calls=[],
+        )
 
         speaker_id, dialogue = await manager.handle_event(event_data, candidates, "W", traits)
 
         assert dialogue == "Die!"
-        assert mock_llm_client.complete_with_tools.call_count == 2
+        mock_llm_client.complete_with_tool_loop.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_max_iterations_exhausted(self, manager, mock_llm_client, event_data, candidates, traits):
         """Tool loop hits max iterations → returns empty dialogue."""
-        forever_tc = ToolCall(id="call_loop", name="get_memories", arguments={"character_id": "wolf", "tiers": ["events"]})
-
-        # Always return tool calls, never text
-        mock_llm_client.complete_with_tools.return_value = LLMToolResponse(
-            text=None, tool_calls=[forever_tc],
+        # complete_with_tool_loop returns empty text on exhaustion
+        mock_llm_client.complete_with_tool_loop.return_value = LLMToolResponse(
+            text="", tool_calls=[],
         )
 
         speaker_id, dialogue = await manager.handle_event(event_data, candidates, "W", traits)
 
         assert dialogue == ""
-        assert mock_llm_client.complete_with_tools.call_count == manager.max_tool_iterations
+        mock_llm_client.complete_with_tool_loop.assert_called_once()
 
     @pytest.mark.asyncio
-    async def test_tool_calls_dispatched_for_character(self, manager, mock_llm_client, event_data, candidates, traits):
-        """Tool calls with character_id are dispatched to handlers."""
-        tc = ToolCall(id="c1", name="get_memories", arguments={"character_id": "npc_99", "tiers": ["events"]})
-
-        mock_llm_client.complete_with_tools.side_effect = [
-            LLMToolResponse(text=None, tool_calls=[tc]),
-            LLMToolResponse(text="[SPEAKER: wolf] ok", tool_calls=[]),
-        ]
+    async def test_tool_executor_callback_passed(self, manager, mock_llm_client, event_data, candidates, traits):
+        """Tool executor callback is passed to complete_with_tool_loop."""
+        mock_llm_client.complete_with_tool_loop.return_value = LLMToolResponse(
+            text="[SPEAKER: wolf] ok", tool_calls=[],
+        )
 
         await manager.handle_event(event_data, candidates, "W", traits)
 
-        # Tool call was dispatched — verify by checking the LLM received 2 calls
-        assert mock_llm_client.complete_with_tools.call_count == 2
+        # Verify tool_executor was passed as a keyword argument
+        call_kwargs = mock_llm_client.complete_with_tool_loop.call_args
+        assert "tool_executor" in call_kwargs.kwargs
+        assert callable(call_kwargs.kwargs["tool_executor"])
 
 
 # -----------------------------------------------------------------------
-# 5.8  _handle_background() handler
+# 5.9  _handle_background() handler
 # -----------------------------------------------------------------------
 
 
@@ -649,7 +1001,9 @@ class TestHandleBackground:
     @pytest.mark.asyncio
     async def test_read_action(self, manager, mock_state_client):
         result = await manager._handle_background(character_id="42", action="read")
-        assert result == {"traits": ["brave"], "backstory": "A legend"}
+        # Batch handler returns {char_id: data}
+        assert "42" in result
+        assert result["42"] == {"traits": ["brave"], "backstory": "A legend"}
         mock_state_client.execute_batch.assert_called_once()
 
     @pytest.mark.asyncio
@@ -696,7 +1050,7 @@ class TestHandleBackground:
 
 
 # -----------------------------------------------------------------------
-# 5.9  Verify existing complete() tests still pass (backward compat)
+# 5.10  Verify existing complete() tests still pass (backward compat)
 #
 # The actual existing tests are in test_llm_clients.py. Here we just
 # verify the Message backward compatibility.

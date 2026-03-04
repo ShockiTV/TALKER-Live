@@ -178,6 +178,7 @@ class TestHandleEventV2:
             candidates=sample_v2_payload["candidates"],
             world=sample_v2_payload["world"],
             traits=sample_v2_payload["traits"],
+            session_id="test",
         )
     
     @pytest.mark.asyncio

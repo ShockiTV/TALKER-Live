@@ -134,8 +134,10 @@ async def lifespan(app: FastAPI):
 
     # Create conversation manager for tool-based dialogue
     conversation_manager = ConversationManager(
-        llm_client=get_current_llm_client(),  # Get client instance
+        llm_client=get_current_llm_client(),  # Fallback client
         state_client=state_client,
+        session_registry=session_registry,
+        llm_client_factory=get_current_llm_client,
         compaction_engine=compaction_engine,
         compaction_scheduler=compaction_scheduler,
         llm_timeout=settings.llm_timeout,

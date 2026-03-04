@@ -99,6 +99,9 @@ class LuaSimulator:
                 if topic == "state.query" or topic.startswith("state.query."):
                     await self._respond_to_state_query(topic, payload, r)
 
+                if topic == "state.mutate" or topic.startswith("state.mutate."):
+                    await self._respond_to_mutation(topic, payload, r)
+
                 if topic == "dialogue.display":
                     self.done_event.set()
 
@@ -200,3 +203,28 @@ class LuaSimulator:
         """Cancel poll task. Does NOT close the MockWebSocket."""
         if self._poll_task and not self._poll_task.done():
             self._poll_task.cancel()
+
+    async def _respond_to_mutation(
+        self, topic: str, payload: dict[str, Any], r: str | None
+    ) -> None:
+        """Auto-respond to state.mutate.* messages with success.
+
+        Mutations are fire-and-acknowledge in tests — we just confirm receipt.
+        """
+        request_id = payload.get("request_id") or r
+        if not request_id:
+            logger.warning(f"LuaSimulator: mutation with no request_id on {topic}")
+            return
+
+        response_payload = {
+            "request_id": request_id,
+            "data": {"success": True},
+        }
+        envelope = {
+            "t": "state.response",
+            "p": response_payload,
+            "r": request_id,
+            "ts": int(time.time() * 1000),
+        }
+        await self._ws.inject(json.dumps(envelope))
+        logger.debug(f"LuaSimulator: acknowledged mutation {topic} (request_id={request_id})")

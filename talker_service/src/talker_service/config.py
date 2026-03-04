@@ -65,6 +65,10 @@ class Settings(BaseSettings):
     # Remote STT endpoint (for use with faster-whisper-server or compatible)
     stt_endpoint: str = ""  # Custom STT base_url (e.g. http://whisper:8200/v1); empty = OpenAI cloud
 
+    # Provider Optimization Layers
+    enable_conversation_persistence: bool = True  # Keep conversation history across events (OpenAI)
+    enable_context_pruning: bool = True  # Auto-prune long conversations to stay within context window
+
     @model_validator(mode="after")
     def _resolve_backward_compat(self) -> "Settings":
         """Resolve backward-compat aliases.
