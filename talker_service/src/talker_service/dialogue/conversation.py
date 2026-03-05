@@ -11,7 +11,7 @@ from typing import Any, Callable, TYPE_CHECKING
 from loguru import logger
 
 from ..llm import LLMClient, Message
-from ..llm.models import LLMToolResponse, ToolCall
+from ..llm.models import LLMOptions, LLMToolResponse, ReasoningOptions, ToolCall
 from ..state.client import StateQueryClient
 from ..state.batch import BatchQuery
 from ..prompts.factions import get_faction_description, resolve_faction_name, COMPANION_FACTION_TENSION_NOTE
@@ -126,7 +126,7 @@ GET_MEMORIES_TOOL = {
     "type": "function",
     "function": {
         "name": "get_memories",
-        "description": "Retrieve memories for THE CHOSEN SPEAKER ONLY. Do NOT use for candidate evaluation\u2014use backgrounds instead.",
+        "description": "Retrieve memories for THE CHOSEN SPEAKER ONLY. Do NOT use for candidate evaluation—use backgrounds instead. If speaker memories are already in context, check timestamps for freshness before re-fetching. If stale or absent, fetch to get current data.",
         "parameters": {
             "type": "object",
             "properties": {
@@ -154,7 +154,7 @@ BACKGROUND_TOOL = {
     "type": "function",
     "function": {
         "name": "background",
-        "description": "Read, write, or update background information. Supports batch reads for up to 10 characters.",
+        "description": "Read, write, or update persisted character backgrounds (traits, backstory, connections). Use to retrieve stored details beyond what is shown in the candidate list, or to persist new background info. Supports batch reads for up to 10 characters.",
         "parameters": {
             "type": "object",
             "properties": {
@@ -257,6 +257,7 @@ class ConversationManager:
         compaction_scheduler: Any = None,  # Optional CompactionScheduler (preferred over raw engine)
         max_tool_iterations: int = 5,
         llm_timeout: float = 60.0,
+        reasoning: ReasoningOptions | None = None,
     ):
         """Initialize conversation manager.
         
@@ -269,6 +270,7 @@ class ConversationManager:
             compaction_scheduler: Optional CompactionScheduler for budget-limited compaction
             max_tool_iterations: Maximum tool call iterations before forcing response
             llm_timeout: Timeout for each LLM call in seconds
+            reasoning: Reasoning options for models that support extended thinking
         """
         self.llm_client = llm_client
         self.state_client = state_client
@@ -278,6 +280,7 @@ class ConversationManager:
         self.compaction_scheduler = compaction_scheduler
         self.max_tool_iterations = max_tool_iterations
         self.llm_timeout = llm_timeout
+        self.reasoning = reasoning
         
         # Tool registry maps tool name → handler function
         self._tool_handlers = {
@@ -334,22 +337,24 @@ You have access to tools to query character memories and background information:
   - Use when you need squad composition or when generating a background for a character you haven't spoken as before
 
 **Tool Usage Rules:**
-1. **background(character_ids)**: Use this to evaluate ALL candidates before choosing a speaker
-   - You can fetch backgrounds for multiple characters at once
-   - Example: background(character_ids=["0", "npc_123", "npc_456"], action="read")
+1. **background(character_ids, action)**: Read or write persisted character backgrounds
+   - Candidate personalities and backstories are already listed above — do NOT fetch backgrounds just for speaker selection
+   - Use `action="read"` when you need stored traits/connections beyond what is shown above
+   - Use `action="write"` or `action="update"` to persist background details you generate for the speaker
 
-2. **get_memories(character_id, tiers)**: ONLY use AFTER choosing the speaker
-   - You can ONLY fetch memories for the character you've decided will speak
-   - Do NOT fetch memories for candidates you're evaluating
-   - Memories are expensive; use backgrounds for speaker selection
-   - The `tiers` parameter is optional; omit it to fetch all memory tiers
+2. **get_memories(character_id, tiers)**: Retrieve the speaker's memories
+   - ONLY use for the character you've chosen to speak
+   - **Check context first:** if the speaker's memories are already present in this conversation, examine the timestamps:
+     - If the most recent memory timestamp is close to the current event, the data is fresh — skip re-fetching
+     - If the latest timestamp is old or there are gaps, fetch to get up-to-date context
+   - **If no memories are in context** for the chosen speaker, always fetch full memories
+   - The `tiers` parameter is optional; omit it to fetch all tiers
 
 3. **Workflow:**
-   a. Read event context + candidate list
-   b. Fetch backgrounds for candidates (if needed) via background(character_ids=[...], action="read")
-   c. Choose speaker based on faction, personality, background
-   d. Fetch memories ONLY for chosen speaker via get_memories(character_id=...)
-   e. Generate dialogue for that speaker
+   a. Read event context + candidate list (personalities and backstories are already provided)
+   b. Choose speaker based on faction, personality, and relevance to the event
+   c. If the chosen speaker's memories are NOT in context, or the last-seen memory timestamp is stale, fetch via get_memories(character_id=...)
+   d. Generate dialogue for that speaker
 
 **Instructions:**
 1. Use tools to query relevant memories/background for characters involved in the event
@@ -559,9 +564,9 @@ Example responses:
 
             mutations = [
                 {
-                    "character_id": single_id,
-                    "verb": "set",
+                    "op": "set",
                     "resource": "memory.background",
+                    "params": {"character_id": single_id},
                     "data": content,
                 }
             ]
@@ -574,10 +579,10 @@ Example responses:
 
             mutations = [
                 {
-                    "character_id": single_id,
-                    "verb": "update",
+                    "op": "update",
                     "resource": "memory.background",
-                    "data": {field: value},
+                    "params": {"character_id": single_id},
+                    "ops": {"$set": {field: value}},
                 }
             ]
             success = await self.state_client.mutate_batch(mutations, timeout=10.0)
@@ -806,10 +811,10 @@ Example responses:
             if not char_id:
                 continue
             mutations.append({
-                "character_id": str(char_id),
-                "verb": "append",
-                "resource": "events",
-                "data": {"text": witness_text},
+                "op": "append",
+                "resource": "memory.events",
+                "params": {"character_id": str(char_id)},
+                "data": [{"text": witness_text}],
             })
 
         if not mutations:
@@ -908,6 +913,8 @@ Example responses:
         ]
         
         # Pre-fetch optimization (task 4.6): Query speaker's recent memories
+        # Inject full formatted content so the LLM can assess freshness and
+        # decide whether an additional get_memories() call is necessary.
         logger.debug(f"Pre-fetching memories for speaker {speaker_id}")
         try:
             speaker_memories = await self._handle_get_memories(
@@ -915,22 +922,24 @@ Example responses:
                 tiers=["events", "summaries"],  # Recent context
             )
             
-            # Format memories as context (if any exist)
-            memory_parts = []
-            for tier, data in speaker_memories.items():
-                if data:
-                    memory_parts.append(f"{tier.upper()}: {len(data)} entries")
+            formatted = self._format_tool_result("get_memories", speaker_memories)
+            has_content = any(bool(v) for v in speaker_memories.values())
             
-            if memory_parts:
-                memory_context = f"Your recent memories: {', '.join(memory_parts)}"
-                logger.debug(f"Pre-fetched memories: {memory_context}")
-                # Append as system context
+            if has_content:
+                memory_context = (
+                    f"[Pre-fetched memories for speaker {speaker_id}]\n{formatted}"
+                )
+                logger.debug(f"Pre-fetched memories for {speaker_id} ({len(formatted)} chars)")
+                # Append as system context so LLM sees them before tool loop
                 messages.insert(1, Message(role="system", content=memory_context))
         except Exception as e:
             logger.warning(f"Failed to pre-fetch memories for {speaker_id}: {e}")
         
         # Tool-calling loop: call LLM with tools, execute tool calls, repeat
         logger.debug("Starting tool-calling loop for dialogue generation")
+
+        # Build LLM options (reasoning, etc.)
+        llm_opts = LLMOptions(reasoning=self.reasoning) if self.reasoning else None
 
         async def _tool_executor(tc: ToolCall) -> str:
             logger.debug(f"Executing tool call: {tc.name}({tc.arguments})")
@@ -941,6 +950,7 @@ Example responses:
             messages,
             tools=TOOLS,
             tool_executor=_tool_executor,
+            opts=llm_opts,
             max_iterations=self.max_tool_iterations,
         )
 

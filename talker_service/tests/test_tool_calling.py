@@ -19,8 +19,10 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from talker_service.llm.models import (
+    LLMOptions,
     LLMToolResponse,
     Message,
+    ReasoningOptions,
     ToolCall,
     ToolResult,
 )
@@ -86,6 +88,42 @@ class TestLLMToolResponse:
 # -----------------------------------------------------------------------
 # 5.2  Message.tool_result() / Message.to_dict() with tool fields
 # -----------------------------------------------------------------------
+
+
+class TestReasoningOptionsModel:
+    """Tests for the ReasoningOptions dataclass."""
+
+    def test_defaults_are_none(self):
+        r = ReasoningOptions()
+        assert r.effort is None
+        assert r.summary is None
+        assert not r  # falsy when empty
+
+    def test_effort_only(self):
+        r = ReasoningOptions(effort="low")
+        assert r.effort == "low"
+        assert r.summary is None
+        assert r  # truthy
+        assert r.to_dict() == {"effort": "low"}
+
+    def test_full(self):
+        r = ReasoningOptions(effort="high", summary="auto")
+        assert r.to_dict() == {"effort": "high", "summary": "auto"}
+        assert r  # truthy
+
+    def test_summary_only(self):
+        r = ReasoningOptions(summary="concise")
+        assert r.to_dict() == {"summary": "concise"}
+        assert r
+
+    def test_llm_options_with_reasoning(self):
+        opts = LLMOptions(reasoning=ReasoningOptions(effort="medium", summary="auto"))
+        assert opts.reasoning is not None
+        assert opts.reasoning.effort == "medium"
+
+    def test_llm_options_without_reasoning(self):
+        opts = LLMOptions()
+        assert opts.reasoning is None
 
 
 class TestMessageToolFields:
@@ -664,15 +702,20 @@ class TestNativeToolLoop:
             sample_messages, tools, tool_executor=executor,
         )
 
-        # Second call should have function_call_output items + previous_response_id
+        # Second call should have full input: messages + response.output + function_call_output
         second_kwargs = client._client.responses.create.call_args_list[1][1]
-        assert second_kwargs["previous_response_id"] == "resp_1"
-        assert len(second_kwargs["input"]) == 1
-        assert second_kwargs["input"][0] == {
+        assert "previous_response_id" not in second_kwargs
+        second_input = second_kwargs["input"]
+        # Original messages (2) + tool_item from response.output (1) + function_call_output (1)
+        assert len(second_input) == 4
+        # Last item is the function_call_output
+        assert second_input[-1] == {
             "type": "function_call_output",
             "call_id": "call_abc",
             "output": '{"events": ["saw wolf"]}',
         }
+        # response.output item is included before the function_call_output
+        assert second_input[-2] is tool_item
 
     @pytest.mark.asyncio
     async def test_multiple_tool_calls_all_outputs_sent(self, sample_messages, tools):
@@ -697,9 +740,11 @@ class TestNativeToolLoop:
 
         assert called_ids == ["call_1", "call_2"]
         second_input = client._client.responses.create.call_args_list[1][1]["input"]
-        assert len(second_input) == 2
-        assert second_input[0]["call_id"] == "call_1"
-        assert second_input[1]["call_id"] == "call_2"
+        # Original messages (2) + response.output items (2) + function_call_output items (2)
+        assert len(second_input) == 6
+        # Last two items are the function_call_output dicts
+        assert second_input[-2]["call_id"] == "call_1"
+        assert second_input[-1]["call_id"] == "call_2"
 
     @pytest.mark.asyncio
     async def test_max_iterations_returns_empty(self, sample_messages, tools):
@@ -721,8 +766,12 @@ class TestNativeToolLoop:
         assert client._client.responses.create.call_count == 2
 
     @pytest.mark.asyncio
-    async def test_cross_event_threading(self, tools):
-        """The first call in a new event uses the previous event's response_id."""
+    async def test_no_cross_event_threading(self, tools):
+        """First call never uses cross-event previous_response_id.
+
+        Memory tools provide cross-event context instead.  This prevents
+        413 "tokens_limit_reached" from accumulated server-side history.
+        """
         client = OpenAIClient(api_key="test-key", timeout=10.0)
 
         # Simulate a previous event having set _last_response_id
@@ -738,7 +787,8 @@ class TestNativeToolLoop:
         )
 
         first_kwargs = client._client.responses.create.call_args_list[0][1]
-        assert first_kwargs["previous_response_id"] == "resp_prev_event"
+        assert "previous_response_id" not in first_kwargs
+        # _last_response_id is still updated for other callers (complete_with_tools)
         assert client._last_response_id == "resp_new"
 
     @pytest.mark.asyncio
@@ -782,6 +832,111 @@ class TestNativeToolLoop:
 
         assert result.text == "done"
         assert client._client.responses.create.call_count == 3
+
+    @pytest.mark.asyncio
+    async def test_response_output_items_included_in_continuation(self, sample_messages, tools):
+        """Model response.output items (function_call + reasoning) are passed back in input."""
+        client = OpenAIClient(api_key="test-key", timeout=10.0)
+
+        reasoning_item = MagicMock()
+        reasoning_item.type = "reasoning"
+        tool_item = _mock_function_call(call_id="call_1", name="get_memories", arguments='{}')
+        resp1 = _mock_responses_api(response_id="resp_1", output=[reasoning_item, tool_item])
+        text_item = _mock_output_message("done")
+        resp2 = _mock_responses_api(response_id="resp_2", output=[text_item])
+        client._client.responses.create = AsyncMock(side_effect=[resp1, resp2])
+
+        await client.complete_with_tool_loop(
+            sample_messages, tools, tool_executor=self._dummy_executor,
+        )
+
+        second_input = client._client.responses.create.call_args_list[1][1]["input"]
+        # messages (2) + reasoning_item (1) + tool_item (1) + function_call_output (1) = 5
+        assert len(second_input) == 5
+        # Reasoning item is carried through
+        assert second_input[2] is reasoning_item
+        # function_call item is carried through
+        assert second_input[3] is tool_item
+        # function_call_output is last
+        assert second_input[4]["type"] == "function_call_output"
+
+    @pytest.mark.asyncio
+    async def test_empty_tool_output_guard(self, sample_messages, tools):
+        """Empty tool executor returns are replaced with '(no data)'."""
+        client = OpenAIClient(api_key="test-key", timeout=10.0)
+
+        tool_item = _mock_function_call(call_id="call_e", name="get_memories", arguments='{}')
+        resp1 = _mock_responses_api(response_id="resp_1", output=[tool_item])
+        text_item = _mock_output_message("ok")
+        resp2 = _mock_responses_api(response_id="resp_2", output=[text_item])
+        client._client.responses.create = AsyncMock(side_effect=[resp1, resp2])
+
+        async def empty_executor(tc: ToolCall) -> str:
+            return ""
+
+        await client.complete_with_tool_loop(
+            sample_messages, tools, tool_executor=empty_executor,
+        )
+
+        second_kwargs = client._client.responses.create.call_args_list[1][1]
+        # Last item in full input list is the function_call_output
+        assert second_kwargs["input"][-1]["output"] == "(no data)"
+
+    @pytest.mark.asyncio
+    async def test_reasoning_opts_passed_to_api(self, sample_messages, tools):
+        """Reasoning options are forwarded to responses.create() on all calls."""
+        client = OpenAIClient(api_key="test-key", timeout=10.0)
+
+        tool_item = _mock_function_call(call_id="call_r", name="get_memories", arguments='{}')
+        resp1 = _mock_responses_api(response_id="resp_1", output=[tool_item])
+        text_item = _mock_output_message("reasoning done")
+        resp2 = _mock_responses_api(response_id="resp_2", output=[text_item])
+        client._client.responses.create = AsyncMock(side_effect=[resp1, resp2])
+
+        opts = LLMOptions(reasoning=ReasoningOptions(effort="low", summary="auto"))
+        await client.complete_with_tool_loop(
+            sample_messages, tools, tool_executor=self._dummy_executor, opts=opts,
+        )
+
+        # Both first and continuation calls should include reasoning
+        first_kwargs = client._client.responses.create.call_args_list[0][1]
+        assert first_kwargs["reasoning"] == {"effort": "low", "summary": "auto"}
+
+        second_kwargs = client._client.responses.create.call_args_list[1][1]
+        assert second_kwargs["reasoning"] == {"effort": "low", "summary": "auto"}
+
+    @pytest.mark.asyncio
+    async def test_no_reasoning_when_none(self, sample_messages, tools):
+        """No reasoning key in kwargs when opts.reasoning is None."""
+        client = OpenAIClient(api_key="test-key", timeout=10.0)
+
+        text_item = _mock_output_message("no reasoning")
+        resp = _mock_responses_api(response_id="resp_1", output=[text_item])
+        client._client.responses.create = AsyncMock(return_value=resp)
+
+        await client.complete_with_tool_loop(
+            sample_messages, tools, tool_executor=self._dummy_executor,
+        )
+
+        call_kwargs = client._client.responses.create.call_args[1]
+        assert "reasoning" not in call_kwargs
+
+    @pytest.mark.asyncio
+    async def test_reasoning_in_complete_with_tools(self):
+        """Reasoning options are forwarded by complete_with_tools() too."""
+        client = OpenAIClient(api_key="test-key", timeout=10.0)
+        tools = [{"type": "function", "function": {"name": "t", "parameters": {}}}]
+        msgs = [Message.system("sys"), Message.user("hi")]
+
+        text_item = _mock_output_message("ok")
+        resp = _mock_responses_api(response_id="resp_1", output=[text_item])
+        client._client.responses.create = AsyncMock(return_value=resp)
+
+        opts = LLMOptions(reasoning=ReasoningOptions(effort="high"))
+        await client.complete_with_tools(msgs, tools, opts=opts)
+
+        call_kwargs = client._client.responses.create.call_args[1]
+        assert call_kwargs["reasoning"] == {"effort": "high"}
 
 
 class TestOllamaCompleteWithTools:
@@ -1016,7 +1171,7 @@ class TestHandleBackground:
 
         # Verify mutation payload
         mutations = mock_state_client.mutate_batch.call_args[0][0]
-        assert mutations[0]["verb"] == "set"
+        assert mutations[0]["op"] == "set"
         assert mutations[0]["resource"] == "memory.background"
         assert mutations[0]["data"] == content
 
@@ -1030,8 +1185,8 @@ class TestHandleBackground:
         assert result["field"] == "connections"
 
         mutations = mock_state_client.mutate_batch.call_args[0][0]
-        assert mutations[0]["verb"] == "update"
-        assert mutations[0]["data"] == {"connections": ["knows Sidorovich"]}
+        assert mutations[0]["op"] == "update"
+        assert mutations[0]["ops"] == {"$set": {"connections": ["knows Sidorovich"]}}
 
     @pytest.mark.asyncio
     async def test_write_without_content_returns_error(self, manager):

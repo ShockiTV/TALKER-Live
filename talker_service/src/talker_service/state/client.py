@@ -309,6 +309,13 @@ class StateQueryClient:
                 topic="state.mutate.batch",
             ) from None
         
-        # Check success status
-        data = response.get("data", response)
-        return data.get("success", False)
+        # Check success status — response has {results: {id: {ok, error?}, ...}}
+        results = response.get("results", {})
+        if not results:
+            return True  # Empty results means no mutations were processed (no-op)
+        if isinstance(results, dict):
+            return all(
+                isinstance(r, dict) and r.get("ok", False)
+                for r in results.values()
+            )
+        return True

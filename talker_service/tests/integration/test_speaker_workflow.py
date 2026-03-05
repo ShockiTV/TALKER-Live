@@ -416,5 +416,5 @@ class TestSpeakerSelectionWorkflow:
         assert "Tool Usage Rules" in prompt
         assert "background" in prompt.lower()
         assert "get_memories" in prompt.lower()
-        assert "ONLY use AFTER choosing the speaker" in prompt or "ONLY" in prompt
-        assert "Memories are expensive" in prompt
+        assert "ONLY use for the character" in prompt or "ONLY" in prompt
+        assert "Check context first" in prompt

@@ -3,12 +3,14 @@
 Uses the official ``openai`` SDK:
 - ``complete()`` → ``client.chat.completions.create()`` (Chat Completions API)
 - ``complete_with_tools()`` → ``client.responses.create()`` (Responses API)
-- ``complete_with_tool_loop()`` → native Responses API tool loop with
-  ``previous_response_id`` threading and ``function_call_output`` items.
+- ``complete_with_tool_loop()`` → Responses API tool loop following the
+  documented full-input-list pattern (no ``previous_response_id``).
 
-The Responses API manages conversation state server-side.  Within a tool
-loop, only ``function_call_output`` items are sent — the server already
-has the full conversation context from the previous response.
+Each tool-loop request is self-contained: the running ``input`` list
+accumulates the model's ``response.output`` items (function_call +
+reasoning) and the application's ``function_call_output`` items, so every
+API call carries the full conversation and tool results are visible in
+the OpenAI dashboard.
 """
 
 import asyncio
@@ -22,7 +24,9 @@ import openai
 from loguru import logger
 
 from .base import BaseLLMClient, LLMError, RateLimitError, AuthenticationError
-from .models import LLMOptions, LLMToolResponse, Message, ToolCall
+from .models import LLMOptions, LLMToolResponse, Message, ReasoningOptions, ToolCall
+from .pruning import prune_conversation
+from .token_utils import estimate_tokens
 
 
 class OpenAIClient(BaseLLMClient):
@@ -56,6 +60,12 @@ class OpenAIClient(BaseLLMClient):
         self.max_retries = max_retries
         self._conversation: list[Message] = []
         self._last_response_id: str | None = None
+        self.enable_pruning: bool = True
+
+        # Pruning metrics
+        self.pruning_events_count: int = 0
+        self.tokens_removed_total: int = 0
+        self._conversation_tokens_samples: list[int] = []
 
         # Resolve base_url: explicit param > env var > SDK default
         resolved_endpoint = endpoint or os.environ.get("OPENAI_ENDPOINT", "") or None
@@ -240,6 +250,11 @@ class OpenAIClient(BaseLLMClient):
     # State management
     # ------------------------------------------------------------------
 
+    # Context window constants for auto-pruning
+    CONTEXT_WINDOW = 128_000
+    PRUNING_THRESHOLD_PCT = 0.75  # Prune at 96k tokens
+    PRUNE_TARGET_PCT = 0.50       # Prune to 64k tokens
+
     def reset_conversation(self) -> None:
         """Clear conversation history and server-side thread reference."""
         self._conversation.clear()
@@ -248,6 +263,42 @@ class OpenAIClient(BaseLLMClient):
     def get_conversation(self) -> list[Message]:
         """Return a copy of current conversation (for debugging/testing)."""
         return self._conversation.copy()
+
+    @property
+    def avg_conversation_tokens(self) -> float:
+        """Average conversation token count across sampled LLM calls."""
+        if not self._conversation_tokens_samples:
+            return 0.0
+        return sum(self._conversation_tokens_samples) / len(self._conversation_tokens_samples)
+
+    def _maybe_prune(self) -> None:
+        """Prune conversation if it exceeds the token threshold.
+
+        Called before each LLM API invocation.  Only runs when
+        ``self.enable_pruning`` is *True*.
+        """
+        if not self.enable_pruning:
+            return
+
+        max_tokens = int(self.CONTEXT_WINDOW * self.PRUNING_THRESHOLD_PCT)
+        target_tokens = int(self.CONTEXT_WINDOW * self.PRUNE_TARGET_PCT)
+
+        before_tokens = estimate_tokens(self._conversation)
+        self._conversation_tokens_samples.append(before_tokens)
+        # Keep at most 200 samples to avoid unbounded growth
+        if len(self._conversation_tokens_samples) > 200:
+            self._conversation_tokens_samples = self._conversation_tokens_samples[-200:]
+
+        if before_tokens <= max_tokens:
+            return
+
+        pruned = prune_conversation(self._conversation, max_tokens, target_tokens)
+        after_tokens = estimate_tokens(pruned)
+        removed = before_tokens - after_tokens
+
+        self.pruning_events_count += 1
+        self.tokens_removed_total += removed
+        self._conversation = pruned
 
     # ------------------------------------------------------------------
     # Responses API — retry / recovery helper
@@ -342,6 +393,8 @@ class OpenAIClient(BaseLLMClient):
             if msg not in self._conversation:
                 self._conversation.append(msg)
 
+        self._maybe_prune()
+
         opts = opts or LLMOptions()
         converted_tools = self._convert_tools(tools)
 
@@ -354,6 +407,8 @@ class OpenAIClient(BaseLLMClient):
         }
         if opts.max_tokens:
             kwargs["max_output_tokens"] = opts.max_tokens
+        if opts.reasoning:
+            kwargs["reasoning"] = opts.reasoning.to_dict()
         if self._last_response_id:
             kwargs["previous_response_id"] = self._last_response_id
 
@@ -381,12 +436,17 @@ class OpenAIClient(BaseLLMClient):
         opts: LLMOptions | None = None,
         max_iterations: int = 5,
     ) -> LLMToolResponse:
-        """Run the full tool-calling loop using native Responses API threading.
+        """Run the full tool-calling loop using the Responses API.
 
-        On each iteration the server keeps full conversation state via
-        ``previous_response_id``.  Tool outputs are sent as native
-        ``function_call_output`` items — no Chat-Completions-style message
-        conversion needed.
+        Follows the documented function-calling pattern: a running
+        ``input`` list accumulates the model's ``response.output`` items
+        (``function_call`` + ``reasoning``) and the application's
+        ``function_call_output`` items.  Each API call is self-contained
+        — no ``previous_response_id`` threading — so the full
+        conversation (including tool results) is visible in the OpenAI
+        dashboard.
+
+        See: https://platform.openai.com/docs/guides/function-calling
 
         Args:
             messages: Initial conversation messages (system + user).
@@ -406,34 +466,37 @@ class OpenAIClient(BaseLLMClient):
             if msg not in self._conversation:
                 self._conversation.append(msg)
 
+        self._maybe_prune()
+
         opts = opts or LLMOptions()
         converted_tools = self._convert_tools(tools)
         model = opts.model or self.default_model
         temperature = opts.temperature
         max_output_tokens = opts.max_tokens
+        reasoning = opts.reasoning.to_dict() if opts.reasoning else None
 
-        # First call: send full messages, optionally thread cross-event
-        kwargs: dict[str, Any] = {
-            "model": model,
-            "input": [m.to_dict() for m in messages],
-            "temperature": temperature,
-            "tools": converted_tools,
-            "truncation": "auto",
-        }
-        if max_output_tokens:
-            kwargs["max_output_tokens"] = max_output_tokens
-        if self._last_response_id:
-            kwargs["previous_response_id"] = self._last_response_id
+        # Running input list — matches the documented pattern:
+        #   input_list  = [user messages]
+        #   input_list += response.output   (function_call + reasoning items)
+        #   input_list += [function_call_output items]
+        # Each API call sends the full list so tool results are always
+        # visible in the OpenAI dashboard.
+        input_items: list[Any] = [m.to_dict() for m in messages]
 
         for iteration in range(max_iterations):
-            # First iteration gets full recovery; continuations are simpler
-            if iteration == 0:
-                response = await self._responses_create_with_retry(
-                    kwargs, messages
-                )
-            else:
-                response = await self._responses_create_with_retry(kwargs)
+            kwargs: dict[str, Any] = {
+                "model": model,
+                "input": input_items,
+                "temperature": temperature,
+                "tools": converted_tools,
+                "truncation": "auto",
+            }
+            if max_output_tokens:
+                kwargs["max_output_tokens"] = max_output_tokens
+            if reasoning:
+                kwargs["reasoning"] = reasoning
 
+            response = await self._responses_create_with_retry(kwargs, messages)
             self._last_response_id = response.id
             tool_response = self._parse_responses_output(response.output)
 
@@ -444,27 +507,33 @@ class OpenAIClient(BaseLLMClient):
                 ))
                 return tool_response
 
-            # Execute tools and build native function_call_output items
-            outputs: list[dict[str, Any]] = []
+            # Log tool calls received
+            logger.debug(
+                "Tool loop {}/{}: {} tool call(s) — {}",
+                iteration + 1,
+                max_iterations,
+                len(tool_response.tool_calls),
+                ", ".join(f"{tc.name}(call_id={tc.id})" for tc in tool_response.tool_calls),
+            )
+
+            # Append model's full output to input list.  This includes
+            # function_call items and any reasoning items — the docs note
+            # that reasoning items must be passed back for reasoning models.
+            input_items += list(response.output)
+
+            # Execute tools and append native function_call_output items
             for tc in tool_response.tool_calls:
                 result = await tool_executor(tc)
-                outputs.append({
+                output_str = result if result else "(no data)"
+                logger.debug(
+                    "Tool output {}(call_id={}): {} chars",
+                    tc.name, tc.id, len(output_str),
+                )
+                input_items.append({
                     "type": "function_call_output",
                     "call_id": tc.id,
-                    "output": result,
+                    "output": output_str,
                 })
-
-            # Continue: server has full context, send only the outputs
-            kwargs = {
-                "model": model,
-                "input": outputs,
-                "previous_response_id": response.id,
-                "tools": converted_tools,
-                "truncation": "auto",
-                "temperature": temperature,
-            }
-            if max_output_tokens:
-                kwargs["max_output_tokens"] = max_output_tokens
 
         logger.error(f"Tool loop exhausted after {max_iterations} iterations")
         return LLMToolResponse(text="", tool_calls=[])

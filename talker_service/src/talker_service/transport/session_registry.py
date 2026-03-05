@@ -110,6 +110,10 @@ class SessionRegistry:
             1 for s in self._sessions.values() if s.is_connected
         )
 
+    def all_sessions(self) -> dict[str, "SessionContext"]:
+        """Return a shallow copy of all session contexts keyed by session ID."""
+        return dict(self._sessions)
+
     def __repr__(self) -> str:
         return (
             f"SessionRegistry(sessions={len(self._sessions)}, "

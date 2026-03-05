@@ -375,7 +375,7 @@ class TestLLMOptions:
     def test_defaults(self):
         """Test default values."""
         opts = LLMOptions()
-        assert opts.temperature == 0.7
+        assert opts.temperature is None
         assert opts.model is None
         assert opts.max_tokens is None
         assert opts.timeout is None

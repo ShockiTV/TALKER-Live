@@ -439,10 +439,14 @@ local function handle_batch_mutation(payload, request_r)
 
     local results = {}
 
-    for _, mutation in ipairs(mutations) do
-        local mutation_id = mutation.id or tostring(#results + 1)
-        local result = memory_store_v2:mutate(mutation)
-        results[mutation_id] = result
+    for idx, mutation in ipairs(mutations) do
+        local mutation_id = mutation.id or tostring(idx)
+        local ok, result = pcall(memory_store_v2.mutate, memory_store_v2, mutation)
+        if ok then
+            results[mutation_id] = result
+        else
+            results[mutation_id] = { ok = false, error = tostring(result) }
+        end
     end
 
     -- Publish batch response with the r-field echoed back

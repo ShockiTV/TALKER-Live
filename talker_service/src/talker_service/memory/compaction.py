@@ -240,19 +240,19 @@ class CompactionEngine:
         max_seq = max(seqs)
         
         mutations = [
-            # Delete source items by seq_lte
+            # Delete source items by seq IDs
             {
-                "character_id": character_id,
-                "verb": "delete",
-                "resource": source_tier,
-                "data": {"seq_lte": max_seq},
+                "op": "delete",
+                "resource": f"memory.{source_tier}",
+                "params": {"character_id": character_id},
+                "ids": seqs,
             },
             # Append compressed result to target tier
             {
-                "character_id": character_id,
-                "verb": "append",
-                "resource": target_tier,
-                "data": {"text": compressed_text.strip()},
+                "op": "append",
+                "resource": f"memory.{target_tier}",
+                "params": {"character_id": character_id},
+                "data": [{"text": compressed_text.strip()}],
             },
         ]
         

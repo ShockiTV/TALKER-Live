@@ -8,6 +8,7 @@ import os
 import signal
 import threading
 from contextlib import asynccontextmanager
+from typing import Any
 
 import uvicorn
 from fastapi import FastAPI, WebSocket
@@ -21,6 +22,7 @@ from .handlers import audio as audio_handlers
 from .dialogue.conversation import ConversationManager
 from .state.client import StateQueryClient
 from .llm import get_llm_client
+from .llm.models import ReasoningOptions
 from .memory.compaction import CompactionEngine
 from .memory.scheduler import CompactionScheduler
 from .tts import TTS_AVAILABLE, TTSEngine, TTSRemoteClient
@@ -132,15 +134,36 @@ async def lifespan(app: FastAPI):
     )
     compaction_scheduler = CompactionScheduler(compaction_engine)
 
+    # Build reasoning options from settings (if configured)
+    reasoning_opts: ReasoningOptions | None = None
+    if settings.reasoning_effort:
+        reasoning_opts = ReasoningOptions(
+            effort=settings.reasoning_effort,  # type: ignore[arg-type]
+            summary=settings.reasoning_summary or None,  # type: ignore[arg-type]
+        )
+        logger.info("Reasoning options: effort={}, summary={}", reasoning_opts.effort, reasoning_opts.summary)
+
+    # Apply feature flags from settings to the session-scoped LLM factory
+    _enable_persistence = settings.enable_conversation_persistence
+    _enable_pruning = settings.enable_context_pruning
+
+    def _session_llm_factory() -> Any:
+        client = get_current_llm_client()
+        # Wire pruning flag into per-session clients
+        if hasattr(client, "enable_pruning"):
+            client.enable_pruning = _enable_pruning
+        return client
+
     # Create conversation manager for tool-based dialogue
     conversation_manager = ConversationManager(
         llm_client=get_current_llm_client(),  # Fallback client
         state_client=state_client,
-        session_registry=session_registry,
-        llm_client_factory=get_current_llm_client,
+        session_registry=session_registry if _enable_persistence else None,
+        llm_client_factory=_session_llm_factory if _enable_persistence else None,
         compaction_engine=compaction_engine,
         compaction_scheduler=compaction_scheduler,
         llm_timeout=settings.llm_timeout,
+        reasoning=reasoning_opts,
     )
     
     # Inject conversation manager into event handlers
@@ -277,6 +300,22 @@ async def debug_config():
     }
     if settings.openai_endpoint:
         data["effective"]["openai_endpoint"] = settings.openai_endpoint
+
+    # Conversation / pruning stats from active session LLM clients
+    if session_registry:
+        conv_stats: list[dict[str, Any]] = []
+        for sid, session in session_registry.all_sessions().items():
+            client = session.llm_client
+            if client and hasattr(client, "pruning_events_count"):
+                conv_stats.append({
+                    "session_id": sid,
+                    "conversation_len": len(client.get_conversation()) if hasattr(client, "get_conversation") else None,
+                    "pruning_events_count": client.pruning_events_count,
+                    "tokens_removed_total": client.tokens_removed_total,
+                    "avg_conversation_tokens": round(client.avg_conversation_tokens, 1),
+                })
+        if conv_stats:
+            data["conversation_stats"] = conv_stats
 
     return data
 
