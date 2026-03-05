@@ -315,10 +315,10 @@ Tasks are grouped by capability and ordered by dependencies. Each task includes 
 - Features can be toggled via `.env`
 
 ### Task 6.4: Monitor initial rollout
-- [ ] Deploy to dev environment
-- [ ] Run 10+ test sessions, monitor logs
-- [ ] Check for: pruning frequency, tool usage patterns, API errors
-- [ ] Verify token costs align with expectations
+- [x] Deploy to dev environment
+- [x] Run 10+ test sessions, monitor logs
+- [x] Check for: pruning frequency, tool usage patterns, API errors
+- [x] Verify token costs align with expectations
 
 **Acceptance**:
 - No critical errors in dev

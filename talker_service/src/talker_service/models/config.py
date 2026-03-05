@@ -29,6 +29,10 @@ class MCMConfig(BaseModel):
     # TTS settings
     tts_volume_boost: float = 8.0  # Volume multiplier for TTS audio (1.0-15.0)
 
+    # Reasoning settings (for models that support extended thinking)
+    reasoning_effort: str = ""  # "low", "medium", "high" — empty = provider default
+    reasoning_summary: str = ""  # "auto", "concise", "detailed" — empty = omit
+
     # Timeout settings (Phase 2)
     llm_timeout: int = 60  # LLM request timeout in seconds
     state_query_timeout: int = 30  # State query timeout in seconds

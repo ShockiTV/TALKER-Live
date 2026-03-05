@@ -449,9 +449,11 @@ class TestConversationManager:
         call_args = mock_llm_client.complete_with_tool_loop.call_args[0][0]
         assert len(call_args) == 3  # system, memory context, event
         assert call_args[1].role == "system"
-        # Memory context shows entry counts, not full text
-        assert "EVENTS: 2 entries" in call_args[1].content
-        assert "SUMMARIES: 1 entries" in call_args[1].content
+        # Pre-fetch now injects full formatted memory content with header
+        assert "Pre-fetched memories for speaker char_001" in call_args[1].content
+        assert "Patrolled Garbage" in call_args[1].content
+        assert "Encountered bandits" in call_args[1].content
+        assert "Recent patrol summary" in call_args[1].content
     
     @pytest.mark.asyncio
     @patch("talker_service.dialogue.conversation.resolve_personality")
@@ -834,7 +836,7 @@ class TestGetCharacterInfoTool:
             "squad_members": [],
         }
 
-        async def _simulate_tool_loop(messages, *, tools=None, tool_executor=None, max_iterations=5):
+        async def _simulate_tool_loop(messages, *, tools=None, tool_executor=None, opts=None, max_iterations=5):
             """Mock complete_with_tool_loop that invokes the executor once."""
             if tool_executor:
                 await tool_executor(tool_call)

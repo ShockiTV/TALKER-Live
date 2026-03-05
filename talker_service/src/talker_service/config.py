@@ -65,6 +65,10 @@ class Settings(BaseSettings):
     # Remote STT endpoint (for use with faster-whisper-server or compatible)
     stt_endpoint: str = ""  # Custom STT base_url (e.g. http://whisper:8200/v1); empty = OpenAI cloud
 
+    # Reasoning options (for models that support extended thinking)
+    reasoning_effort: Optional[str] = None  # "low", "medium", "high" — None = provider default
+    reasoning_summary: Optional[str] = None  # "auto", "concise", "detailed" — None = omit
+
     # Provider Optimization Layers
     enable_conversation_persistence: bool = True  # Keep conversation history across events (OpenAI)
     enable_context_pruning: bool = True  # Auto-prune long conversations to stay within context window

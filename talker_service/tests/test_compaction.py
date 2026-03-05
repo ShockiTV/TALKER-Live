@@ -135,8 +135,8 @@ class TestCompactionEngine:
         await compaction_engine.check_and_compact("char_001")
         
         mutations = mock_state_client.mutate_batch.call_args[0][0]
-        assert mutations[0]["resource"] == "cores"
-        assert mutations[1]["resource"] == "cores"  # Self-compact
+        assert mutations[0]["resource"] == "memory.cores"
+        assert mutations[1]["resource"] == "memory.cores"  # Self-compact
     
     @pytest.mark.asyncio
     async def test_cascade_compaction(self, compaction_engine, mock_state_client):
@@ -159,8 +159,8 @@ class TestCompactionEngine:
         )
     
     @pytest.mark.asyncio
-    async def test_atomic_pattern_uses_seq_lte(self, compaction_engine, mock_state_client, mock_llm_client):
-        """Test that delete uses seq_lte (atomic pattern)."""
+    async def test_atomic_pattern_uses_seq_ids(self, compaction_engine, mock_state_client, mock_llm_client):
+        """Test that delete uses explicit seq IDs (atomic pattern)."""
         # Provide tier counts + items for events tier only
         mock_state_client.query_batch.side_effect = [
             [{"tiers": {"events": 105, "summaries": 5, "digests": 2, "cores": 2}}],
@@ -186,9 +186,9 @@ class TestCompactionEngine:
         for call in mock_state_client.mutate_batch.call_args_list:
             mutations = call[0][0]
             delete_mutation = mutations[0]
-            if delete_mutation.get("resource") == "events":
-                # Should delete by max seq from fetched items
-                assert delete_mutation["data"]["seq_lte"] == 14
+            if delete_mutation.get("resource") == "memory.events":
+                # Should delete by explicit seq IDs
+                assert delete_mutation["ids"] == list(range(5, 15))
                 found = True
                 break
         

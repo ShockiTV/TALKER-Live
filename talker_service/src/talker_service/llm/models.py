@@ -154,6 +154,38 @@ class Message:
 
 
 @dataclass
+class ReasoningOptions:
+    """Reasoning configuration for models that support extended thinking.
+
+    See https://platform.openai.com/docs/guides/reasoning
+
+    Attributes:
+        effort: How much reasoning effort the model should use.
+            ``"low"`` → fastest / cheapest, ``"medium"`` → balanced,
+            ``"high"`` → deepest reasoning.  ``None`` → provider default.
+        summary: Whether to include a reasoning summary in the response.
+            ``"auto"`` → include when useful, ``"concise"`` → short summary,
+            ``"detailed"`` → full summary, ``None`` → omit.
+    """
+
+    effort: Literal["low", "medium", "high"] | None = None
+    summary: Literal["auto", "concise", "detailed"] | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize to the format expected by the OpenAI Responses API."""
+        d: dict[str, Any] = {}
+        if self.effort is not None:
+            d["effort"] = self.effort
+        if self.summary is not None:
+            d["summary"] = self.summary
+        return d
+
+    def __bool__(self) -> bool:
+        """Return ``True`` when at least one field is set."""
+        return self.effort is not None or self.summary is not None
+
+
+@dataclass
 class LLMOptions:
     """Configuration options for LLM requests.
     
@@ -162,11 +194,13 @@ class LLMOptions:
         temperature: Sampling temperature (0.0 to 2.0)
         max_tokens: Maximum tokens in response
         timeout: Request timeout in seconds
+        reasoning: Reasoning options for models that support extended thinking
     """
     model: str | None = None
-    temperature: float = 0.7
+    temperature: float | None = None #0.7 before
     max_tokens: int | None = None
     timeout: float | None = None
+    reasoning: ReasoningOptions | None = None
     
     # Provider-specific options
     extra: dict = field(default_factory=dict)
