@@ -133,18 +133,51 @@ The system SHALL generate context-specific political information.
 - **WHEN** build_regional_context(current_area="l05_bar") is called
 - **THEN** returns empty string
 
-### Requirement: Aggregate World Context for Prompts
+### Requirement: Build Dead Leaders Context
 
-The system SHALL provide `build_world_context(scene_data, recent_events, state_client)` that aggregates all context sections.
+The system SHALL retain `build_dead_leaders_context()` for backward compatibility but it SHALL no longer be called by `build_world_context()`. The Notable Zone Inhabitants section subsumes dead leader reporting.
 
-#### Scenario: Full world context built
-- **WHEN** build_world_context is called with scene_data
-- **THEN** result includes dead leaders section if any
-- **AND** includes dead important characters section if any
-- **AND** includes info portions section if any disabled
-- **AND** includes regional politics section if applicable
-- **AND** includes faction standings section from `scene_data.faction_standings` if present
-- **AND** includes player goodwill section from `scene_data.player_goodwill` if present
+#### Scenario: Dead leaders context still callable
+- **WHEN** `build_dead_leaders_context()` is called directly
+- **THEN** it SHALL still return text listing dead faction leaders
+
+#### Scenario: Dead leaders context not included in aggregate
+- **WHEN** `build_world_context()` aggregates sections
+- **THEN** it SHALL NOT call or include output from `build_dead_leaders_context()`
+
+### Requirement: Build Dead Important Characters Context
+
+The system SHALL retain `build_dead_important_context()` for backward compatibility but it SHALL no longer be called by `build_world_context()`. The Notable Zone Inhabitants section subsumes dead important character reporting.
+
+#### Scenario: Dead important context still callable
+- **WHEN** `build_dead_important_context()` is called directly
+- **THEN** it SHALL still return text listing dead important characters filtered by area/events
+
+#### Scenario: Dead important context not included in aggregate
+- **WHEN** `build_world_context()` aggregates sections
+- **THEN** it SHALL NOT call or include output from `build_dead_important_context()`
+
+### Requirement: Aggregate World Context for Prompts (MODIFIED)
+
+The system SHALL provide `build_world_context(scene_data, recent_events, alive_status)` that aggregates all context sections. The aggregated output SHALL include a "Notable Zone Inhabitants" section listing relevant characters with alive/dead annotations, replacing the previously separate dead leaders and dead important characters sections.
+
+#### Scenario: Full world context built with inhabitants
+- **WHEN** build_world_context is called with scene_data and alive_status
+- **THEN** result SHALL include a "Notable Zone Inhabitants" section listing relevant characters with alive/dead annotations
+- **AND** SHALL include info portions section if any disabled
+- **AND** SHALL include regional politics section if applicable
+- **AND** SHALL NOT include separate dead leaders or dead important characters sections
+
+#### Scenario: Inhabitants section replaces dead character sections
+- **WHEN** build_world_context is called and Voronin is dead
+- **THEN** Voronin SHALL appear in the "Notable Zone Inhabitants" section annotated "(dead)"
+- **AND** there SHALL be no separate "Dead faction leaders" text block in the output
+
+#### Scenario: Empty world context when nothing notable
+- **GIVEN** all leaders alive, no info portions, no regional context, no area-matched characters
+- **WHEN** build_world_context is called
+- **THEN** the inhabitants section SHALL still list leaders (always visible)
+- **AND** other sections SHALL be empty or absent
 
 #### Scenario: Faction standings included in world context
 - **GIVEN** scene_data contains `faction_standings = {"dolg_freedom": -1500, "army_stalker": 0}`
@@ -160,11 +193,6 @@ The system SHALL provide `build_world_context(scene_data, recent_events, state_c
 - **GIVEN** scene_data has no `faction_standings` or `player_goodwill` keys
 - **WHEN** build_world_context is called
 - **THEN** no faction sections SHALL appear (backward compatible)
-
-#### Scenario: Empty world context when nothing notable
-- **GIVEN** all leaders alive, no info portions, no regional context, no faction data
-- **WHEN** build_world_context is called
-- **THEN** returns empty string or minimal context
 
 ### Requirement: SceneContext faction fields
 

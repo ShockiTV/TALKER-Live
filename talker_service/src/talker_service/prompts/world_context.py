@@ -289,6 +289,107 @@ def build_dead_important_context(
     return "\n".join(dead_lines)
 
 
+def build_inhabitants_context(
+    alive_status: dict[str, bool],
+    current_area: str = "",
+    recent_events: list | None = None,
+) -> str:
+    """Generate prompt text for notable zone inhabitants (alive and dead).
+    
+    Lists characterized NPCs relevant to the current context with alive/dead status.
+    
+    Filtering logic:
+    - Leaders: always included (globally important)
+    - Important: always included (major story characters)
+    - Notable: included only if contextually relevant (area match or event mention)
+    
+    Args:
+        alive_status: Dict mapping story_id to alive status
+        current_area: Current location ID (e.g., "l01_escape")
+        recent_events: Optional list of recent events for context filtering
+        
+    Returns:
+        Formatted text listing inhabitants with status, or empty string if none
+    """
+    inhabitants_lines = []
+    
+    # Process leaders (always included)
+    for leader in _get_leaders():
+        name = leader.get("name", "Unknown")
+        description = leader.get("description", "")
+        faction = resolve_faction_name(leader.get("faction", "unknown"))
+        
+        # Check alive/dead status
+        is_dead = False
+        for id_ in leader.get("ids", []):
+            if id_ in alive_status and not alive_status[id_]:
+                is_dead = True
+                break
+        
+        status = "dead" if is_dead else "alive"
+        
+        if description:
+            inhabitants_lines.append(f"- {name}, {description} ({status})")
+        else:
+            inhabitants_lines.append(f"- {name}, leader of {faction} ({status})")
+    
+    # Process important characters (always included if have a description or area match)
+    for char in _get_important():
+        name = char.get("name", "Unknown")
+        description = char.get("description", "")
+        faction = resolve_faction_name(char.get("faction", ""))
+        
+        # Check alive/dead status
+        is_dead = False
+        for id_ in char.get("ids", []):
+            if id_ in alive_status and not alive_status[id_]:
+                is_dead = True
+                break
+        
+        status = "dead" if is_dead else "alive"
+        
+        if description:
+            inhabitants_lines.append(f"- {name}, {description} ({status})")
+        else:
+            if faction:
+                inhabitants_lines.append(f"- {name}, {faction} ({status})")
+            else:
+                inhabitants_lines.append(f"- {name} ({status})")
+    
+    # Process notable characters (filtered by relevance)
+    for char in _get_notable():
+        # Skip if not contextually relevant
+        if not _is_notable_relevant(char, current_area, recent_events):
+            continue
+        
+        name = char.get("name", "Unknown")
+        description = char.get("description", "")
+        faction = resolve_faction_name(char.get("faction", ""))
+        
+        # Check alive/dead status
+        is_dead = False
+        for id_ in char.get("ids", []):
+            if id_ in alive_status and not alive_status[id_]:
+                is_dead = True
+                break
+        
+        status = "dead" if is_dead else "alive"
+        
+        if description:
+            inhabitants_lines.append(f"- {name}, {description} ({status})")
+        else:
+            if faction:
+                inhabitants_lines.append(f"- {name}, {faction} ({status})")
+            else:
+                inhabitants_lines.append(f"- {name} ({status})")
+    
+    # Return empty string if no inhabitants to list
+    if not inhabitants_lines:
+        return ""
+    
+    return "**Notable Zone Inhabitants:**\n" + "\n".join(inhabitants_lines)
+
+
 def build_info_portions_context(scene_data: "SceneContext") -> str:
     """Generate prompt text for major world events from info portions.
     
@@ -340,8 +441,7 @@ async def build_world_context(
     """Build complete world context section for dialogue prompts.
     
     Aggregates all context sections:
-    - Dead faction leaders
-    - Dead important characters
+    - Notable zone inhabitants (leaders, important, and contextually relevant notable NPCs)
     - Info portions (Brain Scorcher, Miracle Machine)
     - Regional politics
     
@@ -361,20 +461,14 @@ async def build_world_context(
     if alive_status is None:
         alive_status = {}
     
-    # Build dead leaders section
-    dead_leaders = build_dead_leaders_context(alive_status)
-    if dead_leaders:
-        sections.append(dead_leaders)
-    
-    # Build dead important characters section
-    current_area = scene_data.loc if scene_data else ""
-    dead_important = build_dead_important_context(
+    # Build inhabitants section (replaces dead leaders + dead important sections)
+    inhabitants = build_inhabitants_context(
         alive_status,
         current_area=current_area,
         recent_events=recent_events,
     )
-    if dead_important:
-        sections.append(dead_important)
+    if inhabitants:
+        sections.append(inhabitants)
     
     # Build info portions section
     if scene_data:

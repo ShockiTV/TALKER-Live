@@ -14,6 +14,7 @@ from talker_service.prompts.world_context import (
     _is_notable_relevant,
     build_dead_leaders_context,
     build_dead_important_context,
+    build_inhabitants_context,
     build_info_portions_context,
     build_regional_context,
     build_world_context,
@@ -461,6 +462,162 @@ class TestBuildDeadImportantContext:
         assert area_notable["name"] in result_area_match
 
 
+class TestBuildInhabitantsContext:
+    """Tests for build_inhabitants_context function."""
+    
+    def test_empty_list_returns_empty_string(self):
+        """Test that even with no area/event matches, leaders are always shown (never empty)."""
+        # All alive, no area match, no events
+        all_ids = get_all_story_ids()
+        alive_status = {id_: True for id_ in all_ids}
+        
+        result = build_inhabitants_context(
+            alive_status,
+            current_area="l03_agroprom",  # Area with no special characters
+            recent_events=[]
+        )
+        
+        # Leaders are always included, so result should never be empty
+        assert "**Notable Zone Inhabitants:**" in result
+        # All leaders should be shown
+        leaders = _get_leaders()
+        for leader in leaders:
+            assert leader["name"] in result
+    
+    def test_leaders_always_included(self):
+        """Test that all leaders are included unconditionally."""
+        # All alive
+        all_ids = get_all_story_ids()
+        alive_status = {id_: True for id_ in all_ids}
+        
+        result = build_inhabitants_context(alive_status)
+        
+        # Should have heading
+        assert "**Notable Zone Inhabitants:**" in result
+        
+        # All leaders should be present
+        leaders = _get_leaders()
+        for leader in leaders:
+            assert leader["name"] in result
+            assert "(alive)" in result
+    
+    def test_includes_alive_status_annotation(self):
+        """Test that alive/dead status is shown in output."""
+        leaders = _get_leaders()
+        if not leaders:
+            pytest.skip("No leaders available")
+        
+        leader_id = leaders[0]["ids"][0]
+        alive_status = {leader_id: False}
+        
+        result = build_inhabitants_context(alive_status)
+        
+        assert "(dead)" in result
+        assert leaders[0]["name"] in result
+    
+    def test_mixed_alive_and_dead(self):
+        """Test that mixed alive/dead shows correctly."""
+        leaders = _get_leaders()
+        if len(leaders) < 2:
+            pytest.skip("Need at least 2 leaders")
+        
+        alive_status = {
+            leaders[0]["ids"][0]: False,  # dead
+            leaders[1]["ids"][0]: True,   # alive
+        }
+        
+        result = build_inhabitants_context(alive_status)
+        
+        assert "(dead)" in result
+        assert "(alive)" in result
+        assert leaders[0]["name"] in result
+        assert leaders[1]["name"] in result
+    
+    def test_description_fallback_to_faction(self):
+        """Test that faction name is used when description missing."""
+        # Get a leader and build context
+        leaders = _get_leaders()
+        if not leaders:
+            pytest.skip("No leaders available")
+        
+        alive_status = {}
+        result = build_inhabitants_context(alive_status)
+        
+        # Should use faction name from resolve_faction_name
+        assert "leader of" in result or "Duty" in result or "Freedom" in result
+    
+    def test_area_filtering_includes_relevant(self):
+        """Test that important characters in area are included."""
+        important = _get_important()
+        area_char = next((c for c in important if c.get("area")), None)
+        
+        if not area_char:
+            pytest.skip("No important character with area defined")
+        
+        alive_status = {id_: True for id_ in get_all_story_ids()}
+        
+        result = build_inhabitants_context(
+            alive_status,
+            current_area=area_char["area"]
+        )
+        
+        # Character should appear (important + area match)
+        assert area_char["name"] in result
+    
+    def test_event_mention_includes_notable(self):
+        """Test that notable characters mentioned in events are included."""
+        from dataclasses import dataclass
+        
+        notable = _get_notable()
+        if not notable:
+            pytest.skip("No notable characters available")
+        
+        char = notable[0]
+        char_id = char["ids"][0]
+        
+        @dataclass
+        class MockCharacter:
+            story_id: str | None = None
+        
+        @dataclass
+        class MockEvent:
+            witnesses: list = None
+            context: dict = None
+            
+            def __post_init__(self):
+                if self.witnesses is None:
+                    self.witnesses = []
+                if self.context is None:
+                    self.context = {}
+        
+        event = MockEvent(
+            witnesses=[MockCharacter(story_id=char_id)],
+            context={}
+        )
+        
+        alive_status = {char_id: True}
+        
+        result = build_inhabitants_context(
+            alive_status,
+            current_area="l03_agroprom",  # Different area
+            recent_events=[event]
+        )
+        
+        # Should include notable character because they're in events
+        assert char["name"] in result
+    
+    def test_includes_header(self):
+        """Test that output includes the section header."""
+        leaders = _get_leaders()
+        if not leaders:
+            pytest.skip("No leaders available")
+        
+        alive_status = {}
+        result = build_inhabitants_context(alive_status)
+        
+        assert "**Notable Zone Inhabitants:**" in result
+
+
 class TestBuildInfoPortionsContext:
     """Tests for build_info_portions_context function."""
     
@@ -557,7 +714,7 @@ class TestBuildWorldContext:
     
     @pytest.mark.asyncio
     async def test_empty_when_nothing_notable(self):
-        """Test that empty context returns empty string."""
+        """Test that context always includes leaders (at minimum)."""
         # All alive, nothing disabled, no regional context
         all_ids = get_all_story_ids()
         alive_status = {id_: True for id_ in all_ids}
@@ -570,11 +727,15 @@ class TestBuildWorldContext:
         
         result = await build_world_context(scene, alive_status=alive_status)
         
-        assert result == ""
+        # Should include inhabitants section (at least leaders)
+        assert "**Notable Zone Inhabitants:**" in result
+        leaders = _get_leaders()
+        for leader in leaders:
+            assert leader["name"] in result
     
     @pytest.mark.asyncio
     async def test_includes_dead_leaders(self):
-        """Test that dead leaders appear in aggregated context."""
+        """Test that dead leaders appear in aggregated context (inhabitants section)."""
         leaders = _get_leaders()
         if not leaders:
             pytest.skip("No leaders defined")
@@ -589,8 +750,10 @@ class TestBuildWorldContext:
         
         result = await build_world_context(scene, alive_status=alive_status)
         
+        # Should include inhabitants section with the dead leader
+        assert "**Notable Zone Inhabitants:**" in result
         assert leaders[0]["name"] in result
-        assert "is dead" in result
+        assert "(dead)" in result
 
     @pytest.mark.asyncio
     async def test_includes_faction_standings(self):
