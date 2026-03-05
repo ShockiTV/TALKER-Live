@@ -1,22 +1,20 @@
-# WebSocket API Contract
+﻿# WebSocket API Contract
 # Single source of truth for the Lua ↔ Python wire protocol.
 #
 # Wire format:  JSON envelope  {"t": "<topic>", "p": <payload>, "r": "<request_id>", "ts": <ms>}
 # Transport:    WebSocket (RFC 6455)
 #
-# Architecture (bridge proxy):
-#   Lua Game  →  talker_bridge (port 5558)  →  talker_service (port 5557)
-#   All traffic flows through the bridge. The bridge proxies non-mic
-#   topics transparently and handles mic/tts topics locally.
+# Architecture (direct connection):
+#   Lua Game  →  talker_service (port 5557)
+#   Direct WebSocket connection from game to service.
 #
 # Authentication:
-#   Optional token auth via query parameter: ws://host:5558/ws?token=<token>
+#   Optional token auth via query parameter: ws://host:5557/ws?token=<token>
 #   Tokens configured via TALKER_TOKENS env var: "name1:token1,name2:token2"
 #   When TALKER_TOKENS is unset, all connections are accepted (local mode).
 #
 # Close codes:
 #   4001 — Authentication failed (invalid or missing token when auth is required)
-#   4000 — Only one connection allowed (bridge, single-client enforcement)
 #   1001 — Server shutting down
 
 version: "3.0"
@@ -52,7 +50,7 @@ notes:
     WSRouter short-circuits 'r'-bearing inbound frames to resolve
     pending futures before topic-handler dispatch.
   reconnect: >
-    The Lua bridge channel implements reconnection with exponential
+    The Lua service channel implements reconnection with exponential
     backoff (1s base, 30s cap, ±20% jitter). On reconnect, a
     config.sync message is automatically published.
 
@@ -60,23 +58,12 @@ notes:
 # Channels
 # ──────────────────────────────────────────────────────────────
 channels:
-  bridge:
-    description: >
-      Single connection from Lua to talker_bridge (port 5558).
-      The bridge proxies all non-mic topics transparently to/from
-      talker_service (port 5557) and handles mic/tts topics locally.
-    default_url: "ws://127.0.0.1:5558/ws"
-    lua_module: "infra.bridge.channel"
-    python_module: "talker_bridge/python/main.py (websockets server)"
-    reconnect: true
-    single_client: true
-    auth: optional
-
   service:
     description: >
-      Internal connection from talker_bridge to talker_service.
-      Game code does not connect here directly; the bridge proxies traffic.
+      Direct connection from Lua game to talker_service (port 5557).
+      All game messages flow directly without proxying.
     default_url: "ws://127.0.0.1:5557/ws"
+    lua_module: "infra.bridge.channel"
     python_module: "talker_service.transport.ws_router"
     reconnect: true
     auth: optional
@@ -167,11 +154,11 @@ types:
 # ──────────────────────────────────────────────────────────────
 messages:
 
-  # ── Lua → talker_service (proxied through bridge) ─────────
+  # ── Lua → talker_service ─────────
 
   game.event:
-    channel: bridge
-    direction: lua→bridge→service
+    channel: service
+    direction: lua→service
     description: "Game events (death, dialogue, artifacts, etc.) with tool-based dialogue context"
     payload:
       event:      { $ref: Event, required: true, description: "Event data" }
@@ -180,49 +167,49 @@ messages:
       traits:     { type: object, required: true, description: "Map of character_id → {personality_id, backstory_id}" }
 
   player.dialogue:
-    channel: bridge
-    direction: lua→bridge→service
+    channel: service
+    direction: lua→service
     description: "Player chatbox input"
     payload:
       text:    { type: string, required: true }
       context: { type: object, description: "Optional context with speaker Character, etc." }
 
   player.whisper:
-    channel: bridge
-    direction: lua→bridge→service
+    channel: service
+    direction: lua→service
     description: "Player whisper input (companion-only communication)"
     payload:
       text:   { type: string, required: true }
       target: { $ref: Character, description: "Target companion or null" }
 
   config.update:
-    channel: bridge
-    direction: lua→bridge→service
+    channel: service
+    direction: lua→service
     description: "Single MCM setting changed"
     payload:
       key:   { type: string, required: true }
       value: { type: any, required: true }
 
   config.sync:
-    channel: bridge
-    direction: lua→bridge→service
+    channel: service
+    direction: lua→service
     description: "Full MCM configuration on game load or reconnect"
     payload:
       config: { type: object, required: true, description: "Flat dict of all MCM settings" }
 
   system.heartbeat:
-    channel: bridge
-    direction: lua→bridge→service
+    channel: service
+    direction: lua→service
     description: "Periodic connection health check"
     payload:
       game_time_ms: { type: int }
       status:       { type: string, default: "alive" }
 
-  # ── talker_service → Lua (proxied through bridge) ─────────
+  # ── talker_service → Lua ─────────
 
   dialogue.display:
-    channel: bridge
-    direction: service→bridge→lua
+    channel: service
+    direction: service→lua
     description: "Display NPC dialogue in-game (text-only fallback when TTS is unavailable)"
     payload:
       speaker_id:    { type: string, required: true }
@@ -233,8 +220,8 @@ messages:
       event_context: { type: object, description: "Additional context merged into the created event" }
 
   tts.audio:
-    channel: bridge
-    direction: service→bridge→lua
+    channel: service
+    direction: service→lua
     description: "Play TTS audio for an NPC in-game using 3D spatial audio. Replaces dialogue.display when TTS is available."
     payload:
       speaker_id:    { type: string, required: true, description: "Character ID" }
@@ -249,30 +236,30 @@ messages:
 
 
   event.store:
-    channel: bridge
-    direction: service→bridge→lua
+    channel: service
+    direction: service→lua
     description: "Store a compressed memory event (injected from Python)"
     payload:
       event: { $ref: Event, required: true }
 
   config.request:
-    channel: bridge
-    direction: service→bridge→lua
+    channel: service
+    direction: service→lua
     description: "Python requests a config sync (e.g. after restart)"
     payload:
       reason: { type: string, description: "Reason for the request" }
 
   service.heartbeat.ack:
-    channel: bridge
-    direction: service→bridge→lua
+    channel: service
+    direction: service→lua
     description: "Python acknowledges Lua's heartbeat"
     payload: {}
 
-  # ── State Queries (service→bridge→lua→bridge→service) ─────
+  # ── State Queries (service→lua→service) ─────
 
   state.query.batch:
-    channel: bridge
-    direction: service→bridge→lua→bridge→service
+    channel: service
+    direction: service→lua→service
     description: >
       Batch state query — multiple sub-queries in a single roundtrip.
       Python sends with a unique 'r' field. Lua processes all sub-queries
@@ -474,8 +461,8 @@ messages:
   # ── State Response ──────────────────────────────────────────
 
   state.mutate.batch:
-    channel: bridge
-    direction: service→bridge→lua→bridge→service
+    channel: service
+    direction: serviceluaservice
     description: >
       Batch state mutation — multiple memory store updates in a single roundtrip.
       Python sends with a unique 'r' field. Lua processes all mutations
@@ -505,7 +492,7 @@ messages:
 
   state.response:
     channel: service
-    direction: lua→bridge→service
+    direction: lua→service
     description: >
       Response to a state.query.batch or state.mutate.batch. The 'r' field in the envelope
       carries the original request_id for correlation.
@@ -518,32 +505,32 @@ messages:
       timestamp:     { type: int }
 
 # ──────────────────────────────────────────────────────────────
-# Mic & Audio Messages (handled locally by talker_bridge)
+# Mic & Audio Messages (native DLL capture)
 # ──────────────────────────────────────────────────────────────
 
-  # ── Lua → talker_bridge (handled locally) ───────────────────
+  # ── Lua → talker_service (mic control) ───────────────────
 
   mic.start:
-    channel: bridge
-    direction: lua→bridge
-    description: "Command talker_bridge to start recording. Bridge captures audio and streams chunks to talker_service."
+    channel: service
+    direction: lua→service
+    description: "Command service to start recording audio. Native DLL at talker_audio.dll captures and streams chunks."
     payload:
       lang:   { type: string, nullable: true, description: "ISO-639-1 language code, or null for auto-detect" }
       prompt: { type: string, description: "Transcription hint (nearby NPC names, STALKER setting context)" }
 
   mic.stop:
-    channel: bridge
-    direction: lua→bridge
-    description: "Command talker_bridge to cancel the current recording"
+    channel: service
+    direction: lua→service
+    description: "Command service to stop the current recording session"
     payload: {}
 
   mic.cancel:
-    channel: bridge
-    direction: lua→bridge
+    channel: service
+    direction: lua→service
     description: "Cancel current recording session (alias for mic.stop)"
     payload: {}
 
-  # ── talker_bridge → talker_service (audio streaming) ────────
+  # ── Lua → talker_service (audio streaming via native DLL)─────
 
   mic.audio.chunk:
     channel: service
@@ -570,42 +557,43 @@ messages:
   # ── talker_service → Lua (via bridge proxy) ─────────────────
 
   mic.status:
-    channel: bridge
+    channel: service
     direction: service→lua
     description: "Reports the current mic/transcription phase. Proxied through bridge."
     payload:
       status: { type: string, required: true, enum: ["LISTENING", "TRANSCRIBING"], description: "Current mic phase" }
 
   mic.result:
-    channel: bridge
+    channel: service
     direction: service→lua
     description: "Delivers the final transcription. Session handlers auto-cleanup on receipt. Proxied through bridge."
     payload:
       text: { type: string, required: true, description: "Transcribed text. Empty string on failure." }
 
-  # ── TTS (Lua → talker_bridge, handled locally) ──────────────
+  # ── TTS (Lua → service) ────────────────────────────────────
 
   tts.speak:
-    channel: bridge
-    direction: lua→bridge
-    description: "Command talker_bridge to synthesise and play a TTS audio line"
+    channel: service
+    direction: lua→service
+    description: "Command service to synthesise and play a TTS audio line"
     payload:
       voice_id:   { type: string, required: true, description: "Voice theme ID derived from npc:sound_prefix() (e.g. 'stalker_1', 'dolg_3')" }
       text:       { type: string, required: true, description: "Dialogue text to synthesise" }
       speaker_id: { type: string, required: true, description: "NPC game_id (echoed back in tts.started/tts.done)" }
 
-  # ── TTS (talker_bridge → Lua) ───────────────────────────────
+  # ── TTS (talker_service → Lua) ───────────────────────────────
 
   tts.started:
-    channel: bridge
-    direction: bridge→lua
-    description: "talker_bridge has begun playing the TTS audio. Lua should display HUD subtitle now."
+    channel: service
+    direction: service→lua
+    description: "talker_service has begun playing the TTS audio. Lua should display HUD subtitle now."
     payload:
       speaker_id: { type: string, required: true, description: "NPC game_id, echoed from tts.speak" }
 
   tts.done:
-    channel: bridge
-    direction: bridge→lua
-    description: "talker_bridge has finished playing the TTS audio. Lua dequeues item and sends the next one."
+    channel: service
+    direction: service→lua
+    description: "talker_service has finished playing the TTS audio. Lua dequeues item and sends the next one."
     payload:
       speaker_id: { type: string, required: true, description: "NPC game_id, echoed from tts.speak" }
+

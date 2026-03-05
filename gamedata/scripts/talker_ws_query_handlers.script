@@ -451,7 +451,7 @@ local function handle_batch_mutation(payload, request_r)
 
     -- Publish batch response with the r-field echoed back
     local ws = get_ws_integration()
-    local channel = ws and ws.get_bridge_channel and ws.get_bridge_channel()
+    local channel = ws and ws.get_service_channel and ws.get_service_channel()
     if channel then
         local response_payload = {
             request_id = request_id or request_r,
@@ -522,7 +522,7 @@ local function handle_batch_query(payload, request_r)
 
     -- Publish batch response with the r-field echoed back
     local ws = get_ws_integration()
-    local channel = ws and ws.get_bridge_channel and ws.get_bridge_channel()
+    local channel = ws and ws.get_service_channel and ws.get_service_channel()
     if channel then
         local response_payload = {
             request_id = request_id or request_r,

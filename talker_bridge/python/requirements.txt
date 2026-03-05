@@ -1,7 +1,0 @@
-numpy
-sounddevice
-soundfile
-websockets
-httpx
-requests
-python-dotenv
