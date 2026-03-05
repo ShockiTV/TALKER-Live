@@ -158,8 +158,8 @@ function c.ws_host()
 	return cfg("ws_host") or "127.0.0.1"
 end
 
-function c.mic_ws_port()
-	return tonumber(cfg("mic_ws_port"))
+function c.service_ws_port()
+	return tonumber(cfg("service_ws_port"))
 end
 
 function c.ws_token()

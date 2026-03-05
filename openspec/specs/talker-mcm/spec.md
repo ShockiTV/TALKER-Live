@@ -20,22 +20,23 @@ The MCM defaults table SHALL be extracted to `interface/config_defaults.lua` as 
 
 #### Scenario: Defaults table covers all MCM keys
 - **WHEN** the defaults table is loaded
-- **THEN** it contains defaults for at least: `debug_logging`, `witness_distance`, `npc_speak_distance`, `ai_model_method`, `custom_ai_model`, `custom_ai_model_fast`, `zmq_port`, `zmq_heartbeat_interval`, `llm_timeout`, `state_query_timeout`, `language`, `input_option`, `speak_key`, `gpt_version`, `reasoning_level`, `voice_provider`, `service_url`, `ws_token`
-- **AND** it SHALL contain defaults for all `triggers/*` keys: enable, cooldown, and chance per trigger type
+- **THEN** it contains `service_ws_port` with default value 5557
+- **AND** it does NOT contain `mic_ws_port`
 
 ### Requirement: MCM service_url input field
 
-The MCM SHALL include a text input field `service_url` in the Python Service Configuration section. The default value SHALL be `wss://talker-live.duckdns.org/ws`. This field specifies the upstream talker_service WebSocket URL that the bridge connects to.
+The MCM SHALL include a text input field `service_url` in the Python Service Configuration section. The default value SHALL be empty (local connection via `service_ws_port`). This field specifies the `talker_service` WebSocket URL that Lua connects to directly (no bridge intermediary).
 
-#### Scenario: Default service_url
+#### Scenario: Default service_url (empty = local connection)
 
 - **WHEN** the player has not changed the `service_url` setting
-- **THEN** the MCM returns `wss://talker-live.duckdns.org/ws`
+- **THEN** the MCM returns empty string
+- **AND** Lua connects to `ws://127.0.0.1:<service_ws_port>/ws` (default 5557)
 
 #### Scenario: Player sets remote URL
 
 - **WHEN** the player enters `wss://talker-live.duckdns.org/ws` in the `service_url` field
-- **THEN** `config.get_all_config()` includes `service_url: "wss://talker-live.duckdns.org/ws"`
+- **THEN** Lua connects directly to the remote `talker_service`
 
 ### Requirement: MCM ws_token input field
 
@@ -50,3 +51,19 @@ The MCM SHALL include a text input field `ws_token` in the Python Service Config
 
 - **WHEN** the player enters `invite-code-abc123` in the `ws_token` field
 - **THEN** `config.get_all_config()` includes `ws_token: "invite-code-abc123"`
+
+### Requirement: MCM service_ws_port field
+
+The MCM SHALL include a numeric input field `service_ws_port` (default 5557) in the Python Service Configuration section. This specifies the port for local `talker_service` connections when `service_url` is empty. The field is ignored when a remote `service_url` is configured.
+
+#### Scenario: Default local port
+- **WHEN** `service_url` is empty and `service_ws_port` is 5557
+- **THEN** Lua connects to `ws://127.0.0.1:5557/ws`
+
+#### Scenario: Custom local port
+- **WHEN** `service_url` is empty and `service_ws_port` is 9999
+- **THEN** Lua connects to `ws://127.0.0.1:9999/ws`
+
+#### Scenario: Remote URL ignores port
+- **WHEN** `service_url` is `wss://example.com/ws` and `service_ws_port` is 9999
+- **THEN** Lua connects to `wss://example.com/ws` (port field ignored)

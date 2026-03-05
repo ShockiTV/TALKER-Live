@@ -35,10 +35,10 @@ local function safe_require(module_name)
     end
 end
 
-local function get_bridge_url()
-    -- Build WS URL to talker_bridge.  Defaults: ws://127.0.0.1:5558/ws
+local function get_service_url()
+    -- Build WS URL to talker_service. Defaults: ws://127.0.0.1:5557/ws
     local host = config.ws_host and config.ws_host() or "127.0.0.1"
-    local port = config.mic_ws_port and config.mic_ws_port() or 5558
+    local port = config.service_ws_port and config.service_ws_port() or 5557
     local url  = "ws://" .. host .. ":" .. tostring(port) .. "/ws"
 
     local token = config.ws_token and config.ws_token() or nil
@@ -64,7 +64,7 @@ local function init_channels()
         return false
     end
 
-    bridge_channel.init(get_bridge_url())
+    bridge_channel.init(get_service_url())
 
     -- On reconnect, resend full config sync
     bridge_channel.set_on_reconnect(function()
@@ -72,7 +72,7 @@ local function init_channels()
         publish_config_sync()
     end)
 
-    logger.info("WS bridge channel initialized (%s)", get_bridge_url())
+    logger.info("WS bridge channel initialized (%s)", get_service_url())
     start_tick_timer()
     return true
 end
@@ -186,16 +186,16 @@ end
 -- Public API (for use by other scripts)
 --------------------------------------------------------------------------------
 
---- Get the bridge channel module (for scripts that need direct access).
-function get_bridge_channel()
+--- Get the service channel module (for scripts that need direct access).
+function get_service_channel()
     if not init_channels() then return nil end
     return bridge_channel
 end
 
---- Backward-compatible alias for get_bridge_channel.
--- Mic-related topics are now also routed through the bridge channel.
+--- Backward-compatible alias for get_service_channel.
+-- Mic-related topics are now also routed through the service channel.
 function get_mic_channel()
-    return get_bridge_channel()
+    return get_service_channel()
 end
 
 function publish_game_event(event, is_important)
