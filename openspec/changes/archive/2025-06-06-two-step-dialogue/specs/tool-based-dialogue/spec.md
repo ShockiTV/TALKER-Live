@@ -1,10 +1,4 @@
-# tool-based-dialogue
-
-## Purpose
-
-Python `ConversationManager` that maintains a persistent conversation per session and handles speaker selection + dialogue generation in a deterministic 2-step flow (ephemeral picker, then persistent dialogue), with all data fetching performed by Python code rather than LLM tool calls.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: ConversationManager class
 
@@ -37,6 +31,15 @@ The ConversationManager SHALL NOT expose any tools to the LLM. The `TOOLS` list,
 - **WHEN** Python needs to fetch memories or backgrounds
 - **THEN** it SHALL call `_fetch_memories()` / `_fetch_full_memory()` / `_fetch_diff_memory()` and `BackgroundGenerator.ensure_backgrounds()` directly as internal methods
 - **AND** these methods SHALL NOT be registered as LLM-callable tools
+
+### Requirement: Tool loop execution
+
+**This requirement is removed.**
+
+#### Scenario: No tool loop
+- **WHEN** `handle_event()` processes an event
+- **THEN** there SHALL be no iterative tool-calling loop
+- **AND** `complete_with_tool_loop()` SHALL NOT be called
 
 ### Requirement: System prompt construction
 
@@ -77,3 +80,13 @@ After the dialogue generation step, the ConversationManager SHALL extract the di
 - **WHEN** the LLM generates a dialogue response
 - **THEN** the full response text SHALL be used as the dialogue (after stripping whitespace)
 - **AND** the speaker_id SHALL be the one selected by the picker step
+
+## REMOVED Requirements
+
+### Requirement: Tool loop execution
+**Reason**: Replaced by deterministic 2-step flow. The LLM no longer calls tools — Python fetches all data and injects it as message content.
+**Migration**: `complete_with_tool_loop()` calls replaced by two sequential `complete()` calls. Tool handler methods retained as internal Python helpers.
+
+### Requirement: Pre-fetch state batch
+**Reason**: The pre-fetch concept is subsumed by the new 2-step flow. Background batch-reading is now part of the background completeness check, and memory fetching is part of the dialogue generation step. World context enrichment remains but is not a separate "pre-fetch" — it's part of system prompt construction.
+**Migration**: World context fetching moves to system prompt build. Background fetching moves to background completeness check. Memory fetching moves to dialogue step.
