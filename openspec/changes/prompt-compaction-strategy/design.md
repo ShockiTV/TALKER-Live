@@ -22,9 +22,9 @@ The existing `prune_conversation()` in `llm/pruning.py` was designed for the old
 **Goals:**
 - Always-prune dialogue tail to a fixed window (no budget check needed, just count-based)
 - Budget-triggered context block rebuild as the only size-control phase
-- Give users MCM control: dialogue pair retention count + hard token limit
+- Give users MCM control: dialogue pair retention count + hard token limit + retained NPC context count
 - Replace the old `prune_conversation()` with four-layer-aware logic
-- Mirror the two new MCM settings to Python via `MCMConfig`
+- Mirror the three new MCM settings to Python via `MCMConfig`
 
 **Non-Goals:**
 - Budget-based dialogue pruning (always-prune eliminates the need for token estimation on the tail)
@@ -56,25 +56,35 @@ if len(pairs) > N:
 
 ### Decision 2: Budget-triggered context block rebuild (hard limit only)
 
-After dialogue trimming, if estimated tokens still exceed `prompt_budget_hard * 1000`, rebuild the `ContextBlock` for current candidates only:
+After dialogue trimming, if estimated tokens still exceed `prompt_budget_hard * 1000`, rebuild the `ContextBlock` keeping:
 
-- Keep BGs and MEMs for characters in the current event's `candidate_ids`
-- Keep static items (inhabitants, faction standings, info portions)
-- Drop everything else
-- Replace `_messages[1]` with the new `render_markdown()` output
+1. **Candidate items** (always kept) — BGs and MEMs for characters in the current event's `candidate_ids`
+2. **Recent non-candidate items** — BGs and MEMs for the last K non-candidate NPCs by insertion order, where K = `prompt_context_keep` MCM setting (default 5). Insertion order is a recency proxy — the most recently encountered NPCs were added last.
+3. **Static items** (always kept) — inhabitants, faction standings, info portions
+4. **Everything else** — dropped
+
+Replace `_messages[1]` with the new `render_markdown()` output.
 
 This is the only budget-based phase. It fires when the context block itself grows too large (many unique NPCs with backgrounds over a long session).
 
 **Rationale**: With always-prune, prompt size ≈ `ctx_block + 156 + 400N`. For N=3 (default), the dialogue tail is fixed at ~1200 tokens. Only the context block grows unboundedly, so the hard limit only guards against that vector.
 
-### Decision 3: Two MCM settings
+**Why recency-based retention**: In STALKER you move through zones sequentially. NPCs you just interacted with are most likely to be cross-referenced ("Sidorovich mentioned you were looking for artifacts..."). NPCs from several zones ago are narratively stale. The `ContextBlock` append-only insertion order maps directly to encounter recency, making this trivial to implement without extra tracking.
+
+### Decision 3: Three MCM settings
 
 | MCM Key | Python Field | Type | Default | Min | Max | Purpose |
 |---------|-------------|------|---------|-----|-----|---------|
 | `prompt_dialogue_pairs` | `prompt_dialogue_pairs` | integer | 3 | 0 | 20 | Dialogue pairs to keep per turn |
 | `prompt_budget_hard` | `prompt_budget_hard` | integer (thousands) | 16 | 4 | 128 | Context block rebuild threshold |
+| `prompt_context_keep` | `prompt_context_keep` | integer | 5 | 0 | 20 | Non-candidate NPC contexts to retain after rebuild |
 
-`prompt_dialogue_pairs` is a plain integer (not thousands). `prompt_budget_hard` is in thousands of tokens for MCM UX.
+`prompt_dialogue_pairs` and `prompt_context_keep` are plain integers. `prompt_budget_hard` is in thousands of tokens for MCM UX.
+
+All three settings are intuitive count-based knobs (or a token budget that maps to NPC count):
+- `prompt_dialogue_pairs = 3` → keep last 3 exchanges
+- `prompt_context_keep = 5` → keep context for 5 recent NPCs beyond the candidates
+- `prompt_budget_hard = 16` → rebuild when context block exceeds ~16k tokens
 
 The hard limit default of 16 (= 16k tokens) means:
 - Context block can grow to ~15k tokens before rebuild triggers
@@ -83,19 +93,30 @@ The hard limit default of 16 (= 16k tokens) means:
 - Ollama users with 8k context can lower to 6-8
 - GPT-4.1 users can raise to 32+ for maximum context richness
 
+The context keep default of 5 means:
+- After rebuild, ~1500-2500 tokens of non-candidate context retained (5 NPCs × 300-500 tok each)
+- Players who want aggressive pruning set to 0 (candidates only)
+- Players who want generous retention set to 15+
+
 ### Decision 4: `ContextBlock.rebuild_for_candidates()` method
 
 The `ContextBlock` gains a single method for the hard-limit phase:
 
 ```python
-def rebuild_for_candidates(self, candidate_ids: set[str]) -> "ContextBlock":
-    """Return a new ContextBlock keeping only items for the given candidates.
+def rebuild_for_candidates(
+    self,
+    candidate_ids: set[str],
+    keep_recent: int = 5,
+) -> "ContextBlock":
+    """Return a new ContextBlock keeping items for candidates + recent NPCs.
     
-    Retains:
-    - BackgroundItems where char_id is in candidate_ids
-    - MemoryItems where char_id is in candidate_ids
-    - StaticItems (inhabitants, factions, info portions) — always kept
+    Retains (in priority order):
+    1. BackgroundItems/MemoryItems where char_id is in candidate_ids
+    2. BackgroundItems/MemoryItems for the last `keep_recent` non-candidate
+       NPCs by insertion order (most recently added = most recently encountered)
+    3. StaticItems (inhabitants, factions, info portions) — always kept
     
+    Everything else is dropped.
     Returns a NEW ContextBlock (the original is not mutated).
     """
 ```
@@ -111,6 +132,7 @@ def compact_prompt(
     candidate_ids: set[str],
     dialogue_pairs: int,     # from MCM (already plain integer)
     hard_limit: int,         # tokens (already multiplied from MCM thousands)
+    context_keep: int,       # from MCM (non-candidate NPCs to retain)
 ) -> tuple[list[Message], ContextBlock, bool]:
     """Always-prune dialogue + budget-triggered context rebuild.
     
@@ -119,7 +141,7 @@ def compact_prompt(
     """
 ```
 
-Phase 1 (dialogue trim) always runs. Phase 2 (context rebuild) only if tokens > hard_limit after Phase 1. Pure function — no mutation.
+Phase 1 (dialogue trim) always runs. Phase 2 (context rebuild) only if tokens > hard_limit after Phase 1. Phase 2 uses `context_keep` to retain recent non-candidate NPC contexts. Pure function — no mutation.
 
 ### Decision 6: Integration point in handle_event()
 
@@ -132,6 +154,11 @@ handle_event():
 
 The compactor runs after full prompt assembly, before every LLM call. The dialogue trim is essentially free (no token estimation) so there's no cost to running it unconditionally.
 
+Settings from config:
+- `dialogue_pairs = config_mirror.get("prompt_dialogue_pairs")`
+- `hard_limit = config_mirror.get("prompt_budget_hard") * 1000`
+- `context_keep = config_mirror.get("prompt_context_keep")`
+
 ## Risks / Trade-offs
 
 **[Trade-off] N=3 default drops most dialogue history** → Accepted. Witness injection already preserves the information in the context block. N=3 provides sufficient local conversational flow to avoid repetition. Users wanting richer conversational continuity can raise N up to 20.
@@ -141,5 +168,9 @@ The compactor runs after full prompt assembly, before every LLM call. The dialog
 **[Trade-off] Token estimation only needed for hard limit check** → `estimate_tokens()` is called once per turn (after dialogue trim). Much simpler than the old design which needed it for both phases.
 
 **[Trade-off] MCM hard limit in thousands loses precision** → Acceptable. Difference between 16000 and 16500 is negligible for budget checks.
+
+**[Benefit] Recency-based retention preserves narrative continuity** → NPCs you just traded with or walked past are most likely to be referenced in the next conversation. Keeping their context reduces "who?" moments where the LLM has no context for a recently-mentioned character.
+
+**[Trade-off] prompt_context_keep=0 drops all non-candidate context** → Aggressive but valid. Users wanting maximum cost savings can set this alongside prompt_dialogue_pairs=0 for minimal prompts.
 
 **[Benefit] Always-prune eliminates cache miss from reactive pruning** → In the old reactive model, occasional Phase 1 triggers shifted the dialogue tail and caused partial cache misses. Always-prune means the tail is always small and the prefix is always what gets cached. More predictable caching behaviour.
