@@ -162,6 +162,20 @@
         "payload": {
           "queries": [
             {
+              "id": "events",
+              "resource": "query.memory.events",
+              "params": {
+                "character_id": "12345"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "topic": "state.query.batch",
+        "payload": {
+          "queries": [
+            {
               "id": "mem_summaries",
               "resource": "memory.summaries",
               "params": {

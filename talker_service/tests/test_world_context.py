@@ -18,6 +18,12 @@ from talker_service.prompts.world_context import (
     build_info_portions_context,
     build_regional_context,
     build_world_context,
+    build_world_context_split,
+    add_inhabitants_to_context_block,
+    add_static_context_to_block,
+    build_dynamic_world_line,
+    WorldContextSplit,
+    InhabitantEntry,
 )
 
 
@@ -799,3 +805,130 @@ class TestBuildWorldContext:
 
         assert "Faction standings:" not in result
         assert "Player goodwill:" not in result
+
+
+class TestBuildWorldContextSplit:
+    """Tests for the structured world context split return type."""
+
+    def test_returns_worldcontextsplit(self):
+        scene = MockSceneContext(loc="l01_escape", weather="Clear")
+        result = build_world_context_split(scene, alive_status={})
+        assert isinstance(result, WorldContextSplit)
+
+    def test_dynamic_weather(self):
+        scene = MockSceneContext(weather="Rainy")
+        result = build_world_context_split(scene, alive_status={})
+        assert result.weather == "Rainy"
+
+    def test_dynamic_time(self):
+        scene = MockSceneContext(time={"h": 14, "m": 35})
+        result = build_world_context_split(scene, alive_status={})
+        assert result.time_of_day == "14:35"
+
+    def test_dynamic_location(self):
+        scene = MockSceneContext(loc="l03_agroprom")
+        result = build_world_context_split(scene, alive_status={})
+        assert result.location == "l03_agroprom"
+
+    def test_static_inhabitants_populated(self):
+        leaders = _get_leaders()
+        if not leaders:
+            pytest.skip("No leaders in test data")
+        first_id = leaders[0].get("ids", [""])[0]
+        alive_status = {first_id: False}
+        scene = MockSceneContext(loc="l03_agroprom")
+        result = build_world_context_split(scene, alive_status=alive_status)
+        assert len(result.inhabitants) > 0
+        names = [i.name for i in result.inhabitants]
+        assert leaders[0]["name"] in names
+
+    def test_static_info_portions(self):
+        scene = MockSceneContext(brain_scorcher_disabled=True)
+        result = build_world_context_split(scene, alive_status={})
+        assert "Brain Scorcher" in result.info_portions
+
+    def test_static_faction_standings(self):
+        scene = MockSceneContext(faction_standings={"dolg_freedom": -1500})
+        result = build_world_context_split(scene, alive_status={})
+        assert "Faction standings:" in result.faction_standings
+
+    def test_static_player_goodwill(self):
+        scene = MockSceneContext(player_goodwill={"dolg": 1200})
+        result = build_world_context_split(scene, alive_status={})
+        assert "Player goodwill:" in result.player_goodwill
+
+    def test_regional_context_cordon(self):
+        scene = MockSceneContext(loc="l01_escape")
+        result = build_world_context_split(scene, alive_status={})
+        assert "Military" in result.regional_context
+
+
+class TestAddInhabitantsToContextBlock:
+    """Tests for add_inhabitants_to_context_block helper."""
+
+    def test_adds_inhabitants(self):
+        from talker_service.dialogue.context_block import ContextBlock
+        block = ContextBlock()
+        entries = [
+            InhabitantEntry("a", "Alice", "Loners", "desc-a"),
+            InhabitantEntry("b", "Bob", "Duty", "desc-b"),
+        ]
+        added = add_inhabitants_to_context_block(block, entries)
+        assert added == 2
+        assert block.has_background("a")
+        assert block.has_background("b")
+
+    def test_dedup_inhabitants(self):
+        from talker_service.dialogue.context_block import ContextBlock
+        block = ContextBlock()
+        block.add_background("a", "Alice", "Loners", "existing")
+        entries = [InhabitantEntry("a", "Alice", "Loners", "desc-a")]
+        added = add_inhabitants_to_context_block(block, entries)
+        assert added == 0
+
+
+class TestAddStaticContextToBlock:
+    """Tests for add_static_context_to_block helper."""
+
+    def test_adds_all_static_entries(self):
+        from talker_service.dialogue.context_block import ContextBlock
+        block = ContextBlock()
+        split = WorldContextSplit(
+            inhabitants=[InhabitantEntry("a", "Alice", "Loners", "desc")],
+            faction_standings="Standings text",
+            player_goodwill="Goodwill text",
+            info_portions="Brain Scorcher disabled",
+        )
+        add_static_context_to_block(block, split)
+        assert block.has_background("a")
+        assert block.has_background("__faction_standings__")
+        assert block.has_background("__player_goodwill__")
+        assert block.has_background("__info_portions__")
+
+    def test_skips_empty_fields(self):
+        from talker_service.dialogue.context_block import ContextBlock
+        block = ContextBlock()
+        split = WorldContextSplit()
+        add_static_context_to_block(block, split)
+        assert block.bg_count == 0
+
+
+class TestBuildDynamicWorldLine:
+    """Tests for build_dynamic_world_line helper."""
+
+    def test_full_dynamic_line(self):
+        split = WorldContextSplit(location="l03_agroprom", time_of_day="14:35", weather="Clear")
+        line = build_dynamic_world_line(split)
+        assert "Location: l03_agroprom" in line
+        assert "Time: 14:35" in line
+        assert "Weather: Clear" in line
+
+    def test_empty_when_no_dynamic(self):
+        split = WorldContextSplit()
+        assert build_dynamic_world_line(split) == ""
+
+    def test_partial_dynamic(self):
+        split = WorldContextSplit(weather="Rain")
+        line = build_dynamic_world_line(split)
+        assert "Weather: Rain" in line
+        assert "Location" not in line

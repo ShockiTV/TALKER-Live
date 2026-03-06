@@ -4,6 +4,7 @@ Provides queries and builders for dynamic world state context
 including dead faction leaders, major world events, and regional politics.
 """
 
+from dataclasses import dataclass, field
 from importlib import import_module
 from typing import TYPE_CHECKING, Dict, List, Optional, TypedDict
 
@@ -16,6 +17,7 @@ from talker_service.prompts.factions import (
 )
 
 if TYPE_CHECKING:
+    from ..dialogue.context_block import ContextBlock
     from ..state.client import StateQueryClient
     from ..state.models import SceneContext
 
@@ -494,3 +496,265 @@ async def build_world_context(
             sections.append(f"Player goodwill:\n{goodwill_text}")
     
     return "\n\n".join(sections)
+
+
+# ---------------------------------------------------------------------------
+# Structured world context (split for cache-friendly prompt layout)
+# ---------------------------------------------------------------------------
+
+@dataclass
+class InhabitantEntry:
+    """A notable Zone inhabitant for context block injection."""
+    char_id: str
+    name: str
+    faction: str
+    description: str
+
+
+@dataclass
+class WorldContextSplit:
+    """Structured world context separating static and dynamic items.
+
+    Static items go into the ``ContextBlock`` (``_messages[1]``).
+    Dynamic items go into per-turn user instruction messages (Layer 4).
+    """
+    # Static items (for context block / _messages[1])
+    inhabitants: list[InhabitantEntry] = field(default_factory=list)
+    faction_standings: str = ""
+    player_goodwill: str = ""
+    info_portions: str = ""
+
+    # Dynamic items (for per-turn instruction messages)
+    weather: str = ""
+    time_of_day: str = ""
+    location: str = ""
+    regional_context: str = ""
+
+
+def build_world_context_split(
+    scene_data: "SceneContext",
+    recent_events: list | None = None,
+    alive_status: dict[str, bool] | None = None,
+) -> WorldContextSplit:
+    """Build structured world context separating static from dynamic items.
+
+    Static items (inhabitants, factions, info portions) are destined for the
+    context block.  Dynamic items (weather, time, location) go into per-turn
+    instruction messages.
+
+    Args:
+        scene_data: SceneContext from world.context query
+        recent_events: Optional list of recent events
+        alive_status: Pre-fetched alive status dict from batch query
+
+    Returns:
+        WorldContextSplit with separated static and dynamic fields.
+    """
+    if alive_status is None:
+        alive_status = {}
+
+    result = WorldContextSplit()
+    current_area = scene_data.loc if scene_data else ""
+
+    # --- Static: Inhabitants ---
+    result.inhabitants = _build_inhabitant_entries(
+        alive_status, current_area, recent_events,
+    )
+
+    # --- Static: Info portions ---
+    if scene_data:
+        result.info_portions = build_info_portions_context(scene_data)
+
+    # --- Static: Faction standings ---
+    if scene_data and scene_data.faction_standings:
+        standings = format_faction_standings(scene_data.faction_standings)
+        if standings:
+            result.faction_standings = f"Faction standings:\n{standings}"
+
+    # --- Static: Player goodwill ---
+    if scene_data and scene_data.player_goodwill:
+        goodwill = format_player_goodwill(scene_data.player_goodwill)
+        if goodwill:
+            result.player_goodwill = f"Player goodwill:\n{goodwill}"
+
+    # --- Dynamic: Weather ---
+    if scene_data and scene_data.weather:
+        result.weather = scene_data.weather
+
+    # --- Dynamic: Time ---
+    if scene_data and scene_data.time:
+        t = scene_data.time
+        h = t.get("h", 0)
+        m = t.get("m", 0)
+        result.time_of_day = f"{h:02d}:{m:02d}"
+
+    # --- Dynamic: Location ---
+    if current_area:
+        result.location = current_area
+
+    # --- Dynamic: Regional context ---
+    result.regional_context = build_regional_context(current_area)
+
+    return result
+
+
+def _build_inhabitant_entries(
+    alive_status: dict[str, bool],
+    current_area: str = "",
+    recent_events: list | None = None,
+) -> list[InhabitantEntry]:
+    """Build inhabitant entries for context block injection.
+
+    Returns list of InhabitantEntry for leaders, important, and relevant
+    notable characters with alive/dead status annotation.
+    """
+    entries: list[InhabitantEntry] = []
+
+    # Leaders (always included)
+    for leader in _get_leaders():
+        name = leader.get("name", "Unknown")
+        description = leader.get("description", "")
+        faction = resolve_faction_name(leader.get("faction", "unknown"))
+
+        is_dead = any(
+            id_ in alive_status and not alive_status[id_]
+            for id_ in leader.get("ids", [])
+        )
+        status = "dead" if is_dead else "alive"
+        desc = f"{description} ({status})" if description else f"leader of {faction} ({status})"
+
+        # Use first ID as char_id
+        char_id = leader.get("ids", [""])[0] if leader.get("ids") else ""
+        if char_id:
+            entries.append(InhabitantEntry(char_id=char_id, name=name, faction=faction, description=desc))
+
+    # Important characters (always included)
+    for char in _get_important():
+        name = char.get("name", "Unknown")
+        description = char.get("description", "")
+        faction = resolve_faction_name(char.get("faction", ""))
+
+        is_dead = any(
+            id_ in alive_status and not alive_status[id_]
+            for id_ in char.get("ids", [])
+        )
+        status = "dead" if is_dead else "alive"
+
+        if description:
+            desc = f"{description} ({status})"
+        elif faction:
+            desc = f"{faction} ({status})"
+        else:
+            desc = f"({status})"
+
+        char_id = char.get("ids", [""])[0] if char.get("ids") else ""
+        if char_id:
+            entries.append(InhabitantEntry(char_id=char_id, name=name, faction=faction or "Unknown", description=desc))
+
+    # Notable characters (filtered by relevance)
+    for char in _get_notable():
+        if not _is_notable_relevant(char, current_area, recent_events):
+            continue
+
+        name = char.get("name", "Unknown")
+        description = char.get("description", "")
+        faction = resolve_faction_name(char.get("faction", ""))
+
+        is_dead = any(
+            id_ in alive_status and not alive_status[id_]
+            for id_ in char.get("ids", [])
+        )
+        status = "dead" if is_dead else "alive"
+
+        if description:
+            desc = f"{description} ({status})"
+        elif faction:
+            desc = f"{faction} ({status})"
+        else:
+            desc = f"({status})"
+
+        char_id = char.get("ids", [""])[0] if char.get("ids") else ""
+        if char_id:
+            entries.append(InhabitantEntry(char_id=char_id, name=name, faction=faction or "Unknown", description=desc))
+
+    return entries
+
+
+def add_inhabitants_to_context_block(
+    context_block: "ContextBlock",
+    inhabitants: list[InhabitantEntry],
+) -> int:
+    """Add inhabitant entries to a ContextBlock as background items.
+
+    Args:
+        context_block: The ContextBlock to add items to.
+        inhabitants: List of InhabitantEntry from build_world_context_split.
+
+    Returns:
+        Number of items actually added (non-duplicates).
+    """
+    added = 0
+    for entry in inhabitants:
+        if context_block.add_background(entry.char_id, entry.name, entry.faction, entry.description):
+            added += 1
+    return added
+
+
+def add_static_context_to_block(
+    context_block: "ContextBlock",
+    world_split: WorldContextSplit,
+) -> None:
+    """Add all static world context items to a ContextBlock.
+
+    Adds inhabitants as background entries and faction standings / info
+    portions / player goodwill as special background entries with synthetic IDs.
+
+    Args:
+        context_block: The ContextBlock to add items to.
+        world_split: WorldContextSplit from build_world_context_split.
+    """
+    # Add inhabitants
+    add_inhabitants_to_context_block(context_block, world_split.inhabitants)
+
+    # Add faction standings as a special entry
+    if world_split.faction_standings:
+        context_block.add_background(
+            "__faction_standings__", "Faction Relations", "Zone",
+            world_split.faction_standings,
+        )
+
+    # Add player goodwill as a special entry
+    if world_split.player_goodwill:
+        context_block.add_background(
+            "__player_goodwill__", "Player Reputation", "Zone",
+            world_split.player_goodwill,
+        )
+
+    # Add info portions as a special entry
+    if world_split.info_portions:
+        context_block.add_background(
+            "__info_portions__", "Major World Events", "Zone",
+            world_split.info_portions,
+        )
+
+
+def build_dynamic_world_line(world_split: WorldContextSplit) -> str:
+    """Build a single-line summary of dynamic world state for per-turn injection.
+
+    Args:
+        world_split: WorldContextSplit from build_world_context_split.
+
+    Returns:
+        String like "Location: Garbage. Time: 14:35. Weather: Clear."
+        or empty string if no dynamic data.
+    """
+    parts: list[str] = []
+    if world_split.location:
+        parts.append(f"Location: {world_split.location}")
+    if world_split.time_of_day:
+        parts.append(f"Time: {world_split.time_of_day}")
+    if world_split.weather:
+        parts.append(f"Weather: {world_split.weather}")
+    if world_split.regional_context:
+        parts.append(world_split.regional_context)
+    return ". ".join(parts) + "." if parts else ""
