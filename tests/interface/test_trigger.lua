@@ -169,7 +169,7 @@ end
 -- Sequence Numbers
 -- ══════════════════════════════════════════════════════════
 
-function testStoreEventAssignsSequentialSeqs()
+function testStoreEventAssignsSequentialTimestamps()
 	setup()
 	local speaker = { game_id = "char_1" }
 	local context = { actor = speaker }
@@ -180,12 +180,16 @@ function testStoreEventAssignsSequentialSeqs()
 
 	local events, _ = memory_store_v2:query("char_1", "memory.events", {})
 	luaunit.assertEquals(#events, 3)
-	luaunit.assertEquals(events[1].seq, 1)
-	luaunit.assertEquals(events[2].seq, 2)
-	luaunit.assertEquals(events[3].seq, 3)
+	-- Events now use unique_ts instead of per-character seq
+	luaunit.assertNotNil(events[1].ts)
+	luaunit.assertNotNil(events[2].ts)
+	luaunit.assertNotNil(events[3].ts)
+	-- Timestamps must be strictly ascending
+	luaunit.assertTrue(events[1].ts < events[2].ts)
+	luaunit.assertTrue(events[2].ts < events[3].ts)
 end
 
-function testPublishEventAssignsSequentialSeqs()
+function testPublishEventAssignsSequentialTimestamps()
 	setup()
 	local speaker = { game_id = "char_1" }
 	local context = { actor = speaker }
@@ -195,8 +199,10 @@ function testPublishEventAssignsSequentialSeqs()
 
 	local events, _ = memory_store_v2:query("char_1", "memory.events", {})
 	luaunit.assertEquals(#events, 2)
-	luaunit.assertEquals(events[1].seq, 1)
-	luaunit.assertEquals(events[2].seq, 2)
+	-- Events now use unique_ts instead of per-character seq
+	luaunit.assertNotNil(events[1].ts)
+	luaunit.assertNotNil(events[2].ts)
+	luaunit.assertTrue(events[1].ts < events[2].ts)
 end
 
 -- ══════════════════════════════════════════════════════════

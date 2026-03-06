@@ -1,11 +1,12 @@
 -- memory_store_v2.lua — Four-tier per-NPC memory storage
 -- Tiers: events, summaries, digests, cores, background
--- Each list item gets a monotonically increasing seq number per character.
+-- Each list item gets a globally unique timestamp from unique_ts().
 -- Replaces the flat narrative blob memory_store.
 package.path = package.path .. ";./bin/lua/?.lua;"
 local logger = require("framework.logger")
+local engine = require("interface.engine")
 
-local MEMORIES_VERSION = "3"
+local MEMORIES_VERSION = "4"
 
 -- Tier capacity constants
 local CAPS = {
@@ -53,14 +54,12 @@ local function create_entry()
 		digests = {},
 		cores = {},
 		background = nil,
-		next_seq = 1,
 	}
 end
 
--- Assign a seq number to an item and increment the character's counter
-local function assign_seq(entry, item)
-	item.seq = entry.next_seq
-	entry.next_seq = entry.next_seq + 1
+-- Assign a globally unique timestamp to an item via engine.unique_ts()
+local function assign_ts(item)
+	item.ts = engine.unique_ts()
 	return item
 end
 
@@ -74,7 +73,7 @@ end
 -- Backfill global events into a freshly created entry
 local function backfill_globals(entry)
 	for _, global_ev in ipairs(global_event_buffer) do
-		local stored = assign_seq(entry, {
+		local stored = assign_ts({
 			timestamp = global_ev.timestamp,
 			type = global_ev.type,
 			context = global_ev.context,
@@ -100,15 +99,16 @@ end
 
 --- Store a single event in a character's events tier.
 -- @param character_id  string
--- @param event         table from Event.create() — has type, context, game_time_ms
--- @return stored event (with seq assigned)
+-- @param event         table from Event.create() — has type, context, game_time_ms, ts
+-- @return stored event (with ts assigned)
 function memory_store:store_event(character_id, event)
 	local entry = get_or_create(tostring(character_id))
-	local stored = assign_seq(entry, {
+	local stored = {
 		timestamp = event.game_time_ms,
 		type = event.type,
 		context = event.context or {},
-	})
+		ts = event.ts or engine.unique_ts(),
+	}
 	table.insert(entry.events, stored)
 	enforce_cap(entry.events, CAPS.events)
 	return stored
@@ -256,7 +256,9 @@ function memory_store:_mutate_append(character_id, field, resource, data)
 	local cap = CAPS[field]
 
 	for _, item in ipairs(data) do
-		assign_seq(entry, item)
+		if not item.ts then
+			assign_ts(item)
+		end
 		table.insert(list, item)
 	end
 	enforce_cap(list, cap)
@@ -264,7 +266,7 @@ function memory_store:_mutate_append(character_id, field, resource, data)
 	return { ok = true }
 end
 
---- Delete items from a list-type resource by explicit seq IDs.
+--- Delete items from a list-type resource by explicit ts IDs.
 function memory_store:_mutate_delete(character_id, field, resource, ids)
 	if not LIST_RESOURCES[resource] then
 		return { ok = false, error = "delete not supported for " .. resource }
@@ -284,11 +286,11 @@ function memory_store:_mutate_delete(character_id, field, resource, ids)
 		id_set[id] = true
 	end
 
-	-- Filter out matching items
+	-- Filter out matching items (use ts as identity key)
 	local list = entry[field]
 	local new_list = {}
 	for _, item in ipairs(list) do
-		if not id_set[item.seq] then
+		if not id_set[item.ts] then
 			table.insert(new_list, item)
 		end
 	end
@@ -376,7 +378,6 @@ function memory_store:get_save_data()
 			digests = entry.digests,
 			cores = entry.cores,
 			background = entry.background,
-			next_seq = entry.next_seq,
 		}
 	end
 	return {
@@ -389,6 +390,49 @@ end
 function memory_store:clear()
 	characters = {}
 	global_event_buffer = {}
+	engine.reset_unique_ts()
+end
+
+--- Migrate v3 save data (per-character seq) to v4 (global unique_ts).
+-- Replaces seq fields with ts values, handling collisions.
+local function migrate_v3(saved_data)
+	local result = {}
+	local memories = saved_data.memories or {}
+	-- Track all assigned timestamps globally to resolve collisions
+	local assigned = {}
+	for char_id, data in pairs(memories) do
+		local entry = create_entry()
+		-- Migrate events: use timestamp as ts base, bump collisions
+		for _, ev in ipairs(data.events or {}) do
+			local candidate = ev.timestamp or 0
+			while assigned[candidate] do
+				candidate = candidate + 1
+			end
+			assigned[candidate] = true
+			table.insert(entry.events, {
+				ts = candidate,
+				timestamp = ev.timestamp,
+				type = ev.type,
+				context = ev.context,
+			})
+		end
+		-- Migrate compressed tiers: use existing ts or start_ts or generate
+		for _, tier_name in ipairs({"summaries", "digests", "cores"}) do
+			for _, item in ipairs(data[tier_name] or {}) do
+				local candidate = item.ts or item.start_ts or item.end_ts or 0
+				while assigned[candidate] do
+					candidate = candidate + 1
+				end
+				assigned[candidate] = true
+				item.ts = candidate
+				item.seq = nil -- remove legacy field
+				table.insert(entry[tier_name], item)
+			end
+		end
+		entry.background = data.background
+		result[char_id] = entry
+	end
+	return result
 end
 
 --- Migrate v2 save data (flat narrative blob) to v3 in-memory format.
@@ -447,6 +491,9 @@ end
 function memory_store:load_save_data(saved_data)
 	logger.info("Loading memory store v2...")
 
+	-- Reset unique_ts state on any load
+	engine.reset_unique_ts()
+
 	if not saved_data then
 		logger.info("No saved memory data, starting fresh")
 		characters = {}
@@ -457,7 +504,7 @@ function memory_store:load_save_data(saved_data)
 	local version = saved_data.memories_version
 
 	if version == MEMORIES_VERSION then
-		logger.info("Loading v3 memory store")
+		logger.info("Loading v4 memory store")
 		characters = {}
 		local memories = saved_data.memories or {}
 		for char_id, data in pairs(memories) do
@@ -467,22 +514,28 @@ function memory_store:load_save_data(saved_data)
 				digests = data.digests or {},
 				cores = data.cores or {},
 				background = data.background,
-				next_seq = data.next_seq or 1,
 			}
 		end
 		global_event_buffer = saved_data.global_events or {}
 		return
 	end
 
+	if version == "3" then
+		logger.warn("Migrating v3 memory store to v4...")
+		characters = migrate_v3(saved_data)
+		global_event_buffer = saved_data.global_events or {}
+		return
+	end
+
 	if version == "2" then
-		logger.warn("Migrating v2 memory store to v3...")
+		logger.warn("Migrating v2 memory store to v4...")
 		characters = migrate_v2(saved_data)
 		global_event_buffer = {}
 		return
 	end
 
 	if not version then
-		logger.warn("Migrating v1 memory store to v3...")
+		logger.warn("Migrating v1 memory store to v4...")
 		characters = migrate_v1(saved_data)
 		global_event_buffer = {}
 		return

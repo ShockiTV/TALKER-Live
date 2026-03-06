@@ -108,11 +108,32 @@
     },
     "state.query.summaries": {
       "response": []
+    },
+    "state.query.background": {
+      "response": {
+        "traits": [
+          "gruff",
+          "experienced",
+          "Zone-hardened"
+        ],
+        "backstory": "A veteran stalker who has seen too much in the Zone.",
+        "connections": []
+      }
+    },
+    "state.query.digests": {
+      "response": []
+    },
+    "state.query.cores": {
+      "response": []
     }
   },
   "llm_mocks": [
     {
-      "response": "[SPEAKER: 12345] Get to cover \u00e2\u20ac\u201d NOW. Emission's sweeping through and you don't want to be caught in the open.",
+      "response": "12345",
+      "request": "__CAPTURE__"
+    },
+    {
+      "response": "Get to cover â€” NOW. Emission's sweeping through and you don't want to be caught in the open.",
       "request": "__CAPTURE__"
     }
   ],
@@ -141,17 +162,45 @@
         "payload": {
           "queries": [
             {
-              "id": "mem_events",
-              "resource": "memory.events",
+              "id": "bg_12345",
+              "resource": "memory.background",
               "params": {
-                "character_id": 12345
+                "character_id": "12345"
               }
             },
+            {
+              "id": "bg_11111",
+              "resource": "memory.background",
+              "params": {
+                "character_id": "11111"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "topic": "state.query.batch",
+        "payload": {
+          "queries": [
             {
               "id": "mem_summaries",
               "resource": "memory.summaries",
               "params": {
-                "character_id": 12345
+                "character_id": "12345"
+              }
+            },
+            {
+              "id": "mem_digests",
+              "resource": "memory.digests",
+              "params": {
+                "character_id": "12345"
+              }
+            },
+            {
+              "id": "mem_cores",
+              "resource": "memory.cores",
+              "params": {
+                "character_id": "12345"
               }
             }
           ]
@@ -164,7 +213,7 @@
         "payload": {
           "speaker_id": "12345",
           "dialogue_id": 1,
-          "dialogue": "Get to cover \u00e2\u20ac\u201d NOW. Emission's sweeping through and you don't want to be caught in the open.",
+          "dialogue": "Get to cover â€” NOW. Emission's sweeping through and you don't want to be caught in the open.",
           "create_event": true,
           "event_context": {
             "world_context": null

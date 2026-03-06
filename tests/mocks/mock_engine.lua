@@ -315,6 +315,26 @@ function M.register_callback(name, handler)
     -- no-op
 end
 
+------------------------------------------------------------
+-- Unique timestamp (delegates to domain.service.unique_ts)
+------------------------------------------------------------
+
+local _unique_ts_counter = 0
+
+function M.unique_ts()
+    local now = M.get_game_time_ms()
+    if now <= _unique_ts_counter then
+        _unique_ts_counter = _unique_ts_counter + 1
+    else
+        _unique_ts_counter = now
+    end
+    return _unique_ts_counter
+end
+
+function M.reset_unique_ts()
+    _unique_ts_counter = 0
+end
+
 function M.printf(fmt, ...)
     print(string.format(fmt, ...))
 end

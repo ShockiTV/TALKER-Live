@@ -87,7 +87,7 @@ end
 
 function testDeleteEventsMutation()
 	memory_store_v2:clear()
-	-- Pre-populate with events
+	-- Pre-populate with events (ts = game_time_ms = i*100)
 	for i = 1, 5 do
 		memory_store_v2:store_event("char_1", Event.create(EventType.IDLE, {}, i * 100))
 	end
@@ -98,7 +98,7 @@ function testDeleteEventsMutation()
 			op = "delete",
 			resource = "memory.events",
 			params = { character_id = "char_1" },
-			ids = { 1, 2, 3 },
+			ids = { 100, 200, 300 },  -- ts-based IDs
 		},
 	}
 
@@ -107,8 +107,8 @@ function testDeleteEventsMutation()
 	luaunit.assertTrue(results.mut_delete.ok)
 	local events, _ = memory_store_v2:query("char_1", "memory.events", {})
 	luaunit.assertEquals(#events, 2)
-	luaunit.assertEquals(events[1].seq, 4)
-	luaunit.assertEquals(events[2].seq, 5)
+	luaunit.assertEquals(events[1].ts, 400)
+	luaunit.assertEquals(events[2].ts, 500)
 end
 
 ------------------------------------------------------------
@@ -185,7 +185,7 @@ end
 
 function testAtomicCompactionPattern()
 	memory_store_v2:clear()
-	-- Populate events
+	-- Populate events (ts = game_time_ms = i*100)
 	for i = 1, 10 do
 		memory_store_v2:store_event("char_1", Event.create(EventType.IDLE, {}, i * 100))
 	end
@@ -197,7 +197,7 @@ function testAtomicCompactionPattern()
 			op = "delete",
 			resource = "memory.events",
 			params = { character_id = "char_1" },
-			ids = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 },
+			ids = { 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000 },
 		},
 		{
 			id = "add_summary",
@@ -409,19 +409,19 @@ end
 
 function testDeleteWithStaleIds()
 	memory_store_v2:clear()
-	-- Populate with 3 events
+	-- Populate with 3 events (ts = game_time_ms = i*100)
 	for i = 1, 3 do
 		memory_store_v2:store_event("char_1", Event.create(EventType.IDLE, {}, i * 100))
 	end
 
-	-- Delete with some stale IDs (999, 1000 don't exist)
+	-- Delete with some stale IDs (999, 50000 don't exist as ts values)
 	local mutations = {
 		{
 			id = "del_stale",
 			op = "delete",
 			resource = "memory.events",
 			params = { character_id = "char_1" },
-			ids = { 1, 999, 2, 1000, 3 },
+			ids = { 100, 999, 200, 50000, 300 },
 		},
 	}
 

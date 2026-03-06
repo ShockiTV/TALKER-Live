@@ -97,11 +97,28 @@
     },
     "state.query.summaries": {
       "response": []
+    },
+    "state.query.background": {
+      "response": {
+        "traits": [
+          "gruff",
+          "experienced",
+          "Zone-hardened"
+        ],
+        "backstory": "A veteran stalker who has seen too much in the Zone.",
+        "connections": []
+      }
+    },
+    "state.query.digests": {
+      "response": []
+    },
+    "state.query.cores": {
+      "response": []
     }
   },
   "llm_mocks": [
     {
-      "response": "[SPEAKER: 12345] Get some sleep. We'll keep watch.",
+      "response": "Get some sleep. We'll keep watch.",
       "request": "__CAPTURE__"
     }
   ],
@@ -130,17 +147,38 @@
         "payload": {
           "queries": [
             {
-              "id": "mem_events",
-              "resource": "memory.events",
+              "id": "bg_12345",
+              "resource": "memory.background",
               "params": {
-                "character_id": 12345
+                "character_id": "12345"
               }
-            },
+            }
+          ]
+        }
+      },
+      {
+        "topic": "state.query.batch",
+        "payload": {
+          "queries": [
             {
               "id": "mem_summaries",
               "resource": "memory.summaries",
               "params": {
-                "character_id": 12345
+                "character_id": "12345"
+              }
+            },
+            {
+              "id": "mem_digests",
+              "resource": "memory.digests",
+              "params": {
+                "character_id": "12345"
+              }
+            },
+            {
+              "id": "mem_cores",
+              "resource": "memory.cores",
+              "params": {
+                "character_id": "12345"
               }
             }
           ]
