@@ -41,15 +41,29 @@ After dialogue trimming, the compactor SHALL check estimated tokens against the 
 
 #### Scenario: Over hard limit triggers rebuild
 - **WHEN** estimated tokens after dialogue trim exceed `prompt_budget_hard`
-- **THEN** `rebuild_for_candidates(candidate_ids)` produces a new `ContextBlock`
+- **THEN** `rebuild_for_candidates(candidate_ids, keep_recent=context_keep)` produces a new `ContextBlock`
 - **AND** BackgroundItems and MemoryItems for candidates are retained
+- **AND** BackgroundItems and MemoryItems for the last `context_keep` non-candidate NPCs by insertion order are retained
 - **AND** all other character items are dropped
 - **AND** StaticItems (inhabitants, factions, info portions) are always retained
 - **AND** `cache_invalidated` is `true`
 
+#### Scenario: context_keep=0 retains only candidates
+- **WHEN** `context_keep=0` and a rebuild triggers
+- **THEN** only candidate BGs/MEMs and StaticItems remain
+- **AND** all non-candidate character items are dropped
+
+#### Scenario: Insertion order determines recency
+- **WHEN** the context block contains BGs for NPCs A, B, C, D, E (in insertion order) and only C is a candidate
+- **AND** `context_keep=2`
+- **THEN** C's items are retained (candidate)
+- **AND** D and E's items are retained (2 most recently inserted non-candidates)
+- **AND** A and B's items are dropped
+
 #### Scenario: No candidates match
 - **WHEN** `candidate_ids` is empty or no items match
-- **THEN** only StaticItems remain in the rebuilt block
+- **THEN** the last `context_keep` NPCs' items by insertion order are retained
+- **AND** StaticItems are retained
 
 #### Scenario: Context block replacement
 - **WHEN** a rebuild produces a new ContextBlock
@@ -61,7 +75,7 @@ After dialogue trimming, the compactor SHALL check estimated tokens against the 
 The compactor SHALL be a pure function that does not mutate its inputs.
 
 #### Scenario: compact_prompt signature
-- **WHEN** `compact_prompt(messages, context_block, candidate_ids, dialogue_pairs, hard_limit)` is called
+- **WHEN** `compact_prompt(messages, context_block, candidate_ids, dialogue_pairs, hard_limit, context_keep)` is called
 - **THEN** it returns `(compacted_messages, compacted_block, cache_invalidated)`
 - **AND** the original `messages` list and `context_block` are not modified
 
@@ -84,6 +98,7 @@ The compactor SHALL run after full prompt assembly and before every LLM call.
 - **WHEN** the compactor is invoked
 - **THEN** `dialogue_pairs` is `config_mirror.get("prompt_dialogue_pairs")`
 - **AND** `hard_limit` is `config_mirror.get("prompt_budget_hard") * 1000`
+- **AND** `context_keep` is `config_mirror.get("prompt_context_keep")`
 
 ### Logging
 
@@ -95,7 +110,7 @@ The compactor SHALL log compaction actions at INFO level.
 
 #### Scenario: Context rebuild log
 - **WHEN** the hard limit triggers a context block rebuild
-- **THEN** log "Context rebuild: {before}→{after} tokens, {N} candidates retained"
+- **THEN** log "Context rebuild: {before}→{after} tokens, {N} candidates + {K} recent retained"
 
 #### Scenario: No-op log
 - **WHEN** no pairs removed and no context rebuild
@@ -115,9 +130,11 @@ The compactor SHALL log compaction actions at INFO level.
 
 1. **Under cap, under hard**: 2 pairs, 5k tokens → no changes, `cache_invalidated=false`
 2. **Over cap, under hard**: 12 pairs, N=3, 8k tokens → trims to 3, no rebuild
-3. **Over cap, over hard**: 12 pairs, N=3, 18k tokens → trims to 3, then rebuilds context
+3. **Over cap, over hard**: 12 pairs, N=3, 18k tokens → trims to 3, then rebuilds context with `context_keep=5`
 4. **N=0**: All dialogue removed, only prefix + current instruction remain
 5. **Pure function**: Original messages list unmodified after call
+6. **context_keep=0**: After rebuild, only candidate items + statics remain
+7. **context_keep=3**: After rebuild, candidate items + 3 most recent non-candidate NPC items + statics remain
 6. **Static items preserved**: After rebuild, inhabitants/factions/info portions still present
 
 ### Integration Test Scenarios
