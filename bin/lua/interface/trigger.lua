@@ -35,8 +35,11 @@ function m.store_event(event_type, context, witnesses)
 	local speaker = validate_inputs("store_event", event_type, context)
 	if not speaker then return nil end
 
-	-- Create event with empty flags (flags are deprecated)
-	local event = Event.create(event_type, context, engine.get_game_time_ms(), witnesses or {}, {})
+	-- Assign a single unique_ts for this event (shared across all witness copies)
+	local ts = engine.unique_ts()
+
+	-- Create event with the assigned ts
+	local event = Event.create(event_type, context, engine.get_game_time_ms(), witnesses or {}, {}, ts)
 
 	-- Store in speaker's memory
 	memory_store_v2:store_event(speaker.game_id, event)
@@ -57,7 +60,7 @@ end
 function m.publish_event(event_type, context, witnesses)
 	log.debug("trigger.publish_event: type=%s, witnesses=%d", tostring(event_type), witnesses and #witnesses or 0)
 
-	-- Store event first (memory + fan-out)
+	-- Store event first (memory + fan-out); unique_ts assigned inside store_event
 	local event = m.store_event(event_type, context, witnesses)
 	if not event then return nil end
 

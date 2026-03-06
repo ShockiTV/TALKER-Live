@@ -116,12 +116,15 @@ class LuaSimulator:
         "store.memories": "state.query.memories",
         "store.events": "state.query.events",
         "query.character": "state.query.character",
+        "query.character_info": "state.query.character_info",
         "query.world": "state.query.world",
         "query.characters_alive": "state.query",
         "query.characters_nearby": "state.query.nearby",
-        # Tool-based conversation resources (ConversationManager)
+        # Two-step dialogue resources (ConversationManager + BackgroundGenerator)
         "memory.events": "state.query.events",
         "memory.summaries": "state.query.summaries",
+        "memory.digests": "state.query.digests",
+        "memory.cores": "state.query.cores",
         "memory.background": "state.query.background",
         "personality": "state.query.personality",
         "backstory": "state.query.backstory",

@@ -9,11 +9,14 @@ Event.TYPE = EventType
 
 -- Typed event constructor
 -- Note: world_context parameter removed - world context is now queried JIT during prompt building
-function Event.create(type, context, game_time_ms, witnesses, flags)
+-- The ts parameter is a globally unique timestamp from unique_ts().
+-- If not provided, game_time_ms is used as-is (backward compat).
+function Event.create(type, context, game_time_ms, witnesses, flags, ts)
 	return {
 		type = type,
 		context = context or {},
 		game_time_ms = game_time_ms,
+		ts = ts or game_time_ms,
 		witnesses = witnesses or {},
 		flags = flags or {},
 	}

@@ -120,6 +120,21 @@ async def lifespan(app: FastAPI):
             timeout=settings.llm_timeout,
             model=model_name if model_name else None,
         )
+
+    def get_current_fast_llm_client():
+        """Build an LLM client using the fast model name (falls back to the main model)."""
+        model_method = config_mirror.get("model_method", 0)
+        model_name_fast = config_mirror.get("model_name_fast", "")
+        if not model_name_fast:
+            # No fast model configured — fall back to main client
+            return get_current_llm_client()
+        logger.debug(f"Getting fast LLM client for model_method={model_method}, model_name_fast={model_name_fast}")
+        return get_llm_client(
+            model_method,
+            timeout=settings.llm_timeout,
+            model=model_name_fast,
+            force_new=True,
+        )
     
     # Create state query client
     state_client = StateQueryClient(
@@ -160,6 +175,7 @@ async def lifespan(app: FastAPI):
         state_client=state_client,
         session_registry=session_registry if _enable_persistence else None,
         llm_client_factory=_session_llm_factory if _enable_persistence else None,
+        fast_llm_client=get_current_fast_llm_client(),
         compaction_engine=compaction_engine,
         compaction_scheduler=compaction_scheduler,
         llm_timeout=settings.llm_timeout,

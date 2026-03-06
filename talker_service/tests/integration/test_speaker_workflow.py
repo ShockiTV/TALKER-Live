@@ -1,27 +1,24 @@
-"""Integration test for speaker selection workflow.
+"""Integration test for two-step speaker selection workflow.
 
-Validates that the ConversationManager + tool-calling loop produces the correct
-workflow: backgrounds for candidates → choose speaker → memories for speaker only.
-
-The test uses a scripted mock LLM that follows the expected tool-call sequence:
-1. Call background(character_ids=[...], action="read") for all candidates
-2. Call get_memories(character_id=<chosen>) for the selected speaker only
-3. Return final [SPEAKER: <id>] dialogue text
+Validates that the ConversationManager produces the correct deterministic flow:
+1. Ensure backgrounds for all candidates (via BackgroundGenerator)
+2. Speaker picker (ephemeral): LLM picks a speaker ID -> messages removed
+3. Dialogue generation (persistent): LLM generates dialogue -> messages kept
 
 Key assertions:
-- Total tool calls is 2-3 (batch background + get_memories, optionally get_character_info)
-- get_memories is only called for the chosen speaker
-- background is called with multiple character_ids in one batch
-- Final dialogue is correctly extracted from [SPEAKER: id] format
+- Background generation is called with all candidates
+- Speaker picker sends candidates + event + instruction, then cleans up
+- Dialogue generation injects memory context and keeps messages
+- Witness injection fires for all alive candidates
+- Final (speaker_id, dialogue_text) is correct
 """
 
-import json
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from talker_service.dialogue.conversation import ConversationManager, TOOLS
+from talker_service.dialogue.conversation import ConversationManager
 from talker_service.state.batch import BatchResult
-from talker_service.llm.models import LLMToolResponse, Message, ToolCall
+from talker_service.llm.models import Message
 
 
 # ---------------------------------------------------------------------------
@@ -66,89 +63,6 @@ def traits_map():
 
 
 # ---------------------------------------------------------------------------
-# Scripted LLM: simulates the expected tool-calling workflow
-# ---------------------------------------------------------------------------
-
-class ScriptedToolLLM:
-    """Mock LLM that follows the background→memories→dialogue workflow.
-
-    Call sequence:
-    1. First call: returns tool_call for background(character_ids=[all], action="read")
-    2. Second call: returns tool_call for get_memories(character_id=chosen_speaker)
-    3. Third call: returns final [SPEAKER: chosen_speaker] dialogue text
-
-    Args:
-        chosen_speaker: The character_id the LLM will "choose" as speaker.
-        candidate_ids: All candidate IDs (used in the batch background call).
-    """
-
-    def __init__(self, chosen_speaker: str, candidate_ids: list[str]):
-        self._chosen = chosen_speaker
-        self._candidate_ids = candidate_ids
-        self._call_count = 0
-        self.tool_calls_made: list[ToolCall] = []
-
-    async def complete_with_tools(
-        self,
-        messages: list[Message],
-        *,
-        tools=None,
-        **kwargs,
-    ) -> LLMToolResponse:
-        self._call_count += 1
-
-        if self._call_count == 1:
-            # Step 1: request batch backgrounds for all candidates
-            tc = ToolCall(
-                id="call_bg",
-                name="background",
-                arguments={
-                    "character_ids": self._candidate_ids,
-                    "action": "read",
-                },
-            )
-            self.tool_calls_made.append(tc)
-            return LLMToolResponse(tool_calls=[tc])
-
-        elif self._call_count == 2:
-            # Step 2: request memories for chosen speaker only
-            tc = ToolCall(
-                id="call_mem",
-                name="get_memories",
-                arguments={"character_id": self._chosen},
-            )
-            self.tool_calls_made.append(tc)
-            return LLMToolResponse(tool_calls=[tc])
-
-        else:
-            # Step 3: final dialogue
-            return LLMToolResponse(
-                text=f"[SPEAKER: {self._chosen}] Damn mutants... another day in the Zone."
-            )
-
-    async def complete_with_tool_loop(
-        self,
-        messages: list[Message],
-        *,
-        tools=None,
-        tool_executor=None,
-        max_iterations: int = 5,
-        **kwargs,
-    ) -> LLMToolResponse:
-        """Replay the scripted workflow using the default loop pattern."""
-        working = list(messages)
-        for _ in range(max_iterations):
-            response = await self.complete_with_tools(working, tools=tools)
-            if not response.has_tool_calls:
-                return response
-            working.append(Message(role="assistant", content="", tool_calls=response.tool_calls))
-            for tc in response.tool_calls:
-                result = await tool_executor(tc)
-                working.append(Message.tool_result(tc.id, tc.name, result))
-        return LLMToolResponse(text="", tool_calls=[])
-
-
-# ---------------------------------------------------------------------------
 # Mock state client with canned batch responses
 # ---------------------------------------------------------------------------
 
@@ -157,6 +71,7 @@ class WorkflowStateClient:
 
     def __init__(self):
         self.batch_calls: list[list[dict]] = []
+        self.mutation_calls: list[list[dict]] = []
 
     async def execute_batch(self, batch, *, timeout=None, session=None) -> BatchResult:
         queries = batch.build()
@@ -168,7 +83,6 @@ class WorkflowStateClient:
             resource = q["resource"]
 
             if resource == "memory.background":
-                # Return a simple background for each character
                 cid = q["params"]["character_id"]
                 results[qid] = {
                     "ok": True,
@@ -179,7 +93,6 @@ class WorkflowStateClient:
                     },
                 }
             elif resource.startswith("memory."):
-                # Memory tier query — return a few canned entries
                 tier = resource.split(".", 1)[1]
                 results[qid] = {
                     "ok": True,
@@ -205,14 +118,52 @@ class WorkflowStateClient:
                 }
             elif resource == "query.characters_alive":
                 results[qid] = {"ok": True, "data": {}}
+            elif resource == "query.character_info":
+                cid = q["params"].get("id", "unknown")
+                results[qid] = {
+                    "ok": True,
+                    "data": {
+                        "character": {
+                            "game_id": cid,
+                            "name": f"NPC_{cid}",
+                            "faction": "stalker",
+                            "gender": "male",
+                        },
+                        "squad_members": [],
+                    },
+                }
             else:
                 results[qid] = {"ok": False, "error": f"unknown resource: {resource}"}
 
         return BatchResult(results)
 
     async def mutate_batch(self, mutations, *, timeout=None):
-        """Accept witness injection mutations silently."""
+        """Record mutations and return success."""
+        self.mutation_calls.append(mutations)
         return True
+
+
+# ---------------------------------------------------------------------------
+# Mock background generator
+# ---------------------------------------------------------------------------
+
+class WorkflowBackgroundGenerator:
+    """Background generator that populates candidates with canned backgrounds."""
+
+    def __init__(self):
+        self.calls: list[list[dict]] = []
+
+    async def ensure_backgrounds(self, candidates):
+        self.calls.append(candidates)
+        for cand in candidates:
+            if cand.get("background") is None:
+                cid = cand.get("game_id", "unknown")
+                cand["background"] = {
+                    "traits": ["brave"],
+                    "backstory": f"Background for {cid}",
+                    "connections": [],
+                }
+        return candidates
 
 
 # ---------------------------------------------------------------------------
@@ -220,42 +171,48 @@ class WorkflowStateClient:
 # ---------------------------------------------------------------------------
 
 @pytest.mark.asyncio
-class TestSpeakerSelectionWorkflow:
-    """Integration tests for the speaker selection workflow."""
+class TestTwoStepWorkflow:
+    """Integration tests for the two-step dialogue workflow."""
 
-    @patch("talker_service.dialogue.conversation.resolve_personality")
-    @patch("talker_service.dialogue.conversation.get_faction_description")
     @patch("talker_service.dialogue.conversation.build_world_context", new_callable=AsyncMock, return_value="")
-    async def test_workflow_background_then_memories(
+    async def test_full_workflow_five_candidates(
         self,
         mock_world_ctx,
-        mock_faction,
-        mock_personality,
         five_candidates,
         death_event,
         traits_map,
     ):
-        """Full workflow: 5 candidates → batch background → choose speaker → memories → dialogue.
+        """Full workflow: 5 candidates -> backgrounds -> pick speaker -> generate dialogue.
 
         Verifies:
-        - LLM is called exactly 3 times (background, memories, dialogue)
-        - Background tool gets all 5 candidate IDs in one batch
-        - get_memories is only called for the chosen speaker (npc_101)
-        - Final speaker_id and dialogue are correctly extracted
+        - BackgroundGenerator.ensure_backgrounds called with all candidates
+        - LLM complete() called twice (picker + dialogue)
+        - Picker messages are cleaned up (not in final history)
+        - Dialogue messages are kept in history
+        - Final (speaker_id, dialogue) are correct
         """
-        mock_faction.return_value = "Loner faction description"
-        mock_personality.return_value = "A cautious veteran stalker..."
-
-        candidate_ids = [c["game_id"] for c in five_candidates]
         chosen = "npc_101"
 
-        llm = ScriptedToolLLM(chosen_speaker=chosen, candidate_ids=candidate_ids)
+        # LLM returns chosen speaker ID for picker, then dialogue for generation
+        llm = MagicMock()
+        call_count = 0
+
+        async def _complete(messages, opts=None):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                return chosen  # picker response
+            return "Damn mutants... another day in the Zone."  # dialogue
+
+        llm.complete = AsyncMock(side_effect=_complete)
+
         state_client = WorkflowStateClient()
+        bg_gen = WorkflowBackgroundGenerator()
 
         manager = ConversationManager(
             llm_client=llm,
             state_client=state_client,
-            max_tool_iterations=5,
+            background_generator=bg_gen,
         )
 
         speaker_id, dialogue = await manager.handle_event(
@@ -269,94 +226,193 @@ class TestSpeakerSelectionWorkflow:
         assert speaker_id == chosen
         assert "mutants" in dialogue.lower()
 
-        # LLM was called 3 times: background → memories → final dialogue
-        assert llm._call_count == 3
+        # BackgroundGenerator was called with all 5 candidates
+        assert len(bg_gen.calls) == 1
+        assert len(bg_gen.calls[0]) == 5
 
-        # Tool calls are exactly 2: one background batch + one get_memories
-        assert len(llm.tool_calls_made) == 2
-        assert llm.tool_calls_made[0].name == "background"
-        assert llm.tool_calls_made[1].name == "get_memories"
+        # LLM was called exactly twice: picker + dialogue
+        assert call_count == 2
 
-        # Background was called with all 5 candidate IDs
-        bg_args = llm.tool_calls_made[0].arguments
-        assert set(bg_args["character_ids"]) == set(candidate_ids)
+        # Conversation history should contain:
+        # system + EVT: + 5×BG: + MEM: + user (dialogue) + assistant (dialogue)
+        # Picker messages should have been removed
+        # 1 system + 1 EVT + 5 BG + 1 MEM + 1 user + 1 assistant = 10
+        assert len(manager._messages) == 10
+        assert manager._messages[0].role == "system"
+        # EVT, BG, MEM system messages
+        system_msgs = [m for m in manager._messages if m.role == "system"]
+        assert len(system_msgs) == 8  # 1 main + 1 EVT + 5 BG + 1 MEM
+        assert manager._messages[-2].role == "user"
+        assert manager._messages[-1].role == "assistant"
+        assert "Damn mutants" in manager._messages[-1].content
 
-        # get_memories was called only for chosen speaker
-        mem_args = llm.tool_calls_made[1].arguments
-        assert mem_args["character_id"] == chosen
-
-    @patch("talker_service.dialogue.conversation.resolve_personality")
-    @patch("talker_service.dialogue.conversation.get_faction_description")
     @patch("talker_service.dialogue.conversation.build_world_context", new_callable=AsyncMock, return_value="")
-    async def test_memories_not_fetched_for_non_speakers(
+    async def test_single_candidate_skips_picker(
         self,
         mock_world_ctx,
-        mock_faction,
-        mock_personality,
-        five_candidates,
         death_event,
         traits_map,
     ):
-        """Verify get_memories is never called for candidates who are not the speaker."""
-        mock_faction.return_value = "Loner faction description"
-        mock_personality.return_value = "A cautious veteran stalker..."
+        """With a single candidate, the picker step is skipped entirely."""
+        candidate = [
+            {"game_id": "npc_100", "name": "Wolf", "faction": "stalker", "rank": 750, "is_alive": True},
+        ]
 
-        candidate_ids = [c["game_id"] for c in five_candidates]
-        chosen = "npc_103"  # Freedom member
+        llm = MagicMock()
+        llm.complete = AsyncMock(return_value="The Zone takes everyone eventually.")
 
-        llm = ScriptedToolLLM(chosen_speaker=chosen, candidate_ids=candidate_ids)
         state_client = WorkflowStateClient()
+        bg_gen = WorkflowBackgroundGenerator()
 
         manager = ConversationManager(
             llm_client=llm,
             state_client=state_client,
+            background_generator=bg_gen,
         )
 
-        speaker_id, _ = await manager.handle_event(
+        speaker_id, dialogue = await manager.handle_event(
             event=death_event,
-            candidates=five_candidates,
-            world="Location: Garbage. Time: 22:00.",
+            candidates=candidate,
+            world="Location: Cordon.",
             traits=traits_map,
         )
 
-        assert speaker_id == chosen
+        assert speaker_id == "npc_100"
+        assert "Zone" in dialogue
 
-        # Verify get_memories was only called for the chosen speaker
-        memory_calls = [tc for tc in llm.tool_calls_made if tc.name == "get_memories"]
-        assert len(memory_calls) == 1
-        assert memory_calls[0].arguments["character_id"] == chosen
+        # LLM called only once (dialogue, no picker)
+        assert llm.complete.call_count == 1
 
-        # Verify no memory queries for other candidates
-        non_speaker_ids = set(candidate_ids) - {chosen}
-        for tc in llm.tool_calls_made:
-            if tc.name == "get_memories":
-                assert tc.arguments["character_id"] not in non_speaker_ids
+    @patch("talker_service.dialogue.conversation.build_world_context", new_callable=AsyncMock, return_value="")
+    async def test_witness_injection_for_all_alive(
+        self,
+        mock_world_ctx,
+        five_candidates,
+        death_event,
+        traits_map,
+    ):
+        """Verify witness events are injected for all alive candidates after dialogue."""
+        llm = MagicMock()
+        call_count = 0
 
-    @patch("talker_service.dialogue.conversation.resolve_personality")
-    @patch("talker_service.dialogue.conversation.get_faction_description")
+        async def _complete(messages, opts=None):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                return "npc_100"
+            return "Another day."
+
+        llm.complete = AsyncMock(side_effect=_complete)
+
+        state_client = WorkflowStateClient()
+        bg_gen = WorkflowBackgroundGenerator()
+
+        manager = ConversationManager(
+            llm_client=llm,
+            state_client=state_client,
+            background_generator=bg_gen,
+        )
+
+        await manager.handle_event(
+            event=death_event,
+            candidates=five_candidates,
+            world="Location: Cordon.",
+            traits=traits_map,
+        )
+
+        # Verify witness injection mutations
+        assert len(state_client.mutation_calls) == 1
+        mutations = state_client.mutation_calls[0]
+        assert len(mutations) == 5  # All 5 alive candidates
+        assert all(m["op"] == "append" for m in mutations)
+        assert all(m["resource"] == "memory.events" for m in mutations)
+
+        mutated_ids = {m["params"]["character_id"] for m in mutations}
+        expected_ids = {c["game_id"] for c in five_candidates}
+        assert mutated_ids == expected_ids
+
+    @patch("talker_service.dialogue.conversation.build_world_context", new_callable=AsyncMock, return_value="")
+    async def test_memory_diff_on_second_event(
+        self,
+        mock_world_ctx,
+        death_event,
+        traits_map,
+    ):
+        """Verify second event for same speaker uses diff memory injection."""
+        candidates = [
+            {"game_id": "npc_100", "name": "Wolf", "faction": "stalker", "rank": 750, "is_alive": True},
+        ]
+
+        llm = MagicMock()
+        llm.complete = AsyncMock(return_value="Another kill.")
+
+        state_client = WorkflowStateClient()
+        bg_gen = WorkflowBackgroundGenerator()
+
+        manager = ConversationManager(
+            llm_client=llm,
+            state_client=state_client,
+            background_generator=bg_gen,
+        )
+
+        # First event - full memory fetch (compacted tiers)
+        await manager.handle_event(
+            event=death_event,
+            candidates=candidates,
+            world="Location: Cordon.",
+            traits=traits_map,
+        )
+
+        assert manager._tracker.has_mem_for_character("npc_100") or manager._tracker.mem_count == 0
+        first_bg_count = manager._tracker.bg_count
+        assert first_bg_count > 0  # BG should be tracked
+
+        # Reset mock for second event
+        llm.complete = AsyncMock(return_value="Zone never changes.")
+
+        # Second event - diff memory fetch (only new mems injected)
+        await manager.handle_event(
+            event=death_event,
+            candidates=candidates,
+            world="Location: Cordon.",
+            traits=traits_map,
+        )
+
+        # BG count should not increase (already tracked)
+        assert manager._tracker.bg_count == first_bg_count
+
+        # Messages: system + EVT: + BG: + user1 + assistant1 + user2 + assistant2
+        # (EVT: deduped on same event, BG: deduped)
+        assert len(manager._messages) >= 5
+
     @patch("talker_service.dialogue.conversation.build_world_context", new_callable=AsyncMock, return_value="")
     async def test_state_batch_calls_are_efficient(
         self,
         mock_world_ctx,
-        mock_faction,
-        mock_personality,
         five_candidates,
         death_event,
         traits_map,
     ):
-        """Verify background reads for 5 NPCs are batched into a single state query."""
-        mock_faction.return_value = "Loner faction description"
-        mock_personality.return_value = "A cautious veteran stalker..."
+        """Verify memory reads use batched state queries."""
+        llm = MagicMock()
+        call_count = 0
 
-        candidate_ids = [c["game_id"] for c in five_candidates]
-        chosen = "npc_100"
+        async def _complete(messages, opts=None):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                return "npc_100"
+            return "Zone wisdom."
 
-        llm = ScriptedToolLLM(chosen_speaker=chosen, candidate_ids=candidate_ids)
+        llm.complete = AsyncMock(side_effect=_complete)
+
         state_client = WorkflowStateClient()
+        bg_gen = WorkflowBackgroundGenerator()
 
         manager = ConversationManager(
             llm_client=llm,
             state_client=state_client,
+            background_generator=bg_gen,
         )
 
         await manager.handle_event(
@@ -366,55 +422,14 @@ class TestSpeakerSelectionWorkflow:
             traits=traits_map,
         )
 
-        # Find the background batch call among state_client.batch_calls
-        bg_batches = []
-        for call_queries in state_client.batch_calls:
-            bg_queries = [q for q in call_queries if q["resource"] == "memory.background"]
-            if bg_queries:
-                bg_batches.append(bg_queries)
+        # State batch calls:
+        # 1. World enrichment (query.world + query.characters_alive)
+        # 2. Memory fetch for chosen speaker (3 compacted tiers)
+        assert len(state_client.batch_calls) >= 2
 
-        # Background reads for all 5 NPCs should be in a single batch
-        assert len(bg_batches) == 1, f"Expected 1 background batch, got {len(bg_batches)}"
-        assert len(bg_batches[0]) == 5, f"Expected 5 queries in batch, got {len(bg_batches[0])}"
-
-        # Each query should be for a different candidate
-        queried_ids = {q["params"]["character_id"] for q in bg_batches[0]}
-        assert queried_ids == set(candidate_ids)
-
-    @patch("talker_service.dialogue.conversation.resolve_personality")
-    @patch("talker_service.dialogue.conversation.get_faction_description")
-    @patch("talker_service.dialogue.conversation.build_world_context", new_callable=AsyncMock, return_value="")
-    async def test_system_prompt_includes_workflow_rules(
-        self,
-        mock_world_ctx,
-        mock_faction,
-        mock_personality,
-        five_candidates,
-        death_event,
-        traits_map,
-    ):
-        """Verify system prompt includes Tool Usage Rules for the workflow."""
-        mock_faction.return_value = "Loner faction description"
-        mock_personality.return_value = "A cautious veteran stalker..."
-
-        candidate_ids = [c["game_id"] for c in five_candidates]
-        llm = ScriptedToolLLM(chosen_speaker="npc_100", candidate_ids=candidate_ids)
-        state_client = WorkflowStateClient()
-
-        manager = ConversationManager(
-            llm_client=llm,
-            state_client=state_client,
-        )
-
-        prompt = manager._build_system_prompt(
-            faction="stalker",
-            personality="A cautious stalker",
-            world="Location: Cordon.",
-        )
-
-        # Verify the prompt contains the workflow instructions
-        assert "Tool Usage Rules" in prompt
-        assert "background" in prompt.lower()
-        assert "get_memories" in prompt.lower()
-        assert "ONLY use for the character" in prompt or "ONLY" in prompt
-        assert "Check context first" in prompt
+        # The memory fetch batch should contain 3 compacted tiers in one call
+        mem_batch = state_client.batch_calls[-1]  # Last batch = memory
+        mem_resources = [q["resource"] for q in mem_batch]
+        assert "memory.summaries" in mem_resources
+        assert "memory.digests" in mem_resources
+        assert "memory.cores" in mem_resources

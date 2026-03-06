@@ -54,9 +54,12 @@ function testSeqNumbersMonotonicallyIncreasing()
 	local stored2 = memory_store:store_event("char_1", event2)
 	local stored3 = memory_store:store_event("char_1", event3)
 
-	luaunit.assertEquals(stored1.seq, 1)
-	luaunit.assertEquals(stored2.seq, 2)
-	luaunit.assertEquals(stored3.seq, 3)
+	luaunit.assertNotNil(stored1.ts)
+	luaunit.assertNotNil(stored2.ts)
+	luaunit.assertNotNil(stored3.ts)
+	-- ts values should be monotonically increasing
+	luaunit.assertTrue(stored1.ts < stored2.ts)
+	luaunit.assertTrue(stored2.ts < stored3.ts)
 end
 
 ------------------------------------------------------------
@@ -70,11 +73,12 @@ function testEventStoredWithoutTextField()
 
 	local stored = memory_store:store_event("char_1", event)
 
-	luaunit.assertNotNil(stored.seq)
+	luaunit.assertNotNil(stored.ts)
 	luaunit.assertEquals(stored.timestamp, 100)
 	luaunit.assertEquals(stored.type, EventType.IDLE)
 	luaunit.assertNotNil(stored.context)
 	luaunit.assertNil(stored.text) -- No text field
+	luaunit.assertNil(stored.seq) -- No seq field (replaced by ts)
 end
 
 function testContextContainsCharacterReferences()
@@ -115,7 +119,7 @@ function testSummaryEntryStructure()
 
 	local summaries, _ = memory_store:query("char_1", "memory.summaries", {})
 	luaunit.assertEquals(#summaries, 1)
-	luaunit.assertEquals(summaries[1].seq, 1)
+	luaunit.assertNotNil(summaries[1].ts)
 	luaunit.assertEquals(summaries[1].tier, "summary")
 	luaunit.assertEquals(summaries[1].start_ts, 200)
 	luaunit.assertEquals(summaries[1].end_ts, 380)
@@ -158,9 +162,8 @@ function testEventsCapEnforced()
 
 	local events, _ = memory_store:query("char_1", "memory.events", {})
 	luaunit.assertEquals(#events, 100)
-	-- Oldest should be seq 2 (1 was evicted)
-	luaunit.assertEquals(events[1].seq, 2)
-	luaunit.assertEquals(events[100].seq, 101)
+	-- Oldest event was evicted (first stored ts); remaining should have ascending ts
+	luaunit.assertTrue(events[1].ts < events[100].ts)
 end
 
 function testSummaryCapEnforced()
@@ -183,8 +186,8 @@ function testSummaryCapEnforced()
 
 	local summaries, _ = memory_store:query("char_1", "memory.summaries", {})
 	luaunit.assertEquals(#summaries, 10)
-	luaunit.assertEquals(summaries[1].seq, 2)
-	luaunit.assertEquals(summaries[10].seq, 11)
+	-- Oldest summary was evicted; remaining should have ascending ts
+	luaunit.assertTrue(summaries[1].ts < summaries[10].ts)
 end
 
 ------------------------------------------------------------
@@ -259,7 +262,7 @@ end
 -- Tests: Unified Store DSL (Requirement 6)
 ------------------------------------------------------------
 
-function testAppendAddsItemsWithNewSeq()
+function testAppendAddsItemsWithNewTs()
 	memory_store:clear()
 	local event1 = { timestamp = 100, type = "idle", context = {} }
 	local event2 = { timestamp = 200, type = "idle", context = {} }
@@ -274,40 +277,43 @@ function testAppendAddsItemsWithNewSeq()
 
 	local events, _ = memory_store:query("char_1", "memory.events", {})
 	luaunit.assertEquals(#events, 2)
-	luaunit.assertEquals(events[1].seq, 1)
-	luaunit.assertEquals(events[2].seq, 2)
+	luaunit.assertNotNil(events[1].ts)
+	luaunit.assertNotNil(events[2].ts)
+	luaunit.assertTrue(events[1].ts < events[2].ts)
 end
 
-function testDeleteRemovesItemsBySeq()
+function testDeleteRemovesItemsByTs()
 	memory_store:clear()
+	local stored_ts = {}
 	for i = 1, 5 do
-		memory_store:store_event("char_1", mock_event(i * 100, EventType.IDLE, {}))
+		local stored = memory_store:store_event("char_1", mock_event(i * 100, EventType.IDLE, {}))
+		stored_ts[i] = stored.ts
 	end
 
 	local result = memory_store:mutate({
 		op = "delete",
 		resource = "memory.events",
 		params = { character_id = "char_1" },
-		ids = { 1, 2, 3 },
+		ids = { stored_ts[1], stored_ts[2], stored_ts[3] },
 	})
 	luaunit.assertTrue(result.ok)
 
 	local events, _ = memory_store:query("char_1", "memory.events", {})
 	luaunit.assertEquals(#events, 2)
-	luaunit.assertEquals(events[1].seq, 4)
-	luaunit.assertEquals(events[2].seq, 5)
+	luaunit.assertEquals(events[1].ts, stored_ts[4])
+	luaunit.assertEquals(events[2].ts, stored_ts[5])
 end
 
-function testDeleteWithNonExistentSeqsSilentlySkipped()
+function testDeleteWithNonExistentTsSilentlySkipped()
 	memory_store:clear()
-	memory_store:store_event("char_1", mock_event(100, EventType.IDLE, {}))
-	memory_store:store_event("char_1", mock_event(200, EventType.IDLE, {}))
+	local stored1 = memory_store:store_event("char_1", mock_event(100, EventType.IDLE, {}))
+	local stored2 = memory_store:store_event("char_1", mock_event(200, EventType.IDLE, {}))
 
 	local result = memory_store:mutate({
 		op = "delete",
 		resource = "memory.events",
 		params = { character_id = "char_1" },
-		ids = { 1, 999, 2 }, -- 999 doesn't exist
+		ids = { stored1.ts, 999999, stored2.ts }, -- 999999 doesn't exist
 	})
 	luaunit.assertTrue(result.ok)
 
@@ -526,25 +532,121 @@ function testSaveDataFormatContainsVersion()
 	local save_data = memory_store:get_save_data()
 
 	luaunit.assertNotNil(save_data.memories_version)
-	luaunit.assertEquals(save_data.memories_version, "3")
+	luaunit.assertEquals(save_data.memories_version, "4")
 	luaunit.assertNotNil(save_data.memories)
 	luaunit.assertNotNil(save_data.global_events)
+	-- v4: no next_seq in saved data
+	for _, entry in pairs(save_data.memories) do
+		luaunit.assertNil(entry.next_seq)
+	end
 end
 
 function testLoadV3SaveData()
 	memory_store:clear()
+	-- Simulate loading a v3 save (has seq fields, next_seq)
+	local v3_save = {
+		memories_version = "3",
+		memories = {
+			char_1 = {
+				events = {
+					{ seq = 1, timestamp = 100, type = "idle", context = {} },
+					{ seq = 2, timestamp = 200, type = "idle", context = {} },
+				},
+				summaries = {},
+				digests = {},
+				cores = {},
+				background = nil,
+				next_seq = 3,
+			},
+		},
+		global_events = {},
+	}
+
+	memory_store:load_save_data(v3_save)
+
+	local events, _ = memory_store:query("char_1", "memory.events", {})
+	luaunit.assertEquals(#events, 2)
+	-- Migrated: should have ts fields, no seq
+	luaunit.assertNotNil(events[1].ts)
+	luaunit.assertNotNil(events[2].ts)
+	luaunit.assertTrue(events[1].ts < events[2].ts)
+	-- entry should NOT have next_seq
+	local entry = memory_store:get_entry("char_1")
+	luaunit.assertNil(entry.next_seq)
+end
+
+function testLoadV3SaveDataCollisionHandling()
+	memory_store:clear()
+	-- Two events with same timestamp in v3 save
+	local v3_save = {
+		memories_version = "3",
+		memories = {
+			char_1 = {
+				events = {
+					{ seq = 1, timestamp = 500, type = "death", context = {} },
+					{ seq = 2, timestamp = 500, type = "idle", context = {} },
+				},
+				summaries = {},
+				digests = {},
+				cores = {},
+				background = nil,
+				next_seq = 3,
+			},
+		},
+		global_events = {},
+	}
+
+	memory_store:load_save_data(v3_save)
+
+	local events, _ = memory_store:query("char_1", "memory.events", {})
+	luaunit.assertEquals(#events, 2)
+	-- Both should have unique ts values
+	luaunit.assertNotEquals(events[1].ts, events[2].ts)
+end
+
+function testLoadV3SaveDataWithCompressedTiers()
+	memory_store:clear()
+	local v3_save = {
+		memories_version = "3",
+		memories = {
+			char_1 = {
+				events = {},
+				summaries = {
+					{ seq = 1, tier = "summary", start_ts = 100, end_ts = 200, text = "test", source_count = 2 },
+				},
+				digests = {},
+				cores = {},
+				background = nil,
+				next_seq = 2,
+			},
+		},
+		global_events = {},
+	}
+
+	memory_store:load_save_data(v3_save)
+
+	local summaries, _ = memory_store:query("char_1", "memory.summaries", {})
+	luaunit.assertEquals(#summaries, 1)
+	luaunit.assertNotNil(summaries[1].ts)
+	luaunit.assertNil(summaries[1].seq) -- seq field removed
+	luaunit.assertEquals(summaries[1].text, "test")
+end
+
+function testV4SaveLoadRoundtrip()
+	memory_store:clear()
 	memory_store:store_event("char_1", mock_event(100, EventType.IDLE, {}))
-	memory_store:store_event("char_1", mock_event(200, EventType.IDLE, {}))
+	memory_store:store_event("char_1", mock_event(200, EventType.DEATH, {}))
 
 	local save_data = memory_store:get_save_data()
+	luaunit.assertEquals(save_data.memories_version, "4")
 
 	memory_store:clear()
 	memory_store:load_save_data(save_data)
 
 	local events, _ = memory_store:query("char_1", "memory.events", {})
 	luaunit.assertEquals(#events, 2)
-	luaunit.assertEquals(events[1].seq, 1)
-	luaunit.assertEquals(events[2].seq, 2)
+	luaunit.assertNotNil(events[1].ts)
+	luaunit.assertNotNil(events[2].ts)
 end
 
 function testLoadV2SaveDataMigratesNarrativeToCore()
@@ -598,7 +700,7 @@ end
 
 function testLoadEmptySave()
 	memory_store:clear()
-	local save = { memories_version = "3", memories = {}, global_events = {} }
+	local save = { memories_version = "4", memories = {}, global_events = {} }
 
 	memory_store:load_save_data(save)
 

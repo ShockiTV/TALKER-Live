@@ -99,11 +99,28 @@
     },
     "state.query.summaries": {
       "response": []
+    },
+    "state.query.background": {
+      "response": {
+        "traits": [
+          "gruff",
+          "experienced",
+          "Zone-hardened"
+        ],
+        "backstory": "A veteran stalker who has seen too much in the Zone.",
+        "connections": []
+      }
+    },
+    "state.query.digests": {
+      "response": []
+    },
+    "state.query.cores": {
+      "response": []
     }
   },
   "llm_mocks": [
     {
-      "response": "[SPEAKER: 44444] You looked like a Duty soldier to me. Clever.",
+      "response": "You looked like a Duty soldier to me. Clever.",
       "request": "__CAPTURE__"
     }
   ],
@@ -132,17 +149,38 @@
         "payload": {
           "queries": [
             {
-              "id": "mem_events",
-              "resource": "memory.events",
+              "id": "bg_44444",
+              "resource": "memory.background",
               "params": {
-                "character_id": 44444
+                "character_id": "44444"
               }
-            },
+            }
+          ]
+        }
+      },
+      {
+        "topic": "state.query.batch",
+        "payload": {
+          "queries": [
             {
               "id": "mem_summaries",
               "resource": "memory.summaries",
               "params": {
-                "character_id": 44444
+                "character_id": "44444"
+              }
+            },
+            {
+              "id": "mem_digests",
+              "resource": "memory.digests",
+              "params": {
+                "character_id": "44444"
+              }
+            },
+            {
+              "id": "mem_cores",
+              "resource": "memory.cores",
+              "params": {
+                "character_id": "44444"
               }
             }
           ]

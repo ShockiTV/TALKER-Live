@@ -604,3 +604,54 @@ class TestInjectTimeGaps:
         assert cue.is_cue is True
         assert cue.type == "TIME_GAP"
         assert "12 hours" in cue.message
+
+
+# ---------------------------------------------------------------------------
+# build_dialogue_user_message tests
+# ---------------------------------------------------------------------------
+
+from talker_service.prompts.dialogue import build_dialogue_user_message
+
+
+class TestBuildDialogueUserMessage:
+    """Tests for the pointer-based dialogue user message builder."""
+
+    def test_with_narrative(self):
+        msg = build_dialogue_user_message(
+            speaker_name="Wolf",
+            speaker_id="12467",
+            event_ts=42000,
+            narrative="[SUMMARIES] Wolf recalls a patrol.",
+        )
+        assert "EVT:42000" in msg
+        assert "Wolf" in msg
+        assert "12467" in msg
+        assert "Personal memories:" in msg
+        assert "[SUMMARIES] Wolf recalls a patrol." in msg
+        assert "just the spoken words" in msg
+
+    def test_without_narrative(self):
+        msg = build_dialogue_user_message(
+            speaker_name="Nobody",
+            speaker_id="99",
+            event_ts=100,
+            narrative="",
+        )
+        assert "EVT:100" in msg
+        assert "Nobody" in msg
+        assert "99" in msg
+        assert "Personal memories:" not in msg
+        assert "just the spoken words" in msg
+
+    def test_does_not_inline_event_description(self):
+        """Dialogue message should NOT contain full event details — those are in system messages."""
+        msg = build_dialogue_user_message(
+            speaker_name="Wolf",
+            speaker_id="12467",
+            event_ts=42000,
+            narrative="some memory",
+        )
+        # Should not contain raw event description patterns
+        assert "Event:" not in msg
+        assert "Actor:" not in msg
+        assert "Victim:" not in msg
