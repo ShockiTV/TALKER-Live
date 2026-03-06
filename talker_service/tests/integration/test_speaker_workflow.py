@@ -233,18 +233,19 @@ class TestTwoStepWorkflow:
         # LLM was called exactly twice: picker + dialogue
         assert call_count == 2
 
-        # Conversation history should contain:
-        # system + EVT: + 5×BG: + MEM: + user (dialogue) + assistant (dialogue)
-        # Picker messages should have been removed
-        # 1 system + 1 EVT + 5 BG + 1 MEM + 1 user + 1 assistant = 10
-        assert len(manager._messages) == 10
-        assert manager._messages[0].role == "system"
-        # EVT, BG, MEM system messages
-        system_msgs = [m for m in manager._messages if m.role == "system"]
-        assert len(system_msgs) == 8  # 1 main + 1 EVT + 5 BG + 1 MEM
-        assert manager._messages[-2].role == "user"
-        assert manager._messages[-1].role == "assistant"
-        assert "Damn mutants" in manager._messages[-1].content
+        # Four-layer layout: 3 base (system + context_block + "Ready.") + user + assistant = 5
+        # Picker messages are ephemeral and removed after selection
+        assert len(manager._messages) == 5
+        assert manager._messages[0].role == "system"   # static system prompt
+        assert manager._messages[1].role == "user"     # context block
+        assert manager._messages[2].role == "assistant" # "Ready." ack
+        assert manager._messages[3].role == "user"     # dialogue prompt
+        assert manager._messages[4].role == "assistant" # LLM response
+        assert "Damn mutants" in manager._messages[4].content
+
+        # Context block holds all 5 candidate backgrounds (plus any inhabitants from world enrichment)
+        for cand in five_candidates:
+            assert manager._context_block.has_background(cand["game_id"])
 
     @patch("talker_service.dialogue.conversation.build_world_context", new_callable=AsyncMock, return_value="")
     async def test_single_candidate_skips_picker(
@@ -363,14 +364,13 @@ class TestTwoStepWorkflow:
             traits=traits_map,
         )
 
-        assert manager._tracker.has_mem_for_character("npc_100") or manager._tracker.mem_count == 0
-        first_bg_count = manager._tracker.bg_count
-        assert first_bg_count > 0  # BG should be tracked
+        first_bg_count = manager._context_block.bg_count
+        assert first_bg_count > 0  # BG should be tracked in context block
 
         # Reset mock for second event
         llm.complete = AsyncMock(return_value="Zone never changes.")
 
-        # Second event - diff memory fetch (only new mems injected)
+        # Second event - context block deduplicates BG items
         await manager.handle_event(
             event=death_event,
             candidates=candidates,
@@ -378,11 +378,10 @@ class TestTwoStepWorkflow:
             traits=traits_map,
         )
 
-        # BG count should not increase (already tracked)
-        assert manager._tracker.bg_count == first_bg_count
+        # BG count should not increase (already tracked via context block)
+        assert manager._context_block.bg_count == first_bg_count
 
-        # Messages: system + EVT: + BG: + user1 + assistant1 + user2 + assistant2
-        # (EVT: deduped on same event, BG: deduped)
+        # Messages: 3 base + user1 + assistant1 + user2 + assistant2 = 7
         assert len(manager._messages) >= 5
 
     @patch("talker_service.dialogue.conversation.build_world_context", new_callable=AsyncMock, return_value="")
@@ -433,3 +432,114 @@ class TestTwoStepWorkflow:
         assert "memory.summaries" in mem_resources
         assert "memory.digests" in mem_resources
         assert "memory.cores" in mem_resources
+
+
+@pytest.mark.asyncio
+class TestPrefixStability:
+    """Integration tests verifying LLM prefix cache stability across events."""
+
+    @patch("talker_service.dialogue.conversation.build_world_context", new_callable=AsyncMock, return_value="")
+    async def test_system_prompt_is_byte_identical_across_events(
+        self, mock_world_ctx, five_candidates, death_event, traits_map,
+    ):
+        """_messages[0] must be the same object across multiple events."""
+        llm = MagicMock()
+        call_count = 0
+
+        async def _complete(messages, opts=None):
+            nonlocal call_count
+            call_count += 1
+            if call_count % 2 == 1:
+                return "npc_100"
+            return "Zone wisdom."
+
+        llm.complete = AsyncMock(side_effect=_complete)
+
+        state_client = WorkflowStateClient()
+        bg_gen = WorkflowBackgroundGenerator()
+
+        manager = ConversationManager(
+            llm_client=llm,
+            state_client=state_client,
+            background_generator=bg_gen,
+        )
+
+        system_after_init = manager._messages[0].content
+
+        await manager.handle_event(
+            event=death_event,
+            candidates=five_candidates,
+            world="Location: Cordon. Time: 14:35.",
+            traits=traits_map,
+        )
+        system_after_first = manager._messages[0].content
+
+        # Reset call count for second event
+        call_count = 0
+        await manager.handle_event(
+            event=death_event,
+            candidates=five_candidates,
+            world="Location: Yantar. Time: 23:00. Weather: Rain.",
+            traits=traits_map,
+        )
+        system_after_second = manager._messages[0].content
+
+        # System prompt must be byte-identical across all events
+        assert system_after_init == system_after_first == system_after_second
+
+    @patch("talker_service.dialogue.conversation.build_world_context", new_callable=AsyncMock, return_value="")
+    async def test_context_block_grows_append_only(
+        self, mock_world_ctx, death_event, traits_map,
+    ):
+        """Context block items only grow — old items remain after new events."""
+        candidates_a = [
+            {"game_id": "npc_100", "name": "Wolf", "faction": "stalker", "rank": 750, "is_alive": True},
+        ]
+        candidates_b = [
+            {"game_id": "npc_200", "name": "Fanatic", "faction": "dolg", "rank": 450, "is_alive": True},
+        ]
+
+        llm = MagicMock()
+        llm.complete = AsyncMock(return_value="Zone wisdom.")
+
+        state_client = WorkflowStateClient()
+        bg_gen = WorkflowBackgroundGenerator()
+
+        manager = ConversationManager(
+            llm_client=llm,
+            state_client=state_client,
+            background_generator=bg_gen,
+        )
+
+        # Event 1 with candidate A
+        await manager.handle_event(
+            event=death_event,
+            candidates=candidates_a,
+            world="Location: Cordon.",
+            traits={"npc_100": {"personality_id": "stalker.1", "backstory_id": "loner.1"}},
+        )
+        block_after_first = manager._context_block.render_markdown()
+        bg_count_after_first = manager._context_block.bg_count
+
+        assert manager._context_block.has_background("npc_100")
+        assert bg_count_after_first >= 1
+
+        # Event 2 with candidate B — old BGs must persist
+        llm.complete = AsyncMock(return_value="More wisdom.")
+        await manager.handle_event(
+            event=death_event,
+            candidates=candidates_b,
+            world="Location: Yantar.",
+            traits={"npc_200": {"personality_id": "duty.2", "backstory_id": "duty.1"}},
+        )
+
+        # Old candidate A background is still present
+        assert manager._context_block.has_background("npc_100")
+        # New candidate B background was added
+        assert manager._context_block.has_background("npc_200")
+        # Context block grew
+        assert manager._context_block.bg_count > bg_count_after_first
+
+        # The first event's block content is a prefix of the current block
+        block_after_second = manager._context_block.render_markdown()
+        assert block_after_second.startswith(block_after_first)

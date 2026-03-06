@@ -614,16 +614,16 @@ from talker_service.prompts.dialogue import build_dialogue_user_message
 
 
 class TestBuildDialogueUserMessage:
-    """Tests for the pointer-based dialogue user message builder."""
+    """Tests for the inline dialogue user message builder."""
 
     def test_with_narrative(self):
         msg = build_dialogue_user_message(
             speaker_name="Wolf",
             speaker_id="12467",
-            event_ts=42000,
+            event_description="A mutant attacked the nearby camp.",
             narrative="[SUMMARIES] Wolf recalls a patrol.",
         )
-        assert "EVT:42000" in msg
+        assert "A mutant attacked the nearby camp." in msg
         assert "Wolf" in msg
         assert "12467" in msg
         assert "Personal memories:" in msg
@@ -634,24 +634,44 @@ class TestBuildDialogueUserMessage:
         msg = build_dialogue_user_message(
             speaker_name="Nobody",
             speaker_id="99",
-            event_ts=100,
+            event_description="Something happened.",
             narrative="",
         )
-        assert "EVT:100" in msg
+        assert "Something happened." in msg
         assert "Nobody" in msg
         assert "99" in msg
         assert "Personal memories:" not in msg
         assert "just the spoken words" in msg
 
-    def test_does_not_inline_event_description(self):
-        """Dialogue message should NOT contain full event details — those are in system messages."""
+    def test_includes_dynamic_world_line(self):
         msg = build_dialogue_user_message(
             speaker_name="Wolf",
             speaker_id="12467",
-            event_ts=42000,
-            narrative="some memory",
+            event_description="An emission approaches.",
+            narrative="",
+            dynamic_world_line="Weather: Clear | Time: 14:30 | Location: Rostok",
         )
-        # Should not contain raw event description patterns
-        assert "Event:" not in msg
-        assert "Actor:" not in msg
-        assert "Victim:" not in msg
+        assert "Weather: Clear" in msg
+        assert "An emission approaches." in msg
+
+    def test_includes_witness_text(self):
+        msg = build_dialogue_user_message(
+            speaker_name="Wolf",
+            speaker_id="12467",
+            event_description="A bandit attack.",
+            narrative="",
+            witness_text="A patrol was ambushed nearby.",
+        )
+        assert "Recent events witnessed by Wolf:" in msg
+        assert "A patrol was ambushed nearby." in msg
+
+    def test_no_dynamic_world_line_when_empty(self):
+        msg = build_dialogue_user_message(
+            speaker_name="Wolf",
+            speaker_id="12467",
+            event_description="Event text.",
+            narrative="",
+            dynamic_world_line="",
+        )
+        # First line should be the event description, no empty line before
+        assert msg.startswith("Event text.")

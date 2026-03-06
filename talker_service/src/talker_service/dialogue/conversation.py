@@ -22,11 +22,18 @@ from ..state.batch import BatchQuery
 from ..prompts.factions import resolve_faction_name
 from ..prompts.dialogue import build_dialogue_user_message
 from ..prompts.picker import (
+    build_event_description,
     parse_picker_response,
 )
-from ..prompts.world_context import build_world_context, get_all_story_ids
+from ..prompts.world_context import (
+    build_world_context,
+    build_world_context_split,
+    add_static_context_to_block,
+    build_dynamic_world_line,
+    get_all_story_ids,
+)
 from ..state.models import SceneContext
-from .dedup_tracker import DeduplicationTracker
+from .context_block import ContextBlock
 
 if TYPE_CHECKING:
     from ..transport.session_registry import SessionRegistry
@@ -109,6 +116,42 @@ def build_witness_text(event: dict[str, Any]) -> str:
         return f"Witnessed: {event_name}"
 
 
+def filter_events_for_speaker(
+    events: list[dict[str, Any]],
+    speaker_id: str,
+) -> list[dict[str, Any]]:
+    """Filter events to only those where speaker_id is a witness.
+
+    An event is considered witnessed by a speaker if speaker_id appears in
+    the event's ``witnesses`` list (game_id field) or matches the actor/victim.
+
+    Args:
+        events: List of event dicts with ``context`` and optional ``witnesses``.
+        speaker_id: Character ID of the speaker.
+
+    Returns:
+        Filtered list of events where the speaker is a witness.
+    """
+    result: list[dict[str, Any]] = []
+    for event in events:
+        witnesses = event.get("witnesses", [])
+        # Check witnesses list
+        for w in witnesses:
+            if isinstance(w, dict) and str(w.get("game_id", "")) == speaker_id:
+                result.append(event)
+                break
+        else:
+            # Also check actor/victim (they implicitly witness the event)
+            context = event.get("context", {})
+            actor = context.get("actor") or context.get("killer")
+            victim = context.get("victim")
+            if isinstance(actor, dict) and str(actor.get("game_id", "")) == speaker_id:
+                result.append(event)
+            elif isinstance(victim, dict) and str(victim.get("game_id", "")) == speaker_id:
+                result.append(event)
+    return result
+
+
 # ---------------------------------------------------------------------------
 # Helper for batch tool parameter normalisation
 # ---------------------------------------------------------------------------
@@ -132,6 +175,20 @@ def _normalise_character_ids(
 
 
 _MAX_BATCH_SIZE = 10
+
+
+# ---------------------------------------------------------------------------
+# Static system prompt (no dynamic content — cache-friendly)
+# ---------------------------------------------------------------------------
+
+STATIC_SYSTEM_PROMPT = """You are generating dialogue for NPCs in the Zone (STALKER universe).
+
+**Dialogue Guidelines:**
+- Keep dialogue concise and realistic (1-3 sentences typical for reactions)
+- Use authentic STALKER-universe language and tone
+- Characters should react naturally based on their personality, faction, and memories
+- Dialogue should reflect the character's emotional state and relationship to the event
+- Avoid breaking character or adding meta-commentary"""
 
 
 # ---------------------------------------------------------------------------
@@ -225,29 +282,26 @@ def build_mem_system_msg(char_id: str, start_ts: int, tier: str, text: str) -> s
 
 
 class ConversationManager:
-    """Two-step deterministic dialogue manager with deduplicated system messages.
+    """Two-step deterministic dialogue manager with cache-friendly message layout.
 
-    Architecture:
-    - System prompt: Zone setting, world state, notable inhabitants,
-      dialogue guidelines.  No per-character persona.
-    - Tagged system messages: EVT: (events), BG: (backgrounds), MEM: (memories)
-      — injected once and deduplicated via ``DeduplicationTracker``.
-    - Step 1 — **Speaker picker** (ephemeral): single pointer user message
-      referencing EVT:{ts} and listing candidate IDs → LLM returns character
-      ID → remove picker user message + assistant response.
-    - Step 2 — **Dialogue generation** (persistent): pointer user message
-      with EVT:{ts}, character ID, and personal narrative → LLM returns
-      dialogue → keep both messages in history.
+    Architecture (four-layer message structure):
+    - ``_messages[0]`` — **system**: Static dialogue rules (never changes).
+    - ``_messages[1]`` — **user**: Context block Markdown (BGs + MEMs,
+      append-only via ``ContextBlock``).
+    - ``_messages[2]`` — **assistant**: ``"Ready."`` synthetic ack.
+    - ``_messages[3+]`` — Dialogue turns (picker ephemeral, dialogue persistent).
+
+    Character backgrounds and memories are stored in the ``ContextBlock``
+    which renders to Markdown in ``_messages[1]``.  Weather, time, and
+    location are included in per-turn instruction messages (Layer 4).
 
     Flow:
     1. Ensure all candidates have backgrounds (via BackgroundGenerator)
-    2. Inject EVT: system message for triggering event
-    3. Inject BG: system messages for candidate backgrounds
-    4. Pick speaker (ephemeral pointer, or skip if single candidate)
-    5. Inject MEM: system messages for speaker's compacted memories
-    6. Generate dialogue (persistent pointer)
-    7. Inject witness events + schedule compaction
-    8. Return (speaker_id, dialogue_text)
+    2. Add candidate BGs + MEMs to ContextBlock, update ``_messages[1]``
+    3. Pick speaker (ephemeral — messages removed after)
+    4. Generate dialogue (persistent — keeps messages in history)
+    5. Inject witness events + schedule compaction
+    6. Return (speaker_id, dialogue_text)
     """
 
     def __init__(
@@ -296,35 +350,34 @@ class ConversationManager:
                 llm_client, state_client, fast_llm_client=fast_llm_client,
             )
 
-        # Persistent conversation history (system prompt set on first event)
-        self._messages: list[Message] = []
+        # Four-layer message structure:
+        # [0] system: static rules  [1] user: context block  [2] assistant: "Ready."
+        self._messages: list[Message] = [
+            Message(role="system", content=STATIC_SYSTEM_PROMPT),
+            Message(role="user", content=""),
+            Message(role="assistant", content="Ready."),
+        ]
 
-        # Deduplication tracker replacing _memory_timestamps
-        self._tracker = DeduplicationTracker()
+        # Append-only context block for BG/MEM deduplication and rendering
+        self._context_block = ContextBlock()
+
+        # Cached world context split (populated on first event)
+        self._world_split: Any = None
     
-    def _build_system_prompt(self, world: str) -> str:
-        """Build system prompt with Zone setting, world context, and dialogue guidelines.
+    def _build_system_prompt(self, world: str = "") -> str:
+        """Return the static system prompt with Zone setting and dialogue guidelines.
 
-        The system prompt does NOT include per-character persona, faction
-        description, or tool instructions.  Character-specific context is
-        injected per-turn in the dialogue step.
+        The system prompt contains only timeless dialogue rules — no weather,
+        time, location, inhabitants, or other dynamic content.  This ensures
+        the first message is byte-identical across LLM calls for cache hits.
 
         Args:
-            world: World description (location, time, weather, inhabitants, etc.)
+            world: Ignored (kept for backward compatibility).
 
         Returns:
-            Complete system prompt string.
+            Static system prompt string.
         """
-        return f"""You are generating dialogue for NPCs in the Zone (STALKER universe).
-
-**Current Context:** {world}
-
-**Dialogue Guidelines:**
-- Keep dialogue concise and realistic (1-3 sentences typical for reactions)
-- Use authentic STALKER-universe language and tone
-- Characters should react naturally based on their personality, faction, and memories
-- Dialogue should reflect the character's emotional state and relationship to the event
-- Avoid breaking character or adding meta-commentary"""
+        return STATIC_SYSTEM_PROMPT
     
     # ------------------------------------------------------------------
     # Memory helpers (internal — no longer exposed as LLM tools)
@@ -475,15 +528,14 @@ class ConversationManager:
         self,
         speaker: dict[str, Any],
     ) -> str:
-        """Inject MEM: system messages and build personal narrative for the chosen speaker.
+        """Add memory items to ContextBlock for the chosen speaker.
 
         For first-time speakers: fetches all compacted memory tiers
-        (summaries, digests, cores), injects each as a ``MEM:`` system
-        message, and returns the full narrative text.
+        (summaries, digests, cores) and adds each to the context block.
 
-        For returning speakers: injects only un-tracked memory items and
-        returns narrative of new items only.  Returns a no-change message
-        when nothing is new.
+        For returning speakers: adds only un-tracked memory items.
+
+        Updates ``_messages[1]`` with refreshed context block Markdown.
 
         Args:
             speaker: The chosen speaker candidate dict.
@@ -492,11 +544,14 @@ class ConversationManager:
             Personal narrative text for inclusion in the dialogue user message.
         """
         char_id = str(speaker.get("game_id", ""))
+        name = speaker.get("name", "Unknown")
 
         # Detect if this character has previously had memories injected
-        is_returning = self._tracker.has_mem_for_character(char_id)
+        is_returning = any(
+            cid == char_id for cid, _ in self._context_block._mem_keys
+        )
 
-        # Fetch compacted memories (not events — those are EVT: system messages)
+        # Fetch compacted memories (not events — those go in per-turn messages)
         memories = await self._fetch_memories(char_id, tiers=["summaries", "digests", "cores"])
 
         new_items: list[tuple[str, str]] = []
@@ -512,11 +567,13 @@ class ConversationManager:
                 if not text:
                     continue
 
-                if not self._tracker.is_mem_injected(char_id, ts):
-                    content = build_mem_system_msg(char_id, ts, tier.upper(), text)
-                    self._messages.append(Message(role="system", content=content))
-                    self._tracker.mark_mem(char_id, ts)
+                if self._context_block.add_memory(char_id, name, ts, tier.upper(), text):
                     new_items.append((tier, text))
+
+        # Update _messages[1] with refreshed context block
+        self._messages[1] = Message(
+            role="user", content=self._context_block.render_markdown(),
+        )
 
         if new_items:
             return "\n".join(f"[{tier.upper()}] {text}" for tier, text in new_items)
@@ -536,14 +593,16 @@ class ConversationManager:
         candidates: list[dict[str, Any]],
         event: dict[str, Any],
         llm_client: LLMClient,
+        dynamic_world_line: str = "",
     ) -> dict[str, Any]:
         """Run the ephemeral speaker picker step.
 
-        Injects a single pointer user message referencing the event by
-        timestamp and listing candidate IDs.  All factual context (event
-        details, candidate backgrounds) is already present as system
-        messages.  After the LLM responds, both the user message and
-        assistant response are removed from history.
+        Builds a user message with the triggering event description and
+        candidate IDs.  No witness events from the event store are included.
+        Weather/time/location are included inline.
+
+        After the LLM responds, both the user message and assistant response
+        are removed from history (ephemeral).
 
         Falls back to the first candidate on parse failure.
 
@@ -551,6 +610,7 @@ class ConversationManager:
             candidates: Candidate dicts (with backgrounds populated).
             event: Event data dict.
             llm_client: LLM client to use.
+            dynamic_world_line: Per-turn weather/time/location string.
 
         Returns:
             The chosen candidate dict.
@@ -559,11 +619,21 @@ class ConversationManager:
             logger.debug("Single candidate — skipping picker")
             return candidates[0]
 
-        # Build pointer-based picker message
-        event_ts = event.get("timestamp", 0)
+        # Build picker message with event description + candidate IDs (no witness events)
+        event_desc = build_event_description(event)
         candidate_ids_list = [str(c.get("game_id", "")) for c in candidates]
         ids_str = ", ".join(candidate_ids_list)
-        picker_content = f"Pick speaker for EVT:{event_ts}. Candidates: {ids_str}"
+
+        parts: list[str] = []
+        if dynamic_world_line:
+            parts.append(dynamic_world_line)
+        parts.append(event_desc)
+        parts.append(f"Candidates: {ids_str}")
+        parts.append(
+            "Pick the character who would most naturally react to this event. "
+            "Respond with ONLY their character ID."
+        )
+        picker_content = "\n".join(parts)
         picker_msg = Message(role="user", content=picker_content)
 
         # Remember pre-injection count so we can cleanly remove
@@ -612,36 +682,55 @@ class ConversationManager:
         speaker: dict[str, Any],
         event: dict[str, Any],
         llm_client: LLMClient,
+        dynamic_world_line: str = "",
+        witness_events: list[dict[str, Any]] | None = None,
     ) -> str:
         """Run the persistent dialogue generation step.
 
-        Injects speaker MEM: system messages, then builds a pointer-based
-        user message referencing EVT:{ts} and the character ID with personal
-        narrative.  Both the user message and assistant response are kept in
-        conversation history.  Event details and backgrounds are NOT inlined
-        — they are already present as system messages.
+        Adds speaker MEMs to the context block, then builds a user message
+        with the event description, weather/time/location, and only
+        speaker-witnessed events.  Both the user message and assistant
+        response are kept in conversation history.
 
         Args:
             speaker: The chosen speaker dict (with background populated).
             event: Event data dict.
             llm_client: LLM client to use.
+            dynamic_world_line: Per-turn weather/time/location string.
+            witness_events: Events where this speaker is a witness.
 
         Returns:
             Generated dialogue text.
         """
-        # Inject MEM: system messages and get personal narrative
+        # Add memories to context block and get personal narrative
         narrative = await self._inject_speaker_memory(speaker)
 
         speaker_name = speaker.get("name", "Unknown")
         speaker_id = str(speaker.get("game_id", ""))
-        event_ts = event.get("timestamp", 0)
 
-        user_content = build_dialogue_user_message(
-            speaker_name=speaker_name,
-            speaker_id=speaker_id,
-            event_ts=event_ts,
-            narrative=narrative,
+        # Build triggering event description
+        event_desc = build_event_description(event)
+
+        # Build witness events text (only events where speaker is a witness)
+        witness_text = ""
+        if witness_events:
+            witness_lines = [build_witness_text(e) for e in witness_events]
+            witness_text = "\n".join(witness_lines)
+
+        # Assemble dialogue user message
+        parts: list[str] = []
+        if dynamic_world_line:
+            parts.append(dynamic_world_line)
+        parts.append(event_desc)
+        if witness_text:
+            parts.append(f"\n**Recent events witnessed by {speaker_name}:**\n{witness_text}")
+        parts.append(f"\nReact as **{speaker_name}** (ID: {speaker_id}).")
+        if narrative:
+            parts.append(f"\n**Personal memories:**\n{narrative}")
+        parts.append(
+            f"\nGenerate {speaker_name}'s dialogue — just the spoken words, nothing else."
         )
+        user_content = "\n".join(parts)
 
         self._messages.append(Message(role="user", content=user_content))
 
@@ -680,6 +769,33 @@ class ConversationManager:
                 logger.info("Created per-session LLM client for session {}", session_id)
             return session.llm_client
         return self.llm_client
+
+    def rebuild_context_block(self) -> None:
+        """Rebuild the ContextBlock from scratch after compaction.
+
+        Creates a new empty ``ContextBlock``, re-adds all known backgrounds
+        from the old block, and replaces ``_messages[1]``.  Memory items are
+        NOT re-added — the caller should re-add compacted memory items after
+        calling this method.
+
+        Also re-adds static world context entries if ``_world_split`` is cached.
+        """
+        old_bgs = self._context_block.get_all_backgrounds()
+        self._context_block = ContextBlock()
+
+        # Re-add all backgrounds
+        for bg in old_bgs:
+            self._context_block.add_background(bg.char_id, bg.name, bg.faction, bg.text)
+
+        # Re-add static world context items if available
+        if self._world_split is not None:
+            add_static_context_to_block(self._context_block, self._world_split)
+
+        # Update _messages[1]
+        self._messages[1] = Message(
+            role="user", content=self._context_block.render_markdown(),
+        )
+        logger.debug("Context block rebuilt ({} items)", self._context_block.item_count)
 
     async def _inject_witness_events(
         self,
@@ -733,20 +849,17 @@ class ConversationManager:
     ) -> tuple[str, str]:
         """Handle an event using the deterministic 2-step dialogue flow.
 
-        Flow:
-        1. Filter candidates, enrich world context
-        2. Set/rebuild system prompt
-        3. Ensure all candidates have backgrounds
-        4. Inject EVT: system message for the triggering event
-        5. Inject BG: system messages for candidate backgrounds
-        6. Run speaker picker (ephemeral — messages removed after)
-        7. Run dialogue generation (persistent — injects MEM: + keeps messages)
-        8. Inject witness events + schedule compaction
+        Four-layer message layout:
+        1. Filter candidates, fetch world context split
+        2. Add candidate BGs to ContextBlock, update ``_messages[1]``
+        3. Run speaker picker (ephemeral — messages removed after)
+        4. Add speaker MEMs to ContextBlock, run dialogue generation
+        5. Inject witness events + schedule compaction
 
         Args:
             event: Event data from game.event topic
             candidates: List of candidate speakers
-            world: World description string
+            world: World description string (from Lua, used as fallback)
             traits: Traits map {character_id → {personality_id, backstory_id}}
             session_id: WebSocket session for per-tenant LLM client
 
@@ -769,7 +882,8 @@ class ConversationManager:
             return ("0", "")
         candidates = npc_candidates
 
-        # Enrich world context with dynamic faction data and world state
+        # Fetch world context split (static → context block, dynamic → per-turn)
+        dynamic_world_line = world  # fallback to Lua-provided world string
         try:
             scene_batch = (
                 BatchQuery()
@@ -785,18 +899,19 @@ class ConversationManager:
             )
             alive_status = scene_result["alive"] if scene_result.ok("alive") else {}
 
-            enriched = await build_world_context(scene_ctx, alive_status=alive_status)
-            if enriched:
-                world = f"{world}\n\n{enriched}"
+            # Build structured world context
+            world_split = build_world_context_split(scene_ctx, alive_status=alive_status)
+            self._world_split = world_split
+
+            # Add static items to context block (inhabitants, factions, info portions)
+            add_static_context_to_block(self._context_block, world_split)
+
+            # Build dynamic per-turn line (weather, time, location)
+            dyn = build_dynamic_world_line(world_split)
+            if dyn:
+                dynamic_world_line = dyn
         except Exception as e:
             logger.warning(f"Failed to enrich world context: {e}")
-
-        # Set (or rebuild) the system prompt — always first message
-        system_prompt = self._build_system_prompt(world)
-        if self._messages:
-            self._messages[0] = Message(role="system", content=system_prompt)
-        else:
-            self._messages = [Message(role="system", content=system_prompt)]
 
         # Ensure all candidates have backgrounds
         try:
@@ -804,31 +919,49 @@ class ConversationManager:
         except Exception as e:
             logger.warning(f"Background generation failed: {e}")
 
-        # Inject EVT: system message for the triggering event
-        event_ts = event.get("timestamp", 0)
-        if not self._tracker.is_event_injected(event_ts):
-            evt_content = build_event_system_msg(event, candidates)
-            self._messages.append(Message(role="system", content=evt_content))
-            self._tracker.mark_event(event_ts)
-
-        # Inject BG: system messages for each candidate's background
+        # Add candidate backgrounds to context block
         for cand in candidates:
             char_id = str(cand.get("game_id", ""))
-            if char_id and not self._tracker.is_bg_injected(char_id):
+            if char_id and not self._context_block.has_background(char_id):
                 bg_text = self._format_background(cand.get("background"))
                 name = cand.get("name", "Unknown")
                 faction = resolve_faction_name(cand.get("faction", "unknown"))
-                bg_content = build_bg_system_msg(char_id, name, faction, bg_text)
-                self._messages.append(Message(role="system", content=bg_content))
-                self._tracker.mark_bg(char_id)
+                self._context_block.add_background(char_id, name, faction, bg_text)
+
+        # Update context block user message (_messages[1])
+        self._messages[1] = Message(
+            role="user", content=self._context_block.render_markdown(),
+        )
 
         # Step 1: Speaker picker (ephemeral — messages removed after)
-        speaker = await self._run_speaker_picker(candidates, event, llm_client)
+        speaker = await self._run_speaker_picker(
+            candidates, event, llm_client, dynamic_world_line=dynamic_world_line,
+        )
         speaker_id = str(speaker.get("game_id", "unknown"))
         logger.info("Selected speaker: {} ({})", speaker.get("name"), speaker_id)
 
-        # Step 2: Dialogue generation (persistent — injects MEM: + keeps messages)
-        dialogue_text = await self._run_dialogue_generation(speaker, event, llm_client)
+        # Fetch witness events for the chosen speaker
+        witness_events: list[dict[str, Any]] = []
+        try:
+            ev_batch = (
+                BatchQuery()
+                .add("events", "query.memory.events",
+                     params={"character_id": speaker_id})
+            )
+            ev_result = await self.state_client.execute_batch(ev_batch, timeout=10.0)
+            if ev_result.ok("events"):
+                raw_events = ev_result["events"]
+                if isinstance(raw_events, list):
+                    witness_events = raw_events
+        except Exception as e:
+            logger.warning(f"Failed to fetch witness events for {speaker_id}: {e}")
+
+        # Step 2: Dialogue generation (persistent — injects MEM + keeps messages)
+        dialogue_text = await self._run_dialogue_generation(
+            speaker, event, llm_client,
+            dynamic_world_line=dynamic_world_line,
+            witness_events=witness_events,
+        )
 
         if not dialogue_text:
             logger.warning("LLM returned empty dialogue text")

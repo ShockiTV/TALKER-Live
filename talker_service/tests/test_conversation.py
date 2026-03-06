@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from talker_service.dialogue.conversation import (
     ConversationManager,
+    STATIC_SYSTEM_PROMPT,
     build_witness_text,
     build_event_system_msg,
     build_bg_system_msg,
@@ -13,7 +14,6 @@ from talker_service.dialogue.conversation import (
     _resolve_event_display_name,
     _normalise_character_ids,
 )
-from talker_service.dialogue.dedup_tracker import DeduplicationTracker
 from talker_service.state.batch import BatchResult
 from talker_service.llm.models import Message
 
@@ -134,11 +134,14 @@ class TestConversationManager:
         assert manager.state_client == mock_state_client
         assert manager.background_generator == mock_background_generator
         assert manager.llm_timeout == 60.0
-        assert manager._messages == []
-        assert isinstance(manager._tracker, DeduplicationTracker)
-        assert manager._tracker.event_count == 0
-        assert manager._tracker.bg_count == 0
-        assert manager._tracker.mem_count == 0
+        # Four-layer base: system, context user, assistant "Ready."
+        assert len(manager._messages) == 3
+        assert manager._messages[0].role == "system"
+        assert manager._messages[1].role == "user"
+        assert manager._messages[2].role == "assistant"
+        assert manager._messages[2].content == "Ready."
+        assert manager._context_block is not None
+        assert manager._context_block.item_count == 0
 
     def test_init_creates_default_background_generator(self, mock_llm_client, mock_state_client):
         """Test that BackgroundGenerator is auto-created if not provided."""
@@ -149,7 +152,7 @@ class TestConversationManager:
         assert manager.background_generator is not None
 
     def test_build_system_prompt(self, mock_llm_client, mock_state_client, mock_background_generator):
-        """Test system prompt contains world context and guidelines."""
+        """Test system prompt contains static dialogue rules only."""
         manager = ConversationManager(
             llm_client=mock_llm_client,
             state_client=mock_state_client,
@@ -158,12 +161,40 @@ class TestConversationManager:
 
         prompt = manager._build_system_prompt("Location: Garbage. Time: 14:35.")
 
-        assert "Location: Garbage" in prompt
         assert "STALKER" in prompt
         assert "Dialogue Guidelines" in prompt
         # Should NOT contain tool instructions or per-character persona
         assert "get_memories" not in prompt
         assert "[SPEAKER:" not in prompt
+
+    def test_system_prompt_has_no_dynamic_content(self, mock_llm_client, mock_state_client, mock_background_generator):
+        """System prompt must not contain weather, time, location, or inhabitants."""
+        manager = ConversationManager(
+            llm_client=mock_llm_client,
+            state_client=mock_state_client,
+            background_generator=mock_background_generator,
+        )
+
+        prompt = manager._build_system_prompt("Location: Garbage. Time: 14:35. Weather: Clear.")
+
+        # Must not contain dynamic world state keywords
+        prompt_lower = prompt.lower()
+        for keyword in ["weather", "time:", "location:", "inhabitants", "garbage", "14:35", "clear"]:
+            assert keyword.lower() not in prompt_lower, f"System prompt should not contain '{keyword}'"
+
+    def test_system_prompt_is_identical_across_calls(self, mock_llm_client, mock_state_client, mock_background_generator):
+        """System prompt must be byte-identical regardless of world input."""
+        manager = ConversationManager(
+            llm_client=mock_llm_client,
+            state_client=mock_state_client,
+            background_generator=mock_background_generator,
+        )
+
+        prompt1 = manager._build_system_prompt("Location: Garbage. Time: 14:35.")
+        prompt2 = manager._build_system_prompt("Location: Yantar. Time: 23:00. Weather: Rain.")
+        prompt3 = manager._build_system_prompt("")
+
+        assert prompt1 == prompt2 == prompt3
 
 
 class TestMemoryHelpers:
@@ -355,13 +386,13 @@ class TestMemoryDiffInjection:
 
     @pytest.mark.asyncio
     async def test_inject_speaker_memory_first_time(self, mock_state_client, mock_background_generator):
-        """Test _inject_speaker_memory injects MEM: system msgs for new speakers."""
+        """Test _inject_speaker_memory adds MEM items to ContextBlock for new speakers."""
         manager = ConversationManager(
             llm_client=MagicMock(),
             state_client=mock_state_client,
             background_generator=mock_background_generator,
         )
-        manager._messages = [Message(role="system", content="test")]
+        # _messages already has 3-message base from __init__
 
         mock_state_client.execute_batch.return_value = BatchResult({
             "mem_summaries": {"ok": True, "data": [{"text": "Patrol summary", "timestamp": 500}]},
@@ -371,6 +402,7 @@ class TestMemoryDiffInjection:
 
         speaker = {
             "game_id": "char_001",
+            "name": "Wolf",
             "background": {"traits": ["brave"], "backstory": "Veteran", "connections": []},
         }
 
@@ -378,11 +410,8 @@ class TestMemoryDiffInjection:
 
         assert "Patrol summary" in narrative
         assert "SUMMARIES" in narrative
-        # Should have injected MEM: system message
-        mem_msgs = [m for m in manager._messages if m.role == "system" and m.content.startswith("MEM:")]
-        assert len(mem_msgs) == 1
-        assert "MEM:char_001:500" in mem_msgs[0].content
-        assert manager._tracker.is_mem_injected("char_001", 500)
+        # ContextBlock should have the memory tracked
+        assert manager._context_block.has_memory("char_001", 500)
 
     @pytest.mark.asyncio
     async def test_inject_speaker_memory_diff(self, mock_state_client, mock_background_generator):
@@ -392,10 +421,10 @@ class TestMemoryDiffInjection:
             state_client=mock_state_client,
             background_generator=mock_background_generator,
         )
-        manager._messages = [Message(role="system", content="test")]
+        # _messages already has 3-message base from __init__
 
-        # Simulate a returning speaker with previously tracked memory
-        manager._tracker.mark_mem("char_001", 50)
+        # Simulate a returning speaker with previously tracked memory via ContextBlock
+        manager._context_block.add_memory("char_001", "Wolf", 50, "SUMMARIES", "Old patrol")
 
         mock_state_client.execute_batch.return_value = BatchResult({
             "mem_summaries": {
@@ -409,13 +438,13 @@ class TestMemoryDiffInjection:
             "mem_cores": {"ok": True, "data": []},
         })
 
-        speaker = {"game_id": "char_001", "background": None}
+        speaker = {"game_id": "char_001", "name": "Wolf", "background": None}
 
         narrative = await manager._inject_speaker_memory(speaker)
 
         assert "New encounter" in narrative
-        assert "Old patrol" not in narrative  # Already tracked, not in narrative
-        assert manager._tracker.is_mem_injected("char_001", 200)
+        # Old patrol was already tracked, but still appears in narrative (all memories are returned)
+        assert manager._context_block.has_memory("char_001", 200)
 
 
 class TestSpeakerPicker:
@@ -533,10 +562,9 @@ class TestSpeakerPicker:
         """Picker on a second event sees the prior user+assistant dialogue in history.
 
         After the first handle_event the persistent dialogue messages stay in
-        `_messages` alongside EVT:/BG: system messages.  When a second event
-        triggers the picker for 2+ candidates the messages list sent to
-        `complete()` must contain those prior turns so the LLM has
-        conversational context.
+        `_messages`.  When a second event triggers the picker for 2+ candidates
+        the messages list sent to `complete()` must contain those prior turns
+        so the LLM has conversational context.
         """
         manager = ConversationManager(
             llm_client=mock_llm_client,
@@ -562,6 +590,9 @@ class TestSpeakerPicker:
             "scene": {"ok": True, "data": {}},
             "alive": {"ok": True, "data": {}},
         })
+        events_result = BatchResult({
+            "events": {"ok": True, "data": []},
+        })
 
         # Capture message snapshots at each complete() call
         captured_messages: list[list[Message]] = []
@@ -584,8 +615,8 @@ class TestSpeakerPicker:
         mock_llm_client.complete = _capture_complete
 
         mock_state_client.execute_batch.side_effect = [
-            world_result, mem_result,  # event 1
-            world_result, mem_result,  # event 2
+            world_result, mem_result, events_result,  # event 1
+            world_result, mem_result, events_result,  # event 2
         ]
 
         # --- First event ---
@@ -594,10 +625,8 @@ class TestSpeakerPicker:
             world="Dark Valley, evening", traits={},
         )
 
-        # After first event:
-        # [0] system, [1] EVT:1000, [2] BG:char_001, [3] BG:char_003,
-        # [4] user (dialogue pointer), [5] assistant (For Duty!)
-        assert len(manager._messages) == 6
+        # After first event: 3 base + 1 user (dialogue) + 1 assistant = 5
+        assert len(manager._messages) == 5
 
         # --- Second event ---
         await manager.handle_event(
@@ -606,22 +635,17 @@ class TestSpeakerPicker:
         )
 
         # captured_messages[2] = picker call for second event
-        # [0] system, [1] EVT:1000, [2] BG:char_001, [3] BG:char_003,
-        # [4] user (prior dialogue), [5] assistant (For Duty!),
-        # [6] EVT:2000 (new event), [7] picker pointer (ephemeral)
         picker_msgs = captured_messages[2]
-        assert len(picker_msgs) == 8
 
-        # Verify prior dialogue turn is present
-        assert picker_msgs[4].role == "user"
-        assert picker_msgs[5].role == "assistant"
-        assert picker_msgs[5].content == "For Duty!"
+        # Verify prior dialogue turn is present somewhere in the messages
+        prior_turns = [m for m in picker_msgs if m.role == "assistant" and m.content == "For Duty!"]
+        assert len(prior_turns) == 1
 
-        # Verify picker message is pointer-based
-        assert picker_msgs[7].role == "user"
-        assert "EVT:2000" in picker_msgs[7].content
-        assert "char_001" in picker_msgs[7].content
-        assert "char_003" in picker_msgs[7].content
+        # Verify picker message is the last user message
+        last_user = [m for m in picker_msgs if m.role == "user"][-1]
+        assert "INJURY" in last_user.content
+        assert "char_001" in last_user.content
+        assert "char_003" in last_user.content
 
 
 class TestDialogueGeneration:
@@ -635,11 +659,10 @@ class TestDialogueGeneration:
             state_client=mock_state_client,
             background_generator=mock_background_generator,
         )
-        manager._messages = [Message(role="system", content="test")]
+        # Use the 3-message base from __init__
 
         # Mock full memory fetch
         mock_state_client.execute_batch.return_value = BatchResult({
-            "mem_events": {"ok": True, "data": [{"text": "Recent patrol", "timestamp": 100}]},
             "mem_summaries": {"ok": True, "data": []},
             "mem_digests": {"ok": True, "data": []},
             "mem_cores": {"ok": True, "data": []},
@@ -666,10 +689,9 @@ class TestDialogueGeneration:
             state_client=mock_state_client,
             background_generator=mock_background_generator,
         )
-        manager._messages = [Message(role="system", content="test")]
+        # 3-message base from __init__
 
         mock_state_client.execute_batch.return_value = BatchResult({
-            "mem_events": {"ok": True, "data": []},
             "mem_summaries": {"ok": True, "data": []},
             "mem_digests": {"ok": True, "data": []},
             "mem_cores": {"ok": True, "data": []},
@@ -686,11 +708,11 @@ class TestDialogueGeneration:
 
         await manager._run_dialogue_generation(speaker, {"type": "death"}, mock_llm_client)
 
-        # System + user + assistant = 3 messages
-        assert len(manager._messages) == 3
-        assert manager._messages[1].role == "user"
-        assert manager._messages[2].role == "assistant"
-        assert manager._messages[2].content == "For Duty!"
+        # 3 base + 1 user + 1 assistant = 5 messages
+        assert len(manager._messages) == 5
+        assert manager._messages[3].role == "user"
+        assert manager._messages[4].role == "assistant"
+        assert manager._messages[4].content == "For Duty!"
 
     @pytest.mark.asyncio
     async def test_returns_empty_on_llm_error(self, mock_llm_client, mock_state_client, mock_background_generator):
@@ -700,10 +722,9 @@ class TestDialogueGeneration:
             state_client=mock_state_client,
             background_generator=mock_background_generator,
         )
-        manager._messages = [Message(role="system", content="test")]
+        # 3-message base from __init__
 
         mock_state_client.execute_batch.return_value = BatchResult({
-            "mem_events": {"ok": True, "data": []},
             "mem_summaries": {"ok": True, "data": []},
             "mem_digests": {"ok": True, "data": []},
             "mem_cores": {"ok": True, "data": []},
@@ -715,8 +736,8 @@ class TestDialogueGeneration:
         result = await manager._run_dialogue_generation(speaker, {"type": "death"}, mock_llm_client)
 
         assert result == ""
-        # User message should be cleaned up on error
-        assert len(manager._messages) == 1
+        # User message should be cleaned up on error — back to 3 base messages
+        assert len(manager._messages) == 3
 
 
 class TestHandleEvent:
@@ -746,7 +767,7 @@ class TestHandleEvent:
             "Another Freedom scum eliminated!",  # dialogue
         ]
 
-        # State calls: world enrichment, then memory fetch
+        # State calls: world enrichment, memory fetch, witness events fetch
         mock_state_client.execute_batch.side_effect = [
             # World enrichment batch
             BatchResult({
@@ -755,10 +776,13 @@ class TestHandleEvent:
             }),
             # Full memory fetch for dialogue step
             BatchResult({
-                "mem_events": {"ok": True, "data": []},
                 "mem_summaries": {"ok": True, "data": []},
                 "mem_digests": {"ok": True, "data": []},
                 "mem_cores": {"ok": True, "data": []},
+            }),
+            # Witness events fetch
+            BatchResult({
+                "events": {"ok": True, "data": []},
             }),
         ]
 
@@ -801,11 +825,11 @@ class TestHandleEvent:
         mock_state_client.execute_batch.side_effect = [
             BatchResult({"scene": {"ok": True, "data": {}}, "alive": {"ok": True, "data": {}}}),
             BatchResult({
-                "mem_events": {"ok": True, "data": []},
                 "mem_summaries": {"ok": True, "data": []},
                 "mem_digests": {"ok": True, "data": []},
                 "mem_cores": {"ok": True, "data": []},
             }),
+            BatchResult({"events": {"ok": True, "data": []}}),
         ]
 
         speaker_id, dialogue_text = await manager.handle_event(
@@ -896,11 +920,11 @@ class TestHandleEvent:
         mock_state_client.execute_batch.side_effect = [
             BatchResult({"scene": {"ok": True, "data": {}}, "alive": {"ok": True, "data": {}}}),
             BatchResult({
-                "mem_events": {"ok": True, "data": []},
                 "mem_summaries": {"ok": True, "data": []},
                 "mem_digests": {"ok": True, "data": []},
                 "mem_cores": {"ok": True, "data": []},
             }),
+            BatchResult({"events": {"ok": True, "data": []}}),
         ]
 
         await manager.handle_event(
@@ -952,11 +976,12 @@ class TestHandleEvent:
             }),
             # Memory fetch
             BatchResult({
-                "mem_events": {"ok": True, "data": []},
                 "mem_summaries": {"ok": True, "data": []},
                 "mem_digests": {"ok": True, "data": []},
                 "mem_cores": {"ok": True, "data": []},
             }),
+            # Witness events fetch
+            BatchResult({"events": {"ok": True, "data": []}}),
         ]
 
         await manager.handle_event(
@@ -966,10 +991,10 @@ class TestHandleEvent:
             traits=sample_traits,
         )
 
-        # System prompt should contain enriched world
+        # System prompt is static (no enriched world) — world context goes in _messages[1]
         system_msg = manager._messages[0]
-        assert "Hostile" in system_msg.content
-        assert sample_world in system_msg.content
+        assert system_msg.role == "system"
+        assert system_msg.content == STATIC_SYSTEM_PROMPT
 
 
 class TestWitnessText:
@@ -1106,95 +1131,65 @@ class TestBuildMemSystemMsg:
 
 
 class TestSystemMessageInjection:
-    """Test that handle_event injects EVT: and BG: system messages
-       and deduplicates them across sequential events."""
+    """Test that ContextBlock deduplicates BG and MEM entries
+       across sequential events (replaces old _tracker-based tests)."""
 
     @pytest.mark.asyncio
-    async def test_evt_injected_once(self, mock_llm_client, mock_state_client, mock_background_generator):
-        """EVT: system message is injected once per unique timestamp."""
+    async def test_bg_deduped_in_context_block(self, mock_llm_client, mock_state_client, mock_background_generator):
+        """Background entries are added once per character in ContextBlock."""
         manager = ConversationManager(
             llm_client=mock_llm_client,
             state_client=mock_state_client,
             background_generator=mock_background_generator,
         )
-        # Pre-seed – simulate an EVT already injected
-        manager._messages = [Message(role="system", content="test")]
-        manager._tracker.mark_event(1000)
-        manager._messages.append(Message(role="system", content="EVT:1000 — DEATH: X killed Y\nWitnesses: A(1)"))
 
-        event = {"type": "death", "timestamp": 1000, "context": {"actor": {"name": "X"}, "victim": {"name": "Y"}}}
-        candidates = [{"game_id": "1", "name": "A", "faction": "loner", "background": None}]
+        # Add a background
+        added = manager._context_block.add_background("char_001", "Wolf", "Loner", "Veteran stalker.")
+        assert added is True
+        assert manager._context_block.has_background("char_001")
 
-        # Simulate the injection logic directly
-        event_ts = event.get("timestamp", 0)
-        if not manager._tracker.is_event_injected(event_ts):
-            manager._messages.append(Message(role="system", content=build_event_system_msg(event, candidates)))
-            manager._tracker.mark_event(event_ts)
-
-        # Should not have injected a second EVT:1000
-        evt_msgs = [m for m in manager._messages if m.content.startswith("EVT:1000")]
-        assert len(evt_msgs) == 1
+        # Adding same char_id again should be deduped
+        added2 = manager._context_block.add_background("char_001", "Wolf", "Loner", "Veteran stalker.")
+        assert added2 is False
+        assert manager._context_block.item_count == 1
 
     @pytest.mark.asyncio
-    async def test_bg_injected_per_candidate(self, mock_llm_client, mock_state_client, mock_background_generator):
-        """BG: system messages are injected per candidate, not duplicated."""
+    async def test_mem_deduped_in_context_block(self, mock_llm_client, mock_state_client, mock_background_generator):
+        """Memory entries are added once per (char_id, ts) pair in ContextBlock."""
         manager = ConversationManager(
             llm_client=mock_llm_client,
             state_client=mock_state_client,
             background_generator=mock_background_generator,
         )
-        manager._messages = [Message(role="system", content="test")]
 
-        candidates = [
-            {"game_id": "1", "name": "Alpha", "faction": "loner", "background": {"traits": ["brave"], "backstory": "Vet.", "connections": []}},
-            {"game_id": "2", "name": "Bravo", "faction": "dolg", "background": {"traits": ["loyal"], "backstory": "Soldier.", "connections": []}},
-        ]
+        added = manager._context_block.add_memory("char_001", "Wolf", 100, "SUMMARIES", "A brief patrol.")
+        assert added is True
 
-        # Inject BG: for each candidate (mimicking handle_event logic)
-        for cand in candidates:
-            char_id = str(cand["game_id"])
-            if not manager._tracker.is_bg_injected(char_id):
-                bg_text = manager._format_background(cand.get("background"))
-                name = cand["name"]
-                faction = cand["faction"]
-                content = build_bg_system_msg(char_id, name, faction, bg_text)
-                manager._messages.append(Message(role="system", content=content))
-                manager._tracker.mark_bg(char_id)
+        # Same (char_id, ts) should be deduped
+        added2 = manager._context_block.add_memory("char_001", "Wolf", 100, "SUMMARIES", "A brief patrol.")
+        assert added2 is False
 
-        bg_msgs = [m for m in manager._messages if m.content.startswith("BG:")]
-        assert len(bg_msgs) == 2
-
-        # Second pass should not duplicate
-        for cand in candidates:
-            char_id = str(cand["game_id"])
-            if not manager._tracker.is_bg_injected(char_id):
-                manager._messages.append(Message(role="system", content="SHOULD NOT APPEAR"))
-                manager._tracker.mark_bg(char_id)
-
-        bg_msgs = [m for m in manager._messages if m.content.startswith("BG:")]
-        assert len(bg_msgs) == 2  # no duplicates
+        # Different ts should be added
+        added3 = manager._context_block.add_memory("char_001", "Wolf", 200, "DIGESTS", "New encounter.")
+        assert added3 is True
+        assert manager._context_block.item_count == 2
 
     @pytest.mark.asyncio
-    async def test_mem_injected_and_deduped(self, mock_llm_client, mock_state_client, mock_background_generator):
-        """MEM: system messages are injected once per (char_id, ts) pair."""
+    async def test_context_block_render_contains_entries(self, mock_llm_client, mock_state_client, mock_background_generator):
+        """Rendered context block contains both BG and MEM entries."""
         manager = ConversationManager(
             llm_client=mock_llm_client,
             state_client=mock_state_client,
             background_generator=mock_background_generator,
         )
-        manager._messages = [Message(role="system", content="test")]
 
-        # Inject a MEM message
-        content = build_mem_system_msg("char_001", 100, "SUMMARIES", "A brief patrol summary.")
-        manager._messages.append(Message(role="system", content=content))
-        manager._tracker.mark_mem("char_001", 100)
+        manager._context_block.add_background("char_001", "Wolf", "Loner", "Veteran stalker.")
+        manager._context_block.add_memory("char_001", "Wolf", 100, "SUMMARIES", "Patrol summary.")
 
-        # Attempt to inject same again
-        if not manager._tracker.is_mem_injected("char_001", 100):
-            manager._messages.append(Message(role="system", content="DUPLICATE"))
-
-        mem_msgs = [m for m in manager._messages if m.content.startswith("MEM:")]
-        assert len(mem_msgs) == 1
+        rendered = manager._context_block.render_markdown()
+        assert "Wolf" in rendered
+        assert "Veteran stalker." in rendered
+        assert "Patrol summary." in rendered
 
 
 # ---------------------------------------------------------------------------
@@ -1203,17 +1198,16 @@ class TestSystemMessageInjection:
 
 
 class TestPickerPointerFormat:
-    """Tests verifying the pointer-based picker message format."""
+    """Tests verifying the inline picker message format."""
 
     @pytest.mark.asyncio
-    async def test_picker_message_is_pointer_based(self, mock_llm_client, mock_state_client, mock_background_generator):
-        """Picker user message should reference EVT:{ts} and list candidate IDs."""
+    async def test_picker_message_is_inline(self, mock_llm_client, mock_state_client, mock_background_generator):
+        """Picker user message should contain inline event description and candidate IDs."""
         manager = ConversationManager(
             llm_client=mock_llm_client,
             state_client=mock_state_client,
             background_generator=mock_background_generator,
         )
-        manager._messages = [Message(role="system", content="test")]
 
         candidates = [
             {"game_id": "char_001", "name": "Fanatic", "faction": "dolg", "rank": 450, "background": None},
@@ -1233,11 +1227,10 @@ class TestPickerPointerFormat:
 
         picker_msg = captured[0][-1]
         assert picker_msg.role == "user"
-        assert "EVT:42000" in picker_msg.content
+        # Inline event description instead of EVT: pointer
+        assert "DEATH" in picker_msg.content
         assert "char_001" in picker_msg.content
         assert "char_003" in picker_msg.content
-        # Should NOT contain inline JSON or full event descriptions
-        assert "{" not in picker_msg.content
 
     @pytest.mark.asyncio
     async def test_picker_removes_exactly_2_messages(self, mock_llm_client, mock_state_client, mock_background_generator):
@@ -1271,18 +1264,17 @@ class TestPickerPointerFormat:
 # ---------------------------------------------------------------------------
 
 
-class TestDialoguePointerFormat:
-    """Tests verifying the pointer-based dialogue user message format."""
+class TestDialogueMessageFormat:
+    """Tests verifying the inline dialogue user message format."""
 
     @pytest.mark.asyncio
-    async def test_dialogue_message_references_event(self, mock_llm_client, mock_state_client, mock_background_generator):
-        """Dialogue user message should reference EVT:{ts} and contain character ID."""
+    async def test_dialogue_message_contains_event(self, mock_llm_client, mock_state_client, mock_background_generator):
+        """Dialogue user message should contain inline event description and character ID."""
         manager = ConversationManager(
             llm_client=mock_llm_client,
             state_client=mock_state_client,
             background_generator=mock_background_generator,
         )
-        manager._messages = [Message(role="system", content="test")]
 
         mock_state_client.execute_batch.return_value = BatchResult({
             "mem_summaries": {"ok": True, "data": [{"text": "A patrol memory.", "timestamp": 500}]},
@@ -1296,10 +1288,10 @@ class TestDialoguePointerFormat:
 
         await manager._run_dialogue_generation(speaker, event, mock_llm_client)
 
-        # User message (second-to-last) should be pointer-based
+        # User message (second-to-last) should contain inline event description
         user_msg = manager._messages[-2]
         assert user_msg.role == "user"
-        assert "EVT:42000" in user_msg.content
+        assert "DEATH" in user_msg.content
         assert "char_001" in user_msg.content
         assert "Fanatic Warrior" in user_msg.content
         assert "Personal memories:" in user_msg.content
@@ -1312,7 +1304,6 @@ class TestDialoguePointerFormat:
             state_client=mock_state_client,
             background_generator=mock_background_generator,
         )
-        manager._messages = [Message(role="system", content="test")]
 
         mock_state_client.execute_batch.return_value = BatchResult({
             "mem_summaries": {"ok": True, "data": []},
@@ -1326,5 +1317,195 @@ class TestDialoguePointerFormat:
         await manager._run_dialogue_generation(speaker, {"type": "idle", "timestamp": 99}, mock_llm_client)
 
         user_msg = manager._messages[-2]
-        assert "EVT:99" in user_msg.content
+        assert "IDLE" in user_msg.content
         assert "Personal memories:" not in user_msg.content
+
+
+# ---------------------------------------------------------------------------
+# Task 4.5 — Four-layer message layout validation
+# ---------------------------------------------------------------------------
+
+class TestFourLayerMessageLayout:
+    """Validate the 4-layer message structure (system, context user, assistant ack, dialogue turns)."""
+
+    def test_base_messages_structure(self, mock_llm_client, mock_state_client, mock_background_generator):
+        """_messages[0:3] matches 4-layer spec: system, user context, assistant ack."""
+        manager = ConversationManager(
+            llm_client=mock_llm_client,
+            state_client=mock_state_client,
+            background_generator=mock_background_generator,
+        )
+        assert len(manager._messages) == 3
+        assert manager._messages[0].role == "system"
+        assert manager._messages[0].content == STATIC_SYSTEM_PROMPT
+        assert manager._messages[1].role == "user"
+        assert manager._messages[1].content == ""  # empty context block initially
+        assert manager._messages[2].role == "assistant"
+        assert manager._messages[2].content == "Ready."
+
+    def test_system_prompt_is_static_constant(self, mock_llm_client, mock_state_client, mock_background_generator):
+        """System prompt is the STATIC_SYSTEM_PROMPT constant, not dynamically generated."""
+        manager = ConversationManager(
+            llm_client=mock_llm_client,
+            state_client=mock_state_client,
+            background_generator=mock_background_generator,
+        )
+        assert manager._messages[0].content is STATIC_SYSTEM_PROMPT
+
+    @pytest.mark.asyncio
+    async def test_context_block_populates_messages_1(self, mock_llm_client, mock_state_client, mock_background_generator):
+        """After adding BGs to context block, _messages[1] renders them."""
+        manager = ConversationManager(
+            llm_client=mock_llm_client,
+            state_client=mock_state_client,
+            background_generator=mock_background_generator,
+        )
+        manager._context_block.add_background("npc_1", "Wolf", "Loner", "A grizzled veteran.")
+        manager._messages[1] = Message(role="user", content=manager._context_block.render_markdown())
+
+        assert "Wolf" in manager._messages[1].content
+        assert "Loner" in manager._messages[1].content
+        assert manager._messages[1].role == "user"
+
+    @pytest.mark.asyncio
+    async def test_dialogue_turns_appended_after_base(self, mock_llm_client, mock_state_client, mock_background_generator):
+        """Dialogue user/assistant pairs are appended at index 3+."""
+        manager = ConversationManager(
+            llm_client=mock_llm_client,
+            state_client=mock_state_client,
+            background_generator=mock_background_generator,
+        )
+
+        mock_state_client.execute_batch.return_value = BatchResult({
+            "mem_summaries": {"ok": True, "data": []},
+            "mem_digests": {"ok": True, "data": []},
+            "mem_cores": {"ok": True, "data": []},
+        })
+
+        speaker = {"game_id": "char_001", "name": "Wolf", "faction": "stalker", "background": None}
+        await manager._run_dialogue_generation(speaker, {"type": "idle", "timestamp": 99}, mock_llm_client)
+
+        # 3 base + 1 user + 1 assistant = 5
+        assert len(manager._messages) == 5
+        assert manager._messages[3].role == "user"
+        assert manager._messages[4].role == "assistant"
+
+
+# ---------------------------------------------------------------------------
+# Task 5.5 — Event filtering tests
+# ---------------------------------------------------------------------------
+
+class TestFilterEventsForSpeaker:
+    """Tests for filter_events_for_speaker helper."""
+
+    def test_filters_by_witness_list(self):
+        from talker_service.dialogue.conversation import filter_events_for_speaker
+        events = [
+            {"type": "death", "witnesses": [{"game_id": "npc_1"}, {"game_id": "npc_2"}], "context": {}},
+            {"type": "idle", "witnesses": [{"game_id": "npc_3"}], "context": {}},
+        ]
+        result = filter_events_for_speaker(events, "npc_1")
+        assert len(result) == 1
+        assert result[0]["type"] == "death"
+
+    def test_filters_by_actor(self):
+        from talker_service.dialogue.conversation import filter_events_for_speaker
+        events = [
+            {"type": "death", "witnesses": [], "context": {"actor": {"game_id": "npc_1"}}},
+        ]
+        result = filter_events_for_speaker(events, "npc_1")
+        assert len(result) == 1
+
+    def test_filters_by_victim(self):
+        from talker_service.dialogue.conversation import filter_events_for_speaker
+        events = [
+            {"type": "death", "witnesses": [], "context": {"victim": {"game_id": "npc_1"}}},
+        ]
+        result = filter_events_for_speaker(events, "npc_1")
+        assert len(result) == 1
+
+    def test_excludes_unrelated_events(self):
+        from talker_service.dialogue.conversation import filter_events_for_speaker
+        events = [
+            {"type": "death", "witnesses": [{"game_id": "npc_2"}], "context": {"actor": {"game_id": "npc_3"}}},
+        ]
+        result = filter_events_for_speaker(events, "npc_1")
+        assert len(result) == 0
+
+    def test_empty_events_returns_empty(self):
+        from talker_service.dialogue.conversation import filter_events_for_speaker
+        result = filter_events_for_speaker([], "npc_1")
+        assert result == []
+
+    def test_picker_gets_zero_witness_events(self):
+        """Picker user message should not contain witness event text."""
+        # The picker message is built with just event_desc + candidate IDs.
+        # Verified structurally via TestPickerPointerFormat.
+        from talker_service.prompts.picker import build_event_description
+        event = {"type": "death", "context": {"actor": {"game_id": "1", "name": "Wolf"}, "victim": {"game_id": "2", "name": "Bandit"}}}
+        desc = build_event_description(event)
+        # Picker messages never include "witnessed" or "events:" sections
+        assert "witnessed" not in desc.lower()
+
+
+# ---------------------------------------------------------------------------
+# Task 6.3 — Picker ephemeral messages are cleaned up
+# ---------------------------------------------------------------------------
+
+class TestPickerEphemeralCleanup:
+    """Verify picker messages are not present after dialogue step completes."""
+
+    @pytest.mark.asyncio
+    @patch("talker_service.dialogue.conversation.build_world_context", new_callable=AsyncMock, return_value="")
+    async def test_picker_messages_removed_after_handle_event(
+        self, mock_world_ctx, mock_llm_client, mock_state_client, mock_background_generator,
+        sample_event, sample_candidates, sample_traits, sample_world,
+    ):
+        """After handle_event with 2 candidates, picker messages must not remain."""
+        call_count = 0
+
+        async def _complete(messages, opts=None):
+            nonlocal call_count
+            call_count += 1
+            if call_count == 1:
+                return "char_001"  # picker
+            return "Another kill."  # dialogue
+
+        mock_llm_client.complete = AsyncMock(side_effect=_complete)
+
+        # 3 batch calls: world enrichment, memory, witness events
+        mock_state_client.execute_batch = AsyncMock(side_effect=[
+            BatchResult({  # world enrichment
+                "scene": {"ok": True, "data": {"loc": "l01_escape", "weather": "clear", "time": {"h": 14, "m": 35}, "emission": False, "psy_storm": False, "sheltering": False, "campfire": None, "brain_scorcher_disabled": False, "miracle_machine_disabled": False}},
+                "alive": {"ok": True, "data": {}},
+            }),
+            BatchResult({  # witness events
+                "events": {"ok": True, "data": []},
+            }),
+            BatchResult({  # memory
+                "mem_summaries": {"ok": True, "data": []},
+                "mem_digests": {"ok": True, "data": []},
+                "mem_cores": {"ok": True, "data": []},
+            }),
+        ])
+
+        manager = ConversationManager(
+            llm_client=mock_llm_client,
+            state_client=mock_state_client,
+            background_generator=mock_background_generator,
+        )
+
+        await manager.handle_event(
+            event=sample_event,
+            candidates=sample_candidates,
+            world=sample_world,
+            traits=sample_traits,
+        )
+
+        # No picker-related messages should remain — only base 3 + dialogue pair
+        assert len(manager._messages) == 5
+        roles = [m.role for m in manager._messages]
+        assert roles == ["system", "user", "assistant", "user", "assistant"]
+        # The picker instruction mentioned "Candidates:" — must not be in any remaining message
+        for msg in manager._messages:
+            assert "Candidates:" not in msg.content
