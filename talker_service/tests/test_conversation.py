@@ -1509,3 +1509,143 @@ class TestPickerEphemeralCleanup:
         # The picker instruction mentioned "Candidates:" — must not be in any remaining message
         for msg in manager._messages:
             assert "Candidates:" not in msg.content
+
+
+# ---------------------------------------------------------------------------
+# Task 4 — Batch fetch events for all candidates before picker
+# ---------------------------------------------------------------------------
+
+
+class TestBatchEventFetch:
+    """Tests for Task 4: batch-fetch events for all candidates before picker."""
+
+    @pytest.mark.asyncio
+    async def test_batch_query_for_N_candidates(
+        self,
+        mock_llm_client,
+        mock_state_client,
+        mock_background_generator,
+        sample_event,
+        sample_candidates,
+        sample_world,
+        sample_traits,
+    ):
+        """Events batch query issued BEFORE picker with one sub-query per candidate."""
+        manager = ConversationManager(
+            llm_client=mock_llm_client,
+            state_client=mock_state_client,
+            background_generator=mock_background_generator,
+        )
+
+        mock_llm_client.complete.side_effect = [
+            "char_001",  # picker
+            "For Duty!",  # dialogue
+        ]
+        mock_state_client.execute_batch.side_effect = [
+            BatchResult({"scene": {"ok": True, "data": {}}, "alive": {"ok": True, "data": {}}}),
+            BatchResult({
+                "events_char_001": {"ok": True, "data": []},
+                "events_char_003": {"ok": True, "data": []},
+            }),
+            BatchResult({
+                "mem_summaries": {"ok": True, "data": []},
+                "mem_digests": {"ok": True, "data": []},
+                "mem_cores": {"ok": True, "data": []},
+            }),
+        ]
+
+        await manager.handle_event(
+            event=sample_event,
+            candidates=sample_candidates,
+            world=sample_world,
+            traits=sample_traits,
+        )
+
+        # Second execute_batch call should be the events batch for ALL candidates
+        assert mock_state_client.execute_batch.call_count == 3
+        calls = mock_state_client.execute_batch.call_args_list
+        events_call_batch = calls[1][0][0]  # second call, first positional arg
+        assert sorted(events_call_batch.query_ids) == sorted(["events_char_001", "events_char_003"])
+
+    @pytest.mark.asyncio
+    async def test_candidate_with_no_events(
+        self,
+        mock_llm_client,
+        mock_state_client,
+        mock_background_generator,
+        sample_event,
+        sample_world,
+        sample_traits,
+    ):
+        """A candidate returning empty events list is handled gracefully."""
+        manager = ConversationManager(
+            llm_client=mock_llm_client,
+            state_client=mock_state_client,
+            background_generator=mock_background_generator,
+        )
+
+        candidates = [
+            {"game_id": "npc_A", "name": "Alpha", "faction": "dolg", "rank": 300, "background": None},
+        ]
+
+        mock_llm_client.complete.return_value = "Roger that."
+        mock_state_client.execute_batch.side_effect = [
+            BatchResult({"scene": {"ok": True, "data": {}}, "alive": {"ok": True, "data": {}}}),
+            BatchResult({"events_npc_A": {"ok": True, "data": []}}),
+            BatchResult({
+                "mem_summaries": {"ok": True, "data": []},
+                "mem_digests": {"ok": True, "data": []},
+                "mem_cores": {"ok": True, "data": []},
+            }),
+        ]
+
+        speaker_id, dialogue = await manager.handle_event(
+            event=sample_event, candidates=candidates,
+            world=sample_world, traits=sample_traits,
+        )
+
+        assert speaker_id == "npc_A"
+        assert dialogue == "Roger that."
+
+    @pytest.mark.asyncio
+    async def test_batch_query_timeout_proceeds_with_empty(
+        self,
+        mock_llm_client,
+        mock_state_client,
+        mock_background_generator,
+        sample_event,
+        sample_candidates,
+        sample_world,
+        sample_traits,
+    ):
+        """TimeoutError on events batch → handle_event continues with empty events."""
+        manager = ConversationManager(
+            llm_client=mock_llm_client,
+            state_client=mock_state_client,
+            background_generator=mock_background_generator,
+        )
+
+        mock_llm_client.complete.side_effect = [
+            "char_001",  # picker
+            "All clear.",  # dialogue
+        ]
+        mock_state_client.execute_batch.side_effect = [
+            BatchResult({"scene": {"ok": True, "data": {}}, "alive": {"ok": True, "data": {}}}),
+            TimeoutError("events fetch timed out"),  # events batch times out
+            BatchResult({
+                "mem_summaries": {"ok": True, "data": []},
+                "mem_digests": {"ok": True, "data": []},
+                "mem_cores": {"ok": True, "data": []},
+            }),
+        ]
+
+        # Should NOT raise — timeout is handled gracefully
+        speaker_id, dialogue = await manager.handle_event(
+            event=sample_event,
+            candidates=sample_candidates,
+            world=sample_world,
+            traits=sample_traits,
+        )
+
+        assert speaker_id == "char_001"
+        assert dialogue == "All clear."
