@@ -65,6 +65,7 @@ function on_mcm_load()
                 {id = "witness_distance", type = "track", val = 2, min = 5, max = 100, step = 1, def = 25},
                 {id = "npc_speak_distance", type = "track", val = 2, min = 5, max = 100, step = 1, def = 30},
                 {id = "recent_speech_threshold", type = "input", val = 2, min = 0, max = 36000, def = 120},
+                {id = "speaker_pick_max_events", type = "input", val = 2, min = 1, max = 200, def = 20},
                 -- Debug
                 {id = "debug_title", type = "slide", link = "ui_options_slider_player",
                     text = "ui_mcm_talker_debug_title", size = {512, 50}, spacing = 20},
@@ -201,6 +202,7 @@ local defaults = {
     ["npc_speak_distance"] = 30,
     ["time_gap"] = 4,
     ["recent_speech_threshold"] = 120,
+    ["speaker_pick_max_events"] = 20,
     ["max_log_entries_per_level"] = 0,
     ["debug_logging"] = 2,
     ["ws_host"] = "127.0.0.1",

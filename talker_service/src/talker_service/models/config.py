@@ -37,6 +37,9 @@ class MCMConfig(BaseModel):
     llm_timeout: int = 60  # LLM request timeout in seconds
     state_query_timeout: int = 30  # State query timeout in seconds
     
+    # Speaker picker
+    speaker_pick_max_events: int = 20  # Max recent events per candidate in picker prompt
+
     # Other common settings
     action_descriptions: bool = False
     female_gender: bool = False
