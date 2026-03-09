@@ -19,13 +19,10 @@ from ..llm import LLMClient, Message
 from ..llm.models import LLMOptions, ReasoningOptions
 from ..state.client import StateQueryClient
 from ..state.batch import BatchQuery
-from .event_list import assemble_event_list, build_event_list_text
+from .event_list import assemble_event_list, build_event_list_text, filter_events_for_speaker as filter_events_by_name
 from ..prompts.factions import resolve_faction_name
 from ..prompts.dialogue import build_dialogue_user_message
-from ..prompts.picker import (
-    build_event_description,
-    parse_picker_response,
-)
+from ..prompts.picker import parse_picker_response
 from ..prompts.world_context import (
     build_world_context,
     build_world_context_split,
@@ -115,42 +112,6 @@ def build_witness_text(event: dict[str, Any]) -> str:
         return f"Witnessed: {event_name} — {actor_name}"
     else:
         return f"Witnessed: {event_name}"
-
-
-def filter_events_for_speaker(
-    events: list[dict[str, Any]],
-    speaker_id: str,
-) -> list[dict[str, Any]]:
-    """Filter events to only those where speaker_id is a witness.
-
-    An event is considered witnessed by a speaker if speaker_id appears in
-    the event's ``witnesses`` list (game_id field) or matches the actor/victim.
-
-    Args:
-        events: List of event dicts with ``context`` and optional ``witnesses``.
-        speaker_id: Character ID of the speaker.
-
-    Returns:
-        Filtered list of events where the speaker is a witness.
-    """
-    result: list[dict[str, Any]] = []
-    for event in events:
-        witnesses = event.get("witnesses", [])
-        # Check witnesses list
-        for w in witnesses:
-            if isinstance(w, dict) and str(w.get("game_id", "")) == speaker_id:
-                result.append(event)
-                break
-        else:
-            # Also check actor/victim (they implicitly witness the event)
-            context = event.get("context", {})
-            actor = context.get("actor") or context.get("killer")
-            victim = context.get("victim")
-            if isinstance(actor, dict) and str(actor.get("game_id", "")) == speaker_id:
-                result.append(event)
-            elif isinstance(victim, dict) and str(victim.get("game_id", "")) == speaker_id:
-                result.append(event)
-    return result
 
 
 # ---------------------------------------------------------------------------
@@ -689,21 +650,22 @@ class ConversationManager:
         event: dict[str, Any],
         llm_client: LLMClient,
         dynamic_world_line: str = "",
-        witness_events: list[dict[str, Any]] | None = None,
+        speaker_event_list_text: str = "",
     ) -> str:
         """Run the persistent dialogue generation step.
 
-        Adds speaker MEMs to the context block, then builds a user message
-        with the event description, weather/time/location, and only
-        speaker-witnessed events.  Both the user message and assistant
-        response are kept in conversation history.
+        Adds speaker MEMs to the context block, then builds an ephemeral user
+        message with the speaker-filtered event list and [ts] pointer.  The
+        user message is removed after the LLM call; only the assistant response
+        is kept in conversation history.
 
         Args:
             speaker: The chosen speaker dict (with background populated).
             event: Event data dict.
             llm_client: LLM client to use.
             dynamic_world_line: Per-turn weather/time/location string.
-            witness_events: Events where this speaker is a witness.
+            speaker_event_list_text: Pre-built event list filtered for speaker
+                (output of build_event_list_text on speaker-filtered events).
 
         Returns:
             Generated dialogue text.
@@ -714,23 +676,14 @@ class ConversationManager:
         speaker_name = speaker.get("name", "Unknown")
         speaker_id = str(speaker.get("game_id", ""))
 
-        # Build triggering event description
-        event_desc = build_event_description(event)
+        ts = event.get("ts", 0)
 
-        # Build witness events text (only events where speaker is a witness)
-        witness_text = ""
-        if witness_events:
-            witness_lines = [build_witness_text(e) for e in witness_events]
-            witness_text = "\n".join(witness_lines)
-
-        # Assemble dialogue user message
         parts: list[str] = []
         if dynamic_world_line:
             parts.append(dynamic_world_line)
-        parts.append(event_desc)
-        if witness_text:
-            parts.append(f"\n**Recent events witnessed by {speaker_name}:**\n{witness_text}")
-        parts.append(f"\nReact as **{speaker_name}** (ID: {speaker_id}).")
+        if speaker_event_list_text:
+            parts.append(f"\n**Recent events witnessed by {speaker_name}:**\n{speaker_event_list_text}")
+        parts.append(f"\nReact to event [{ts}] as **{speaker_name}** (ID: {speaker_id}).")
         if narrative:
             parts.append(f"\n**Personal memories:**\n{narrative}")
         parts.append(
@@ -752,7 +705,8 @@ class ConversationManager:
 
         dialogue_text = response.strip()
 
-        # Keep assistant response in history (persistent)
+        # Ephemeral: remove user message, keep only assistant response
+        self._messages.pop()  # remove user message
         self._messages.append(Message(role="assistant", content=dialogue_text))
 
         return dialogue_text
@@ -978,11 +932,18 @@ class ConversationManager:
         logger.info("Selected speaker: {} ({})", speaker.get("name"), speaker_id)
 
         # Step 2: Dialogue generation (persistent — injects MEM + keeps messages)
-        # TODO Task 6: filter unique_events/witness_map for speaker and pass as speaker_event_list_text
+        # Filter events to those witnessed by the chosen speaker
+        speaker_name_for_filter = speaker.get("name", "Unknown")
+        filtered_events, filtered_witness = filter_events_by_name(
+            unique_events, witness_map, speaker_name_for_filter,
+        )
+        speaker_event_text = build_event_list_text(filtered_events, filtered_witness)
+
+        # Step 2: Dialogue generation (persistent — keeps assistant response)
         dialogue_text = await self._run_dialogue_generation(
             speaker, event, llm_client,
             dynamic_world_line=dynamic_world_line,
-            witness_events=[],
+            speaker_event_list_text=speaker_event_text,
         )
 
         if not dialogue_text:

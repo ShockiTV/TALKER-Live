@@ -625,8 +625,8 @@ class TestSpeakerPicker:
             world="Dark Valley, evening", traits={},
         )
 
-        # After first event: 3 base + 1 user (dialogue) + 1 assistant = 5
-        assert len(manager._messages) == 5
+        # After first event: 3 base + 1 assistant (user message is ephemeral) = 4
+        assert len(manager._messages) == 4
 
         # --- Second event ---
         await manager.handle_event(
@@ -708,11 +708,10 @@ class TestDialogueGeneration:
 
         await manager._run_dialogue_generation(speaker, {"type": "death"}, mock_llm_client)
 
-        # 3 base + 1 user + 1 assistant = 5 messages
-        assert len(manager._messages) == 5
-        assert manager._messages[3].role == "user"
-        assert manager._messages[4].role == "assistant"
-        assert manager._messages[4].content == "For Duty!"
+        # 3 base + 1 assistant = 4 messages (user message is ephemeral)
+        assert len(manager._messages) == 4
+        assert manager._messages[3].role == "assistant"
+        assert manager._messages[3].content == "For Duty!"
 
     @pytest.mark.asyncio
     async def test_returns_empty_on_llm_error(self, mock_llm_client, mock_state_client, mock_background_generator):
@@ -1284,14 +1283,19 @@ class TestDialogueMessageFormat:
 
         speaker = {"game_id": "char_001", "name": "Fanatic Warrior", "faction": "dolg", "background": None}
         event = {"type": "death", "timestamp": 42000}
-        mock_llm_client.complete.return_value = "For Duty!"
+
+        captured = []
+        async def _capture(messages, **kw):
+            captured.append(list(messages))
+            return "For Duty!"
+        mock_llm_client.complete = _capture
 
         await manager._run_dialogue_generation(speaker, event, mock_llm_client)
 
-        # User message (second-to-last) should contain inline event description
-        user_msg = manager._messages[-2]
+        # User message captured before it was removed (ephemeral)
+        user_msg = captured[0][-1]
         assert user_msg.role == "user"
-        assert "DEATH" in user_msg.content
+        assert "React to event [" in user_msg.content
         assert "char_001" in user_msg.content
         assert "Fanatic Warrior" in user_msg.content
         assert "Personal memories:" in user_msg.content
@@ -1312,12 +1316,19 @@ class TestDialogueMessageFormat:
         })
 
         speaker = {"game_id": "char_001", "name": "Nobody", "faction": "loner", "background": None}
-        mock_llm_client.complete.return_value = "..."
+
+        captured = []
+        async def _capture(messages, **kw):
+            captured.append(list(messages))
+            return "..."
+        mock_llm_client.complete = _capture
 
         await manager._run_dialogue_generation(speaker, {"type": "idle", "timestamp": 99}, mock_llm_client)
 
-        user_msg = manager._messages[-2]
-        assert "IDLE" in user_msg.content
+        # User message captured before it was removed (ephemeral)
+        user_msg = captured[0][-1]
+        assert user_msg.role == "user"
+        assert "React to event [" in user_msg.content
         assert "Personal memories:" not in user_msg.content
 
 
@@ -1385,67 +1396,9 @@ class TestFourLayerMessageLayout:
         speaker = {"game_id": "char_001", "name": "Wolf", "faction": "stalker", "background": None}
         await manager._run_dialogue_generation(speaker, {"type": "idle", "timestamp": 99}, mock_llm_client)
 
-        # 3 base + 1 user + 1 assistant = 5
-        assert len(manager._messages) == 5
-        assert manager._messages[3].role == "user"
-        assert manager._messages[4].role == "assistant"
-
-
-# ---------------------------------------------------------------------------
-# Task 5.5 — Event filtering tests
-# ---------------------------------------------------------------------------
-
-class TestFilterEventsForSpeaker:
-    """Tests for filter_events_for_speaker helper."""
-
-    def test_filters_by_witness_list(self):
-        from talker_service.dialogue.conversation import filter_events_for_speaker
-        events = [
-            {"type": "death", "witnesses": [{"game_id": "npc_1"}, {"game_id": "npc_2"}], "context": {}},
-            {"type": "idle", "witnesses": [{"game_id": "npc_3"}], "context": {}},
-        ]
-        result = filter_events_for_speaker(events, "npc_1")
-        assert len(result) == 1
-        assert result[0]["type"] == "death"
-
-    def test_filters_by_actor(self):
-        from talker_service.dialogue.conversation import filter_events_for_speaker
-        events = [
-            {"type": "death", "witnesses": [], "context": {"actor": {"game_id": "npc_1"}}},
-        ]
-        result = filter_events_for_speaker(events, "npc_1")
-        assert len(result) == 1
-
-    def test_filters_by_victim(self):
-        from talker_service.dialogue.conversation import filter_events_for_speaker
-        events = [
-            {"type": "death", "witnesses": [], "context": {"victim": {"game_id": "npc_1"}}},
-        ]
-        result = filter_events_for_speaker(events, "npc_1")
-        assert len(result) == 1
-
-    def test_excludes_unrelated_events(self):
-        from talker_service.dialogue.conversation import filter_events_for_speaker
-        events = [
-            {"type": "death", "witnesses": [{"game_id": "npc_2"}], "context": {"actor": {"game_id": "npc_3"}}},
-        ]
-        result = filter_events_for_speaker(events, "npc_1")
-        assert len(result) == 0
-
-    def test_empty_events_returns_empty(self):
-        from talker_service.dialogue.conversation import filter_events_for_speaker
-        result = filter_events_for_speaker([], "npc_1")
-        assert result == []
-
-    def test_picker_gets_zero_witness_events(self):
-        """Picker user message should not contain witness event text."""
-        # The picker message is built with just event_desc + candidate IDs.
-        # Verified structurally via TestPickerPointerFormat.
-        from talker_service.prompts.picker import build_event_description
-        event = {"type": "death", "context": {"actor": {"game_id": "1", "name": "Wolf"}, "victim": {"game_id": "2", "name": "Bandit"}}}
-        desc = build_event_description(event)
-        # Picker messages never include "witnessed" or "events:" sections
-        assert "witnessed" not in desc.lower()
+        # 3 base + 1 assistant = 4 (user message is ephemeral)
+        assert len(manager._messages) == 4
+        assert manager._messages[3].role == "assistant"
 
 
 # ---------------------------------------------------------------------------
@@ -1502,10 +1455,10 @@ class TestPickerEphemeralCleanup:
             traits=sample_traits,
         )
 
-        # No picker-related messages should remain — only base 3 + dialogue pair
-        assert len(manager._messages) == 5
+        # No picker-related messages should remain — only base 3 + assistant (user message is ephemeral)
+        assert len(manager._messages) == 4
         roles = [m.role for m in manager._messages]
-        assert roles == ["system", "user", "assistant", "user", "assistant"]
+        assert roles == ["system", "user", "assistant", "assistant"]
         # The picker instruction mentioned "Candidates:" — must not be in any remaining message
         for msg in manager._messages:
             assert "Candidates:" not in msg.content
@@ -1745,3 +1698,188 @@ class TestPickerWithEventList:
         picker_msg = captured[0][-1]
         assert "React to event [3000]." in picker_msg.content
         assert "**Recent events in area:**" not in picker_msg.content
+
+
+# ---------------------------------------------------------------------------
+# Task 6 — Dialogue with ephemeral user message + event list
+# ---------------------------------------------------------------------------
+
+
+class TestDialogueWithEventList:
+    """Tests for dialogue step with ephemeral user message + event list."""
+
+    @pytest.mark.asyncio
+    async def test_dialogue_includes_speaker_filtered_events(
+        self, mock_llm_client, mock_state_client, mock_background_generator,
+    ):
+        """Scenario: Dialogue prompt includes speaker-filtered event list."""
+        manager = ConversationManager(
+            llm_client=mock_llm_client,
+            state_client=mock_state_client,
+            background_generator=mock_background_generator,
+        )
+
+        mock_state_client.execute_batch.return_value = BatchResult({
+            "mem_summaries": {"ok": True, "data": []},
+            "mem_digests": {"ok": True, "data": []},
+            "mem_cores": {"ok": True, "data": []},
+        })
+
+        speaker = {"game_id": "npc_1", "name": "Echo", "faction": "loner", "background": None}
+        event = {"type": "death", "ts": 1709912345, "context": {}}
+        speaker_event_text = "[1709912001] CALLOUT — Echo (witnesses: Echo)\n[1709912345] DEATH — Duty killed Freedom (witnesses: Echo, Wolf)"
+
+        captured = []
+        async def _capture(messages, **kw):
+            captured.append(list(messages))
+            return "For the Zone!"
+        mock_llm_client.complete = _capture
+
+        await manager._run_dialogue_generation(
+            speaker, event, mock_llm_client,
+            speaker_event_list_text=speaker_event_text,
+        )
+
+        user_msg = captured[0][-1]
+        assert "**Recent events witnessed by Echo:**" in user_msg.content
+        assert "[1709912345]" in user_msg.content
+        assert "React to event [1709912345] as **Echo** (ID: npc_1)." in user_msg.content
+
+    @pytest.mark.asyncio
+    async def test_dialogue_no_separate_event_description(
+        self, mock_llm_client, mock_state_client, mock_background_generator,
+    ):
+        """Dialogue should not inline event description separately from event list."""
+        manager = ConversationManager(
+            llm_client=mock_llm_client,
+            state_client=mock_state_client,
+            background_generator=mock_background_generator,
+        )
+
+        mock_state_client.execute_batch.return_value = BatchResult({
+            "mem_summaries": {"ok": True, "data": []},
+            "mem_digests": {"ok": True, "data": []},
+            "mem_cores": {"ok": True, "data": []},
+        })
+
+        speaker = {"game_id": "npc_1", "name": "Echo", "faction": "loner", "background": None}
+        event = {"type": "death", "ts": 5000, "context": {"actor": {"name": "A"}, "victim": {"name": "B"}}}
+
+        captured = []
+        async def _capture(messages, **kw):
+            captured.append(list(messages))
+            return "Words."
+        mock_llm_client.complete = _capture
+
+        await manager._run_dialogue_generation(
+            speaker, event, mock_llm_client,
+            speaker_event_list_text="[5000] DEATH — A killed B (witnesses: Echo)",
+        )
+
+        user_msg = captured[0][-1]
+        assert "Event:" not in user_msg.content
+        assert "Actor:" not in user_msg.content
+
+    @pytest.mark.asyncio
+    async def test_dialogue_user_message_is_ephemeral(
+        self, mock_llm_client, mock_state_client, mock_background_generator,
+    ):
+        """Scenario: After dialogue, user message is removed; only assistant response persists."""
+        manager = ConversationManager(
+            llm_client=mock_llm_client,
+            state_client=mock_state_client,
+            background_generator=mock_background_generator,
+        )
+
+        mock_state_client.execute_batch.return_value = BatchResult({
+            "mem_summaries": {"ok": True, "data": []},
+            "mem_digests": {"ok": True, "data": []},
+            "mem_cores": {"ok": True, "data": []},
+        })
+
+        speaker = {"game_id": "npc_1", "name": "Echo", "faction": "loner", "background": None}
+        mock_llm_client.complete = AsyncMock(return_value="Dialogue text.")
+
+        pre_count = len(manager._messages)
+
+        await manager._run_dialogue_generation(
+            speaker, {"type": "idle", "ts": 100, "context": {}}, mock_llm_client,
+            speaker_event_list_text="",
+        )
+
+        # Only assistant response should be added (net +1)
+        assert len(manager._messages) == pre_count + 1
+        assert manager._messages[-1].role == "assistant"
+        assert manager._messages[-1].content == "Dialogue text."
+        # No user message in the final state
+        for msg in manager._messages[pre_count:]:
+            assert msg.role != "user"
+
+    @pytest.mark.asyncio
+    async def test_dialogue_no_narrative(
+        self, mock_llm_client, mock_state_client, mock_background_generator,
+    ):
+        """Scenario: Speaker has no personal narrative memories yet."""
+        manager = ConversationManager(
+            llm_client=mock_llm_client,
+            state_client=mock_state_client,
+            background_generator=mock_background_generator,
+        )
+
+        mock_state_client.execute_batch.return_value = BatchResult({
+            "mem_summaries": {"ok": True, "data": []},
+            "mem_digests": {"ok": True, "data": []},
+            "mem_cores": {"ok": True, "data": []},
+        })
+
+        speaker = {"game_id": "npc_1", "name": "Nobody", "faction": "loner", "background": None}
+
+        captured = []
+        async def _capture(messages, **kw):
+            captured.append(list(messages))
+            return "..."
+        mock_llm_client.complete = _capture
+
+        await manager._run_dialogue_generation(
+            speaker, {"type": "idle", "ts": 99, "context": {}}, mock_llm_client,
+            speaker_event_list_text="",
+        )
+
+        user_msg = captured[0][-1]
+        assert "Personal memories:" not in user_msg.content
+        assert "React to event [99]" in user_msg.content
+
+    @pytest.mark.asyncio
+    async def test_events_not_in_context_block(
+        self, mock_llm_client, mock_state_client, mock_background_generator,
+    ):
+        """Scenario: Events appear in user message (ephemeral), not in the persistent context block."""
+        manager = ConversationManager(
+            llm_client=mock_llm_client,
+            state_client=mock_state_client,
+            background_generator=mock_background_generator,
+        )
+
+        mock_state_client.execute_batch.return_value = BatchResult({
+            "mem_summaries": {"ok": True, "data": []},
+            "mem_digests": {"ok": True, "data": []},
+            "mem_cores": {"ok": True, "data": []},
+        })
+
+        speaker = {"game_id": "npc_1", "name": "Echo", "faction": "loner", "background": None}
+
+        captured = []
+        async def _capture(messages, **kw):
+            captured.append(list(messages))
+            return "OK"
+        mock_llm_client.complete = _capture
+
+        await manager._run_dialogue_generation(
+            speaker, {"type": "death", "ts": 5000, "context": {}}, mock_llm_client,
+            speaker_event_list_text="[5000] DEATH — events here (witnesses: Echo)",
+        )
+
+        # Context block (_messages[1]) should NOT contain event lines
+        context_block = manager._messages[1].content
+        assert "[5000]" not in context_block
+        assert "witnesses:" not in context_block

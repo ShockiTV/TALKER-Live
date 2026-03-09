@@ -233,15 +233,14 @@ class TestTwoStepWorkflow:
         # LLM was called exactly twice: picker + dialogue
         assert call_count == 2
 
-        # Four-layer layout: 3 base (system + context_block + "Ready.") + user + assistant = 5
-        # Picker messages are ephemeral and removed after selection
-        assert len(manager._messages) == 5
-        assert manager._messages[0].role == "system"   # static system prompt
-        assert manager._messages[1].role == "user"     # context block
+        # Four-layer layout: 3 base (system + context_block + "Ready.") + assistant = 4
+        # Picker messages are ephemeral; dialogue user message is also ephemeral
+        assert len(manager._messages) == 4
+        assert manager._messages[0].role == "system"    # static system prompt
+        assert manager._messages[1].role == "user"      # context block
         assert manager._messages[2].role == "assistant" # "Ready." ack
-        assert manager._messages[3].role == "user"     # dialogue prompt
-        assert manager._messages[4].role == "assistant" # LLM response
-        assert "Damn mutants" in manager._messages[4].content
+        assert manager._messages[3].role == "assistant" # LLM dialogue response (user message ephemeral)
+        assert "Damn mutants" in manager._messages[3].content
 
         # Context block holds all 5 candidate backgrounds (plus any inhabitants from world enrichment)
         for cand in five_candidates:

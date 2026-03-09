@@ -614,16 +614,16 @@ from talker_service.prompts.dialogue import build_dialogue_user_message
 
 
 class TestBuildDialogueUserMessage:
-    """Tests for the inline dialogue user message builder."""
+    """Tests for the [ts] pointer dialogue user message builder."""
 
     def test_with_narrative(self):
         msg = build_dialogue_user_message(
             speaker_name="Wolf",
             speaker_id="12467",
-            event_description="A mutant attacked the nearby camp.",
+            ts=1709912345,
             narrative="[SUMMARIES] Wolf recalls a patrol.",
         )
-        assert "A mutant attacked the nearby camp." in msg
+        assert "React to event [1709912345]" in msg
         assert "Wolf" in msg
         assert "12467" in msg
         assert "Personal memories:" in msg
@@ -634,10 +634,10 @@ class TestBuildDialogueUserMessage:
         msg = build_dialogue_user_message(
             speaker_name="Nobody",
             speaker_id="99",
-            event_description="Something happened.",
+            ts=100,
             narrative="",
         )
-        assert "Something happened." in msg
+        assert "React to event [100]" in msg
         assert "Nobody" in msg
         assert "99" in msg
         assert "Personal memories:" not in msg
@@ -647,31 +647,31 @@ class TestBuildDialogueUserMessage:
         msg = build_dialogue_user_message(
             speaker_name="Wolf",
             speaker_id="12467",
-            event_description="An emission approaches.",
+            ts=200,
             narrative="",
             dynamic_world_line="Weather: Clear | Time: 14:30 | Location: Rostok",
         )
         assert "Weather: Clear" in msg
-        assert "An emission approaches." in msg
+        assert "React to event [200]" in msg
 
-    def test_includes_witness_text(self):
+    def test_includes_speaker_event_list(self):
         msg = build_dialogue_user_message(
             speaker_name="Wolf",
             speaker_id="12467",
-            event_description="A bandit attack.",
+            ts=5000,
             narrative="",
-            witness_text="A patrol was ambushed nearby.",
+            speaker_event_list_text="[5000] DEATH — A killed B (witnesses: Wolf)",
         )
         assert "Recent events witnessed by Wolf:" in msg
-        assert "A patrol was ambushed nearby." in msg
+        assert "[5000] DEATH" in msg
 
     def test_no_dynamic_world_line_when_empty(self):
         msg = build_dialogue_user_message(
             speaker_name="Wolf",
             speaker_id="12467",
-            event_description="Event text.",
+            ts=999,
             narrative="",
             dynamic_world_line="",
         )
-        # First line should be the event description, no empty line before
-        assert msg.startswith("Event text.")
+        # First non-empty part should be the react line (no event list, no world line)
+        assert "React to event [999]" in msg
