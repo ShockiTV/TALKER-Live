@@ -19,6 +19,7 @@ from ..llm import LLMClient, Message
 from ..llm.models import LLMOptions, ReasoningOptions
 from ..state.client import StateQueryClient
 from ..state.batch import BatchQuery
+from .event_list import assemble_event_list, build_event_list_text
 from ..prompts.factions import resolve_faction_name
 from ..prompts.dialogue import build_dialogue_user_message
 from ..prompts.picker import (
@@ -933,6 +934,35 @@ class ConversationManager:
             role="user", content=self._context_block.render_markdown(),
         )
 
+        # Fetch witness events for ALL candidates before picker
+        events_by_candidate: dict[str, list[dict[str, Any]]] = {}
+        candidate_names: dict[str, str] = {}
+        for cand in candidates:
+            cid = str(cand.get("game_id", ""))
+            candidate_names[cid] = cand.get("name", "Unknown")
+
+        try:
+            ev_batch = BatchQuery()
+            for cid in candidate_names:
+                ev_batch.add(f"events_{cid}", "query.memory.events",
+                             params={"character_id": cid})
+            ev_result = await self.state_client.execute_batch(ev_batch, timeout=10.0)
+            for cid in candidate_names:
+                qid = f"events_{cid}"
+                if ev_result.ok(qid):
+                    raw = ev_result[qid]
+                    events_by_candidate[cid] = raw if isinstance(raw, list) else []
+                else:
+                    events_by_candidate[cid] = []
+        except Exception as e:
+            logger.warning(f"Failed to fetch candidate events: {e}")
+            for cid in candidate_names:
+                events_by_candidate[cid] = []
+
+        # Assemble unified event list
+        unique_events, witness_map = assemble_event_list(events_by_candidate, candidate_names)
+        event_list_text = build_event_list_text(unique_events, witness_map)
+
         # Step 1: Speaker picker (ephemeral — messages removed after)
         speaker = await self._run_speaker_picker(
             candidates, event, llm_client, dynamic_world_line=dynamic_world_line,
@@ -940,27 +970,11 @@ class ConversationManager:
         speaker_id = str(speaker.get("game_id", "unknown"))
         logger.info("Selected speaker: {} ({})", speaker.get("name"), speaker_id)
 
-        # Fetch witness events for the chosen speaker
-        witness_events: list[dict[str, Any]] = []
-        try:
-            ev_batch = (
-                BatchQuery()
-                .add("events", "query.memory.events",
-                     params={"character_id": speaker_id})
-            )
-            ev_result = await self.state_client.execute_batch(ev_batch, timeout=10.0)
-            if ev_result.ok("events"):
-                raw_events = ev_result["events"]
-                if isinstance(raw_events, list):
-                    witness_events = raw_events
-        except Exception as e:
-            logger.warning(f"Failed to fetch witness events for {speaker_id}: {e}")
-
         # Step 2: Dialogue generation (persistent — injects MEM + keeps messages)
         dialogue_text = await self._run_dialogue_generation(
             speaker, event, llm_client,
             dynamic_world_line=dynamic_world_line,
-            witness_events=witness_events,
+            witness_events=[],
         )
 
         if not dialogue_text:
