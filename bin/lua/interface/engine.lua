@@ -374,24 +374,6 @@ function M.register_callback(name, handler)
 end
 
 ------------------------------------------------------------
--- Unique timestamp (collision-free monotonic)
-------------------------------------------------------------
-
-local unique_ts_mod = require("domain.service.unique_ts")
-
---- Return a globally unique, monotonically increasing timestamp.
--- Delegates to domain.service.unique_ts.
--- @return number  unique timestamp (integer)
-function M.unique_ts()
-    return unique_ts_mod.unique_ts()
-end
-
---- Reset unique_ts state (call on game load / new game).
-function M.reset_unique_ts()
-    unique_ts_mod.reset()
-end
-
-------------------------------------------------------------
 -- printf wrapper (engine provides this in STALKER)
 ------------------------------------------------------------
 

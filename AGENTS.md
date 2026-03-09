@@ -349,6 +349,29 @@ await _handle_event_async(event)
 - By pattern: `run_tests { pattern: "test_dialogue" }`
 - Single: `run_single_test { node_id: "tests/e2e/test_scenarios.py::test_e2e_scenario[death_wolf_full]" }`
 
+### Codebase Exploration
+**IMPORTANT**: Use the `jcodemunch` MCP server tools for codebase exploration instead of ad-hoc grep/find commands. The repo is indexed as `local/TALKER-Expanded-e96441e2`.
+
+| MCP Tool | Purpose |
+|----------|---------|
+| `index_folder` | Re-index repo after major changes (incremental by default) |
+| `search_symbols` | Find functions, classes, methods by name or description |
+| `search_text` | Full-text search across indexed files |
+| `get_symbol` | Get full definition + context for a specific symbol |
+| `get_symbols` | Batch-fetch multiple symbols |
+| `get_file_outline` | List all symbols in a file (functions, classes, etc.) |
+| `get_file_content` | Read file content with symbol annotations |
+| `get_file_tree` | Browse project directory structure |
+| `get_repo_outline` | High-level overview of all files and top-level symbols |
+
+**Examples**:
+- Search symbols: `search_symbols { repo: "local/TALKER-Expanded-e96441e2", query: "speaker picker" }`
+- Get symbol: `get_symbol { repo: "local/TALKER-Expanded-e96441e2", symbol_id: "talker_service/src/talker_service/dialogue/conversation.py::ConversationManager._run_speaker_picker#method" }`
+- File outline: `get_file_outline { repo: "local/TALKER-Expanded-e96441e2", file: "bin/lua/domain/repo/memory_store_v2.lua" }`
+- Text search: `search_text { repo: "local/TALKER-Expanded-e96441e2", query: "build_witness_text" }`
+
+**Prefer `jcodemunch` over raw grep/semantic_search** for navigating the codebase — it understands symbol relationships and provides structured results. Use `index_folder` with `incremental: true` if the index may be stale.
+
 ## Common Tasks
 
 ### Adding a New Trigger

@@ -5,6 +5,7 @@
 package.path = package.path .. ";./bin/lua/?.lua;"
 local logger = require("framework.logger")
 local engine = require("interface.engine")
+local unique_ts = require("domain.service.unique_ts")
 
 local MEMORIES_VERSION = "4"
 
@@ -57,9 +58,9 @@ local function create_entry()
 	}
 end
 
--- Assign a globally unique timestamp to an item via engine.unique_ts()
+-- Assign a globally unique timestamp to an item via unique_ts
 local function assign_ts(item)
-	item.ts = engine.unique_ts()
+	item.ts = unique_ts.unique_ts()
 	return item
 end
 
@@ -107,7 +108,7 @@ function memory_store:store_event(character_id, event)
 		timestamp = event.game_time_ms,
 		type = event.type,
 		context = event.context or {},
-		ts = event.ts or engine.unique_ts(),
+		ts = event.ts or unique_ts.unique_ts(),
 	}
 	table.insert(entry.events, stored)
 	enforce_cap(entry.events, CAPS.events)
@@ -390,7 +391,7 @@ end
 function memory_store:clear()
 	characters = {}
 	global_event_buffer = {}
-	engine.reset_unique_ts()
+	unique_ts.reset()
 end
 
 --- Migrate v3 save data (per-character seq) to v4 (global unique_ts).
@@ -492,7 +493,7 @@ function memory_store:load_save_data(saved_data)
 	logger.info("Loading memory store v2...")
 
 	-- Reset unique_ts state on any load
-	engine.reset_unique_ts()
+	unique_ts.reset()
 
 	if not saved_data then
 		logger.info("No saved memory data, starting fresh")

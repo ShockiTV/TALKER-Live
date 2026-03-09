@@ -108,8 +108,6 @@ function load_state(saved_data)
     if not saved_data or type(saved_data) ~= "table" then
         return
     end
-    local is_brand_new_save = not saved_data.compressed_memories and not saved_data.tool_memories
-
     if (saved_data.compressed_memories) then
          memory_store:load_save_data(saved_data.compressed_memories)
     end
@@ -153,10 +151,11 @@ function load_state(saved_data)
         timers_store.load_save_data(nil)
     end
     
-    -- Seed unique NPC backgrounds on brand new saves
-    if is_brand_new_save then
-        seed_unique_backgrounds()
-    end
+    -- Seed unique NPC backgrounds on every load (idempotent — skips NPCs
+    -- that already have a background). Previously gated on is_brand_new_save,
+    -- but get_save_data() returns truthy tables even when stores are empty,
+    -- so the brand-new check falsely skipped seeding.
+    seed_unique_backgrounds()
 
     -- Trigger WS config sync after a 2-second delay (allows MCM to fully initialize)
     CreateTimeEvent("talker_persistence_ws", "config_sync", 2, function()
