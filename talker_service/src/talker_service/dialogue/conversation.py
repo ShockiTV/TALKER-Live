@@ -599,9 +599,9 @@ class ConversationManager:
     ) -> dict[str, Any]:
         """Run the ephemeral speaker picker step.
 
-        Builds a user message with the triggering event description and
-        candidate IDs.  No witness events from the event store are included.
-        Weather/time/location are included inline.
+        Builds a user message with a [ts] pointer to the triggering event,
+        an optional unified event list (all candidates' deduplicated events),
+        and candidate IDs. Weather/time/location are included inline.
 
         After the LLM responds, both the user message and assistant response
         are removed from history (ephemeral).
@@ -613,6 +613,8 @@ class ConversationManager:
             event: Event data dict.
             llm_client: LLM client to use.
             dynamic_world_line: Per-turn weather/time/location string.
+            event_list_text: Pre-formatted unified event list for all candidates,
+                produced by build_event_list_text(). Empty string if unavailable.
 
         Returns:
             The chosen candidate dict.
