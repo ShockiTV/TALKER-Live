@@ -2,6 +2,7 @@ local log = require("framework.logger")
 local EventType = require("domain.model.event_types")
 local Event = require("domain.model.event")
 local engine = require("interface.engine")
+local unique_ts = require("domain.service.unique_ts")
 local memory_store_v2 = require("domain.repo.memory_store_v2")
 local publisher = require("infra.ws.publisher")
 local traits_builder = require("interface.traits")
@@ -36,7 +37,7 @@ function m.store_event(event_type, context, witnesses)
 	if not speaker then return nil end
 
 	-- Assign a single unique_ts for this event (shared across all witness copies)
-	local ts = engine.unique_ts()
+	local ts = unique_ts.unique_ts()
 
 	-- Create event with the assigned ts
 	local event = Event.create(event_type, context, engine.get_game_time_ms(), witnesses or {}, {}, ts)
