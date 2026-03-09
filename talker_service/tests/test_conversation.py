@@ -643,7 +643,7 @@ class TestSpeakerPicker:
 
         # Verify picker message is the last user message
         last_user = [m for m in picker_msgs if m.role == "user"][-1]
-        assert "INJURY" in last_user.content
+        assert "React to event [" in last_user.content
         assert "char_001" in last_user.content
         assert "char_003" in last_user.content
 
@@ -1227,8 +1227,8 @@ class TestPickerPointerFormat:
 
         picker_msg = captured[0][-1]
         assert picker_msg.role == "user"
-        # Inline event description instead of EVT: pointer
-        assert "DEATH" in picker_msg.content
+        # [ts] pointer format — no inline event type keyword
+        assert "React to event [" in picker_msg.content
         assert "char_001" in picker_msg.content
         assert "char_003" in picker_msg.content
 
@@ -1649,3 +1649,99 @@ class TestBatchEventFetch:
 
         assert speaker_id == "char_001"
         assert dialogue == "All clear."
+
+
+# ---------------------------------------------------------------------------
+# Task 5 — Picker with event list + [ts] pointers
+# ---------------------------------------------------------------------------
+
+
+class TestPickerWithEventList:
+    """Tests for picker step with unified event list + [ts] pointers."""
+
+    @pytest.mark.asyncio
+    async def test_picker_includes_event_list(self, mock_llm_client, mock_state_client, mock_background_generator):
+        """Scenario: Picker prompt includes Recent events section with [ts] format."""
+        manager = ConversationManager(
+            llm_client=mock_llm_client,
+            state_client=mock_state_client,
+            background_generator=mock_background_generator,
+        )
+
+        candidates = [
+            {"game_id": "npc_1", "name": "Echo", "faction": "loner", "background": None},
+            {"game_id": "npc_2", "name": "Wolf", "faction": "loner", "background": None},
+        ]
+        event = {"type": "death", "ts": 1709912345, "context": {"actor": {"name": "Duty"}, "victim": {"name": "Freedom"}}}
+        event_list_text = "[1709912001] CALLOUT \u2014 Echo (witnesses: Echo)\n[1709912345] DEATH \u2014 Duty killed Freedom (witnesses: Echo, Wolf)"
+
+        captured = []
+        async def _capture(messages, **kw):
+            captured.append(list(messages))
+            return "npc_1"
+        mock_llm_client.complete = _capture
+
+        await manager._run_speaker_picker(candidates, event, mock_llm_client, event_list_text=event_list_text)
+
+        picker_msg = captured[0][-1]
+        assert "**Recent events in area:**" in picker_msg.content
+        assert "[1709912345]" in picker_msg.content
+        assert "React to event [1709912345]." in picker_msg.content
+        assert "npc_1" in picker_msg.content
+        assert "npc_2" in picker_msg.content
+
+    @pytest.mark.asyncio
+    async def test_picker_no_separate_inline_description(self, mock_llm_client, mock_state_client, mock_background_generator):
+        """Scenario: Picker message does not inline event description separately."""
+        manager = ConversationManager(
+            llm_client=mock_llm_client,
+            state_client=mock_state_client,
+            background_generator=mock_background_generator,
+        )
+
+        candidates = [
+            {"game_id": "npc_1", "name": "Echo"},
+            {"game_id": "npc_2", "name": "Wolf"},
+        ]
+        event = {"type": "death", "ts": 5000, "context": {"actor": {"name": "A"}, "victim": {"name": "B"}}}
+        event_list_text = "[5000] DEATH \u2014 A killed B (witnesses: Echo, Wolf)"
+
+        captured = []
+        async def _capture(messages, **kw):
+            captured.append(list(messages))
+            return "npc_1"
+        mock_llm_client.complete = _capture
+
+        await manager._run_speaker_picker(candidates, event, mock_llm_client, event_list_text=event_list_text)
+
+        picker_msg = captured[0][-1]
+        # Should NOT contain old-style "Event: DEATH\nActor: A\nVictim: B"
+        assert "Event:" not in picker_msg.content
+        assert "Actor:" not in picker_msg.content
+
+    @pytest.mark.asyncio
+    async def test_picker_empty_event_list(self, mock_llm_client, mock_state_client, mock_background_generator):
+        """Picker with no event list still works (just ts pointer + candidates)."""
+        manager = ConversationManager(
+            llm_client=mock_llm_client,
+            state_client=mock_state_client,
+            background_generator=mock_background_generator,
+        )
+
+        candidates = [
+            {"game_id": "npc_1", "name": "Echo"},
+            {"game_id": "npc_2", "name": "Wolf"},
+        ]
+        event = {"type": "idle", "ts": 3000, "context": {}}
+
+        captured = []
+        async def _capture(messages, **kw):
+            captured.append(list(messages))
+            return "npc_1"
+        mock_llm_client.complete = _capture
+
+        await manager._run_speaker_picker(candidates, event, mock_llm_client, event_list_text="")
+
+        picker_msg = captured[0][-1]
+        assert "React to event [3000]." in picker_msg.content
+        assert "**Recent events in area:**" not in picker_msg.content
