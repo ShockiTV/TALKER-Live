@@ -79,6 +79,7 @@ function M.serialize_event(event)
         type         = event.type,
         context      = M.serialize_context(event.context),
         game_time_ms = event.game_time_ms,
+        ts           = event.ts,
         world_context = event.world_context,
         witnesses    = witnesses,
         flags        = event.flags,
