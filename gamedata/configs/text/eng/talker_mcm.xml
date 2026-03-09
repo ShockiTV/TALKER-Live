@@ -187,6 +187,9 @@
     <string id="ui_mcm_talker_general_recent_speech_threshold">
         <text>Seconds before an NPC who recently spoke can speak again</text>
     </string>
+    <string id="ui_mcm_talker_general_speaker_pick_max_events">
+        <text>Max recent events included in the speaker selection prompt (per candidate)</text>
+    </string>
     <string id="ui_mcm_talker_general_max_log_entries_per_level">
         <text>Max log entries per level (0 = unlimited)</text>
     </string>

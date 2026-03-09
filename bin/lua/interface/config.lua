@@ -152,6 +152,12 @@ function c.is_gemini()
 	return false
 end
 
+-- Speaker picker
+
+function c.speaker_pick_max_events()
+	return tonumber(cfg("speaker_pick_max_events")) or 20
+end
+
 -- WebSocket / Python Service configuration
 
 function c.ws_host()
@@ -211,6 +217,9 @@ function c.get_all_config()
 		witness_distance        = cfg("witness_distance"),
 		npc_speak_distance      = cfg("npc_speak_distance"),
 		time_gap                = cfg("time_gap"),
+
+		-- Speaker picker
+		speaker_pick_max_events = tonumber(cfg("speaker_pick_max_events")),
 
 		-- WebSocket settings
 		ws_host                 = cfg("ws_host"),

@@ -40,6 +40,9 @@ local defaults = {
     debug_logging           = 2,
     max_log_entries_per_level = 0,
 
+    -- Speaker picker
+    speaker_pick_max_events = 20,
+
     -- Save management
     reset_backstory         = false,
     reset_personality       = false,

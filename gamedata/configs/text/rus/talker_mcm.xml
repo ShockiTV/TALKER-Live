@@ -340,6 +340,9 @@
 <string id="ui_mcm_talker_recent_speech_threshold">
 	<text>����������� ���� ������ (� ������� ���������� ������������) ����� �������� �������� ��������� (�������)</text>
 </string>
+<string id="ui_mcm_talker_general_speaker_pick_max_events">
+	<text>Max recent events included in the speaker selection prompt (per candidate)</text>
+</string>
 <string id="ui_mcm_talker_idle_question_chance">
 	<text>���������� ���� ������ ������ ������ ������ ������ �������� ���������</text>
 </string>
