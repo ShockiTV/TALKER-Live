@@ -163,7 +163,7 @@
         "payload": {
           "queries": [
             {
-              "id": "events",
+              "id": "events_44444",
               "resource": "query.memory.events",
               "params": {
                 "character_id": "44444"

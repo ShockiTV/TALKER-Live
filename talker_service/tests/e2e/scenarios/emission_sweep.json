@@ -183,10 +183,17 @@
         "payload": {
           "queries": [
             {
-              "id": "events",
+              "id": "events_12345",
               "resource": "query.memory.events",
               "params": {
                 "character_id": "12345"
+              }
+            },
+            {
+              "id": "events_11111",
+              "resource": "query.memory.events",
+              "params": {
+                "character_id": "11111"
               }
             }
           ]

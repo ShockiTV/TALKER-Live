@@ -595,6 +595,7 @@ class ConversationManager:
         event: dict[str, Any],
         llm_client: LLMClient,
         dynamic_world_line: str = "",
+        event_list_text: str = "",
     ) -> dict[str, Any]:
         """Run the ephemeral speaker picker step.
 
@@ -620,18 +621,20 @@ class ConversationManager:
             logger.debug("Single candidate — skipping picker")
             return candidates[0]
 
-        # Build picker message with event description + candidate IDs (no witness events)
-        event_desc = build_event_description(event)
+        # Build picker message with [ts] pointer + optional event list + candidate IDs
+        ts = event.get("ts", 0)
         candidate_ids_list = [str(c.get("game_id", "")) for c in candidates]
         ids_str = ", ".join(candidate_ids_list)
 
         parts: list[str] = []
         if dynamic_world_line:
             parts.append(dynamic_world_line)
-        parts.append(event_desc)
+        if event_list_text:
+            parts.append(f"\n**Recent events in area:**\n{event_list_text}")
+        parts.append(f"\nReact to event [{ts}].")
         parts.append(f"Candidates: {ids_str}")
         parts.append(
-            "Pick the character who would most naturally react to this event. "
+            "Pick the character who would most naturally react. "
             "Respond with ONLY their character ID."
         )
         picker_content = "\n".join(parts)
@@ -959,18 +962,21 @@ class ConversationManager:
             for cid in candidate_names:
                 events_by_candidate[cid] = []
 
-        # Assemble unified event list
+        # Assemble unified event list (wired to picker in Task 5, dialogue in Task 6)
         unique_events, witness_map = assemble_event_list(events_by_candidate, candidate_names)
         event_list_text = build_event_list_text(unique_events, witness_map)
 
         # Step 1: Speaker picker (ephemeral — messages removed after)
         speaker = await self._run_speaker_picker(
-            candidates, event, llm_client, dynamic_world_line=dynamic_world_line,
+            candidates, event, llm_client,
+            dynamic_world_line=dynamic_world_line,
+            event_list_text=event_list_text,
         )
         speaker_id = str(speaker.get("game_id", "unknown"))
         logger.info("Selected speaker: {} ({})", speaker.get("name"), speaker_id)
 
         # Step 2: Dialogue generation (persistent — injects MEM + keeps messages)
+        # TODO Task 6: filter unique_events/witness_map for speaker and pass as speaker_event_list_text
         dialogue_text = await self._run_dialogue_generation(
             speaker, event, llm_client,
             dynamic_world_line=dynamic_world_line,
