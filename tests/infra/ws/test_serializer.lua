@@ -258,6 +258,20 @@ function testSerializeCharacterWithGender_nilSoundPrefix()
     luaunit.assertEquals(result.gender, "male")
 end
 
+-- ── serialize_event ts field ──────────────────────────────────────────────────
+
+function testSerializeEvent_includesTs()
+    local event = make_event({ ts = 1709912345 })
+    local result = serializer.serialize_event(event)
+    luaunit.assertEquals(result.ts, 1709912345)
+end
+
+function testSerializeEvent_tsNilWhenAbsent()
+    local event = make_event()  -- no ts field
+    local result = serializer.serialize_event(event)
+    luaunit.assertNil(result.ts)
+end
+
 function testSerializeCharacterWithGender_preservesAllBaseFields()
     local char   = make_char({ sound_prefix = "woman" })
     local result = serializer.serialize_character_with_gender(char)
