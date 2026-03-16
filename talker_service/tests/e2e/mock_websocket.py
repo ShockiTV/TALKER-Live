@@ -29,6 +29,8 @@ class MockWebSocket:
         self._closed = False
         # WSRouter reads this for token auth — empty means no token provided
         self.query_params: dict[str, str] = {}
+        # WSRouter reads these for player_id / branch extraction
+        self.headers: dict[str, str] = {}
 
     # ── Starlette WebSocket interface (used by WSRouter) ──────
 
