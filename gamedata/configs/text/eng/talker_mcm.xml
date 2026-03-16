@@ -447,29 +447,17 @@
     <string id="ui_mcm_talker_service_title">
         <text>Python Service Settings</text>
     </string>
-    <string id="ui_mcm_talker_ws_host_title">
-        <text>Service Host</text>
-    </string>
-    <string id="ui_mcm_talker_general_ws_host">
-        <text>Hostname or IP of the Python service (default: 127.0.0.1)</text>
-    </string>
-    <string id="ui_mcm_talker_mic_ws_port_title">
-        <text>Mic Service Port</text>
-    </string>
-    <string id="ui_mcm_talker_general_mic_ws_port">
-        <text>Port for microphone/TTS service communication (default: 5558)</text>
-    </string>
     <string id="ui_mcm_talker_service_url_title">
         <text>Service URL</text>
     </string>
     <string id="ui_mcm_talker_general_service_url">
-        <text>WebSocket URL of the TALKER AI service (e.g. wss://talker-live.duckdns.org/ws or ws://127.0.0.1:5557/ws)</text>
+        <text>WebSocket URL of the TALKER service (default: ws://127.0.0.1:5557/ws for local, or wss://your-server/ws/branch for remote)</text>
     </string>
-    <string id="ui_mcm_talker_ws_token_title">
-        <text>Service Token</text>
+    <string id="ui_mcm_talker_ws_bearer_token_title">
+        <text>Bearer Token (JWT)</text>
     </string>
-    <string id="ui_mcm_talker_general_ws_token">
-        <text>Optional authentication token for the remote TALKER service (leave empty if not required)</text>
+    <string id="ui_mcm_talker_general_ws_bearer_token">
+        <text>JWT bearer token for authenticated remote connections (from Keycloak). Leave empty for local use.</text>
     </string>
     <string id="ui_mcm_talker_llm_timeout_title">
         <text>LLM Timeout</text>

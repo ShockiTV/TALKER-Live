@@ -12,18 +12,19 @@ local function setup()
     mock_engine._reset()
 end
 
-function testBearerHeaderPresentWhenTokenConfigured()
+-- pollnet open_ws() has no header support; token goes as ?token= query param
+-- in get_service_url(), so get_ws_connect_options() always returns nil.
+
+function testConnectOptionsAlwaysNil()
     setup()
     mock_engine._set("ws_bearer_token", "token-123")
 
     local opts = build_ws_connect_options()
 
-    luaunit.assertNotNil(opts)
-    luaunit.assertNotNil(opts.headers)
-    luaunit.assertEquals(opts.headers.Authorization, "Bearer token-123")
+    luaunit.assertNil(opts)
 end
 
-function testBearerHeaderAbsentWhenTokenEmpty()
+function testConnectOptionsNilWhenTokenEmpty()
     setup()
     mock_engine._set("ws_bearer_token", "")
 

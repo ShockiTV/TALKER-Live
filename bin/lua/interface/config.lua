@@ -160,24 +160,12 @@ end
 
 -- WebSocket / Python Service configuration
 
-function c.ws_host()
-	return cfg("ws_host") or "127.0.0.1"
-end
-
-function c.service_ws_port()
-	return tonumber(cfg("service_ws_port"))
-end
-
-function c.ws_token()
-	return cfg("ws_token") or ""
-end
-
 function c.ws_bearer_token()
 	return cfg("ws_bearer_token") or ""
 end
 
 function c.service_url()
-	return cfg("service_url") or "wss://talker-live.duckdns.org/ws"
+	return cfg("service_url") or "ws://127.0.0.1:5557/ws"
 end
 
 function c.llm_timeout()
@@ -226,9 +214,7 @@ function c.get_all_config()
 		speaker_pick_max_events = tonumber(cfg("speaker_pick_max_events")),
 
 		-- WebSocket settings
-		ws_host                 = cfg("ws_host"),
 		service_url             = cfg("service_url"),
-		ws_token                = cfg("ws_token"),
 		ws_bearer_token         = cfg("ws_bearer_token"),
 		llm_timeout             = tonumber(cfg("llm_timeout")),
 		state_query_timeout     = tonumber(cfg("state_query_timeout")),

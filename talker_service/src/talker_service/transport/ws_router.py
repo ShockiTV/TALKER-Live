@@ -10,6 +10,7 @@ Optionally validates connections using ``TALKER_TOKENS`` env var.
 from __future__ import annotations
 
 import asyncio
+import base64
 import json
 import os
 import time
@@ -54,6 +55,30 @@ def parse_tokens(raw: str | None) -> dict[str, str]:
         else:
             logger.warning("Skipping malformed TALKER_TOKENS entry (empty name or token)")
     return tokens
+
+
+def _decode_jwt_claims(token: str) -> dict[str, Any] | None:
+    """Decode a JWT payload without signature verification.
+
+    Used to extract ``sub`` / ``preferred_username`` from a Keycloak token
+    passed as a ``?token=`` query parameter.  Signature verification is NOT
+    performed here — on the VPS, Caddy/Keycloak already validated the token
+    before proxying; for local dev the connection is trusted.
+
+    Returns the claims dict, or *None* if *token* is not a valid JWT.
+    """
+    parts = token.split(".")
+    if len(parts) != 3:
+        return None
+    try:
+        payload_b64 = parts[1]
+        # Restore padding stripped by JWT spec
+        padding = 4 - len(payload_b64) % 4
+        if padding != 4:
+            payload_b64 += "=" * padding
+        return json.loads(base64.urlsafe_b64decode(payload_b64))
+    except Exception:
+        return None
 
 
 class WSRouter:
@@ -216,13 +241,15 @@ class WSRouter:
     async def websocket_endpoint(self, ws: WebSocket) -> None:
         """FastAPI WebSocket handler — intended to be mounted as ``/ws``."""
 
-        # ── Auth ──────────────────────────────────────────────────────
+        # ── Auth & identity ───────────────────────────────────────
         session_id = DEFAULT_SESSION
-        _headers = getattr(ws, "headers", {})
-        player_id = _headers.get("x-player-id", "local")
-        branch = _headers.get("x-branch", "main")
+        player_id = "local"
+        branch = "main"
+
+        token = ws.query_params.get("token")
+
+        # 1. TALKER_TOKENS shared-secret auth (hard gate)
         if self._auth_enabled:
-            token = ws.query_params.get("token")
             if not token or token not in self._tokens.values():
                 await ws.close(code=4001)
                 logger.warning("WS connection rejected: invalid or missing token")
@@ -232,6 +259,27 @@ class WSRouter:
                 if tok == token:
                     session_id = name
                     break
+
+        # 2. JWT query-param → extract player identity
+        #    No signature check: Caddy validates on VPS; local dev is trusted.
+        if token and not self._auth_enabled:
+            claims = _decode_jwt_claims(token)
+            if claims:
+                sub = claims.get("sub") or claims.get("preferred_username", "")
+                if sub:
+                    player_id = sub
+                    session_id = sub
+
+        # 3. Trusted proxy headers from Caddy take priority
+        _headers = getattr(ws, "headers", {})
+        header_pid = _headers.get("x-player-id")
+        header_branch = _headers.get("x-branch")
+        if header_pid:
+            player_id = header_pid
+            if session_id == DEFAULT_SESSION:
+                session_id = header_pid
+        if header_branch:
+            branch = header_branch
 
         await ws.accept()
         self._connections.append(ws)

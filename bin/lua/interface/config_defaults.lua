@@ -26,10 +26,7 @@ local defaults = {
     time_gap                = 4,
 
     -- WebSocket / service
-    ws_host                 = "127.0.0.1",
-    service_ws_port         = 5557,
-    service_url             = "wss://talker-live.duckdns.org/ws",
-    ws_token                = "",
+    service_url             = "ws://127.0.0.1:5557/ws",
     ws_bearer_token         = "",
     llm_timeout             = 60,
     state_query_timeout     = 30,

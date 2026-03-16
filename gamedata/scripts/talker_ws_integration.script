@@ -36,28 +36,18 @@ local function safe_require(module_name)
 end
 
 local function get_service_url()
-    -- Build WS URL to talker_service. Defaults: ws://127.0.0.1:5557/ws
-    local host = config.ws_host and config.ws_host() or "127.0.0.1"
-    local port = config.service_ws_port and config.service_ws_port() or 5557
-    local url  = "ws://" .. host .. ":" .. tostring(port) .. "/ws"
-
-    local bearer = config.ws_bearer_token and config.ws_bearer_token() or nil
-    local token = config.ws_token and config.ws_token() or nil
-    if (not bearer or bearer == "") and token and token ~= "" then
-        url = url .. "?token=" .. token
+    local url = config.service_url and config.service_url() or "ws://127.0.0.1:5557/ws"
+    local token = config.ws_bearer_token and config.ws_bearer_token() or ""
+    if token ~= "" then
+        local sep = url:find("?") and "&" or "?"
+        url = url .. sep .. "token=" .. token
     end
     return url
 end
 
 local function get_ws_connect_options()
-    local bearer = config.ws_bearer_token and config.ws_bearer_token() or nil
-    if bearer and bearer ~= "" then
-        return {
-            headers = {
-                ["Authorization"] = "Bearer " .. bearer,
-            },
-        }
-    end
+    -- pollnet WS does not support custom headers;
+    -- auth token is appended as ?token= query param in get_service_url()
     return nil
 end
 
@@ -123,7 +113,7 @@ local function shutdown_channels()
 end
 
 --------------------------------------------------------------------------------
--- Tick Timer — drives both channels
+-- Tick Timer â€” drives both channels
 --------------------------------------------------------------------------------
 
 local function tick()
@@ -139,7 +129,7 @@ local function tick()
 end
 
 function start_tick_timer()
-    local interval = 0.05  -- 50ms (20 ticks/sec) — responsive without being wasteful
+    local interval = 0.05  -- 50ms (20 ticks/sec) â€” responsive without being wasteful
     CreateTimeEvent(tick_timer_id, tick_timer_id, interval, function()
         tick()
         ResetTimeEvent(tick_timer_id, tick_timer_id, interval)
@@ -256,7 +246,7 @@ end
 -- @param event       Event object
 -- @param candidates  Array of Character objects
 -- @param world       World description string
--- @param traits      Traits map {character_id → {personality_id, backstory_id}}
+-- @param traits      Traits map {character_id â†’ {personality_id, backstory_id}}
 function publish_game_event_v2(event, candidates, world, traits)
     if not init_channels() then return false end
 
@@ -347,7 +337,7 @@ end
 
 -- Periodic status update (runs inside tick)
 local status_check_counter = 0
-local STATUS_CHECK_INTERVAL = 100 -- every 100 ticks ≈ 5s
+local STATUS_CHECK_INTERVAL = 100 -- every 100 ticks â‰ˆ 5s
 
 local original_tick = tick
 tick = function()
