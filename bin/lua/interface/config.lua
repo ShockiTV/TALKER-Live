@@ -172,6 +172,10 @@ function c.ws_token()
 	return cfg("ws_token") or ""
 end
 
+function c.ws_bearer_token()
+	return cfg("ws_bearer_token") or ""
+end
+
 function c.service_url()
 	return cfg("service_url") or "wss://talker-live.duckdns.org/ws"
 end
@@ -225,6 +229,7 @@ function c.get_all_config()
 		ws_host                 = cfg("ws_host"),
 		service_url             = cfg("service_url"),
 		ws_token                = cfg("ws_token"),
+		ws_bearer_token         = cfg("ws_bearer_token"),
 		llm_timeout             = tonumber(cfg("llm_timeout")),
 		state_query_timeout     = tonumber(cfg("state_query_timeout")),
 

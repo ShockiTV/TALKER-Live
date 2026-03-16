@@ -48,6 +48,15 @@ class SessionContext:
     llm_client: LLMClient | None = field(default=None, repr=False)
     """Per-session LLM client with isolated conversation state."""
 
+    player_id: str = "local"
+    """Player identity extracted from trusted proxy headers."""
+
+    branch: str = "main"
+    """Branch label extracted from trusted proxy headers."""
+
+    game_session_id: str | None = None
+    """Lua save session_id from config.sync; used for two-step graph sync."""
+
     def touch(self) -> None:
         """Update last_activity to now."""
         self.last_activity = time.monotonic()

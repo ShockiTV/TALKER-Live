@@ -189,16 +189,52 @@ docker compose logs -f
 docker compose ps
 ```
 
-## 9. Verify Deployment
+## 9. Configure Keycloak (Realm, Client, First User)
+
+1. Open `https://YOUR_DOMAIN/auth/` and sign in with the admin credentials from compose env:
+   - `KEYCLOAK_ADMIN`
+   - `KEYCLOAK_ADMIN_PASSWORD`
+2. Create realm `talker`.
+3. Create client `talker-client`:
+   - Client type: OpenID Connect
+   - Access type: Confidential
+   - Valid redirect URIs: `https://YOUR_DOMAIN/*`
+   - Web origins: `https://YOUR_DOMAIN`
+4. Create roles `player` and `admin`.
+5. Create first user (invite flow A / manual admin creation):
+   - Users -> Add user -> set username and email
+   - Credentials -> Set password (disable temporary password if desired)
+   - Role mapping -> assign `player` (or `admin` for operator accounts)
+6. Record the client secret and set it for Caddy:
+   - `KEYCLOAK_CLIENT_ID=talker-client`
+   - `KEYCLOAK_CLIENT_SECRET=<copied-from-keycloak>`
+7. Restart Caddy after env updates:
+
+```bash
+docker compose restart caddy
+```
+
+## 10. Verify Deployment
 
 ```bash
 # Health checks per branch
 curl -s https://YOUR_DOMAIN/health/main
 curl -s https://YOUR_DOMAIN/health/dev
 
+# Obtain a player JWT from Keycloak (password grant shown for smoke-test use)
+PLAYER_JWT=$(curl -s -X POST "https://YOUR_DOMAIN/auth/realms/talker/protocol/openid-connect/token" \
+  -d "grant_type=password" \
+  -d "client_id=talker-client" \
+  -d "client_secret=$KEYCLOAK_CLIENT_SECRET" \
+  -d "username=PLAYER_USERNAME" \
+  -d "password=PLAYER_PASSWORD" | jq -r '.access_token')
+
 # WebSocket test (install with: npm i -g wscat)
-wscat -c "wss://YOUR_DOMAIN/ws/main?token=invite-code-abc123"
-wscat -c "wss://YOUR_DOMAIN/ws/dev?token=invite-code-def456"
+wscat -c "wss://YOUR_DOMAIN/ws/main" -H "Authorization: Bearer $PLAYER_JWT"
+wscat -c "wss://YOUR_DOMAIN/ws/dev" -H "Authorization: Bearer $PLAYER_JWT"
+
+# Admin-only Neo4j browser check
+curl -I https://YOUR_DOMAIN/neo4j/
 
 # TTS service health
 docker compose exec tts-service curl -s http://localhost:8100/health
@@ -214,12 +250,13 @@ docker compose exec tts-service curl -s http://localhost:8100/health
 - [ ] `docker compose ps` shows all services healthy
 - [ ] `curl https://YOUR_DOMAIN/health/main` returns 200
 - [ ] `curl https://YOUR_DOMAIN/health/dev` returns 200
-- [ ] WebSocket connects on both branches
+- [ ] WebSocket connects on both branches with bearer token auth
+- [ ] `/neo4j/` returns 403 for player JWT and 200 for admin JWT
 - [ ] Grafana accessible at `https://YOUR_DOMAIN/grafana/`
 - [ ] Loki receiving logs (Grafana Explore → `{service="talker-main"}`)
 - [ ] Bridge connects from player PC
 
-## 10. Configure Grafana
+## 11. Configure Grafana
 
 1. Navigate to `https://YOUR_DOMAIN/grafana/`
 2. Login with admin / `${GRAFANA_PASSWORD}`
@@ -357,15 +394,12 @@ docker compose up -d talker-main
    docker compose restart caddy
    ```
 
-### Add a New Player Token
+### Add a New Player Account
 
-```bash
-# Edit the branch's env file
-nano /opt/talker-live/.env.main
-
-# Restart that branch's service
-docker compose restart talker-main
-```
+1. Open `https://YOUR_DOMAIN/auth/` and log into Keycloak admin.
+2. In realm `talker`, create a new user.
+3. Set credentials and assign role `player`.
+4. Share login credentials with the player so they can mint JWTs from Keycloak.
 
 ### Full Restart
 

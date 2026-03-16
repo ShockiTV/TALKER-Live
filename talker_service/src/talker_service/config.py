@@ -33,6 +33,16 @@ class Settings(BaseSettings):
     # LLM Settings
     default_llm_provider: str = "openai"  # openai, openrouter, ollama, proxy
     llm_timeout: float = 60.0  # seconds
+
+    # Graph memory (Neo4j)
+    neo4j_uri: str = ""
+    neo4j_user: str = "neo4j"
+    neo4j_password: str = ""
+    neo4j_database: str = "neo4j"
+
+    # Embeddings (Ollama)
+    ollama_base_url: str = "http://127.0.0.1:11434"
+    ollama_embed_model: str = "nomic-embed-text"
     
     # Server authority pins — when set, MCM cannot override these
     llm_provider: Optional[str] = None  # openai | openrouter | ollama | proxy

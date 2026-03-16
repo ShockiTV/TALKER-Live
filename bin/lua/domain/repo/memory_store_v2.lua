@@ -6,6 +6,7 @@ package.path = package.path .. ";./bin/lua/?.lua;"
 local logger = require("framework.logger")
 local engine = require("interface.engine")
 local unique_ts = require("domain.service.unique_ts")
+local checksum = require("framework.checksum")
 
 local MEMORIES_VERSION = "4"
 
@@ -64,6 +65,36 @@ local function assign_ts(item)
 	return item
 end
 
+local function ensure_event_checksum(item)
+	if not item.cs then
+		item.cs = checksum.event_checksum({
+			type = item.type,
+			context = item.context or {},
+			game_time_ms = item.timestamp or item.game_time_ms or 0,
+		})
+	end
+	return item
+end
+
+local function ensure_tier_checksum(item)
+	if not item.cs then
+		item.cs = checksum.text_range_checksum(
+			item.tier,
+			item.text,
+			item.start_ts,
+			item.end_ts
+		)
+	end
+	return item
+end
+
+local function ensure_background_checksum(bg)
+	if type(bg) == "table" then
+		bg.cs = checksum.background_checksum(bg)
+	end
+	return bg
+end
+
 -- Enforce tier cap by evicting oldest items (lowest seq = front of array)
 local function enforce_cap(list, cap)
 	while #list > cap do
@@ -74,11 +105,14 @@ end
 -- Backfill global events into a freshly created entry
 local function backfill_globals(entry)
 	for _, global_ev in ipairs(global_event_buffer) do
-		local stored = assign_ts({
+		local stored = {
 			timestamp = global_ev.timestamp,
 			type = global_ev.type,
 			context = global_ev.context,
-		})
+			ts = global_ev.ts or unique_ts.unique_ts(),
+			cs = global_ev.cs,
+		}
+		ensure_event_checksum(stored)
 		table.insert(entry.events, stored)
 	end
 	enforce_cap(entry.events, CAPS.events)
@@ -109,6 +143,7 @@ function memory_store:store_event(character_id, event)
 		type = event.type,
 		context = event.context or {},
 		ts = event.ts or unique_ts.unique_ts(),
+		cs = checksum.event_checksum(event),
 	}
 	table.insert(entry.events, stored)
 	enforce_cap(entry.events, CAPS.events)
@@ -134,15 +169,26 @@ end
 --- Store a global event: append to all existing characters AND the backfill buffer.
 -- @param event  table from Event.create()
 function memory_store:store_global_event(event)
-	-- Write to all existing characters
-	for char_id, _ in pairs(characters) do
-		self:store_event(char_id, event)
-	end
-	-- Append to backfill buffer
-	table.insert(global_event_buffer, {
-		timestamp = event.game_time_ms,
+	local canonical_event = {
 		type = event.type,
 		context = event.context or {},
+		game_time_ms = event.game_time_ms,
+		ts = event.ts or unique_ts.unique_ts(),
+	}
+	local event_cs = checksum.event_checksum(canonical_event)
+
+	-- Write to all existing characters
+	for char_id, _ in pairs(characters) do
+		self:store_event(char_id, canonical_event)
+	end
+
+	-- Append to backfill buffer
+	table.insert(global_event_buffer, {
+		timestamp = canonical_event.game_time_ms,
+		type = canonical_event.type,
+		context = canonical_event.context,
+		ts = canonical_event.ts,
+		cs = event_cs,
 	})
 	enforce_cap(global_event_buffer, CAPS.global_events)
 end
@@ -260,6 +306,11 @@ function memory_store:_mutate_append(character_id, field, resource, data)
 		if not item.ts then
 			assign_ts(item)
 		end
+		if resource == "memory.events" then
+			ensure_event_checksum(item)
+		elseif resource == "memory.summaries" or resource == "memory.digests" or resource == "memory.cores" then
+			ensure_tier_checksum(item)
+		end
 		table.insert(list, item)
 	end
 	enforce_cap(list, cap)
@@ -307,7 +358,7 @@ function memory_store:_mutate_set(character_id, field, resource, data)
 	end
 
 	local entry = get_or_create(tostring(character_id))
-	entry[field] = data
+	entry[field] = ensure_background_checksum(data)
 
 	return { ok = true }
 end
@@ -363,6 +414,8 @@ function memory_store:_mutate_update(character_id, field, resource, ops)
 		end
 	end
 
+	ensure_background_checksum(bg)
+
 	return { ok = true }
 end
 
@@ -410,12 +463,15 @@ local function migrate_v3(saved_data)
 				candidate = candidate + 1
 			end
 			assigned[candidate] = true
-			table.insert(entry.events, {
+			local migrated_event = {
 				ts = candidate,
 				timestamp = ev.timestamp,
 				type = ev.type,
 				context = ev.context,
-			})
+				cs = ev.cs,
+			}
+			ensure_event_checksum(migrated_event)
+			table.insert(entry.events, migrated_event)
 		end
 		-- Migrate compressed tiers: use existing ts or start_ts or generate
 		for _, tier_name in ipairs({"summaries", "digests", "cores"}) do
@@ -427,10 +483,11 @@ local function migrate_v3(saved_data)
 				assigned[candidate] = true
 				item.ts = candidate
 				item.seq = nil -- remove legacy field
+				ensure_tier_checksum(item)
 				table.insert(entry[tier_name], item)
 			end
 		end
-		entry.background = data.background
+		entry.background = ensure_background_checksum(data.background)
 		result[char_id] = entry
 	end
 	return result
@@ -451,11 +508,45 @@ local function migrate_v2(saved_data)
 				text = data.narrative,
 				source_count = 0,
 			}
+			ensure_tier_checksum(entry.cores[1])
 			entry.next_seq = 1
 		end
 		result[char_id] = entry
 	end
 	return result
+end
+
+local function ensure_entry_checksums(entry)
+	for _, ev in ipairs(entry.events or {}) do
+		ensure_event_checksum(ev)
+	end
+	for _, item in ipairs(entry.summaries or {}) do
+		ensure_tier_checksum(item)
+	end
+	for _, item in ipairs(entry.digests or {}) do
+		ensure_tier_checksum(item)
+	end
+	for _, item in ipairs(entry.cores or {}) do
+		ensure_tier_checksum(item)
+	end
+	if entry.background then
+		ensure_background_checksum(entry.background)
+	end
+end
+
+local function ensure_global_event_checksums()
+	for _, item in ipairs(global_event_buffer) do
+		if not item.ts then
+			item.ts = unique_ts.unique_ts()
+		end
+		if not item.cs then
+			item.cs = checksum.event_checksum({
+				type = item.type,
+				context = item.context or {},
+				game_time_ms = item.timestamp,
+			})
+		end
+	end
 end
 
 --- Migrate v1 save data (legacy unversioned) → v2 → v3.
@@ -516,8 +607,10 @@ function memory_store:load_save_data(saved_data)
 				cores = data.cores or {},
 				background = data.background,
 			}
+			ensure_entry_checksums(characters[char_id])
 		end
 		global_event_buffer = saved_data.global_events or {}
+		ensure_global_event_checksums()
 		return
 	end
 
@@ -525,6 +618,7 @@ function memory_store:load_save_data(saved_data)
 		logger.warn("Migrating v3 memory store to v4...")
 		characters = migrate_v3(saved_data)
 		global_event_buffer = saved_data.global_events or {}
+		ensure_global_event_checksums()
 		return
 	end
 

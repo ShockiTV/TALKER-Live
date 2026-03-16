@@ -18,6 +18,7 @@ class MCMConfig(BaseModel):
     api_key: str = ""
     model_name: str = ""
     model_name_fast: str = ""  # Fast model for speaker selection
+    session_id: Optional[str] = None
     
     # Behavior settings
     witness_distance: int = 30
@@ -36,6 +37,9 @@ class MCMConfig(BaseModel):
     # Timeout settings (Phase 2)
     llm_timeout: int = 60  # LLM request timeout in seconds
     state_query_timeout: int = 30  # State query timeout in seconds
+
+    # WS auth settings
+    ws_bearer_token: str = ""
     
     # Speaker picker
     speaker_pick_max_events: int = 20  # Max recent events per candidate in picker prompt

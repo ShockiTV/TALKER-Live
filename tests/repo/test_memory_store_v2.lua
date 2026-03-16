@@ -81,6 +81,17 @@ function testEventStoredWithoutTextField()
 	luaunit.assertNil(stored.seq) -- No seq field (replaced by ts)
 end
 
+function testEventStoredWithChecksum()
+	memory_store:clear()
+	local event = mock_event(100, EventType.IDLE, { actor = { game_id = 1, name = "Wolf" } })
+
+	local stored = memory_store:store_event("char_1", event)
+
+	luaunit.assertNotNil(stored.cs)
+	luaunit.assertEquals(type(stored.cs), "string")
+	luaunit.assertEquals(#stored.cs, 8)
+end
+
 function testContextContainsCharacterReferences()
 	memory_store:clear()
 	local context = {
@@ -125,6 +136,8 @@ function testSummaryEntryStructure()
 	luaunit.assertEquals(summaries[1].end_ts, 380)
 	luaunit.assertEquals(summaries[1].text, "Wolf witnessed...")
 	luaunit.assertEquals(summaries[1].source_count, 10)
+	luaunit.assertNotNil(summaries[1].cs)
+	luaunit.assertEquals(#summaries[1].cs, 8)
 end
 
 function testCoreEntryIsSelfDescribing()
@@ -222,6 +235,8 @@ function testBackgroundSetViaSet()
 	luaunit.assertEquals(retrieved_bg.traits[1], "gruff")
 	luaunit.assertEquals(retrieved_bg.backstory, "Veteran stalker")
 	luaunit.assertEquals(#retrieved_bg.connections, 1)
+	luaunit.assertNotNil(retrieved_bg.cs)
+	luaunit.assertEquals(#retrieved_bg.cs, 8)
 end
 
 function testBackgroundTraitsUpdated()
@@ -647,6 +662,57 @@ function testV4SaveLoadRoundtrip()
 	luaunit.assertEquals(#events, 2)
 	luaunit.assertNotNil(events[1].ts)
 	luaunit.assertNotNil(events[2].ts)
+end
+
+function testChecksumRoundtripPreservedAcrossSaveLoad()
+	memory_store:clear()
+
+	local ev = memory_store:store_event("char_1", mock_event(100, EventType.IDLE, { actor = mock_character(1, "Wolf") }))
+	memory_store:mutate({
+		op = "append",
+		resource = "memory.summaries",
+		params = { character_id = "char_1" },
+		data = {
+			{
+				tier = "summary",
+				start_ts = 100,
+				end_ts = 200,
+				text = "Summary text",
+				source_count = 2,
+			},
+		},
+	})
+	memory_store:mutate({
+		op = "set",
+		resource = "memory.background",
+		params = { character_id = "char_1" },
+		data = {
+			backstory = "A veteran of many firefights",
+			traits = { "calm", "experienced" },
+			connections = {},
+		},
+	})
+
+	local before_events, _ = memory_store:query("char_1", "memory.events", {})
+	local before_summaries, _ = memory_store:query("char_1", "memory.summaries", {})
+	local before_background, _ = memory_store:query("char_1", "memory.background", {})
+
+	local event_cs = before_events[1].cs
+	local summary_cs = before_summaries[1].cs
+	local background_cs = before_background.cs
+
+	local save_data = memory_store:get_save_data()
+	memory_store:clear()
+	memory_store:load_save_data(save_data)
+
+	local after_events, _ = memory_store:query("char_1", "memory.events", {})
+	local after_summaries, _ = memory_store:query("char_1", "memory.summaries", {})
+	local after_background, _ = memory_store:query("char_1", "memory.background", {})
+
+	luaunit.assertEquals(after_events[1].cs, event_cs)
+	luaunit.assertEquals(after_summaries[1].cs, summary_cs)
+	luaunit.assertEquals(after_background.cs, background_cs)
+	luaunit.assertEquals(after_events[1].cs, ev.cs)
 end
 
 function testLoadV2SaveDataMigratesNarrativeToCore()

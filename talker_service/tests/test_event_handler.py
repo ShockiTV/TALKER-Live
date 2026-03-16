@@ -400,3 +400,131 @@ class TestHandlePlayerWhisper:
         
         # ConversationManager should NOT be called (no candidates)
         mock_conversation_manager.handle_event.assert_not_called()
+
+
+class TestNeo4jIngestFlow:
+    @pytest.mark.asyncio
+    async def test_ingest_task_scheduled_before_dialogue(self, sample_v2_payload, mock_conversation_manager, monkeypatch):
+        events._conversation_manager = mock_conversation_manager
+
+        class _Neo4j:
+            def is_available(self):
+                return True
+
+            def has_event_embedding(self, _ts, _cs):
+                return False
+
+            def ingest_event(self, *_args, **_kwargs):
+                return True
+
+        events._neo4j_client = _Neo4j()
+        events._embedding_client = None
+
+        scheduled = []
+
+        def _fake_logged_task(coro, *, name="unnamed"):
+            scheduled.append(name)
+            coro.close()
+            return None
+
+        monkeypatch.setattr(events, "_logged_task", _fake_logged_task)
+
+        await events.handle_game_event(sample_v2_payload, session_id="s1", req_id=900)
+
+        assert len(scheduled) == 2
+        assert scheduled[0].startswith("ingest-")
+        assert scheduled[1].startswith("dialogue-")
+
+    @pytest.mark.asyncio
+    async def test_index_only_skips_dialogue(self, sample_v2_payload, mock_conversation_manager, monkeypatch):
+        events._conversation_manager = mock_conversation_manager
+
+        class _Neo4j:
+            def is_available(self):
+                return True
+
+            def has_event_embedding(self, _ts, _cs):
+                return False
+
+            def ingest_event(self, *_args, **_kwargs):
+                return True
+
+        events._neo4j_client = _Neo4j()
+        events._embedding_client = None
+
+        scheduled = []
+
+        def _fake_logged_task(coro, *, name="unnamed"):
+            scheduled.append(name)
+            coro.close()
+            return None
+
+        monkeypatch.setattr(events, "_logged_task", _fake_logged_task)
+
+        payload = dict(sample_v2_payload)
+        payload["event"] = dict(sample_v2_payload["event"])
+        payload["event"]["flags"] = {"index_only": True}
+
+        await events.handle_game_event(payload, session_id="s1", req_id=901)
+
+        assert len(scheduled) == 1
+        assert scheduled[0].startswith("ingest-")
+
+    @pytest.mark.asyncio
+    async def test_ingest_failure_is_non_blocking(self, sample_v2_payload):
+        class _FailingNeo4j:
+            def is_available(self):
+                return True
+
+            def has_event_embedding(self, _ts, _cs):
+                raise RuntimeError("boom")
+
+            def ingest_event(self, *_args, **_kwargs):
+                raise RuntimeError("boom")
+
+        events._neo4j_client = _FailingNeo4j()
+        events._embedding_client = AsyncMock()
+
+        # Should not raise despite neo4j client failures.
+        await events._ingest_event(
+            sample_v2_payload["event"],
+            ingest_session_id="lua-session-1",
+            player_id="player1",
+            branch="main",
+            req_id=902,
+            connection_session_id="conn-1",
+        )
+
+    @pytest.mark.asyncio
+    async def test_duplicate_event_skips_reembedding(self, sample_v2_payload):
+        class _Neo4j:
+            def __init__(self):
+                self.ingest_calls = 0
+
+            def is_available(self):
+                return True
+
+            def has_event_embedding(self, _ts, _cs):
+                return True
+
+            def ingest_event(self, *_args, **_kwargs):
+                self.ingest_calls += 1
+                return True
+
+        neo4j = _Neo4j()
+        embed_client = AsyncMock()
+
+        events._neo4j_client = neo4j
+        events._embedding_client = embed_client
+
+        await events._ingest_event(
+            sample_v2_payload["event"],
+            ingest_session_id="lua-session-1",
+            player_id="player1",
+            branch="main",
+            req_id=903,
+            connection_session_id="conn-1",
+        )
+
+        assert neo4j.ingest_calls == 1
+        embed_client.embed.assert_not_awaited()

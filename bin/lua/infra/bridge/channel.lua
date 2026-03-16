@@ -37,6 +37,7 @@ local STATE = {
 
 local _state            = STATE.DISCONNECTED
 local _url              = nil
+local _connect_options  = nil
 local _handle           = nil
 local _queue            = {}   -- outbound message queue (encoded strings)
 local _handlers         = {}   -- topic → { fn, fn, ... }
@@ -138,13 +139,15 @@ end
 
 --- Initialize the channel with the bridge URL.
 -- Resets all state. Call tick() to begin connecting.
--- @param url  string  WebSocket URL (e.g. "ws://localhost:5558/ws")
-function M.init(url)
+-- @param url      string     WebSocket URL (e.g. "ws://localhost:5558/ws")
+-- @param options  table|nil  Optional connect options passed to ws_client.open
+function M.init(url, options)
     if _handle then
         ws_client.close(_handle)
         _handle = nil
     end
     _url             = url
+    _connect_options = options
     _state           = STATE.DISCONNECTED
     _queue           = {}
     _handlers        = {}
@@ -161,7 +164,7 @@ function M.tick()
     if not _initialized then return end
 
     if _state == STATE.DISCONNECTED then
-        _handle = ws_client.open(_url)
+        _handle = ws_client.open(_url, _connect_options)
         if _handle then
             _state = STATE.CONNECTING
         end
@@ -198,7 +201,7 @@ function M.tick()
                 ws_client.close(_handle)
                 _handle = nil
             end
-            _handle = ws_client.open(_url)
+            _handle = ws_client.open(_url, _connect_options)
             if _handle then
                 _state = STATE.CONNECTING
             end
@@ -277,6 +280,7 @@ function M._reset()
     if _handle then pcall(ws_client.close, _handle) end
     _state            = STATE.DISCONNECTED
     _url              = nil
+    _connect_options  = nil
     _handle           = nil
     _queue            = {}
     _handlers         = {}

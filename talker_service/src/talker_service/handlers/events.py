@@ -9,6 +9,7 @@ from typing import Any, Optional, Protocol, TYPE_CHECKING
 from loguru import logger
 
 from ..models.messages import GameEventMessage, PlayerDialogueMessage, HeartbeatMessage
+from ..storage.neo4j_client import render_event_text, compute_event_checksum
 from ._log import log_prefix
 
 # Maximum concurrent dialogue generation tasks
@@ -47,6 +48,10 @@ _publisher: Optional[PublisherProtocol] = None
 # TTS engine (injected by main — TTSRemoteClient, TTSEngine, or None)
 _tts_engine: Any = None
 
+# Optional graph memory clients
+_neo4j_client: Any = None
+_embedding_client: Any = None
+
 # Monotonic counter for dialogue_id (correlates Python ↔ Lua logs)
 _dialogue_id: int = 0
 
@@ -70,6 +75,20 @@ def set_tts_engine(engine: Any) -> None:
     global _tts_engine
     _tts_engine = engine
     logger.info("TTS engine injected into event handlers: {}", type(engine).__name__ if engine else None)
+
+
+def set_neo4j_client(client: Any) -> None:
+    """Set the Neo4j client used for realtime event ingest."""
+    global _neo4j_client
+    _neo4j_client = client
+    logger.info("Neo4j client injected into event handlers: {}", type(client).__name__ if client else None)
+
+
+def set_embedding_client(client: Any) -> None:
+    """Set the embedding client used for event vectorization."""
+    global _embedding_client
+    _embedding_client = client
+    logger.info("Embedding client injected into event handlers: {}", type(client).__name__ if client else None)
 
 
 def get_last_heartbeat() -> Optional[str]:
@@ -98,18 +117,19 @@ async def handle_game_event(payload: dict[str, Any], session_id: str = "__defaul
         candidates = payload.get("candidates", [])
         world = payload.get("world", "")
         traits = payload.get("traits", {})
+        conn_meta = payload.get("_connection", {}) if isinstance(payload, dict) else {}
+        player_id = conn_meta.get("player_id", "local")
+        branch = conn_meta.get("branch", "main")
+        ingest_session_id = conn_meta.get("game_session_id") or session_id
         
         # Basic validation
         if not event_data:
             logger.error("Empty event data in payload")
             return
         
-        if not candidates:
-            logger.warning("No candidates in payload — skipping dialogue generation")
-            return
-        
         event_type = event_data.get("type", "UNKNOWN")
         candidates_count = len(candidates)
+        index_only = bool((event_data.get("flags") or {}).get("index_only"))
         
         # Log event details
         pfx = log_prefix(req_id, session_id)
@@ -127,6 +147,28 @@ async def handle_game_event(payload: dict[str, Any], session_id: str = "__defaul
         if candidates:
             candidate_names = [c.get("name", "unknown") for c in candidates]
             logger.debug(f"{pfx}Candidates: {candidate_names}")
+
+        # Index into Neo4j first (fire-and-forget), then decide whether dialogue runs.
+        if _neo4j_client is not None and getattr(_neo4j_client, "is_available", lambda: False)():
+            _logged_task(
+                _ingest_event(
+                    event_data,
+                    ingest_session_id=ingest_session_id,
+                    player_id=player_id,
+                    branch=branch,
+                    req_id=req_id,
+                    connection_session_id=session_id,
+                ),
+                name=f"ingest-{event_type}",
+            )
+
+        if index_only:
+            logger.debug(f"{pfx}index_only event received — skipping dialogue generation")
+            return
+
+        if not candidates:
+            logger.warning("No candidates in payload — skipping dialogue generation")
+            return
         
         # Trigger dialogue generation
         _logged_task(
@@ -137,6 +179,44 @@ async def handle_game_event(payload: dict[str, Any], session_id: str = "__defaul
     except Exception as e:
         logger.error(f"Error processing game event: {e}")
         logger.debug(f"Raw payload: {payload}")
+
+
+async def _ingest_event(
+    event: dict[str, Any],
+    *,
+    ingest_session_id: str,
+    player_id: str,
+    branch: str,
+    req_id: int,
+    connection_session_id: str,
+) -> None:
+    """Index one event into Neo4j without blocking dialogue generation."""
+    if _neo4j_client is None:
+        return
+
+    try:
+        text = render_event_text(event)
+        ts = int(event.get("ts") or event.get("game_time_ms") or event.get("timestamp") or 0)
+        cs = str(event.get("cs") or compute_event_checksum(event))
+        event["cs"] = cs
+
+        embedding = None
+        already_embedded = await asyncio.to_thread(_neo4j_client.has_event_embedding, ts, cs)
+        if (not already_embedded) and _embedding_client is not None:
+            embedding = await _embedding_client.embed(text)
+
+        await asyncio.to_thread(
+            _neo4j_client.ingest_event,
+            ingest_session_id,
+            event,
+            embedding,
+            player_id=player_id,
+            branch=branch,
+            text=text,
+        )
+    except Exception as exc:
+        pfx = log_prefix(req_id, connection_session_id)
+        logger.opt(exception=True).warning(f"{pfx}Neo4j ingest failed (non-blocking): {exc}")
 
 
 async def _handle_event_v2(
