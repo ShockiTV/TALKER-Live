@@ -41,11 +41,47 @@ local function get_service_url()
     local port = config.service_ws_port and config.service_ws_port() or 5557
     local url  = "ws://" .. host .. ":" .. tostring(port) .. "/ws"
 
+    local bearer = config.ws_bearer_token and config.ws_bearer_token() or nil
     local token = config.ws_token and config.ws_token() or nil
-    if token and token ~= "" then
+    if (not bearer or bearer == "") and token and token ~= "" then
         url = url .. "?token=" .. token
     end
     return url
+end
+
+local function get_ws_connect_options()
+    local bearer = config.ws_bearer_token and config.ws_bearer_token() or nil
+    if bearer and bearer ~= "" then
+        return {
+            headers = {
+                ["Authorization"] = "Bearer " .. bearer,
+            },
+        }
+    end
+    return nil
+end
+
+function build_ws_connect_options()
+    return get_ws_connect_options()
+end
+
+local function get_session_id_from_persistence()
+    if talker_game_persistence and talker_game_persistence.get_session_id then
+        return talker_game_persistence.get_session_id()
+    end
+    if type(_G.get_session_id) == "function" then
+        return _G.get_session_id()
+    end
+    return nil
+end
+
+function build_config_sync_payload()
+    local all_config = config.get_all_config()
+    local session_id = get_session_id_from_persistence()
+    if session_id and session_id ~= "" then
+        all_config.session_id = session_id
+    end
+    return all_config
 end
 
 --------------------------------------------------------------------------------
@@ -64,7 +100,7 @@ local function init_channels()
         return false
     end
 
-    bridge_channel.init(get_service_url())
+    bridge_channel.init(get_service_url(), get_ws_connect_options())
 
     -- On reconnect, resend full config sync
     bridge_channel.set_on_reconnect(function()
@@ -270,7 +306,7 @@ end
 
 function publish_config_sync()
     if not init_channels() then return false end
-    local all_config = config.get_all_config()
+    local all_config = build_config_sync_payload()
     bridge_channel.publish("config.sync", all_config)
     return true
 end

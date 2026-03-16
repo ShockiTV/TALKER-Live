@@ -8,9 +8,25 @@ local trigger = require("interface.trigger")
 local Event = require("domain.model.event")
 local EventType = require("domain.model.event_types")
 local memory_store_v2 = require("domain.repo.memory_store_v2")
+local publisher = require("infra.ws.publisher")
+
+local published_messages = {}
+
+local function install_publish_spy()
+	publisher.send_game_event = function(event, candidates, world, traits)
+		published_messages[#published_messages + 1] = {
+			event = event,
+			candidates = candidates,
+			world = world,
+			traits = traits,
+		}
+	end
+end
 
 local function setup()
 	memory_store_v2:clear()
+	published_messages = {}
+	install_publish_spy()
 end
 
 -- ══════════════════════════════════════════════════════════
@@ -60,16 +76,18 @@ function testStoreEventFansOutToWitnesses()
 	luaunit.assertEquals(w1_events[1].type, EventType.DEATH)
 end
 
-function testStoreEventEmptyFlags()
+function testStoreEventSetsIndexOnlyFlag()
 	setup()
 	local speaker = { game_id = "char_1" }
 	local context = { actor = speaker }
 
 	local event = trigger.store_event(EventType.DEATH, context, {})
 
-	-- Flags should be empty table (deprecated)
+	-- store_event is index-only for realtime Neo4j ingest
 	luaunit.assertNotNil(event.flags)
-	luaunit.assertEquals(next(event.flags), nil) -- empty table
+	luaunit.assertTrue(event.flags.index_only)
+	luaunit.assertEquals(#published_messages, 1)
+	luaunit.assertTrue(published_messages[1].event.flags.index_only)
 end
 
 -- ══════════════════════════════════════════════════════════
@@ -99,6 +117,20 @@ function testPublishEventStoresInMemory()
 	local events, _ = memory_store_v2:query("char_1", "memory.events", {})
 	luaunit.assertEquals(#events, 1)
 	luaunit.assertEquals(events[1].type, EventType.IDLE)
+end
+
+function testPublishEventDoesNotSetIndexOnlyFlag()
+	setup()
+	local speaker = { game_id = "char_1", name = "Speaker", faction = "stalker" }
+	local context = { actor = speaker }
+
+	local event = trigger.publish_event(EventType.IDLE, context, {})
+
+	luaunit.assertNotNil(event)
+	luaunit.assertNotNil(event.flags)
+	luaunit.assertNil(event.flags.index_only)
+	luaunit.assertEquals(#published_messages, 1)
+	luaunit.assertNil(published_messages[1].event.flags.index_only)
 end
 
 function testPublishEventFansOutToWitnesses()

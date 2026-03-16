@@ -1,5 +1,6 @@
 """Config handler and config mirror for MCM settings."""
 
+import asyncio
 from typing import Any, Callable, Optional
 
 from loguru import logger
@@ -175,6 +176,7 @@ config_mirror = ConfigMirror()
 
 # Optional session registry for per-session config routing
 _session_registry = None
+_session_sync_service = None
 
 
 def set_session_registry(registry) -> None:
@@ -188,6 +190,39 @@ def set_session_registry(registry) -> None:
     _session_registry = registry
     logger.info("Session registry {} for config handlers",
                 "set" if registry else "cleared")
+
+
+def set_session_sync_service(sync_service) -> None:
+    """Inject two-step session sync service (optional)."""
+    global _session_sync_service
+    _session_sync_service = sync_service
+    logger.info("Session sync service {}", "set" if sync_service else "cleared")
+
+
+def _extract_session_id(payload: dict[str, Any]) -> str | None:
+    if isinstance(payload.get("session_id"), str) and payload.get("session_id"):
+        return payload.get("session_id")
+    cfg = payload.get("config")
+    if isinstance(cfg, dict) and isinstance(cfg.get("session_id"), str) and cfg.get("session_id"):
+        return cfg.get("session_id")
+    return None
+
+
+async def _run_session_sync_task(*, connection_session: str, lua_session_id: str, previous: str | None) -> None:
+    if not _session_sync_service or not _session_registry:
+        return
+
+    ctx = _session_registry.get_session(connection_session)
+    try:
+        await _session_sync_service.sync_if_needed(
+            connection_session=connection_session,
+            lua_session_id=lua_session_id,
+            player_id=ctx.player_id,
+            branch=ctx.branch,
+            previous_lua_session_id=previous,
+        )
+    except Exception as exc:
+        logger.opt(exception=True).warning("Session sync task failed: {}", exc)
 
 
 def _get_mirror(session_id: str | None = None):
@@ -225,3 +260,20 @@ async def handle_config_sync(payload: dict[str, Any], session_id: str = "__defau
     """
     logger.info("{}Received config sync from game (session={})", log_prefix(req_id, session_id), session_id)
     _get_mirror(session_id).sync(payload)
+
+    if _session_registry:
+        ctx = _session_registry.get_session(session_id)
+        incoming_session_id = _extract_session_id(payload)
+        if incoming_session_id:
+            previous = ctx.game_session_id
+            if previous == incoming_session_id:
+                logger.debug("Config sync reconnect detected (session_id unchanged: {})", incoming_session_id)
+                return
+            ctx.game_session_id = incoming_session_id
+            asyncio.create_task(
+                _run_session_sync_task(
+                    connection_session=session_id,
+                    lua_session_id=incoming_session_id,
+                    previous=previous,
+                )
+            )

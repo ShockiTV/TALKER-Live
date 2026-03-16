@@ -96,4 +96,24 @@ function M.array_iter(arr)
     end
 end
 
+local function random_hex(count)
+    local out = {}
+    for i = 1, count do
+        out[i] = string.format("%x", math.random(0, 15))
+    end
+    return table.concat(out)
+end
+
+--- Generate a UUIDv4-like string.
+-- Uses Lua's PRNG and is suitable for non-cryptographic session IDs.
+-- @return string UUID in 8-4-4-4-12 form
+function M.uuid_v4()
+    local part1 = random_hex(8)
+    local part2 = random_hex(4)
+    local part3 = "4" .. random_hex(3)
+    local part4 = string.format("%x", math.random(8, 11)) .. random_hex(3)
+    local part5 = random_hex(12)
+    return table.concat({ part1, part2, part3, part4, part5 }, "-")
+end
+
 return M

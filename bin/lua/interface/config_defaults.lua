@@ -30,6 +30,7 @@ local defaults = {
     service_ws_port         = 5557,
     service_url             = "wss://talker-live.duckdns.org/ws",
     ws_token                = "",
+    ws_bearer_token         = "",
     llm_timeout             = 60,
     state_query_timeout     = 30,
 

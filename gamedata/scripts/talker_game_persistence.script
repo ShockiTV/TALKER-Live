@@ -8,9 +8,27 @@ local backstories_store = require("domain.repo.backstories")
 local levels_store = require("domain.repo.levels")
 local timers_store = require("domain.repo.timers")
 local log = require("framework.logger")
+local utils = require("framework.utils")
 
 -- WS integration reference (lazy-loaded)
 local ws_integration = nil
+local current_session_id = nil
+
+local function ensure_session_id(saved_data)
+    if saved_data and type(saved_data.session_id) == "string" and saved_data.session_id ~= "" then
+        current_session_id = saved_data.session_id
+    else
+        current_session_id = utils.uuid_v4()
+        if saved_data and type(saved_data) == "table" then
+            saved_data.session_id = current_session_id
+        end
+    end
+    return current_session_id
+end
+
+function get_session_id()
+    return current_session_id
+end
 
 --------------------------------------------------------------------------------
 -- Unique NPC background seeding (one-time on brand new save)
@@ -94,6 +112,10 @@ end
 -- Save the data
 function save_state(saved_data)
     log.info("Saving state...")
+    if not current_session_id or current_session_id == "" then
+        current_session_id = utils.uuid_v4()
+    end
+    saved_data.session_id = current_session_id
     saved_data.compressed_memories = memory_store:get_save_data()
     saved_data.tool_memories = memory_store_v2:get_save_data()
     saved_data.personalities = personality_store:get_save_data()
@@ -106,8 +128,14 @@ end
 function load_state(saved_data)
     log.info("Loading state...")
     if not saved_data or type(saved_data) ~= "table" then
+        current_session_id = utils.uuid_v4()
+        log.info("Persistence: New session_id generated for fresh save: " .. tostring(current_session_id))
         return
     end
+
+    local session_id = ensure_session_id(saved_data)
+    log.info("Persistence: Active session_id = " .. tostring(session_id))
+
     if (saved_data.compressed_memories) then
          memory_store:load_save_data(saved_data.compressed_memories)
     end
@@ -178,6 +206,7 @@ function on_game_start()
 end
 
 return {
-    save_state,
-    load_state
+    save_state = save_state,
+    load_state = load_state,
+    get_session_id = get_session_id,
 }

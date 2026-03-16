@@ -167,6 +167,10 @@ resource_registry["memory.background"] = function(query)
     return memory_store_v2:query(character_id, "memory.background", params)
 end
 
+resource_registry["memory.global_events"] = function(_query)
+    return memory_store_v2:get_global_event_buffer()
+end
+
 resource_registry["memory.tiers"] = function(query)
     local character_id = query.params and query.params.character_id
     if not character_id then
@@ -177,6 +181,47 @@ resource_registry["memory.tiers"] = function(query)
         return { tiers = { events = 0, summaries = 0, digests = 0, cores = 0 } }
     end
     return { tiers = counts }
+end
+
+local function to_manifest_pairs(items)
+    local out = {}
+    for _, item in ipairs(items or {}) do
+        out[#out + 1] = {
+            ts = item.ts,
+            cs = item.cs,
+        }
+    end
+    return out
+end
+
+function build_sync_manifest()
+    local characters_manifest = {}
+    local ids = memory_store_v2:get_all_character_ids()
+
+    for _, character_id in ipairs(ids) do
+        local entry = memory_store_v2:get_entry(character_id) or {}
+        characters_manifest[#characters_manifest + 1] = {
+            id = tostring(character_id),
+            tiers = {
+                events = to_manifest_pairs(entry.events),
+                summaries = to_manifest_pairs(entry.summaries),
+                digests = to_manifest_pairs(entry.digests),
+                cores = to_manifest_pairs(entry.cores),
+            },
+            background = entry.background and { cs = entry.background.cs } or nil,
+        }
+    end
+
+    local globals = to_manifest_pairs(memory_store_v2:get_global_event_buffer())
+
+    return {
+        characters = characters_manifest,
+        global_events = globals,
+    }
+end
+
+resource_registry["memory.sync_manifest"] = function(_query)
+    return build_sync_manifest()
 end
 
 
@@ -480,6 +525,7 @@ local function handle_batch_query(payload, request_r)
     for idx, query in ipairs(sub_queries) do
         local qid = query.id or ("_auto_" .. tostring(idx))
         local resource = query.resource or query.query  -- legacy compat: "query" field
+        local should_skip = false
 
         if not query.id then
             logger.warn("Sub-query #%d missing 'id' field, auto-assigned '%s'", idx, qid)
@@ -493,31 +539,31 @@ local function handle_batch_query(payload, request_r)
             local _, ref_err = filter_engine.resolve_refs(query.filter, results)
             if ref_err then
                 results[qid] = { ok = false, error = ref_err }
-                goto continue
+                should_skip = true
             end
         end
-        if query.params then
+        if (not should_skip) and query.params then
             local _, ref_err = filter_engine.resolve_refs(query.params, results)
             if ref_err then
                 results[qid] = { ok = false, error = ref_err }
-                goto continue
+                should_skip = true
             end
         end
 
-        local resolver = resource_registry[resource]
-        if not resolver then
-            results[qid] = { ok = false, error = "unknown resource: " .. tostring(resource) }
-            goto continue
+        if not should_skip then
+            local resolver = resource_registry[resource]
+            if not resolver then
+                results[qid] = { ok = false, error = "unknown resource: " .. tostring(resource) }
+                should_skip = true
+            else
+                local ok, data = pcall(resolver, query)
+                if ok then
+                    results[qid] = { ok = true, data = data }
+                else
+                    results[qid] = { ok = false, error = tostring(data) }
+                end
+            end
         end
-
-        local ok, data = pcall(resolver, query)
-        if ok then
-            results[qid] = { ok = true, data = data }
-        else
-            results[qid] = { ok = false, error = tostring(data) }
-        end
-
-        ::continue::
     end
 
     -- Publish batch response with the r-field echoed back

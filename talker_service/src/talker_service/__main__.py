@@ -28,6 +28,7 @@ from .memory.scheduler import CompactionScheduler
 from .tts import TTS_AVAILABLE, TTSEngine, TTSRemoteClient
 from .stt import STT_AVAILABLE
 from .transport.session_registry import SessionRegistry
+from .storage import Neo4jClient, EmbeddingClient, init_schema, SessionSyncService
 
 
 def _force_exit():
@@ -47,12 +48,15 @@ atexit.register(_force_exit)
 ws_router: WSRouter | None = None
 conversation_manager: ConversationManager | None = None
 tts_engine: TTSEngine | None = None
+session_registry: SessionRegistry | None = None
+neo4j_client: Neo4jClient | None = None
+embedding_client: EmbeddingClient | None = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Manage application lifespan - startup and shutdown."""
-    global ws_router, conversation_manager, tts_engine
+    global ws_router, conversation_manager, tts_engine, session_registry, neo4j_client, embedding_client
     
     # Startup
     logger.info("Starting TALKER Service v0.4.0 (WebSocket transport)")
@@ -63,6 +67,27 @@ async def lifespan(app: FastAPI):
     session_registry = SessionRegistry()
     ws_router.set_session_registry(session_registry)
     config_handlers.set_session_registry(session_registry)
+
+    # Initialize graph memory clients (graceful no-op when NEO4J_URI is unset)
+    neo4j_client = Neo4jClient(
+        uri=settings.neo4j_uri,
+        user=settings.neo4j_user,
+        password=settings.neo4j_password,
+        database=settings.neo4j_database,
+    )
+    embedding_client = EmbeddingClient(
+        base_url=settings.ollama_base_url,
+        model=settings.ollama_embed_model,
+    )
+
+    if neo4j_client.is_available():
+        try:
+            init_schema(neo4j_client)
+        except Exception as exc:
+            logger.warning("Neo4j schema init failed: {}", exc)
+        await embedding_client.ensure_model_pulled()
+    else:
+        logger.info("Neo4j unavailable (NEO4J_URI not set) - graph memory disabled")
     
     # Initialize TTS: remote client (shared microservice) or embedded engine
     if settings.tts_service_url:
@@ -141,6 +166,10 @@ async def lifespan(app: FastAPI):
         router=ws_router,
         timeout=settings.state_query_timeout,
     )
+
+    config_handlers.set_session_sync_service(
+        SessionSyncService(state_client=state_client, neo4j_client=neo4j_client)
+    )
     
     # Create compaction engine + budget-pool scheduler
     compaction_engine = CompactionEngine(
@@ -186,6 +215,8 @@ async def lifespan(app: FastAPI):
     event_handlers.set_conversation_manager(conversation_manager)
     event_handlers.set_publisher(ws_router)  # For heartbeat acks
     event_handlers.set_tts_engine(tts_engine)  # For TTS audio dispatch
+    event_handlers.set_neo4j_client(neo4j_client)
+    event_handlers.set_embedding_client(embedding_client)
     
     # Wire config changes to TTS engine volume
     if tts_engine:
@@ -267,6 +298,8 @@ async def lifespan(app: FastAPI):
             logger.info("TTS engine shut down")
     if ws_router:
         await ws_router.shutdown()
+    if neo4j_client:
+        neo4j_client.close()
     logger.info("TALKER Service stopped")
 
 

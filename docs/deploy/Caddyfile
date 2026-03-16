@@ -1,17 +1,47 @@
 # Multi-branch TALKER Caddyfile — template for VPS deployment
 #
-# Replace {$DOMAIN} with your actual domain or set the DOMAIN env var.
-# Caddy auto-provisions TLS via Let's Encrypt.
-#
-# Routing:
-#   /ws/main   → talker-main:5557/ws   (main branch WebSocket)
-#   /ws/dev    → talker-dev:5557/ws     (dev branch WebSocket)
-#   /health/*  → per-branch health check
-#   /grafana/* → Grafana dashboard
+# Requires a Caddy image with the caddy-security plugin.
+# JWT bearer tokens are validated against Keycloak JWKS.
+
+{
+    order authenticate before respond
+    order authorize before basicauth
+
+    security {
+        oauth identity provider keycloak {
+            realm talker
+            driver generic
+            metadata_url https://{$DOMAIN}/auth/realms/talker/.well-known/openid-configuration
+            client_id {$KEYCLOAK_CLIENT_ID}
+            client_secret {$KEYCLOAK_CLIENT_SECRET}
+            scopes openid profile email
+        }
+
+        authorization policy talker_player_policy {
+            set auth url /auth/realms/talker/account/
+            validate bearer header
+            allow roles player admin
+        }
+
+        authorization policy talker_admin_policy {
+            set auth url /auth/realms/talker/account/
+            validate bearer header
+            allow roles admin
+        }
+    }
+}
 
 {$DOMAIN} {
-    # ─── Branch: main ──────────────────────────
+    # ─── Keycloak (no JWT gate) ─────────────────
+    handle_path /auth/* {
+        reverse_proxy keycloak:8080
+    }
+
+    # ─── Branch: main WS (JWT required) ─────────
     handle_path /ws/main {
+        authorize with talker_player_policy
+        request_header X-Branch "main"
+        request_header X-Player-ID "{http.auth.user.claim.sub}"
         reverse_proxy talker-main:5557
     }
 
@@ -19,8 +49,11 @@
         reverse_proxy talker-main:5557
     }
 
-    # ─── Branch: dev ───────────────────────────
+    # ─── Branch: dev WS (JWT required) ──────────
     handle_path /ws/dev {
+        authorize with talker_player_policy
+        request_header X-Branch "dev"
+        request_header X-Player-ID "{http.auth.user.claim.sub}"
         reverse_proxy talker-dev:5557
     }
 
@@ -28,12 +61,18 @@
         reverse_proxy talker-dev:5557
     }
 
-    # ─── Grafana dashboard ─────────────────────
+    # ─── Neo4j Browser (admin JWT required) ─────
+    handle_path /neo4j/* {
+        authorize with talker_admin_policy
+        reverse_proxy neo4j:7474
+    }
+
+    # ─── Grafana dashboard ──────────────────────
     handle_path /grafana/* {
         reverse_proxy grafana:3000
     }
 
-    # ─── Default: 404 ──────────────────────────
+    # ─── Default: 404 ───────────────────────────
     handle {
         respond "Not found" 404
     }

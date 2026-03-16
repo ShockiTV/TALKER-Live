@@ -7,6 +7,7 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from talker_service.transport.ws_router import WSRouter, parse_tokens
+from talker_service.transport.session_registry import SessionRegistry
 
 
 # ── Token parsing ─────────────────────────────────────────────────────────────
@@ -48,6 +49,7 @@ def _make_mock_ws(query_params=None, accepted=True):
     """Create a mock WebSocket with configurable query params."""
     ws = AsyncMock()
     ws.query_params = query_params or {}
+    ws.headers = {}
     ws.client_state = MagicMock()
     # Make close a no-op coroutine
     ws.close = AsyncMock()
@@ -306,3 +308,37 @@ class TestWSRouterAuth:
         await router.websocket_endpoint(ws)
 
         ws.accept.assert_awaited_once()
+
+
+class TestWSRouterHeaders:
+    @pytest.mark.asyncio
+    async def test_header_extraction_sets_session_context(self):
+        router = WSRouter(tokens={})
+        registry = SessionRegistry()
+        router.set_session_registry(registry)
+
+        ws = _make_mock_ws(query_params={})
+        ws.headers = {"x-player-id": "player1", "x-branch": "dev"}
+        ws.receive_text = AsyncMock(side_effect=Exception("disconnect"))
+
+        await router.websocket_endpoint(ws)
+
+        ctx = registry.get_session("__default__")
+        assert ctx.player_id == "player1"
+        assert ctx.branch == "dev"
+
+    @pytest.mark.asyncio
+    async def test_missing_headers_use_defaults(self):
+        router = WSRouter(tokens={})
+        registry = SessionRegistry()
+        router.set_session_registry(registry)
+
+        ws = _make_mock_ws(query_params={})
+        ws.headers = {}
+        ws.receive_text = AsyncMock(side_effect=Exception("disconnect"))
+
+        await router.websocket_endpoint(ws)
+
+        ctx = registry.get_session("__default__")
+        assert ctx.player_id == "local"
+        assert ctx.branch == "main"
