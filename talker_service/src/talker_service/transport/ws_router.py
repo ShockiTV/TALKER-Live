@@ -218,6 +218,9 @@ class WSRouter:
 
         # ── Auth ──────────────────────────────────────────────────────
         session_id = DEFAULT_SESSION
+        _headers = getattr(ws, "headers", {})
+        player_id = _headers.get("x-player-id", "local")
+        branch = _headers.get("x-branch", "main")
         if self._auth_enabled:
             token = ws.query_params.get("token")
             if not token or token not in self._tokens.values():
@@ -238,9 +241,17 @@ class WSRouter:
         if self._session_registry:
             ctx = self._session_registry.get_session(session_id)
             ctx.connection = ws
+            ctx.player_id = player_id
+            ctx.branch = branch
 
         self.is_connected = True
-        logger.info("WS client connected (session={}, {} total)", session_id, len(self._connections))
+        logger.info(
+            "WS client connected (session={}, player_id={}, branch={}, {} total)",
+            session_id,
+            player_id,
+            branch,
+            len(self._connections),
+        )
 
         try:
             while True:
@@ -294,6 +305,17 @@ class WSRouter:
 
         # ── Resolve session_id from connection ────────────────────────
         session_id = self._conn_to_session.get(ws, DEFAULT_SESSION) if ws else DEFAULT_SESSION
+
+        if ws and self._session_registry and isinstance(payload, dict):
+            ctx = self._session_registry.get_session(session_id)
+            payload = {
+                **payload,
+                "_connection": {
+                    "player_id": ctx.player_id,
+                    "branch": ctx.branch,
+                    "game_session_id": ctx.game_session_id,
+                },
+            }
 
         # ── Assign monotonic req_id ───────────────────────────────────
         global _req_counter
