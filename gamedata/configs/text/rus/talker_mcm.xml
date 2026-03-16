@@ -483,29 +483,17 @@
     <string id="ui_mcm_talker_service_title">
         <text>Настройки Python сервиса</text>
     </string>
-    <string id="ui_mcm_talker_ws_host_title">
-        <text>Хост сервиса</text>
-    </string>
-    <string id="ui_mcm_talker_ws_host">
-        <text>Имя хоста или IP Python сервиса (по умолчанию: 127.0.0.1)</text>
-    </string>
-    <string id="ui_mcm_talker_mic_ws_port_title">
-        <text>Порт микрофонного сервиса</text>
-    </string>
-    <string id="ui_mcm_talker_mic_ws_port">
-        <text>Порт для подключения к сервису микрофона/TTS (по умолчанию: 5558)</text>
-    </string>
     <string id="ui_mcm_talker_service_url_title">
         <text>URL сервиса</text>
     </string>
     <string id="ui_mcm_talker_service_url">
-        <text>WebSocket URL TALKER AI сервиса (напр. wss://talker-live.duckdns.org/ws или ws://127.0.0.1:5557/ws)</text>
+        <text>WebSocket URL TALKER сервиса (по умолчанию: ws://127.0.0.1:5557/ws для локального, или wss://ваш-сервер/ws/ветка для удалённого)</text>
     </string>
-    <string id="ui_mcm_talker_ws_token_title">
-        <text>Токен сервиса</text>
+    <string id="ui_mcm_talker_ws_bearer_token_title">
+        <text>Токен (JWT)</text>
     </string>
-    <string id="ui_mcm_talker_ws_token">
-        <text>Необязательный токен аутентификации для удалённого TALKER сервиса (оставьте пустым, если не требуется)</text>
+    <string id="ui_mcm_talker_general_ws_bearer_token">
+        <text>JWT токен для аутентификации на удалённом сервере (Keycloak). Оставьте пустым для локального использования.</text>
     </string>
     <string id="ui_mcm_talker_llm_timeout_title">
         <text>������� LLM</text>

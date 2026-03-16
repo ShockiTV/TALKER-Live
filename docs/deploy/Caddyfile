@@ -39,6 +39,10 @@
 
     # ─── Branch: main WS (JWT required) ─────────
     handle_path /ws/main {
+        # pollnet WS client can't set headers; pull JWT from ?token= query param
+        @has_token query token=*
+        request_header @has_token Authorization "Bearer {http.request.uri.query.token}"
+
         authorize with talker_player_policy
         request_header X-Branch "main"
         request_header X-Player-ID "{http.auth.user.claim.sub}"
@@ -51,6 +55,10 @@
 
     # ─── Branch: dev WS (JWT required) ──────────
     handle_path /ws/dev {
+        # pollnet WS client can't set headers; pull JWT from ?token= query param
+        @has_token query token=*
+        request_header @has_token Authorization "Bearer {http.request.uri.query.token}"
+
         authorize with talker_player_policy
         request_header X-Branch "dev"
         request_header X-Player-ID "{http.auth.user.claim.sub}"
