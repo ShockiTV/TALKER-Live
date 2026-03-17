@@ -37,12 +37,14 @@ local STATE = {
 
 local _state            = STATE.DISCONNECTED
 local _url              = nil
+local _url_provider     = nil
 local _connect_options  = nil
 local _handle           = nil
 local _queue            = {}   -- outbound message queue (encoded strings)
 local _handlers         = {}   -- topic → { fn, fn, ... }
 local _pending          = {}   -- r → callback  (request/response correlation)
 local _on_reconnect     = nil  -- callback
+local _before_connect   = nil  -- callback fired before each ws_client.open attempt
 local _was_connected    = false
 local _backoff_attempt  = 0
 local _backoff_deadline = 0
@@ -72,6 +74,38 @@ local function calculate_backoff(attempt)
     if base > BACKOFF_CAP then base = BACKOFF_CAP end
     local jitter = base * BACKOFF_JITTER * (2 * math.random() - 1)
     return base + jitter
+end
+
+local function resolve_url()
+    if _url_provider then
+        local ok, value = pcall(_url_provider)
+        if not ok then
+            log.warn("bridge_channel: url provider failed: %s", tostring(value))
+            return nil
+        end
+        if type(value) == "string" and value ~= "" then
+            return value
+        end
+        log.warn("bridge_channel: url provider returned invalid URL")
+        return nil
+    end
+    return _url
+end
+
+local function attempt_open()
+    if _before_connect then
+        local ok, err = pcall(_before_connect)
+        if not ok then
+            log.warn("bridge_channel: before-connect hook failed: %s", tostring(err))
+        end
+    end
+
+    local target_url = resolve_url()
+    if type(target_url) ~= "string" or target_url == "" then
+        return nil
+    end
+
+    return ws_client.open(target_url, _connect_options)
 end
 
 -- ── Queue management ─────────────────────────────────────────────────────────
@@ -146,13 +180,20 @@ function M.init(url, options)
         ws_client.close(_handle)
         _handle = nil
     end
-    _url             = url
+    _url_provider    = nil
+    if type(url) == "function" then
+        _url = nil
+        _url_provider = url
+    else
+        _url = url
+    end
     _connect_options = options
     _state           = STATE.DISCONNECTED
     _queue           = {}
     _handlers        = {}
     _pending         = {}
     _on_reconnect    = nil
+    _before_connect  = nil
     _was_connected   = false
     _backoff_attempt = 0
     _backoff_deadline = 0
@@ -164,9 +205,13 @@ function M.tick()
     if not _initialized then return end
 
     if _state == STATE.DISCONNECTED then
-        _handle = ws_client.open(_url, _connect_options)
+        _handle = attempt_open()
         if _handle then
             _state = STATE.CONNECTING
+        else
+            _state = STATE.RECONNECTING
+            _backoff_deadline = os.clock() + calculate_backoff(_backoff_attempt)
+            _backoff_attempt = _backoff_attempt + 1
         end
 
     elseif _state == STATE.CONNECTING then
@@ -201,9 +246,12 @@ function M.tick()
                 ws_client.close(_handle)
                 _handle = nil
             end
-            _handle = ws_client.open(_url, _connect_options)
+            _handle = attempt_open()
             if _handle then
                 _state = STATE.CONNECTING
+            else
+                _backoff_deadline = os.clock() + calculate_backoff(_backoff_attempt)
+                _backoff_attempt = _backoff_attempt + 1
             end
         end
     end
@@ -256,6 +304,12 @@ function M.set_on_reconnect(fn)
     _on_reconnect = fn
 end
 
+--- Register a callback fired before each ws_client.open attempt.
+-- @param fn  function  Callback: fn()
+function M.set_before_connect(fn)
+    _before_connect = fn
+end
+
 --- Close the connection and reset state.
 function M.shutdown()
     if _handle then
@@ -280,12 +334,14 @@ function M._reset()
     if _handle then pcall(ws_client.close, _handle) end
     _state            = STATE.DISCONNECTED
     _url              = nil
+    _url_provider     = nil
     _connect_options  = nil
     _handle           = nil
     _queue            = {}
     _handlers         = {}
     _pending          = {}
     _on_reconnect     = nil
+    _before_connect   = nil
     _was_connected    = false
     _backoff_attempt  = 0
     _backoff_deadline = 0

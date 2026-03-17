@@ -6,6 +6,7 @@
 package.path = package.path .. ";./bin/lua/?.lua;"
 local logger  = require("framework.logger")
 local config  = require("interface.config")
+local keycloak_client = require("infra.auth.keycloak_client")
 
 -- Register custom callbacks so SendScriptCallback can find them
 AddScriptCallback("publish_game_event_v2")
@@ -35,14 +36,87 @@ local function safe_require(module_name)
     end
 end
 
+local function append_query_token(url, token)
+    if token == "" then
+        return url
+    end
+    local sep = url:find("?") and "&" or "?"
+    return url .. sep .. "token=" .. token
+end
+
+local function derive_token_url(service_url)
+    if type(service_url) ~= "string" or service_url == "" then
+        return nil
+    end
+
+    local scheme, remainder = service_url:match("^(%a+)%:%/%/(.+)$")
+    if not scheme or not remainder then
+        return nil
+    end
+
+    local authority = remainder:match("^([^/%?]+)")
+    if not authority or authority == "" then
+        return nil
+    end
+
+    local token_scheme = scheme
+    if scheme == "ws" then
+        token_scheme = "http"
+    elseif scheme == "wss" then
+        token_scheme = "https"
+    end
+
+    return token_scheme .. "://" .. authority .. "/auth/realms/talker/protocol/openid-connect/token"
+end
+
+local function get_auth_config_values()
+    local client_id = config.auth_client_id and config.auth_client_id() or ""
+    local refresh_token = config.auth_refresh_token and config.auth_refresh_token() or ""
+    return client_id, refresh_token
+end
+
+local function is_refresh_token_auth_configured()
+    local client_id, refresh_token = get_auth_config_values()
+    return client_id ~= "" and refresh_token ~= ""
+end
+
+local function configure_keycloak_client()
+    local client_id, refresh_token = get_auth_config_values()
+    local service_url = config.service_url and config.service_url() or "ws://127.0.0.1:5557/ws"
+    local token_url = derive_token_url(service_url)
+
+    if not token_url then
+        keycloak_client.clear()
+        return false
+    end
+
+    keycloak_client.configure(token_url, client_id, refresh_token)
+    return token_url ~= "" and client_id ~= "" and refresh_token ~= ""
+end
+
 local function get_service_url()
     local url = config.service_url and config.service_url() or "ws://127.0.0.1:5557/ws"
-    local token = config.ws_bearer_token and config.ws_bearer_token() or ""
-    if token ~= "" then
-        local sep = url:find("?") and "&" or "?"
-        url = url .. sep .. "token=" .. token
+
+    if is_refresh_token_auth_configured() then
+        local token = keycloak_client.get_cached_token()
+        if not token then
+            local fetched, err = keycloak_client.fetch_token()
+            token = fetched
+            if not token and err then
+                logger.warn("Keycloak token fetch failed while building service URL: %s", tostring(err))
+            end
+        end
+        if token and token ~= "" then
+            return append_query_token(url, token)
+        end
     end
-    return url
+
+    local fallback = config.ws_bearer_token and config.ws_bearer_token() or ""
+    return append_query_token(url, fallback)
+end
+
+function build_service_url()
+    return get_service_url()
 end
 
 local function get_ws_connect_options()
@@ -90,7 +164,22 @@ local function init_channels()
         return false
     end
 
-    bridge_channel.init(get_service_url(), get_ws_connect_options())
+    configure_keycloak_client()
+
+    bridge_channel.init(get_service_url, get_ws_connect_options())
+    bridge_channel.set_before_connect(function()
+        local enabled = configure_keycloak_client()
+        if not enabled then
+            return
+        end
+
+        -- Prime the token cache before the URL is built: get_service_url() calls
+        -- get_cached_token() first, so fetching here ensures a fresh token is ready.
+        local token, err = keycloak_client.fetch_token()
+        if not token and err then
+            logger.warn("Keycloak token refresh failed before WS connect: %s", tostring(err))
+        end
+    end)
 
     -- On reconnect, resend full config sync
     bridge_channel.set_on_reconnect(function()
