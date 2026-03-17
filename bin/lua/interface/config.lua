@@ -164,6 +164,14 @@ function c.ws_bearer_token()
 	return cfg("ws_bearer_token") or ""
 end
 
+function c.auth_client_id()
+	return cfg("auth_client_id") or ""
+end
+
+function c.auth_refresh_token()
+	return cfg("auth_refresh_token") or ""
+end
+
 function c.service_url()
 	return cfg("service_url") or "ws://127.0.0.1:5557/ws"
 end
@@ -215,6 +223,8 @@ function c.get_all_config()
 
 		-- WebSocket settings
 		service_url             = cfg("service_url"),
+		auth_client_id          = cfg("auth_client_id"),
+		auth_refresh_token      = cfg("auth_refresh_token"),
 		ws_bearer_token         = cfg("ws_bearer_token"),
 		llm_timeout             = tonumber(cfg("llm_timeout")),
 		state_query_timeout     = tonumber(cfg("state_query_timeout")),

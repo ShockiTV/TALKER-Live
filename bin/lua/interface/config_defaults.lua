@@ -27,6 +27,8 @@ local defaults = {
 
     -- WebSocket / service
     service_url             = "ws://127.0.0.1:5557/ws",
+    auth_client_id          = "",
+    auth_refresh_token      = "",
     ws_bearer_token         = "",
     llm_timeout             = 60,
     state_query_timeout     = 30,
