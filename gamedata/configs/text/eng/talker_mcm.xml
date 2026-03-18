@@ -453,11 +453,29 @@
     <string id="ui_mcm_talker_general_service_url">
         <text>WebSocket URL of the TALKER service (default: ws://127.0.0.1:5557/ws for local, or wss://your-server/ws/branch for remote)</text>
     </string>
-    <string id="ui_mcm_talker_ws_bearer_token_title">
-        <text>Bearer Token (JWT)</text>
+    <string id="ui_mcm_talker_auth_client_id_title">
+        <text>Auth Client ID</text>
     </string>
-    <string id="ui_mcm_talker_general_ws_bearer_token">
-        <text>JWT bearer token for authenticated remote connections (from Keycloak). Leave empty for local use.</text>
+    <string id="ui_mcm_talker_general_auth_client_id">
+        <text>Keycloak client ID (e.g. talker-client). Set together with Auth Username and Auth Password. Token URL is derived automatically from Service URL.</text>
+    </string>
+    <string id="ui_mcm_talker_auth_client_secret_title">
+        <text>Auth Client Secret</text>
+    </string>
+    <string id="ui_mcm_talker_general_auth_client_secret">
+        <text>Keycloak client secret (required only for Confidential clients). Leave empty if the client is configured as Public.</text>
+    </string>
+    <string id="ui_mcm_talker_auth_username_title">
+        <text>Auth Username</text>
+    </string>
+    <string id="ui_mcm_talker_general_auth_username">
+        <text>Your Keycloak username. Used with Auth Client ID and Auth Password for automatic token exchange.</text>
+    </string>
+    <string id="ui_mcm_talker_auth_password_title">
+        <text>Auth Password</text>
+    </string>
+    <string id="ui_mcm_talker_general_auth_password">
+        <text>Your Keycloak password. Used with Auth Client ID and Auth Username for automatic token exchange.</text>
     </string>
     <string id="ui_mcm_talker_llm_timeout_title">
         <text>LLM Timeout</text>

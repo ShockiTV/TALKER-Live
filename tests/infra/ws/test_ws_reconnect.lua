@@ -9,15 +9,26 @@ local mock_keycloak_client = {
     _fetch_calls = 0,
     _fetched_token = nil,
     _fetch_error = nil,
+    _configured = nil,
 }
 
-function mock_keycloak_client.configure(token_url, client_id, refresh_token) end
+function mock_keycloak_client.configure(token_url, client_id, username, password, client_secret)
+    mock_keycloak_client._configured = {
+        token_url = token_url,
+        client_id = client_id,
+        username = username,
+        password = password,
+        client_secret = client_secret,
+    }
+end
 function mock_keycloak_client.get_cached_token() return nil end
 function mock_keycloak_client.fetch_token()
     mock_keycloak_client._fetch_calls = mock_keycloak_client._fetch_calls + 1
     return mock_keycloak_client._fetched_token, mock_keycloak_client._fetch_error
 end
-function mock_keycloak_client.clear() end
+function mock_keycloak_client.clear()
+    mock_keycloak_client._configured = nil
+end
 
 package.loaded["infra.auth.keycloak_client"] = mock_keycloak_client
 
@@ -49,6 +60,7 @@ local function setup()
     mock_keycloak_client._fetch_calls = 0
     mock_keycloak_client._fetched_token = nil
     mock_keycloak_client._fetch_error = nil
+    mock_keycloak_client._configured = nil
 end
 
 function testBeforeConnectHookIsRegisteredOnInit()
@@ -60,7 +72,8 @@ function testReconnectFetchesTokenWhenAuthConfigured()
     setup()
     mock_engine._set("service_url", "wss://talker.example/ws/dev")
     mock_engine._set("auth_client_id", "talker-client")
-    mock_engine._set("auth_refresh_token", "my-refresh-token")
+    mock_engine._set("auth_username", "bob")
+    mock_engine._set("auth_password", "pass123")
     mock_keycloak_client._fetched_token = "fresh-access-token"
 
     -- Simulate bridge channel firing the pre-connect hook
@@ -68,13 +81,16 @@ function testReconnectFetchesTokenWhenAuthConfigured()
 
     luaunit.assertEquals(mock_keycloak_client._fetch_calls, 1,
         "fetch_token should be called before reconnect when auth is configured")
+    luaunit.assertEquals(mock_keycloak_client._configured.password, "pass123",
+        "password should be passed into keycloak_client.configure")
 end
 
 function testReconnectSkipsFetchWhenAuthNotConfigured()
     setup()
     mock_engine._set("service_url", "ws://127.0.0.1:5557/ws")
     mock_engine._set("auth_client_id", "")
-    mock_engine._set("auth_refresh_token", "")
+    mock_engine._set("auth_username", "")
+    mock_engine._set("auth_password", "")
 
     -- Simulate bridge channel firing the pre-connect hook
     captured_before_connect()

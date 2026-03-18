@@ -77,12 +77,14 @@ function on_mcm_load()
                     text = "ui_mcm_talker_service_title", size = {512, 50}, spacing = 20},
                 {id = "service_url_title", type = "desc", clr = {200, 200, 255, 200}, text = "ui_mcm_talker_service_url_title"},
                 {id = "service_url", type = "input", val = 0, def = "ws://127.0.0.1:5557/ws"},
-                {id = "auth_client_id_title", type = "desc", clr = {200, 200, 255, 200}, text = "Auth Client ID"},
+                {id = "auth_client_id_title", type = "desc", clr = {200, 200, 255, 200}, text = "ui_mcm_talker_auth_client_id_title"},
                 {id = "auth_client_id", type = "input", val = 0, def = ""},
-                {id = "auth_refresh_token_title", type = "desc", clr = {200, 200, 255, 200}, text = "Auth Refresh Token"},
-                {id = "auth_refresh_token", type = "input", val = 0, def = ""},
-                {id = "ws_bearer_token_title", type = "desc", clr = {200, 200, 255, 200}, text = "ui_mcm_talker_ws_bearer_token_title"},
-                {id = "ws_bearer_token", type = "input", val = 0, def = ""},
+                {id = "auth_client_secret_title", type = "desc", clr = {200, 200, 255, 200}, text = "ui_mcm_talker_auth_client_secret_title"},
+                {id = "auth_client_secret", type = "input", val = 0, def = ""},
+                {id = "auth_username_title", type = "desc", clr = {200, 200, 255, 200}, text = "ui_mcm_talker_auth_username_title"},
+                {id = "auth_username", type = "input", val = 0, def = ""},
+                {id = "auth_password_title", type = "desc", clr = {200, 200, 255, 200}, text = "ui_mcm_talker_auth_password_title"},
+                {id = "auth_password", type = "input", val = 0, def = ""},
                 {id = "llm_timeout_title", type = "desc", clr = {200, 200, 255, 200}, text = "ui_mcm_talker_llm_timeout_title"},
                 {id = "llm_timeout", type = "input", val = 2, min = 10, max = 300, def = 60},
                 {id = "state_query_timeout_title", type = "desc", clr = {200, 200, 255, 200}, text = "ui_mcm_talker_state_query_timeout_title"},
@@ -207,8 +209,9 @@ local defaults = {
     ["debug_logging"] = 2,
     ["service_url"] = "ws://127.0.0.1:5557/ws",
     ["auth_client_id"] = "",
-    ["auth_refresh_token"] = "",
-    ["ws_bearer_token"] = "",
+    ["auth_client_secret"] = "",
+    ["auth_username"] = "",
+    ["auth_password"] = "",
     ["llm_timeout"] = 60,
     ["state_query_timeout"] = 30,
     ["enable_tts"] = false,
@@ -280,8 +283,15 @@ function get(key)
         if key:sub(1, 9) == "triggers/" then
             return ui_mcm.get("talker/" .. key)
         else
-            return ui_mcm.get("talker/general/" .. key)
+            local value = ui_mcm.get("talker/general/" .. key)
+            if key == "service_url" then
+                printf("[TALKER] MCM service_url = %s (type=%s)", tostring(value), type(value))
+            end
+            return value
         end
+    end
+    if key == "service_url" then
+        printf("[TALKER] MCM unavailable, service_url default = %s", tostring(defaults[key]))
     end
     return defaults[key]
 end
