@@ -35,7 +35,7 @@ artifacts:
     description: >
       Delta specs with RFC 2119 keywords (SHALL/MUST/SHOULD/MAY) and
       Given/When/Then scenarios describing required behavior changes.
-    template: specs/spec.md
+    template: spec.md
     requires:
       - proposal
 
