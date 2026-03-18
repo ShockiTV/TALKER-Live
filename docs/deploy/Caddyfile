@@ -46,6 +46,8 @@
         authorize with talker_player_policy
         request_header X-Branch "main"
         request_header X-Player-ID "{http.auth.user.claim.sub}"
+        # handle_path strips /ws/main; restore /ws for the backend
+        rewrite * /ws{uri}
         reverse_proxy talker-main:5557
     }
 
@@ -62,6 +64,8 @@
         authorize with talker_player_policy
         request_header X-Branch "dev"
         request_header X-Player-ID "{http.auth.user.claim.sub}"
+        # handle_path strips /ws/dev; restore /ws for the backend
+        rewrite * /ws{uri}
         reverse_proxy talker-dev:5557
     }
 

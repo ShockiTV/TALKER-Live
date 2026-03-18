@@ -69,19 +69,28 @@ local function derive_token_url(service_url)
     return token_scheme .. "://" .. authority .. "/auth/realms/talker/protocol/openid-connect/token"
 end
 
-local function get_auth_config_values()
-    local client_id = config.auth_client_id and config.auth_client_id() or ""
-    local refresh_token = config.auth_refresh_token and config.auth_refresh_token() or ""
-    return client_id, refresh_token
+local function trim(value)
+    if type(value) ~= "string" then
+        return ""
+    end
+    return value:gsub("^%s+", ""):gsub("%s+$", "")
 end
 
-local function is_refresh_token_auth_configured()
-    local client_id, refresh_token = get_auth_config_values()
-    return client_id ~= "" and refresh_token ~= ""
+local function get_auth_config_values()
+    local client_id = trim(config.auth_client_id and config.auth_client_id() or "")
+    local client_secret = trim(config.auth_client_secret and config.auth_client_secret() or "")
+    local username = trim(config.auth_username and config.auth_username() or "")
+    local password = config.auth_password and config.auth_password() or ""
+    return client_id, client_secret, username, password
+end
+
+local function is_ropc_auth_configured()
+    local client_id, _, username, password = get_auth_config_values()
+    return client_id ~= "" and username ~= "" and password ~= ""
 end
 
 local function configure_keycloak_client()
-    local client_id, refresh_token = get_auth_config_values()
+    local client_id, client_secret, username, password = get_auth_config_values()
     local service_url = config.service_url and config.service_url() or "ws://127.0.0.1:5557/ws"
     local token_url = derive_token_url(service_url)
 
@@ -90,14 +99,14 @@ local function configure_keycloak_client()
         return false
     end
 
-    keycloak_client.configure(token_url, client_id, refresh_token)
-    return token_url ~= "" and client_id ~= "" and refresh_token ~= ""
+    keycloak_client.configure(token_url, client_id, username, password, client_secret)
+    return token_url ~= "" and client_id ~= "" and username ~= "" and password ~= ""
 end
 
 local function get_service_url()
     local url = config.service_url and config.service_url() or "ws://127.0.0.1:5557/ws"
 
-    if is_refresh_token_auth_configured() then
+    if is_ropc_auth_configured() then
         local token = keycloak_client.get_cached_token()
         if not token then
             local fetched, err = keycloak_client.fetch_token()
@@ -111,8 +120,7 @@ local function get_service_url()
         end
     end
 
-    local fallback = config.ws_bearer_token and config.ws_bearer_token() or ""
-    return append_query_token(url, fallback)
+    return url
 end
 
 function build_service_url()
@@ -187,7 +195,15 @@ local function init_channels()
         publish_config_sync()
     end)
 
-    logger.info("WS bridge channel initialized (%s)", get_service_url())
+    local init_url = get_service_url()
+    logger.warn("WS service channel initialized (url=%s)", init_url)
+    if is_ropc_auth_configured() then
+        logger.warn("ROPC auth enabled (client_id=%s, username=%s)",
+            trim(config.auth_client_id and config.auth_client_id() or ""),
+            trim(config.auth_username and config.auth_username() or ""))
+    else
+        logger.info("ROPC auth disabled (no credentials configured)")
+    end
     start_tick_timer()
     return true
 end

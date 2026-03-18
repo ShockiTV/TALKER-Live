@@ -160,16 +160,20 @@ end
 
 -- WebSocket / Python Service configuration
 
-function c.ws_bearer_token()
-	return cfg("ws_bearer_token") or ""
-end
-
 function c.auth_client_id()
 	return cfg("auth_client_id") or ""
 end
 
-function c.auth_refresh_token()
-	return cfg("auth_refresh_token") or ""
+function c.auth_client_secret()
+	return cfg("auth_client_secret") or ""
+end
+
+function c.auth_username()
+	return cfg("auth_username") or ""
+end
+
+function c.auth_password()
+	return cfg("auth_password") or ""
 end
 
 function c.service_url()
@@ -224,8 +228,9 @@ function c.get_all_config()
 		-- WebSocket settings
 		service_url             = cfg("service_url"),
 		auth_client_id          = cfg("auth_client_id"),
-		auth_refresh_token      = cfg("auth_refresh_token"),
-		ws_bearer_token         = cfg("ws_bearer_token"),
+		auth_client_secret      = cfg("auth_client_secret"),
+		auth_username           = cfg("auth_username"),
+		auth_password           = cfg("auth_password"),
 		llm_timeout             = tonumber(cfg("llm_timeout")),
 		state_query_timeout     = tonumber(cfg("state_query_timeout")),
 

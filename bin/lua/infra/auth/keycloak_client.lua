@@ -9,7 +9,9 @@ local POLL_INTERVAL_MS = 50
 
 local _token_url = ""
 local _client_id = ""
-local _refresh_token = ""
+local _username = ""
+local _password = ""
+local _client_secret = ""
 
 local _cached_token = nil
 local _cached_expires_at = nil
@@ -26,7 +28,8 @@ end
 local function is_enabled()
     return is_nonempty_string(_token_url)
         and is_nonempty_string(_client_id)
-    and is_nonempty_string(_refresh_token)
+        and is_nonempty_string(_username)
+        and is_nonempty_string(_password)
 end
 
 local function clear_cache()
@@ -37,7 +40,9 @@ end
 local function clear_configuration()
     _token_url = ""
     _client_id = ""
-    _refresh_token = ""
+    _username = ""
+    _password = ""
+    _client_secret = ""
 end
 
 local function url_encode(value)
@@ -50,9 +55,14 @@ local function url_encode(value)
 end
 
 local function build_form_body()
-    return "grant_type=refresh_token"
+    local body = "grant_type=password"
         .. "&client_id=" .. url_encode(_client_id)
-        .. "&refresh_token=" .. url_encode(_refresh_token)
+        .. "&username=" .. url_encode(_username)
+        .. "&password=" .. url_encode(_password)
+    if is_nonempty_string(_client_secret) then
+        body = body .. "&client_secret=" .. url_encode(_client_secret)
+    end
+    return body
 end
 
 local function close_socket(sock)
@@ -94,16 +104,18 @@ local function ensure_transport()
     return pollnet.http_post, pollnet.sleep_ms
 end
 
-function M.configure(token_url, client_id, refresh_token)
+function M.configure(token_url, client_id, username, password, client_secret)
     _token_url = type(token_url) == "string" and token_url or ""
     _client_id = type(client_id) == "string" and client_id or ""
-    _refresh_token = type(refresh_token) == "string" and refresh_token or ""
+    _username = type(username) == "string" and username or ""
+    _password = type(password) == "string" and password or ""
+    _client_secret = type(client_secret) == "string" and client_secret or ""
     clear_cache()
 
     if is_enabled() then
-        logger.debug("Keycloak auth configured (token_url=%s, client_id=%s)", _token_url, _client_id)
+        logger.info("Keycloak ROPC auth configured (token_url=%s, client_id=%s)", _token_url, _client_id)
     else
-        logger.debug("Keycloak auth disabled (missing token_url/client_id/refresh_token)")
+        logger.info("Keycloak auth disabled (missing token_url/client_id/username/password)")
     end
 end
 
@@ -146,11 +158,6 @@ function M.fetch_token()
                 local expires_in = tonumber(payload.expires_in) or 0
                 _cached_token = payload.access_token
                 _cached_expires_at = _time() + math.max(expires_in, 0)
-
-                local rotated_refresh_token = payload.refresh_token
-                if type(rotated_refresh_token) == "string" and rotated_refresh_token ~= "" then
-                    _refresh_token = rotated_refresh_token
-                end
 
                 logger.debug("Fetched Keycloak token successfully for client_id=%s", _client_id)
                 close_socket(sock)

@@ -73,7 +73,7 @@ function testDisabledModeDoesNotCallHttp()
         return nil
     end, nil)
 
-    keycloak_client.configure("", "", "")
+    keycloak_client.configure("", "", "", "")
     local token, err = keycloak_client.fetch_token()
 
     luaunit.assertNil(token)
@@ -82,8 +82,8 @@ function testDisabledModeDoesNotCallHttp()
     luaunit.assertEquals(calls, 0)
 end
 
-function testDisabledWhenRefreshTokenMissing()
-    -- token_url and client_id set, but refresh_token empty → auth disabled, no HTTP
+function testDisabledWhenPasswordMissing()
+    -- token_url, client_id, and username set, but password empty → auth disabled, no HTTP
     setup_with_time()
 
     local calls = 0
@@ -92,12 +92,29 @@ function testDisabledWhenRefreshTokenMissing()
         return nil
     end, nil)
 
-    keycloak_client.configure("https://auth.example/token", "talker-client", "")
+    keycloak_client.configure("https://auth.example/token", "talker-client", "bob", "")
     local token, err = keycloak_client.fetch_token()
 
     luaunit.assertNil(token)
     luaunit.assertNil(err)
     luaunit.assertNil(keycloak_client.get_cached_token())
+    luaunit.assertEquals(calls, 0)
+end
+
+function testDisabledWhenUsernameMissing()
+    setup_with_time()
+
+    local calls = 0
+    keycloak_client._set_transport(function()
+        calls = calls + 1
+        return nil
+    end, nil)
+
+    keycloak_client.configure("https://auth.example/token", "talker-client", "", "secret123")
+    local token, err = keycloak_client.fetch_token()
+
+    luaunit.assertNil(token)
+    luaunit.assertNil(err)
     luaunit.assertEquals(calls, 0)
 end
 
@@ -107,7 +124,7 @@ function testFetchTokenSuccessAndCaching()
     local captured = {}
     local poll_calls = 0
     local token_value = "eyJ.token.value"
-    local refresh_token_value = "refresh token value"
+    local password_value = "my secret password"
 
     local sock = {
         close = function(self)
@@ -133,7 +150,7 @@ function testFetchTokenSuccessAndCaching()
         return sock
     end, nil)
 
-    keycloak_client.configure("https://auth.example/token", "talker-client", refresh_token_value)
+    keycloak_client.configure("https://auth.example/token", "talker-client", "bob", password_value)
 
     local token, err = keycloak_client.fetch_token()
     luaunit.assertEquals(token, token_value)
@@ -142,9 +159,10 @@ function testFetchTokenSuccessAndCaching()
     luaunit.assertEquals(captured.url, "https://auth.example/token")
     luaunit.assertEquals(captured.headers["content-type"], "application/x-www-form-urlencoded")
     luaunit.assertTrue(captured.return_body_only)
-    luaunit.assertStrContains(captured.body, "grant_type=refresh_token")
+    luaunit.assertStrContains(captured.body, "grant_type=password")
     luaunit.assertStrContains(captured.body, "client_id=talker-client")
-    luaunit.assertStrContains(captured.body, "refresh_token=refresh%20token%20value")
+    luaunit.assertStrContains(captured.body, "username=bob")
+    luaunit.assertStrContains(captured.body, "password=my%20secret%20password")
     luaunit.assertTrue(captured.closed)
 
     luaunit.assertEquals(keycloak_client.get_cached_token(), token_value)
@@ -153,10 +171,10 @@ function testFetchTokenSuccessAndCaching()
     time_ctl.advance_time(250)
     luaunit.assertNil(keycloak_client.get_cached_token())
 
-    assertNoLogLeak(refresh_token_value, token_value)
+    assertNoLogLeak(password_value, token_value)
 end
 
-function testFetchTokenRotatesRefreshTokenWhenProvided()
+function testFetchTokenRefreshesWithSameCredentials()
     setup_with_time(1000)
 
     local request_bodies = {}
@@ -172,22 +190,25 @@ function testFetchTokenRotatesRefreshTokenWhenProvided()
             poll = function()
                 response_index = response_index + 1
                 if response_index == 1 then
-                    return true, '{"access_token":"first","expires_in":300,"refresh_token":"rt-new"}'
+                    return true, '{"access_token":"first","expires_in":300}'
                 end
                 return true, '{"access_token":"second","expires_in":300}'
             end,
         }
     end, nil)
 
-    keycloak_client.configure("https://auth.example/token", "talker-client", "rt-old")
+    keycloak_client.configure("https://auth.example/token", "talker-client", "bob", "pass123")
 
     local first = keycloak_client.fetch_token()
     local second = keycloak_client.fetch_token()
 
     luaunit.assertEquals(first, "first")
     luaunit.assertEquals(second, "second")
-    luaunit.assertStrContains(request_bodies[1], "refresh_token=rt-old")
-    luaunit.assertStrContains(request_bodies[2], "refresh_token=rt-new")
+    -- Both requests use the same credentials (no rotation)
+    luaunit.assertStrContains(request_bodies[1], "username=bob")
+    luaunit.assertStrContains(request_bodies[1], "password=pass123")
+    luaunit.assertStrContains(request_bodies[2], "username=bob")
+    luaunit.assertStrContains(request_bodies[2], "password=pass123")
 end
 
 function testFetchTokenReturnsOauthErrorMessage()
@@ -207,7 +228,7 @@ function testFetchTokenReturnsOauthErrorMessage()
         return sock
     end, nil)
 
-    keycloak_client.configure("https://auth.example/token", "talker-client", "refresh-token")
+    keycloak_client.configure("https://auth.example/token", "talker-client", "bob", "wrong-pass")
 
     local token, err = keycloak_client.fetch_token()
     luaunit.assertNil(token)
@@ -244,7 +265,7 @@ function testFetchTokenTimeout()
         return sock
     end, nil)
 
-    keycloak_client.configure("https://auth.example/token", "talker-client", "refresh-token")
+    keycloak_client.configure("https://auth.example/token", "talker-client", "bob", "pass")
 
     local token, err = keycloak_client.fetch_token()
     luaunit.assertNil(token)
@@ -275,7 +296,7 @@ function testClearResetsCacheAndConfiguration()
         return sock
     end, nil)
 
-    keycloak_client.configure("https://auth.example/token", "talker-client", "refresh-token")
+    keycloak_client.configure("https://auth.example/token", "talker-client", "bob", "pass")
     local token = keycloak_client.fetch_token()
     luaunit.assertEquals(token, "abc")
     luaunit.assertEquals(keycloak_client.get_cached_token(), "abc")
@@ -287,6 +308,87 @@ function testClearResetsCacheAndConfiguration()
     luaunit.assertNil(refetched)
     luaunit.assertNil(err)
     luaunit.assertEquals(http_calls, 1)
+end
+
+function testClientSecretIncludedWhenSet()
+    local time_ctl = setup_with_time(1000)
+
+    local captured_body = nil
+    local poll_calls = 0
+
+    local sock = {
+        close = function() end,
+        status = function() return "open" end,
+        poll = function()
+            poll_calls = poll_calls + 1
+            if poll_calls == 1 then
+                return true, '{"access_token":"tok","expires_in":300}'
+            end
+            return true, nil
+        end,
+    }
+
+    keycloak_client._set_transport(function(url, headers, body)
+        captured_body = body
+        return sock
+    end, nil)
+
+    keycloak_client.configure("https://auth.example/token", "talker-client", "bob", "pass", "my-secret")
+
+    local token = keycloak_client.fetch_token()
+    luaunit.assertEquals(token, "tok")
+    luaunit.assertStrContains(captured_body, "client_secret=my-secret")
+end
+
+function testClientSecretOmittedWhenEmpty()
+    setup_with_time(1000)
+
+    local captured_body = nil
+    local poll_calls = 0
+
+    local sock = {
+        close = function() end,
+        status = function() return "open" end,
+        poll = function()
+            poll_calls = poll_calls + 1
+            if poll_calls == 1 then
+                return true, '{"access_token":"tok2","expires_in":300}'
+            end
+            return true, nil
+        end,
+    }
+
+    keycloak_client._set_transport(function(url, headers, body)
+        captured_body = body
+        return sock
+    end, nil)
+
+    keycloak_client.configure("https://auth.example/token", "talker-client", "bob", "pass", "")
+
+    keycloak_client.fetch_token()
+    luaunit.assertNotStrContains(captured_body, "client_secret")
+end
+
+function testPasswordNotLoggedInDebugOutput()
+    setup_with_time(1000)
+
+    local password_value = "super-secret-pw"
+    local token_value = "access-tok-xyz"
+    local sock = {
+        close = function() end,
+        status = function() return "open" end,
+        poll = function()
+            return true, '{"access_token":"' .. token_value .. '","expires_in":300}'
+        end,
+    }
+    keycloak_client._set_transport(function()
+        return sock
+    end, nil)
+
+    keycloak_client.configure("https://auth.example/token", "talker-client", "bob", password_value)
+    keycloak_client.fetch_token()
+
+    assertNoLogLeak(password_value, token_value)
 end
 
 os.exit(luaunit.LuaUnit.run())

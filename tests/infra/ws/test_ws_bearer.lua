@@ -12,11 +12,13 @@ local mock_keycloak_client = {
     _fetch_calls = 0,
 }
 
-function mock_keycloak_client.configure(token_url, client_id, refresh_token)
+function mock_keycloak_client.configure(token_url, client_id, username, password, client_secret)
     mock_keycloak_client._configured = {
         token_url = token_url,
         client_id = client_id,
-        refresh_token = refresh_token,
+        username = username,
+        password = password,
+        client_secret = client_secret,
     }
 end
 
@@ -53,7 +55,6 @@ end
 
 function testConnectOptionsAlwaysNil()
     setup()
-    mock_engine._set("ws_bearer_token", "token-123")
 
     local opts = build_ws_connect_options()
 
@@ -62,20 +63,19 @@ end
 
 function testConnectOptionsNilWhenTokenEmpty()
     setup()
-    mock_engine._set("ws_bearer_token", "")
 
     local opts = build_ws_connect_options()
 
     luaunit.assertNil(opts)
 end
 
-function testServiceUrlPrefersRefreshTokenAuth()
+function testServiceUrlPrefersRopcAuth()
     setup()
 
     mock_engine._set("service_url", "wss://talker.example/ws/dev")
-    mock_engine._set("ws_bearer_token", "legacy-token")
     mock_engine._set("auth_client_id", "talker-client")
-    mock_engine._set("auth_refresh_token", "refresh-token")
+    mock_engine._set("auth_username", "bob")
+    mock_engine._set("auth_password", "pass123")
 
     mock_keycloak_client._fetched_token = "fresh-token"
 
@@ -85,17 +85,18 @@ function testServiceUrlPrefersRefreshTokenAuth()
     luaunit.assertEquals(mock_keycloak_client._fetch_calls, 1)
 end
 
-function testServiceUrlFallsBackToBearerToken()
+function testServiceUrlHasNoTokenWhenAuthDisabled()
     setup()
 
     mock_engine._set("service_url", "wss://talker.example/ws/dev")
     mock_engine._set("ws_bearer_token", "legacy-token")
     mock_engine._set("auth_client_id", "")
-    mock_engine._set("auth_refresh_token", "")
+    mock_engine._set("auth_username", "")
+    mock_engine._set("auth_password", "")
 
     local url = build_service_url()
 
-    luaunit.assertEquals(url, "wss://talker.example/ws/dev?token=legacy-token")
+    luaunit.assertEquals(url, "wss://talker.example/ws/dev")
     luaunit.assertEquals(mock_keycloak_client._fetch_calls, 0)
 end
 
@@ -103,29 +104,30 @@ function testServiceUrlHasNoTokenWhenUnset()
     setup()
 
     mock_engine._set("service_url", "ws://127.0.0.1:5557/ws")
-    mock_engine._set("ws_bearer_token", "")
     mock_engine._set("auth_client_id", "")
-    mock_engine._set("auth_refresh_token", "")
+    mock_engine._set("auth_username", "")
+    mock_engine._set("auth_password", "")
 
     local url = build_service_url()
 
     luaunit.assertEquals(url, "ws://127.0.0.1:5557/ws")
 end
 
-function testServiceUrlUsesBearerWhenFetchFails()
+function testServiceUrlHasNoTokenWhenFetchFails()
     setup()
 
     mock_engine._set("service_url", "wss://talker.example/ws/dev")
     mock_engine._set("ws_bearer_token", "legacy-token")
     mock_engine._set("auth_client_id", "talker-client")
-    mock_engine._set("auth_refresh_token", "refresh-token")
+    mock_engine._set("auth_username", "bob")
+    mock_engine._set("auth_password", "pass123")
 
     mock_keycloak_client._fetched_token = nil
     mock_keycloak_client._fetch_error = "network down"
 
     local url = build_service_url()
 
-    luaunit.assertEquals(url, "wss://talker.example/ws/dev?token=legacy-token")
+    luaunit.assertEquals(url, "wss://talker.example/ws/dev")
     luaunit.assertEquals(mock_keycloak_client._fetch_calls, 1)
 end
 

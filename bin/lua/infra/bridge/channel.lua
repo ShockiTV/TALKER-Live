@@ -209,6 +209,9 @@ function M.tick()
         if _handle then
             _state = STATE.CONNECTING
         else
+            if _backoff_attempt == 0 then
+                log.warn("bridge_channel: initial connection failed (url provider returned nil)")
+            end
             _state = STATE.RECONNECTING
             _backoff_deadline = os.clock() + calculate_backoff(_backoff_attempt)
             _backoff_attempt = _backoff_attempt + 1
@@ -219,6 +222,7 @@ function M.tick()
         local status = ws_client.status(_handle)
         if status == "connected" then
             _state = STATE.CONNECTED
+            log.info("bridge_channel: connected")
             flush_queue()
             if _was_connected and _on_reconnect then
                 pcall(_on_reconnect)
@@ -226,6 +230,9 @@ function M.tick()
             _was_connected = true
             _backoff_attempt = 0
         elseif status == "closed" or status == "error" then
+            if _backoff_attempt == 0 then
+                log.warn("bridge_channel: connection %s (will retry with backoff)", status)
+            end
             _state = STATE.RECONNECTING
             _backoff_deadline = os.clock() + calculate_backoff(_backoff_attempt)
             _backoff_attempt = _backoff_attempt + 1
@@ -235,6 +242,7 @@ function M.tick()
         drain_messages()
         local status = ws_client.status(_handle)
         if status == "closed" or status == "error" then
+            log.warn("bridge_channel: disconnected (%s), reconnecting...", status)
             _state = STATE.RECONNECTING
             _backoff_deadline = os.clock() + calculate_backoff(_backoff_attempt)
             _backoff_attempt = _backoff_attempt + 1

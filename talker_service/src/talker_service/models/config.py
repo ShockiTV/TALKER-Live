@@ -38,9 +38,6 @@ class MCMConfig(BaseModel):
     llm_timeout: int = 60  # LLM request timeout in seconds
     state_query_timeout: int = 30  # State query timeout in seconds
 
-    # WS auth settings
-    ws_bearer_token: str = ""
-    
     # Speaker picker
     speaker_pick_max_events: int = 20  # Max recent events per candidate in picker prompt
 
