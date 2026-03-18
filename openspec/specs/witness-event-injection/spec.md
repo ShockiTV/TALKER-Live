@@ -1,54 +1,77 @@
-# witness-event-injection (Delta)
+# witness-event-injection
 
-> **Change**: `cache-friendly-prompt-layout`
-> **Operation**: MODIFIED
+## Purpose
 
----
+Defines how witness events are injected into picker and dialogue prompts: per-step filtered, ephemeral per-turn, and fetched for all candidates before the picker runs.
 
-### UNCHANGED: Event storage in event_store
+## Requirements
 
-Event storage, witness tracking, and the event store interface are NOT modified by this change. Events continue to be stored with witness lists as before.
+### Requirement: Event injection is per-step filtered, not global
 
----
+Event injection SHALL be filtered per step. The picker step sees the union of all candidates' events; the dialogue step sees only the chosen speaker's events.
 
-### MODIFIED: Event injection is per-step filtered, not global
+#### Scenario: Picker step — all candidates' events (union)
 
-**Was**: All events from the event store were injected into the prompt for both picker and dialogue steps.
-
-**Now**: Event injection SHALL be filtered per step:
-
-#### Scenario: Picker step — no witness events
-
-WHEN the picker step builds its prompt
-THEN it SHALL include only the triggering event description
-AND it SHALL NOT include any witness events from the event store
+- **WHEN** the picker step builds its prompt
+- **THEN** it SHALL include the unified deduplicated event list from ALL candidates
+- **AND** each event line SHALL include witness annotations showing which candidates saw it
+- **AND** the triggering event SHALL appear in the list (identified by its `ts`)
 
 #### Scenario: Dialogue step — speaker-filtered events
 
-WHEN the dialogue step builds its prompt for speaker S
-THEN it SHALL query the event store for events where S is a witness
-AND only those events SHALL be included in the dialogue instruction
-AND events where S is NOT a witness SHALL be excluded
+- **WHEN** the dialogue step builds its prompt for speaker S
+- **THEN** it SHALL include only the events where S is a witness
+- **AND** events where S is NOT a witness SHALL be excluded
+- **AND** witness annotations SHALL still list all witnesses (not just S)
 
 ---
 
-### MODIFIED: Events are ephemeral per-turn content
+### Requirement: Events are ephemeral per-turn content
 
-**Was**: Events were injected as persistent system messages tracked by `DeduplicationTracker._event_ids`.
-
-**Now**: Events SHALL be included inline in the per-turn user message (Layer 4). They are NOT added to the `ContextBlock` and are NOT deduplicated across turns — each turn's instruction contains the relevant events for that turn's step.
+Events SHALL be included inline in the per-turn user message (Layer 4). They are NOT added to the `ContextBlock` and are NOT deduplicated across turns.
 
 #### Scenario: Events not in context block
 
-WHEN events are rendered for a dialogue turn
-THEN they SHALL appear in the user message at index 3+ (Layer 4)
-AND they SHALL NOT appear in `_messages[1]` (the context block)
+- **WHEN** events are rendered for a dialogue turn
+- **THEN** they SHALL appear in the user message at index 3+ (Layer 4)
+- **AND** they SHALL NOT appear in `_messages[1]` (the context block)
+
+#### Scenario: Dialogue user message is ephemeral
+
+- **WHEN** the dialogue step completes an LLM call
+- **THEN** the user message (containing the event list) SHALL be removed from `_messages`
+- **AND** only the assistant response SHALL persist in `_messages`
 
 ---
 
-### ADDED: Speaker witness filter function
+### Requirement: Speaker witness filter function
 
-A helper function SHALL be provided to filter events by speaker witness status:
+A helper function SHALL filter events by speaker witness status.
 
-WHEN `filter_events_for_speaker(events, speaker_id)` is called
-THEN it SHALL return only events where `speaker_id` is in the event's witness list
+#### Scenario: Filter events for a specific speaker
+
+- **WHEN** `filter_events_for_speaker(events, speaker_id)` is called with the deduplicated event collection
+- **THEN** it SHALL return only events where `speaker_id` is in the event's witness list
+
+---
+
+### Requirement: Events fetched for all candidates before picker
+
+Witness events SHALL be fetched for ALL speaker candidates in a single batch query BEFORE the picker step runs.
+
+#### Scenario: Events batch precedes picker
+
+- **WHEN** `handle_event()` prepares to run the speaker picker
+- **THEN** it SHALL first issue a batch state query for `query.memory.events` for each candidate
+- **AND** the result SHALL be available to both the picker and dialogue steps
+- **AND** no second event fetch SHALL occur after the picker selects a speaker
+
+### Requirement: Event wire format includes ts
+
+Events received from the Lua `game.event` topic SHALL include the `ts` field (unique timestamp) in their payload.
+
+#### Scenario: Triggering event has ts in payload
+
+- **WHEN** Python receives a `game.event` message
+- **THEN** the event object in the payload SHALL include a `ts` field with the event's unique timestamp
+- **AND** this `ts` SHALL match the `ts` stored in witness memories for the same event
