@@ -11,7 +11,7 @@
         oauth identity provider keycloak {
             realm talker
             driver generic
-            metadata_url https://{$DOMAIN}/auth/realms/talker/.well-known/openid-configuration
+            metadata_url http://keycloak:8080/auth/realms/talker/.well-known/openid-configuration
             client_id {$KEYCLOAK_CLIENT_ID}
             client_secret {$KEYCLOAK_CLIENT_SECRET}
             scopes openid profile email
@@ -20,12 +20,14 @@
         authorization policy talker_player_policy {
             set auth url /auth/realms/talker/account/
             validate bearer header
+            crypto key verify from file /etc/caddy/keycloak.pub.pem
             allow roles player admin
         }
 
         authorization policy talker_admin_policy {
             set auth url /auth/realms/talker/account/
             validate bearer header
+            crypto key verify from file /etc/caddy/keycloak.pub.pem
             allow roles admin
         }
     }
@@ -33,43 +35,54 @@
 
 {$DOMAIN} {
     # ─── Keycloak (no JWT gate) ─────────────────
-    handle_path /auth/* {
-        reverse_proxy keycloak:8080
+    handle /auth/* {
+        reverse_proxy keycloak:8080 {
+            # Force Host to internal address so Keycloak embeds the correct
+            # issuer in tokens (http://keycloak:8080/...) which matches what
+            # caddy-security reads from the internal metadata endpoint.
+            header_up Host keycloak:8080
+        }
     }
 
     # ─── Branch: main WS (JWT required) ─────────
-    handle_path /ws/main {
-        # pollnet WS client can't set headers; pull JWT from ?token= query param
-        @has_token query token=*
-        request_header @has_token Authorization "Bearer {http.request.uri.query.token}"
+    handle /ws/main {
+        # Inner route preserves directive order so request_header runs before authorize
+        route {
+            # pollnet WS client can't set headers; pull JWT from ?token= query param
+            @has_token query token=*
+            request_header @has_token Authorization "Bearer {http.request.uri.query.token}"
 
-        authorize with talker_player_policy
-        request_header X-Branch "main"
-        request_header X-Player-ID "{http.auth.user.claim.sub}"
-        # handle_path strips /ws/main; restore /ws for the backend
-        rewrite * /ws{uri}
-        reverse_proxy talker-main:5557
+            authorize with talker_player_policy
+            request_header X-Branch "main"
+            request_header X-Player-ID "{http.auth.user.claim.sub}"
+            rewrite * /ws
+            reverse_proxy talker-main:5557
+        }
     }
 
     handle /health/main {
+        rewrite * /health
         reverse_proxy talker-main:5557
     }
 
     # ─── Branch: dev WS (JWT required) ──────────
-    handle_path /ws/dev {
-        # pollnet WS client can't set headers; pull JWT from ?token= query param
-        @has_token query token=*
-        request_header @has_token Authorization "Bearer {http.request.uri.query.token}"
+    handle /ws/dev {
+        # Inner route preserves directive order so request_header runs before authorize
+        route {
+            # pollnet WS client can't set headers; pull JWT from ?token= query param
+            @has_token query token=*
+            request_header @has_token Authorization "Bearer {http.request.uri.query.token}"
 
-        authorize with talker_player_policy
-        request_header X-Branch "dev"
-        request_header X-Player-ID "{http.auth.user.claim.sub}"
-        # handle_path strips /ws/dev; restore /ws for the backend
-        rewrite * /ws{uri}
-        reverse_proxy talker-dev:5557
+            authorize with talker_player_policy
+            request_header X-Branch "dev"
+            request_header X-Player-ID "{http.auth.user.claim.sub}"
+            rewrite * /ws
+            reverse_proxy talker-dev:5557
+        }
     }
 
     handle /health/dev {
+        rewrite * /health
         reverse_proxy talker-dev:5557
     }
 
@@ -80,7 +93,7 @@
     }
 
     # ─── Grafana dashboard ──────────────────────
-    handle_path /grafana/* {
+    handle /grafana/* {
         reverse_proxy grafana:3000
     }
 
