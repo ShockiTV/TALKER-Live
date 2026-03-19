@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from typing import Any, TYPE_CHECKING
 
 from fastapi import WebSocket
+import httpx
 
 from .outbox import Outbox
 
@@ -56,6 +57,18 @@ class SessionContext:
 
     game_session_id: str | None = None
     """Lua save session_id from config.sync; used for two-step graph sync."""
+
+    shared_http_client: httpx.AsyncClient | None = field(default=None, repr=False)
+    """Session-scoped shared HTTP client for outbound TTS/STT/embed API calls."""
+
+    tts_service_url: str = ""
+    """Effective session TTS endpoint after env/MCM derivation."""
+
+    stt_endpoint: str = ""
+    """Effective session STT endpoint after env/MCM derivation."""
+
+    ollama_base_url: str = ""
+    """Effective session embedding endpoint after env/MCM derivation."""
 
     def touch(self) -> None:
         """Update last_activity to now."""

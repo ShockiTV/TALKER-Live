@@ -1,190 +1,244 @@
-
-
-
 local language = require("infra.language")
 
 function on_mcm_load()
     local op = {
         id = "talker",
         gr = {
-            -- ==================== General Options ====================
-            {id = "general", sh = true, text = "ui_mcm_talker_general_title", gr = {
-                -- Title Card
-                {id = "title", type = "slide", link = "ui_options_slider_player", text = "ui_mcm_talker_title", size = {512, 50}, spacing = 20},
-                -- Model Choice
-                {id = "gpt_version", type = "radio_h", val = "gpt-4o", def = "gpt-4o",
-                    content = {{"gpt-4o-mini", "gpt-4o-mini"}, {"gpt-4o", "gpt-4o"}, {"gpt-4-turbo", "gpt-4-turbo"}}},
-                {id = "ai_model_method", type = "radio_h", val = "0", def = "3",
-                    content = {{"0", "open-ai"}, {"1", "open-router-ai"}, {"2", "local-deepseek"}, {"3", "proxy"}}},
-                {id = "custom_ai_model", type = "input", val = "gemini/gemini-2.5-flash", def = "gemini/gemini-2.5-flash"},
-                {id = "custom_ai_model_fast", type = "input", val = "gemini/gemini-2.5-flash-lite", def = "gemini/gemini-2.5-flash-lite"},
-                {id = "reasoning_level", type = "radio_h", val = "-1", def = "-1",
-                    content = {{"-1", "Auto"}, {"0", "None"}, {"1", "Low"}, {"2", "Medium"}, {"3", "High"}}},
-                {id = "voice_provider", type = "radio_h", val = "0", def = "2",
-                    content = {{"0", "local-whisper"}, {"1", "openai-whisper"}, {"2", "gemini-proxy"}}},
-                -- TTS (Text-to-Speech)
-                {id = "enable_tts_title", type = "desc", clr = {200, 200, 255, 200}, text = "ui_mcm_talker_enable_tts_title"},
-                {id = "enable_tts_description", type = "desc", text = "ui_mcm_talker_enable_tts_description"},
-                {id = "enable_tts", type = "check", val = 1, def = false},
-                {id = "tts_volume_boost", type = "track", val = 2, min = 1.0, max = 15.0, step = 0.5, def = 8.0},
-                -- Language Selection
-                {id = "language", type = "radio_h", val = language.any.long, def = language.any.long,
-                    content = {
-                        {language.any.long, language.any.long},
-                        {language.en.long, language.en.long},
-                        {language.uk.long, language.uk.long},
-                        {language.ru.long, language.ru.long},
+            -- ==================== General Tab ====================
+            {
+                id = "general_subtab",
+                sh = true,
+                text = "ui_mcm_talker_tab_general",
+                gr = {
+                    {id = "title", type = "slide", link = "ui_options_slider_player", text = "ui_mcm_talker_title", size = {512, 50}, spacing = 20},
+                    {id = "language", type = "radio_h", val = language.any.long, def = language.any.long,
+                        content = {
+                            {language.any.long, language.any.long},
+                            {language.en.long, language.en.long},
+                            {language.uk.long, language.uk.long},
+                            {language.ru.long, language.ru.long},
+                        }
+                    },
+                    {id = "action_descriptions", type = "check", val = 1, def = false},
+                    {id = "female_gender", type = "check", val = 1, def = false},
+                    {id = "witness_distance", type = "track", val = 2, min = 5, max = 100, step = 1, def = 25},
+                    {id = "npc_speak_distance", type = "track", val = 2, min = 5, max = 100, step = 1, def = 30},
+                },
+            },
+
+            -- ==================== AI Model Tab ====================
+            {
+                id = "ai_model_subtab",
+                sh = true,
+                text = "ui_mcm_talker_tab_ai_model",
+                gr = {
+                    {id = "gpt_version", type = "radio_h", val = "gpt-4o", def = "gpt-4o",
+                        content = {{"gpt-4o-mini", "gpt-4o-mini"}, {"gpt-4o", "gpt-4o"}, {"gpt-4-turbo", "gpt-4-turbo"}}},
+                    {id = "ai_model_method", type = "radio_h", val = "0", def = "3",
+                        content = {{"0", "open-ai"}, {"1", "open-router-ai"}, {"2", "local-deepseek"}, {"3", "proxy"}}},
+                    {id = "custom_ai_model", type = "input", val = "gemini/gemini-2.5-flash", def = "gemini/gemini-2.5-flash"},
+                    {id = "custom_ai_model_fast", type = "input", val = "gemini/gemini-2.5-flash-lite", def = "gemini/gemini-2.5-flash-lite"},
+                    {id = "reasoning_level", type = "radio_h", val = "-1", def = "-1",
+                        content = {{"-1", "Auto"}, {"0", "None"}, {"1", "Low"}, {"2", "Medium"}, {"3", "High"}}},
+                    {id = "ai_base_url", type = "input", val = "", def = ""},
+                    {id = "openrouter_api_key", type = "input", val = "", def = ""},
+                    {id = "openai_api_key", type = "input", val = "", def = ""},
+                    {id = "ollama_base_url", type = "input", val = "", def = ""},
+                },
+            },
+
+            -- ==================== Voice Tab ====================
+            {
+                id = "voice_subtab",
+                sh = true,
+                text = "ui_mcm_talker_tab_voice",
+                gr = {
+                    {id = "input_option_title", type = "desc", clr = {200, 200, 255, 200}, text = "ui_mcm_talker_input_option_title"},
+                    {id = "input_option", type = "radio_h", val = "0", def = "0",
+                        content = {{"0", "voice"}, {"1", "text"}}},
+                    {id = "speak_key_title", type = "desc", clr = {200, 200, 255, 200}, text = "ui_mcm_talker_speak_key_title"},
+                    {id = "speak_key", type = "key_bind", val = 2, def = DIK_keys.DIK_LMENU},
+                    {id = "voice_provider", type = "radio_h", val = "0", def = "2",
+                        content = {{"0", "local-whisper"}, {"1", "openai-whisper"}, {"2", "gemini-proxy"}}},
+                    {id = "enable_tts_title", type = "desc", clr = {200, 200, 255, 200}, text = "ui_mcm_talker_enable_tts_title"},
+                    {id = "enable_tts", type = "check", val = 1, def = false},
+                    {id = "tts_voice_method", type = "radio_h", val = "0", def = "0",
+                        content = {{"0", "voice"}, {"1", "text"}}},
+                    {id = "tts_volume_boost", type = "track", val = 2, min = 1.0, max = 15.0, step = 0.5, def = 8.0},
+                    {id = "whisper_modifier_title", type = "desc", clr = {200, 200, 255, 200}, text = "ui_mcm_talker_whisper_modifier_title"},
+                    {id = "whisper_modifier", type = "radio_h", val = "0", def = "0",
+                        content = {{"0", "Shift"}, {"1", "Alt"}, {"2", "Ctrl"}}},
+                },
+            },
+
+            -- ==================== Connection Tab ====================
+            {
+                id = "connection_subtab",
+                sh = true,
+                text = "ui_mcm_talker_tab_connection",
+                gr = {
+                    {id = "service_type_title", type = "desc", clr = {200, 200, 255, 200}, text = "ui_mcm_talker_service_type_title"},
+                    {id = "service_type", type = "radio_h", val = "0", def = "0",
+                        content = {{"0", "local"}, {"1", "remote"}}},
+
+                    {id = "remote_section", type = "desc", clr = {200, 200, 255, 200}, text = "ui_mcm_talker_remote_section"},
+                    {id = "service_hub_url_title", type = "desc", clr = {200, 200, 255, 200}, text = "ui_mcm_talker_service_hub_url_title"},
+                    {id = "service_hub_url", type = "input", val = "", def = ""},
+                    {id = "branch_title", type = "desc", clr = {200, 200, 255, 200}, text = "ui_mcm_talker_branch_title"},
+                    {id = "branch", type = "radio_h", val = "0", def = "0",
+                        content = {{"0", "main"}, {"1", "dev"}, {"2", "custom"}}},
+                    {id = "custom_branch_title", type = "desc", clr = {200, 200, 255, 200}, text = "ui_mcm_talker_custom_branch_title"},
+                    {id = "custom_branch", type = "input", val = "", def = ""},
+
+                    {id = "local_section", type = "desc", clr = {200, 200, 255, 200}, text = "ui_mcm_talker_local_section"},
+                    {id = "service_url_title", type = "desc", clr = {200, 200, 255, 200}, text = "ui_mcm_talker_service_url_title"},
+                    {id = "service_url", type = "input", val = "", def = ""},
+                    {id = "service_ws_port_title", type = "desc", clr = {200, 200, 255, 200}, text = "ui_mcm_talker_service_ws_port_title"},
+                    {id = "service_ws_port", type = "input", val = 2, min = 1, max = 65535, def = 5557},
+
+                    {id = "auth_section", type = "desc", clr = {200, 200, 255, 200}, text = "ui_mcm_talker_auth_section"},
+                    {id = "ws_token_title", type = "desc", clr = {200, 200, 255, 200}, text = "ui_mcm_talker_ws_token_title"},
+                    {id = "ws_token", type = "input", val = "", def = ""},
+                    {id = "auth_client_id_title", type = "desc", clr = {200, 200, 255, 200}, text = "ui_mcm_talker_auth_client_id_title"},
+                    {id = "auth_client_id", type = "input", val = "talker-client", def = "talker-client"},
+                    {id = "auth_client_secret_title", type = "desc", clr = {200, 200, 255, 200}, text = "ui_mcm_talker_auth_client_secret_title"},
+                    {id = "auth_client_secret", type = "input", val = "", def = ""},
+                    {id = "auth_username_title", type = "desc", clr = {200, 200, 255, 200}, text = "ui_mcm_talker_auth_username_title"},
+                    {id = "auth_username", type = "input", val = "", def = ""},
+                    {id = "auth_password_title", type = "desc", clr = {200, 200, 255, 200}, text = "ui_mcm_talker_auth_password_title"},
+                    {id = "auth_password", type = "input", val = "", def = ""},
+
+                    {id = "advanced_section", type = "desc", clr = {200, 200, 255, 200}, text = "ui_mcm_talker_advanced_section"},
+                    {id = "llm_timeout_title", type = "desc", clr = {200, 200, 255, 200}, text = "ui_mcm_talker_llm_timeout_title"},
+                    {id = "llm_timeout", type = "input", val = 2, min = 10, max = 300, def = 60},
+                    {id = "state_query_timeout_title", type = "desc", clr = {200, 200, 255, 200}, text = "ui_mcm_talker_state_query_timeout_title"},
+                    {id = "state_query_timeout", type = "input", val = 2, min = 5, max = 120, def = 10},
+                },
+            },
+
+            -- ==================== Triggers Tab ====================
+            {
+                id = "triggers_subtab",
+                sh = true,
+                text = "ui_mcm_talker_tab_triggers",
+                gr = {
+                    {id = "trigger_general_title", type = "slide", link = "ui_options_slider_player", text = "ui_mcm_talker_trigger_general_title", size = {512, 50}, spacing = 20},
+                    {id = "time_gap", type = "input", val = 2, min = 1, max = 168, step = 1, def = 4},
+                    {id = "recent_speech_threshold", type = "input", val = 2, min = 0, max = 36000, def = 120},
+                    {id = "anti_spam_cd", type = "input", val = 2, min = 0, max = 3600, def = 10},
+                    {id = "speaker_pick_max_events", type = "input", val = 2, min = 1, max = 200, def = 20},
+
+                    {id = "triggers", sh = true, text = "ui_mcm_talker_triggers_title", gr = {
+                        {id = "death", sh = true, text = "ui_mcm_talker_trigger_death_title", gr = {
+                            {id = "enable_player", type = "check", val = 1, def = true},
+                            {id = "cooldown_player", type = "input", val = 2, min = 0, max = 3600, def = 90},
+                            {id = "chance_player", type = "input", val = 2, min = 0, max = 100, def = 25},
+                            {id = "enable_npc", type = "check", val = 1, def = true},
+                            {id = "cooldown_npc", type = "input", val = 2, min = 0, max = 3600, def = 90},
+                            {id = "chance_npc", type = "input", val = 2, min = 0, max = 100, def = 25},
+                        }},
+                        {id = "injury", sh = true, text = "ui_mcm_talker_trigger_injury_title", gr = {
+                            {id = "enable", type = "check", val = 1, def = true},
+                            {id = "cooldown", type = "input", val = 2, min = 0, max = 3600, def = 20},
+                            {id = "chance", type = "input", val = 2, min = 0, max = 100, def = 25},
+                            {id = "threshold", type = "track", val = 2, min = 0.0, max = 1.0, step = 0.05, def = 0.4},
+                        }},
+                        {id = "artifact", sh = true, text = "ui_mcm_talker_trigger_artifacts_title", gr = {
+                            {id = "enable_pickup", type = "check", val = 1, def = true},
+                            {id = "cooldown_pickup", type = "input", val = 2, min = 0, max = 3600, def = 40},
+                            {id = "chance_pickup", type = "input", val = 2, min = 0, max = 100, def = 100},
+                            {id = "enable_use", type = "check", val = 1, def = true},
+                            {id = "cooldown_use", type = "input", val = 2, min = 0, max = 3600, def = 40},
+                            {id = "chance_use", type = "input", val = 2, min = 0, max = 100, def = 100},
+                            {id = "enable_equip", type = "check", val = 1, def = true},
+                            {id = "cooldown_equip", type = "input", val = 2, min = 0, max = 3600, def = 40},
+                            {id = "chance_equip", type = "input", val = 2, min = 0, max = 100, def = 100},
+                        }},
+                        {id = "anomaly", sh = true, text = "ui_mcm_talker_trigger_anomalies_title", gr = {
+                            {id = "enable_proximity", type = "check", val = 1, def = true},
+                            {id = "cooldown_proximity", type = "input", val = 2, min = 0, max = 3600, def = 40},
+                            {id = "chance_proximity", type = "input", val = 2, min = 0, max = 100, def = 25},
+                            {id = "max_rank_for_warning", type = "track", val = 2, min = 0, max = 7, step = 1, def = 1},
+                            {id = "enable_damage", type = "check", val = 1, def = true},
+                            {id = "cooldown_damage", type = "input", val = 2, min = 0, max = 3600, def = 40},
+                            {id = "chance_damage", type = "input", val = 2, min = 0, max = 100, def = 25},
+                        }},
+                        {id = "callout", sh = true, text = "ui_mcm_talker_trigger_callout_title", gr = {
+                            {id = "enable", type = "check", val = 1, def = true},
+                            {id = "cooldown", type = "input", val = 2, min = 0, max = 3600, def = 30},
+                            {id = "chance", type = "input", val = 2, min = 0, max = 100, def = 100},
+                            {id = "max_distance", type = "track", val = 2, min = 5, max = 100, step = 1, def = 30},
+                            {id = "repeated_cooldown", type = "input", val = 2, min = 0, max = 3600, def = 240},
+                        }},
+                        {id = "taunt", sh = true, text = "ui_mcm_talker_trigger_taunt_title", gr = {
+                            {id = "enable", type = "check", val = 1, def = true},
+                            {id = "cooldown", type = "input", val = 2, min = 0, max = 3600, def = 120},
+                            {id = "chance", type = "input", val = 2, min = 0, max = 100, def = 25},
+                        }},
+                        {id = "emission", sh = true, text = "ui_mcm_talker_trigger_emission_title", gr = {
+                            {id = "enable", type = "check", val = 1, def = true},
+                            {id = "chance", type = "input", val = 2, min = 0, max = 100, def = 100},
+                        }},
+                        {id = "idle", sh = true, text = "ui_mcm_talker_trigger_idle_title", gr = {
+                            {id = "enable", type = "check", val = 1, def = true},
+                            {id = "cooldown", type = "input", val = 2, min = 0, max = 36000, def = 600},
+                            {id = "chance", type = "input", val = 2, min = 0, max = 100, def = 100},
+                            {id = "question_chance", type = "input", val = 2, min = 0, max = 100, def = 50},
+                            {id = "enable_during_emission", type = "check", val = 1, def = true},
+                            {id = "cooldown_during_emission", type = "input", val = 2, min = 0, max = 36000, def = 30},
+                            {id = "chance_during_emission", type = "input", val = 2, min = 0, max = 100, def = 100},
+                            {id = "enable_during_psy_storm", type = "check", val = 1, def = true},
+                            {id = "cooldown_during_psy_storm", type = "input", val = 2, min = 0, max = 36000, def = 30},
+                            {id = "chance_during_psy_storm", type = "input", val = 2, min = 0, max = 100, def = 100},
+                        }},
+                        {id = "map_transition", sh = true, text = "ui_mcm_talker_trigger_map_transition_title", gr = {
+                            {id = "enable", type = "check", val = 1, def = true},
+                            {id = "chance", type = "input", val = 2, min = 0, max = 100, def = 100},
+                        }},
+                        {id = "sleep", sh = true, text = "ui_mcm_talker_trigger_sleep_title", gr = {
+                            {id = "enable", type = "check", val = 1, def = true},
+                            {id = "chance", type = "input", val = 2, min = 0, max = 100, def = 100},
+                        }},
+                        {id = "reload", sh = true, text = "ui_mcm_talker_trigger_reload_title", gr = {
+                            {id = "enable", type = "check", val = 1, def = true},
+                            {id = "chance", type = "input", val = 2, min = 0, max = 100, def = 10},
+                        }},
+                        {id = "task", sh = true, text = "ui_mcm_talker_trigger_task_title", gr = {
+                            {id = "enable", type = "check", val = 1, def = true},
+                            {id = "cooldown", type = "input", val = 2, min = 0, max = 3600, def = 40},
+                            {id = "chance", type = "input", val = 2, min = 0, max = 100, def = 10},
+                        }},
+                        {id = "weapon_jam", sh = true, text = "ui_mcm_talker_trigger_weapon_jam_title", gr = {
+                            {id = "enable", type = "check", val = 1, def = true},
+                            {id = "chance", type = "input", val = 2, min = 0, max = 100, def = 25},
+                        }},
                     }},
-                -- Speak Key UI
-                {id = "speak_key_title", type = "desc", clr = {200, 200, 255, 200}, text = "ui_mcm_talker_speak_key_title"},
-                {id = "speak_key_description", type = "desc", text = "ui_mcm_talker_speak_key_description"},
-                {id = "speak_key", type = "key_bind", val = 2, def = DIK_keys.DIK_LMENU},
-                -- Input option between voice and text
-                {id = "input_option_title", type = "desc", clr = {200, 200, 255, 200}, text = "ui_mcm_talker_input_option_title"},
-                {id = "input_option_description", type = "desc", text = "ui_mcm_talker_input_option_description"},
-                {id = "input_option", type = "radio_h", val = "0", def = "0",
-                    content = {{"0", "voice"}, {"1", "text"}}},
-                -- Whisper modifier key
-                {id = "whisper_modifier_title", type = "desc", clr = {200, 200, 255, 200}, text = "ui_mcm_talker_whisper_modifier_title"},
-                {id = "whisper_modifier_description", type = "desc", text = "ui_mcm_talker_whisper_modifier_description"},
-                {id = "whisper_modifier", type = "radio_h", val = "0", def = "0",
-                    content = {{"0", "Shift"}, {"1", "Alt"}, {"2", "Ctrl"}}},
-                -- Reset personalities
-                {id = "reset_personality_title", type = "desc", clr = {200, 200, 255, 200}, text = "ui_mcm_talker_reset_personality_title"},
-                {id = "reset_personality", type = "check", val = 1, def = false},
-                -- Reset backstories
-                {id = "reset_backstory_title", type = "desc", clr = {200, 200, 255, 200}, text = "ui_mcm_talker_reset_backstory_title"},
-                {id = "reset_backstory", type = "check", val = 1, def = false},
-                -- General configuration
-                {id = "general_configuration_title", type = "slide", link = "ui_options_slider_player",
-                    text = "ui_mcm_talker_general_configuration_title", size = {512, 50}, spacing = 20},
-                {id = "action_descriptions", type = "check", val = 1, def = false},
-                {id = "female_gender", type = "check", val = 1, def = false},
-                {id = "anti_spam_cd", type = "input", val = 2, min = 0, max = 3600, def = 10},
-                {id = "time_gap", type = "input", val = 2, min = 1, max = 168, step = 1, def = 4},
-                {id = "witness_distance", type = "track", val = 2, min = 5, max = 100, step = 1, def = 25},
-                {id = "npc_speak_distance", type = "track", val = 2, min = 5, max = 100, step = 1, def = 30},
-                {id = "recent_speech_threshold", type = "input", val = 2, min = 0, max = 36000, def = 120},
-                {id = "speaker_pick_max_events", type = "input", val = 2, min = 1, max = 200, def = 20},
-                -- Debug
-                {id = "debug_title", type = "slide", link = "ui_options_slider_player",
-                    text = "ui_mcm_talker_debug_title", size = {512, 50}, spacing = 20},
-                {id = "debug_logging", type = "radio_h", val = "0", def = "2",
-                    content = {{"0", "logging_Off"}, {"1", "logging_ConsoleOnly"}, {"2", "logging_FileOnly"}, {"3", "logging_Both"}}},
-                {id = "max_log_entries_per_level", type = "input", val = 2, min = 0, max = 1000, def = 0},
-                -- Python Service Configuration
-                {id = "service_title", type = "slide", link = "ui_options_slider_player",
-                    text = "ui_mcm_talker_service_title", size = {512, 50}, spacing = 20},
-                {id = "service_url_title", type = "desc", clr = {200, 200, 255, 200}, text = "ui_mcm_talker_service_url_title"},
-                {id = "service_url", type = "input", val = 0, def = "ws://127.0.0.1:5557/ws"},
-                {id = "auth_client_id_title", type = "desc", clr = {200, 200, 255, 200}, text = "ui_mcm_talker_auth_client_id_title"},
-                {id = "auth_client_id", type = "input", val = 0, def = ""},
-                {id = "auth_client_secret_title", type = "desc", clr = {200, 200, 255, 200}, text = "ui_mcm_talker_auth_client_secret_title"},
-                {id = "auth_client_secret", type = "input", val = 0, def = ""},
-                {id = "auth_username_title", type = "desc", clr = {200, 200, 255, 200}, text = "ui_mcm_talker_auth_username_title"},
-                {id = "auth_username", type = "input", val = 0, def = ""},
-                {id = "auth_password_title", type = "desc", clr = {200, 200, 255, 200}, text = "ui_mcm_talker_auth_password_title"},
-                {id = "auth_password", type = "input", val = 0, def = ""},
-                {id = "llm_timeout_title", type = "desc", clr = {200, 200, 255, 200}, text = "ui_mcm_talker_llm_timeout_title"},
-                {id = "llm_timeout", type = "input", val = 2, min = 10, max = 300, def = 60},
-                {id = "state_query_timeout_title", type = "desc", clr = {200, 200, 255, 200}, text = "ui_mcm_talker_state_query_timeout_title"},
-                {id = "state_query_timeout", type = "input", val = 2, min = 5, max = 120, def = 30},
-            }},
-            -- ==================== Triggers ====================
-            {id = "triggers", text = "ui_mcm_talker_triggers_title", gr = {
-                {id = "death", sh = true, text = "ui_mcm_talker_trigger_death_title", gr = {
-                    {id = "enable_player", type = "check", val = 1, def = true},
-                    {id = "cooldown_player", type = "input", val = 2, min = 0, max = 3600, def = 90},
-                    {id = "chance_player", type = "input", val = 2, min = 0, max = 100, def = 25},
-                    {id = "enable_npc", type = "check", val = 1, def = true},
-                    {id = "cooldown_npc", type = "input", val = 2, min = 0, max = 3600, def = 90},
-                    {id = "chance_npc", type = "input", val = 2, min = 0, max = 100, def = 25},
-                }},
-                {id = "injury", sh = true, text = "ui_mcm_talker_trigger_injury_title", gr = {
-                    {id = "enable", type = "check", val = 1, def = true},
-                    {id = "cooldown", type = "input", val = 2, min = 0, max = 3600, def = 20},
-                    {id = "chance", type = "input", val = 2, min = 0, max = 100, def = 25},
-                    {id = "threshold", type = "track", val = 2, min = 0.0, max = 1.0, step = 0.05, def = 0.4},
-                }},
-                {id = "artifact", sh = true, text = "ui_mcm_talker_trigger_artifacts_title", gr = {
-                    {id = "enable_pickup", type = "check", val = 1, def = true},
-                    {id = "cooldown_pickup", type = "input", val = 2, min = 0, max = 3600, def = 40},
-                    {id = "chance_pickup", type = "input", val = 2, min = 0, max = 100, def = 100},
-                    {id = "enable_use", type = "check", val = 1, def = true},
-                    {id = "cooldown_use", type = "input", val = 2, min = 0, max = 3600, def = 40},
-                    {id = "chance_use", type = "input", val = 2, min = 0, max = 100, def = 100},
-                    {id = "enable_equip", type = "check", val = 1, def = true},
-                    {id = "cooldown_equip", type = "input", val = 2, min = 0, max = 3600, def = 40},
-                    {id = "chance_equip", type = "input", val = 2, min = 0, max = 100, def = 100},
-                }},
-                {id = "anomaly", sh = true, text = "ui_mcm_talker_trigger_anomalies_title", gr = {
-                    {id = "enable_proximity", type = "check", val = 1, def = true},
-                    {id = "cooldown_proximity", type = "input", val = 2, min = 0, max = 3600, def = 40},
-                    {id = "chance_proximity", type = "input", val = 2, min = 0, max = 100, def = 25},
-                    {id = "max_rank_for_warning", type = "track", val = 2, min = 0, max = 7, step = 1, def = 1},
-                    {id = "enable_damage", type = "check", val = 1, def = true},
-                    {id = "cooldown_damage", type = "input", val = 2, min = 0, max = 3600, def = 40},
-                    {id = "chance_damage", type = "input", val = 2, min = 0, max = 100, def = 25},
-                }},
-                {id = "callout", sh = true, text = "ui_mcm_talker_trigger_callout_title", gr = {
-                    {id = "enable", type = "check", val = 1, def = true},
-                    {id = "cooldown", type = "input", val = 2, min = 0, max = 3600, def = 30},
-                    {id = "chance", type = "input", val = 2, min = 0, max = 100, def = 100},
-                    {id = "max_distance", type = "track", val = 2, min = 5, max = 100, step = 1, def = 30},
-                    {id = "repeated_cooldown", type = "input", val = 2, min = 0, max = 3600, def = 240},
-                }},
-                {id = "taunt", sh = true, text = "ui_mcm_talker_trigger_taunt_title", gr = {
-                    {id = "enable", type = "check", val = 1, def = true},
-                    {id = "cooldown", type = "input", val = 2, min = 0, max = 3600, def = 120},
-                    {id = "chance", type = "input", val = 2, min = 0, max = 100, def = 25},
-                }},
-                {id = "emission", sh = true, text = "ui_mcm_talker_trigger_emission_title", gr = {
-                    {id = "enable", type = "check", val = 1, def = true},
-                    {id = "chance", type = "input", val = 2, min = 0, max = 100, def = 100},
-                }},
-                {id = "idle", sh = true, text = "ui_mcm_talker_trigger_idle_title", gr = {
-                    {id = "enable", type = "check", val = 1, def = true},
-                    {id = "cooldown", type = "input", val = 2, min = 0, max = 36000, def = 600},
-                    {id = "chance", type = "input", val = 2, min = 0, max = 100, def = 100},
-                    {id = "question_chance", type = "input", val = 2, min = 0, max = 100, def = 50},
-                    -- Idle sub-modes: emission
-                    {id = "enable_during_emission", type = "check", val = 1, def = true},
-                    {id = "cooldown_during_emission", type = "input", val = 2, min = 0, max = 36000, def = 30},
-                    {id = "chance_during_emission", type = "input", val = 2, min = 0, max = 100, def = 100},
-                    -- Idle sub-modes: psy storm
-                    {id = "enable_during_psy_storm", type = "check", val = 1, def = true},
-                    {id = "cooldown_during_psy_storm", type = "input", val = 2, min = 0, max = 36000, def = 30},
-                    {id = "chance_during_psy_storm", type = "input", val = 2, min = 0, max = 100, def = 100},
-                }},
-                {id = "map_transition", sh = true, text = "ui_mcm_talker_trigger_map_transition_title", gr = {
-                    {id = "enable", type = "check", val = 1, def = true},
-                    {id = "chance", type = "input", val = 2, min = 0, max = 100, def = 100},
-                }},
-                {id = "sleep", sh = true, text = "ui_mcm_talker_trigger_sleep_title", gr = {
-                    {id = "enable", type = "check", val = 1, def = true},
-                    {id = "chance", type = "input", val = 2, min = 0, max = 100, def = 100},
-                }},
-                {id = "reload", sh = true, text = "ui_mcm_talker_trigger_reload_title", gr = {
-                    {id = "enable", type = "check", val = 1, def = true},
-                    {id = "chance", type = "input", val = 2, min = 0, max = 100, def = 10},
-                }},
-                {id = "task", sh = true, text = "ui_mcm_talker_trigger_task_title", gr = {
-                    {id = "enable", type = "check", val = 1, def = true},
-                    {id = "cooldown", type = "input", val = 2, min = 0, max = 3600, def = 40},
-                    {id = "chance", type = "input", val = 2, min = 0, max = 100, def = 10},
-                }},
-                {id = "weapon_jam", sh = true, text = "ui_mcm_talker_trigger_weapon_jam_title", gr = {
-                    {id = "enable", type = "check", val = 1, def = true},
-                    {id = "chance", type = "input", val = 2, min = 0, max = 100, def = 25},
-                }},
-            }},
-        }
+                },
+            },
+
+            -- ==================== Debug Tab ====================
+            {
+                id = "debug_subtab",
+                sh = true,
+                text = "ui_mcm_talker_tab_debug",
+                gr = {
+                    {id = "debug_title", type = "slide", link = "ui_options_slider_player", text = "ui_mcm_talker_debug_title", size = {512, 50}, spacing = 20},
+                    {id = "debug_logging", type = "radio_h", val = "0", def = "2",
+                        content = {{"0", "logging_Off"}, {"1", "logging_ConsoleOnly"}, {"2", "logging_FileOnly"}, {"3", "logging_Both"}}},
+                    {id = "max_log_entries_per_level", type = "input", val = 2, min = 0, max = 1000, def = 0},
+                    {id = "reset_personality_title", type = "desc", clr = {200, 200, 255, 200}, text = "ui_mcm_talker_reset_personality_title"},
+                    {id = "reset_personality", type = "check", val = 1, def = false},
+                    {id = "reset_backstory_title", type = "desc", clr = {200, 200, 255, 200}, text = "ui_mcm_talker_reset_backstory_title"},
+                    {id = "reset_backstory", type = "check", val = 1, def = false},
+                },
+            },
+        },
     }
+
     return op
 end
 
 -- Default configuration values
--- Keys use "/" path convention matching the MCM IDs (e.g. "triggers/death/enable_player")
 local defaults = {
     ["speak_key"] = DIK_keys.DIK_LMENU,
     ["gpt_version"] = "gpt-4o",
@@ -195,6 +249,7 @@ local defaults = {
     ["voice_provider"] = 2,
     ["reasoning_level"] = -1,
     ["whisper_modifier"] = 0,
+    ["input_option"] = "0",
     ["reset_personality"] = false,
     ["reset_backstory"] = false,
     ["anti_spam_cd"] = 10,
@@ -207,15 +262,27 @@ local defaults = {
     ["speaker_pick_max_events"] = 20,
     ["max_log_entries_per_level"] = 0,
     ["debug_logging"] = 2,
-    ["service_url"] = "ws://127.0.0.1:5557/ws",
-    ["auth_client_id"] = "",
+    ["service_type"] = 0,
+    ["service_hub_url"] = "",
+    ["branch"] = 0,
+    ["custom_branch"] = "",
+    ["service_url"] = "",
+    ["service_ws_port"] = 5557,
+    ["ws_token"] = "",
+    ["auth_client_id"] = "talker-client",
     ["auth_client_secret"] = "",
     ["auth_username"] = "",
     ["auth_password"] = "",
     ["llm_timeout"] = 60,
-    ["state_query_timeout"] = 30,
+    ["state_query_timeout"] = 10,
     ["enable_tts"] = false,
+    ["tts_voice_method"] = "0",
     ["tts_volume_boost"] = 8.0,
+    ["ai_base_url"] = "",
+    ["openrouter_api_key"] = "",
+    ["openai_api_key"] = "",
+    ["ollama_base_url"] = "",
+
     -- Per-trigger defaults (nested path keys)
     ["triggers/death/enable_player"] = true,
     ["triggers/death/cooldown_player"] = 90,
@@ -276,22 +343,44 @@ local defaults = {
     ["triggers/weapon_jam/chance"] = 25,
 }
 
--- Function to retrieve the configuration value
--- Trigger keys (triggers/...) map to talker/triggers/..., all others to talker/general/...
-function get(key)
-    if ui_mcm then
-        if key:sub(1, 9) == "triggers/" then
-            return ui_mcm.get("talker/" .. key)
-        else
-            local value = ui_mcm.get("talker/general/" .. key)
-            if key == "service_url" then
-                printf("[TALKER] MCM service_url = %s (type=%s)", tostring(value), type(value))
-            end
+local function get_mcm_value_from_paths(key, prefixes)
+    for _, prefix in ipairs(prefixes) do
+        local value = ui_mcm.get(prefix .. key)
+        if value ~= nil then
             return value
         end
     end
-    if key == "service_url" then
-        printf("[TALKER] MCM unavailable, service_url default = %s", tostring(defaults[key]))
+    return nil
+end
+
+-- Function to retrieve the configuration value
+function get(key)
+    if ui_mcm then
+        if key:sub(1, 9) == "triggers/" then
+            local trigger_paths = {
+                "talker/triggers_subtab/",
+                "talker/triggers/",
+            }
+            local value = get_mcm_value_from_paths(key, trigger_paths)
+            if value ~= nil then
+                return value
+            end
+        else
+            local common_paths = {
+                "talker/general_subtab/",
+                "talker/ai_model_subtab/",
+                "talker/voice_subtab/",
+                "talker/connection_subtab/",
+                "talker/triggers_subtab/",
+                "talker/debug_subtab/",
+                "talker/general/",
+            }
+            local value = get_mcm_value_from_paths(key, common_paths)
+            if value ~= nil then
+                return value
+            end
+        end
     end
+
     return defaults[key]
 end

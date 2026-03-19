@@ -41,8 +41,11 @@ class Settings(BaseSettings):
     neo4j_database: str = "neo4j"
 
     # Embeddings (Ollama)
-    ollama_base_url: str = "http://127.0.0.1:11434"
+    ollama_base_url: str = ""
     ollama_embed_model: str = "nomic-embed-text"
+
+    # Shared remote service hub (derives TTS/STT/embed URLs when set)
+    service_hub_url: str = ""
     
     # Server authority pins — when set, MCM cannot override these
     llm_provider: Optional[str] = None  # openai | openrouter | ollama | proxy
@@ -94,6 +97,17 @@ class Settings(BaseSettings):
             self.llm_provider = "proxy"
         if self.stt_method is None and self.force_local_whisper:
             self.stt_method = "local"
+
+        # SERVICE_HUB_URL derives per-service endpoints unless explicitly set.
+        hub_url = (self.service_hub_url or "").strip().rstrip("/")
+        if hub_url:
+            if not (self.tts_service_url or "").strip():
+                self.tts_service_url = f"{hub_url}/api/tts"
+            if not (self.stt_endpoint or "").strip():
+                self.stt_endpoint = f"{hub_url}/api/stt/v1"
+            if not (self.ollama_base_url or "").strip():
+                self.ollama_base_url = f"{hub_url}/api/embed"
+
         return self
 
 

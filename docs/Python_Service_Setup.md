@@ -214,15 +214,49 @@ LOG_FILE=logs/talker_service.log
 
 
 
+Use the Connection tab in MCM to control local-vs-remote behavior:
+
 | Setting | Description | Default |
-
 |---------|-------------|---------|
+| Service Type | `Local` connects directly to local Python service; `Remote` derives URL from hub + branch | `Local` |
+| Service Hub URL | Remote hub domain used to derive `wss://.../ws/<branch>` | empty |
+| Branch | Remote branch selector (`main`, `dev`, `custom`) | `main` |
+| Custom Branch | Branch name used when Branch=`custom` | empty |
+| Service URL | Explicit local WS URL override | empty |
+| Service WS Port | Local WS port used when Service URL is empty | 5557 |
+| Auth Username / Password | Keycloak credentials used for remote ROPC token exchange | empty |
+| Auth Client ID | Keycloak client ID for token exchange | `talker-client` |
+| Auth Client Secret | Keycloak client secret (if required) | empty |
+| WS Token | Optional static fallback token when username/password are empty | empty |
+| LLM Timeout | Max seconds per LLM request | 60 |
+| State Query Timeout | Max seconds for Lua state queries | 10 |
 
-| WS Port | Port for WebSocket communication (bidirectional) | 5557 |
+### SERVICE_HUB_URL Derivation
 
-| WS Token | Authentication token for remote deployments | (empty = local mode) |
+When `SERVICE_HUB_URL` is set in `.env`, Python derives service endpoints automatically **only when explicit per-service URLs are not configured**:
 
-| Heartbeat Interval | Seconds between heartbeat messages | 5 |
+- `tts_service_url = {SERVICE_HUB_URL}/api/tts`
+- `stt_endpoint = {SERVICE_HUB_URL}/api/stt/v1`
+- `ollama_base_url = {SERVICE_HUB_URL}/api/embed`
+
+Precedence order:
+
+1. Explicit per-service URLs (`TTS_SERVICE_URL`, `STT_ENDPOINT`, `OLLAMA_BASE_URL`)
+2. MCM `service_hub_url` (from `config.sync`)
+3. `.env` `SERVICE_HUB_URL`
+
+This lets local Python consume VPS-hosted shared services while still allowing advanced overrides.
+
+### Local Python + Remote Shared Services
+
+1. Start local Python service as usual (`launch_talker_service.bat`).
+2. In MCM Connection tab, set `Service Type = Remote`.
+3. Set `Service Hub URL` to your VPS domain (for example `https://talker-live.duckdns.org`).
+4. Choose `Branch` (`main`, `dev`, or `custom`).
+5. Enter Keycloak `Auth Username` / `Auth Password` (and client credentials if required).
+6. Keep `Service URL` empty unless you need a direct override.
+
+Lua then connects to derived WS URL (`wss://<hub>/ws/<branch>`), while Python can call remote TTS/STT/embed APIs through the authenticated gateway routes.
 
 
 

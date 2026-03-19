@@ -13,6 +13,7 @@ local published_messages = {}
 
 local mock_bridge = {
     init = function(_url, _opts) end,
+    set_before_connect = function(_cb) end,
     set_on_reconnect = function(_cb) end,
     get_status = function() return "connected" end,
     publish = function(topic, payload)

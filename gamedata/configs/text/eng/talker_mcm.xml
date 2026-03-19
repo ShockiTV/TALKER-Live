@@ -487,8 +487,219 @@
         <text>State Query Timeout</text>
     </string>
     <string id="ui_mcm_talker_general_state_query_timeout">
-        <text>Maximum seconds to wait for game state queries (default: 30)</text>
+        <text>Maximum seconds to wait for game state queries (default: 10)</text>
     </string>
+
+    <!-- Tab labels (6-tab layout) -->
+    <string id="ui_mcm_talker_tab_general">
+        <text>General</text>
+    </string>
+    <string id="ui_mcm_talker_tab_ai_model">
+        <text>AI Model</text>
+    </string>
+    <string id="ui_mcm_talker_tab_voice">
+        <text>Voice</text>
+    </string>
+    <string id="ui_mcm_talker_tab_connection">
+        <text>Connection</text>
+    </string>
+    <string id="ui_mcm_talker_tab_triggers">
+        <text>Triggers</text>
+    </string>
+    <string id="ui_mcm_talker_tab_debug">
+        <text>Debug</text>
+    </string>
+
+    <!-- Connection sections and titles -->
+    <string id="ui_mcm_talker_service_type_title">
+        <text>Service Type</text>
+    </string>
+    <string id="ui_mcm_talker_remote_section">
+        <text>-- Remote --</text>
+    </string>
+    <string id="ui_mcm_talker_local_section">
+        <text>-- Local --</text>
+    </string>
+    <string id="ui_mcm_talker_auth_section">
+        <text>-- Auth --</text>
+    </string>
+    <string id="ui_mcm_talker_advanced_section">
+        <text>-- Advanced --</text>
+    </string>
+    <string id="ui_mcm_talker_service_hub_url_title">
+        <text>Service Hub URL</text>
+    </string>
+    <string id="ui_mcm_talker_branch_title">
+        <text>Branch</text>
+    </string>
+    <string id="ui_mcm_talker_custom_branch_title">
+        <text>Custom Branch</text>
+    </string>
+    <string id="ui_mcm_talker_service_ws_port_title">
+        <text>Local Service WS Port</text>
+    </string>
+    <string id="ui_mcm_talker_ws_token_title">
+        <text>Static WS Token</text>
+    </string>
+    <string id="ui_mcm_talker_trigger_general_title">
+        <text>General Trigger Settings</text>
+    </string>
+
+    <!-- Option labels for new radios -->
+    <string id="ui_mcm_lst_local">
+        <text>Local</text>
+    </string>
+    <string id="ui_mcm_lst_remote">
+        <text>Remote</text>
+    </string>
+    <string id="ui_mcm_lst_main">
+        <text>Main</text>
+    </string>
+    <string id="ui_mcm_lst_dev">
+        <text>Dev</text>
+    </string>
+    <string id="ui_mcm_lst_custom">
+        <text>Custom</text>
+    </string>
+
+    <!-- Connection tab field labels -->
+    <string id="ui_mcm_talker_connection_subtab_service_type">
+        <text>Select local Python service or remote shared service mode</text>
+    </string>
+    <string id="ui_mcm_talker_connection_subtab_service_hub_url">
+        <text>URL of the shared TALKER service hub (e.g. https://talker-live.duckdns.org)</text>
+    </string>
+    <string id="ui_mcm_talker_connection_subtab_branch">
+        <text>Remote branch to connect: main, dev, or custom</text>
+    </string>
+    <string id="ui_mcm_talker_connection_subtab_custom_branch">
+        <text>Custom branch name used when Branch = custom</text>
+    </string>
+    <string id="ui_mcm_talker_connection_subtab_service_url">
+        <text>Explicit local WebSocket URL override (leave empty to use localhost + port)</text>
+    </string>
+    <string id="ui_mcm_talker_connection_subtab_service_ws_port">
+        <text>Local WebSocket port used when service_url is empty</text>
+    </string>
+    <string id="ui_mcm_talker_connection_subtab_ws_token">
+        <text>Static token appended to remote WS URL when ROPC credentials are not set</text>
+    </string>
+    <string id="ui_mcm_talker_connection_subtab_auth_client_id">
+        <text>Keycloak client ID (default: talker-client)</text>
+    </string>
+    <string id="ui_mcm_talker_connection_subtab_auth_client_secret">
+        <text>Keycloak client secret (required only for confidential clients)</text>
+    </string>
+    <string id="ui_mcm_talker_connection_subtab_auth_username">
+        <text>Keycloak username for automatic JWT token exchange</text>
+    </string>
+    <string id="ui_mcm_talker_connection_subtab_auth_password">
+        <text>Keycloak password for automatic JWT token exchange</text>
+    </string>
+    <string id="ui_mcm_talker_connection_subtab_llm_timeout">
+        <text>Maximum seconds to wait for LLM response (default: 60)</text>
+    </string>
+    <string id="ui_mcm_talker_connection_subtab_state_query_timeout">
+        <text>Maximum seconds to wait for state queries (default: 10)</text>
+    </string>
+
+    <!-- General tab field labels -->
+    <string id="ui_mcm_talker_general_subtab_language">
+        <text>Dialogue language</text>
+    </string>
+    <string id="ui_mcm_talker_general_subtab_action_descriptions">
+        <text>Allow AI action descriptions (e.g. *chuckles*)</text>
+    </string>
+    <string id="ui_mcm_talker_general_subtab_female_gender">
+        <text>Treat player as female for dialogue phrasing</text>
+    </string>
+    <string id="ui_mcm_talker_general_subtab_witness_distance">
+        <text>Witness distance (meters)</text>
+    </string>
+    <string id="ui_mcm_talker_general_subtab_npc_speak_distance">
+        <text>NPC speak distance (meters)</text>
+    </string>
+
+    <!-- AI model tab field labels -->
+    <string id="ui_mcm_talker_ai_model_subtab_gpt_version">
+        <text>GPT model preset</text>
+    </string>
+    <string id="ui_mcm_talker_ai_model_subtab_ai_model_method">
+        <text>AI provider/method</text>
+    </string>
+    <string id="ui_mcm_talker_ai_model_subtab_custom_ai_model">
+        <text>Primary dialogue model name</text>
+    </string>
+    <string id="ui_mcm_talker_ai_model_subtab_custom_ai_model_fast">
+        <text>Fast model name (speaker selection)</text>
+    </string>
+    <string id="ui_mcm_talker_ai_model_subtab_reasoning_level">
+        <text>Proxy reasoning level</text>
+    </string>
+    <string id="ui_mcm_talker_ai_model_subtab_ai_base_url">
+        <text>Custom AI base URL (optional)</text>
+    </string>
+    <string id="ui_mcm_talker_ai_model_subtab_openrouter_api_key">
+        <text>OpenRouter API key (optional)</text>
+    </string>
+    <string id="ui_mcm_talker_ai_model_subtab_openai_api_key">
+        <text>OpenAI API key (optional)</text>
+    </string>
+    <string id="ui_mcm_talker_ai_model_subtab_ollama_base_url">
+        <text>Ollama base URL (optional)</text>
+    </string>
+
+    <!-- Voice tab field labels -->
+    <string id="ui_mcm_talker_voice_subtab_input_option">
+        <text>Input mode (voice or text)</text>
+    </string>
+    <string id="ui_mcm_talker_voice_subtab_speak_key">
+        <text>Push-to-talk key</text>
+    </string>
+    <string id="ui_mcm_talker_voice_subtab_voice_provider">
+        <text>Speech-to-text provider</text>
+    </string>
+    <string id="ui_mcm_talker_voice_subtab_enable_tts">
+        <text>Enable text-to-speech playback</text>
+    </string>
+    <string id="ui_mcm_talker_voice_subtab_tts_voice_method">
+        <text>TTS voice method</text>
+    </string>
+    <string id="ui_mcm_talker_voice_subtab_tts_volume_boost">
+        <text>TTS volume boost</text>
+    </string>
+    <string id="ui_mcm_talker_voice_subtab_whisper_modifier">
+        <text>Whisper modifier key</text>
+    </string>
+
+    <!-- Debug tab field labels -->
+    <string id="ui_mcm_talker_debug_subtab_debug_logging">
+        <text>Debug logging level</text>
+    </string>
+    <string id="ui_mcm_talker_debug_subtab_max_log_entries_per_level">
+        <text>Max log entries per level (0 = unlimited)</text>
+    </string>
+    <string id="ui_mcm_talker_debug_subtab_reset_personality">
+        <text>Reset personalities on next load</text>
+    </string>
+    <string id="ui_mcm_talker_debug_subtab_reset_backstory">
+        <text>Reset backstories on next load</text>
+    </string>
+
+    <!-- Trigger tab general subsection labels -->
+    <string id="ui_mcm_talker_triggers_subtab_time_gap">
+        <text>Time gap threshold (hours) before a synthetic time-gap event is added</text>
+    </string>
+    <string id="ui_mcm_talker_triggers_subtab_recent_speech_threshold">
+        <text>Seconds before an NPC who recently spoke can speak again</text>
+    </string>
+    <string id="ui_mcm_talker_triggers_subtab_anti_spam_cd">
+        <text>Anti-spam cooldown shared by high-frequency trigger types</text>
+    </string>
+    <string id="ui_mcm_talker_triggers_subtab_speaker_pick_max_events">
+        <text>Max recent events included per candidate in speaker selection</text>
+    </string>
+
     <!-- HUD Notifications -->
     <string id="ui_mcm_talker_service_disconnected">
         <text>TALKER: Python service not responding. AI dialogue disabled.</text>

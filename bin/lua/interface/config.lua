@@ -160,6 +160,30 @@ end
 
 -- WebSocket / Python Service configuration
 
+function c.service_type()
+	return tonumber(cfg("service_type")) or 0
+end
+
+function c.service_hub_url()
+	return cfg("service_hub_url") or ""
+end
+
+function c.branch()
+	return tonumber(cfg("branch")) or 0
+end
+
+function c.custom_branch()
+	return cfg("custom_branch") or ""
+end
+
+function c.service_ws_port()
+	return tonumber(cfg("service_ws_port")) or 5557
+end
+
+function c.ws_token()
+	return cfg("ws_token") or ""
+end
+
 function c.auth_client_id()
 	return cfg("auth_client_id") or ""
 end
@@ -177,7 +201,7 @@ function c.auth_password()
 end
 
 function c.service_url()
-	return cfg("service_url") or "ws://127.0.0.1:5557/ws"
+	return cfg("service_url") or ""
 end
 
 function c.llm_timeout()
@@ -186,7 +210,7 @@ function c.llm_timeout()
 end
 
 function c.state_query_timeout()
-	-- Maximum seconds to wait for game state queries (default 30s)
+	-- Maximum seconds to wait for game state queries (default 10s)
 	return tonumber(cfg("state_query_timeout"))
 end
 
@@ -226,7 +250,13 @@ function c.get_all_config()
 		speaker_pick_max_events = tonumber(cfg("speaker_pick_max_events")),
 
 		-- WebSocket settings
+		service_type            = tonumber(cfg("service_type")),
+		service_hub_url         = cfg("service_hub_url"),
+		branch                  = tonumber(cfg("branch")),
+		custom_branch           = cfg("custom_branch"),
 		service_url             = cfg("service_url"),
+		service_ws_port         = tonumber(cfg("service_ws_port")),
+		ws_token                = cfg("ws_token"),
 		auth_client_id          = cfg("auth_client_id"),
 		auth_client_secret      = cfg("auth_client_secret"),
 		auth_username           = cfg("auth_username"),

@@ -14,7 +14,7 @@ def test_neo4j_is_unavailable_without_uri():
 
 @pytest.mark.asyncio
 async def test_embedding_graceful_failure(monkeypatch):
-    async def _boom(self, url, json=None):
+    async def _boom(self, url, json=None, timeout=None):
         raise httpx.ConnectError("offline")
 
     monkeypatch.setattr(httpx.AsyncClient, "post", _boom)
