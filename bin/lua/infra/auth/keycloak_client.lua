@@ -12,6 +12,7 @@ local _client_id = ""
 local _username = ""
 local _password = ""
 local _client_secret = ""
+local _enabled = false
 
 local _cached_token = nil
 local _cached_expires_at = nil
@@ -26,7 +27,8 @@ local function is_nonempty_string(value)
 end
 
 local function is_enabled()
-    return is_nonempty_string(_token_url)
+    return _enabled
+        and is_nonempty_string(_token_url)
         and is_nonempty_string(_client_id)
         and is_nonempty_string(_username)
         and is_nonempty_string(_password)
@@ -43,6 +45,7 @@ local function clear_configuration()
     _username = ""
     _password = ""
     _client_secret = ""
+    _enabled = false
 end
 
 local function url_encode(value)
@@ -104,7 +107,8 @@ local function ensure_transport()
     return pollnet.http_post, pollnet.sleep_ms
 end
 
-function M.configure(token_url, client_id, username, password, client_secret)
+function M.configure(token_url, client_id, username, password, client_secret, enabled)
+    _enabled = enabled ~= false
     _token_url = type(token_url) == "string" and token_url or ""
     _client_id = type(client_id) == "string" and client_id or ""
     _username = type(username) == "string" and username or ""
@@ -114,8 +118,10 @@ function M.configure(token_url, client_id, username, password, client_secret)
 
     if is_enabled() then
         logger.info("Keycloak ROPC auth configured (token_url=%s, client_id=%s)", _token_url, _client_id)
-    else
+    elseif _enabled then
         logger.info("Keycloak auth disabled (missing token_url/client_id/username/password)")
+    else
+        logger.info("Keycloak auth disabled (local service mode)")
     end
 end
 

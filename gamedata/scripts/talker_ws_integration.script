@@ -76,6 +76,65 @@ local function trim(value)
     return value:gsub("^%s+", ""):gsub("%s+$", "")
 end
 
+local function is_remote_service_type()
+    return (tonumber(config.service_type and config.service_type() or 0) or 0) == 1
+end
+
+local function resolve_branch_name()
+    local branch = tonumber(config.branch and config.branch() or 0) or 0
+    if branch == 1 then
+        return "dev"
+    end
+    if branch == 2 then
+        local custom = trim(config.custom_branch and config.custom_branch() or "")
+        if custom ~= "" then
+            return custom
+        end
+    end
+    return "main"
+end
+
+local function derive_remote_service_url()
+    local hub_url = trim(config.service_hub_url and config.service_hub_url() or "")
+    if hub_url == "" then
+        return ""
+    end
+
+    hub_url = hub_url:gsub("/+$", "")
+
+    if hub_url:find("^https://") then
+        hub_url = "wss://" .. hub_url:sub(9)
+    elseif hub_url:find("^http://") then
+        hub_url = "ws://" .. hub_url:sub(8)
+    end
+
+    if not hub_url:find("^wss?://") then
+        return ""
+    end
+
+    return hub_url .. "/ws/" .. resolve_branch_name()
+end
+
+local function derive_local_service_url()
+    local explicit_url = trim(config.service_url and config.service_url() or "")
+    if explicit_url ~= "" then
+        return explicit_url
+    end
+    local ws_port = tonumber(config.service_ws_port and config.service_ws_port() or 5557) or 5557
+    return string.format("ws://127.0.0.1:%d/ws", ws_port)
+end
+
+local function get_base_service_url()
+    if is_remote_service_type() then
+        local remote_url = derive_remote_service_url()
+        if remote_url ~= "" then
+            return remote_url
+        end
+        logger.warn("Remote mode selected but service_hub_url is missing/invalid; falling back to local URL")
+    end
+    return derive_local_service_url()
+end
+
 local function get_auth_config_values()
     local client_id = trim(config.auth_client_id and config.auth_client_id() or "")
     local client_secret = trim(config.auth_client_secret and config.auth_client_secret() or "")
@@ -85,13 +144,28 @@ local function get_auth_config_values()
 end
 
 local function is_ropc_auth_configured()
+    if not is_remote_service_type() then
+        return false
+    end
     local client_id, _, username, password = get_auth_config_values()
     return client_id ~= "" and username ~= "" and password ~= ""
 end
 
+local function get_static_ws_token()
+    if not is_remote_service_type() then
+        return ""
+    end
+    return trim(config.ws_token and config.ws_token() or "")
+end
+
 local function configure_keycloak_client()
+    if not is_remote_service_type() then
+        keycloak_client.configure("", "", "", "", "", false)
+        return false
+    end
+
     local client_id, client_secret, username, password = get_auth_config_values()
-    local service_url = config.service_url and config.service_url() or "ws://127.0.0.1:5557/ws"
+    local service_url = get_base_service_url()
     local token_url = derive_token_url(service_url)
 
     if not token_url then
@@ -99,12 +173,12 @@ local function configure_keycloak_client()
         return false
     end
 
-    keycloak_client.configure(token_url, client_id, username, password, client_secret)
+    keycloak_client.configure(token_url, client_id, username, password, client_secret, true)
     return token_url ~= "" and client_id ~= "" and username ~= "" and password ~= ""
 end
 
 local function get_service_url()
-    local url = config.service_url and config.service_url() or "ws://127.0.0.1:5557/ws"
+    local url = get_base_service_url()
 
     if is_ropc_auth_configured() then
         local token = keycloak_client.get_cached_token()
@@ -118,6 +192,11 @@ local function get_service_url()
         if token and token ~= "" then
             return append_query_token(url, token)
         end
+    end
+
+    local static_token = get_static_ws_token()
+    if static_token ~= "" then
+        return append_query_token(url, static_token)
     end
 
     return url

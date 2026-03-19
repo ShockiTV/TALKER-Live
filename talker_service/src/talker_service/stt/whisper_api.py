@@ -9,6 +9,7 @@ targets a local faster-whisper-server container instead of OpenAI's cloud.
 
 from __future__ import annotations
 
+import asyncio
 import os
 import tempfile
 import wave
@@ -16,6 +17,7 @@ import wave
 from loguru import logger
 
 import openai
+import httpx
 
 
 class WhisperAPIProvider:
@@ -25,9 +27,15 @@ class WhisperAPIProvider:
         self,
         api_key: str | None = None,
         endpoint: str | None = None,
+        http_client: httpx.AsyncClient | None = None,
     ) -> None:
         self._api_key = api_key or os.environ.get("OPENAI_API_KEY", "")
         self._endpoint = endpoint or ""
+        self._http_client = http_client
+
+        client_kwargs = {}
+        if self._http_client is not None:
+            client_kwargs["http_client"] = self._http_client
 
         if self._endpoint:
             # Local faster-whisper-server — api_key not needed but required by client.
@@ -35,16 +43,17 @@ class WhisperAPIProvider:
             base_url = self._endpoint.rstrip("/")
             if not base_url.endswith("/v1"):
                 base_url += "/v1"
-            self._client = openai.OpenAI(
+            self._client = openai.AsyncOpenAI(
                 base_url=base_url,
                 api_key=self._api_key or "unused",
+                **client_kwargs,
             )
             logger.info("Whisper API provider initialized (endpoint: {})", base_url)
         else:
             # Default OpenAI cloud
             if not self._api_key:
                 logger.warning("No OpenAI API key set — Whisper API transcription will fail")
-            self._client = openai.OpenAI(api_key=self._api_key)
+            self._client = openai.AsyncOpenAI(api_key=self._api_key, **client_kwargs)
             logger.info("Whisper API provider initialized (OpenAI cloud)")
 
     def transcribe(
@@ -61,13 +70,9 @@ class WhisperAPIProvider:
         wav_path = self._pcm_to_wav(audio_bytes)
 
         try:
-            with open(wav_path, "rb") as audio_file:
-                transcript = self._client.audio.transcriptions.create(
-                    model="whisper-1",
-                    file=audio_file,
-                    prompt=prompt if prompt else None,
-                    language=language if language else None,
-                )
+            transcript = asyncio.run(
+                self._transcribe_file(wav_path, prompt=prompt, language=language)
+            )
             text = transcript.text.strip()
             logger.info("Whisper API transcription: '{}'", text)
             return text
@@ -79,6 +84,21 @@ class WhisperAPIProvider:
                 os.unlink(wav_path)
             except OSError:
                 pass
+
+    async def _transcribe_file(
+        self,
+        wav_path: str,
+        *,
+        prompt: str,
+        language: str,
+    ):
+        with open(wav_path, "rb") as audio_file:
+            return await self._client.audio.transcriptions.create(
+                model="whisper-1",
+                file=audio_file,
+                prompt=prompt if prompt else None,
+                language=language if language else None,
+            )
 
     @staticmethod
     def _pcm_to_wav(pcm_bytes: bytes, sample_rate: int = 16000) -> str:

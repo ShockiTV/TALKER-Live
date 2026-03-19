@@ -36,7 +36,19 @@ class MCMConfig(BaseModel):
 
     # Timeout settings (Phase 2)
     llm_timeout: int = 60  # LLM request timeout in seconds
-    state_query_timeout: int = 30  # State query timeout in seconds
+    state_query_timeout: int = 10  # State query timeout in seconds
+
+    # Connection/auth settings
+    service_type: int = 0  # 0=local, 1=remote
+    service_hub_url: str = ""
+    branch: int = 0  # 0=main, 1=dev, 2=custom
+    custom_branch: str = ""
+    service_ws_port: int = 5557
+    ws_token: str = ""
+    auth_username: str = ""
+    auth_password: str = ""
+    auth_client_id: str = "talker-client"
+    auth_client_secret: str = ""
 
     # Speaker picker
     speaker_pick_max_events: int = 20  # Max recent events per candidate in picker prompt

@@ -1,10 +1,14 @@
 """Config handler and config mirror for MCM settings."""
 
 import asyncio
+import inspect
 from typing import Any, Callable, Optional
 
+import httpx
 from loguru import logger
 
+from ..auth import create_shared_http_client, derive_service_urls
+from ..config import settings
 from ..models.config import MCMConfig
 from ._log import log_prefix
 
@@ -177,6 +181,14 @@ config_mirror = ConfigMirror()
 # Optional session registry for per-session config routing
 _session_registry = None
 _session_sync_service = None
+_shared_client_update_hook = None
+_global_shared_http_client: httpx.AsyncClient | None = None
+_global_service_urls = {
+    "hub_url": "",
+    "tts_service_url": settings.tts_service_url,
+    "stt_endpoint": settings.stt_endpoint,
+    "ollama_base_url": settings.ollama_base_url,
+}
 
 
 def set_session_registry(registry) -> None:
@@ -199,6 +211,16 @@ def set_session_sync_service(sync_service) -> None:
     logger.info("Session sync service {}", "set" if sync_service else "cleared")
 
 
+def set_shared_client_update_hook(hook) -> None:
+    """Set optional callback for shared HTTP client updates.
+
+    The callback receives ``(session_id, urls, client)`` where *urls* contains
+    ``hub_url``, ``tts_service_url``, ``stt_endpoint``, and ``ollama_base_url``.
+    """
+    global _shared_client_update_hook
+    _shared_client_update_hook = hook
+
+
 def _extract_session_id(payload: dict[str, Any]) -> str | None:
     if isinstance(payload.get("session_id"), str) and payload.get("session_id"):
         return payload.get("session_id")
@@ -206,6 +228,101 @@ def _extract_session_id(payload: dict[str, Any]) -> str | None:
     if isinstance(cfg, dict) and isinstance(cfg.get("session_id"), str) and cfg.get("session_id"):
         return cfg.get("session_id")
     return None
+
+
+def _coerce_int(value: Any, default: int) -> int:
+    try:
+        return int(value)
+    except Exception:
+        return default
+
+
+def _coerce_float(value: Any, default: float) -> float:
+    try:
+        return float(value)
+    except Exception:
+        return default
+
+
+def _setting_explicit(field_name: str) -> bool:
+    return field_name in settings.model_fields_set
+
+
+def _compute_effective_service_urls(mirror: ConfigMirror) -> dict[str, str]:
+    explicit_tts = settings.tts_service_url if _setting_explicit("tts_service_url") else ""
+    explicit_stt = settings.stt_endpoint if _setting_explicit("stt_endpoint") else ""
+    explicit_ollama = settings.ollama_base_url if _setting_explicit("ollama_base_url") else ""
+
+    return derive_service_urls(
+        env_hub_url=settings.service_hub_url,
+        mcm_hub_url=str(mirror.get("service_hub_url", "") or ""),
+        tts_service_url=explicit_tts,
+        stt_endpoint=explicit_stt,
+        ollama_base_url=explicit_ollama,
+    )
+
+
+async def _apply_shared_client_config(session_id: str, mirror: ConfigMirror) -> None:
+    global _global_shared_http_client, _global_service_urls
+
+    urls = _compute_effective_service_urls(mirror)
+
+    service_type = _coerce_int(mirror.get("service_type", 0), 0)
+    llm_timeout = _coerce_float(mirror.get("llm_timeout", settings.llm_timeout), float(settings.llm_timeout))
+
+    new_client = create_shared_http_client(
+        service_type=service_type,
+        hub_url=urls["hub_url"],
+        auth_username=str(mirror.get("auth_username", "") or ""),
+        auth_password=str(mirror.get("auth_password", "") or ""),
+        auth_client_id=str(mirror.get("auth_client_id", "talker-client") or "talker-client"),
+        auth_client_secret=str(mirror.get("auth_client_secret", "") or ""),
+        timeout=max(llm_timeout, 1.0),
+    )
+
+    old_client: httpx.AsyncClient | None = None
+    if _session_registry:
+        ctx = _session_registry.get_session(session_id)
+        old_client = ctx.shared_http_client
+        ctx.shared_http_client = new_client
+        ctx.tts_service_url = urls["tts_service_url"]
+        ctx.stt_endpoint = urls["stt_endpoint"]
+        ctx.ollama_base_url = urls["ollama_base_url"]
+    else:
+        old_client = _global_shared_http_client
+        _global_shared_http_client = new_client
+        _global_service_urls = urls
+
+    if old_client is not None and old_client is not new_client:
+        try:
+            await old_client.aclose()
+        except Exception as exc:
+            logger.debug("Failed to close previous shared HTTP client: {}", exc)
+
+    if _shared_client_update_hook:
+        result = _shared_client_update_hook(session_id, urls, new_client)
+        if inspect.isawaitable(result):
+            await result
+
+
+def get_shared_http_client(session_id: str = "__default__") -> httpx.AsyncClient | None:
+    """Return session-scoped shared HTTP client (or global fallback)."""
+    if _session_registry:
+        return _session_registry.get_session(session_id).shared_http_client
+    return _global_shared_http_client
+
+
+def get_effective_service_urls(session_id: str = "__default__") -> dict[str, str]:
+    """Return effective session service URLs after env/MCM derivation."""
+    if _session_registry:
+        ctx = _session_registry.get_session(session_id)
+        return {
+            "hub_url": _compute_effective_service_urls(_session_registry.get_config(session_id))["hub_url"],
+            "tts_service_url": ctx.tts_service_url,
+            "stt_endpoint": ctx.stt_endpoint,
+            "ollama_base_url": ctx.ollama_base_url,
+        }
+    return dict(_global_service_urls)
 
 
 async def _run_session_sync_task(*, connection_session: str, lua_session_id: str, previous: str | None) -> None:
@@ -244,7 +361,9 @@ async def handle_config_update(payload: dict[str, Any], session_id: str = "__def
         session_id: Session that sent the update
     """
     logger.info("{}Received config update from game (session={})", log_prefix(req_id, session_id), session_id)
-    _get_mirror(session_id).update(payload)
+    mirror = _get_mirror(session_id)
+    mirror.update(payload)
+    await _apply_shared_client_config(session_id, mirror)
 
 
 async def handle_config_sync(payload: dict[str, Any], session_id: str = "__default__", req_id: int = 0) -> None:
@@ -259,7 +378,9 @@ async def handle_config_sync(payload: dict[str, Any], session_id: str = "__defau
         session_id: Session that sent the sync
     """
     logger.info("{}Received config sync from game (session={})", log_prefix(req_id, session_id), session_id)
-    _get_mirror(session_id).sync(payload)
+    mirror = _get_mirror(session_id)
+    mirror.sync(payload)
+    await _apply_shared_client_config(session_id, mirror)
 
     if _session_registry:
         ctx = _session_registry.get_session(session_id)

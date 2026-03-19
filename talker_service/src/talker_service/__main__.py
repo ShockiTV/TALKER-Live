@@ -68,6 +68,25 @@ async def lifespan(app: FastAPI):
     ws_router.set_session_registry(session_registry)
     config_handlers.set_session_registry(session_registry)
 
+    async def _on_shared_client_update(session_id: str, urls: dict[str, str], client):
+        nonlocal tts_engine, embedding_client
+
+        if embedding_client:
+            if urls.get("ollama_base_url"):
+                embedding_client.base_url = urls["ollama_base_url"].rstrip("/")
+            embedding_client.set_http_client(client)
+
+        tts_url = (urls.get("tts_service_url") or "").strip()
+        if isinstance(tts_engine, TTSRemoteClient):
+            if tts_url:
+                tts_engine.base_url = tts_url.rstrip("/")
+            tts_engine.set_http_client(client)
+        elif tts_engine is None and tts_url:
+            tts_engine = TTSRemoteClient(tts_url, http_client=client)
+            event_handlers.set_tts_engine(tts_engine)
+
+    config_handlers.set_shared_client_update_hook(_on_shared_client_update)
+
     # Initialize graph memory clients (graceful no-op when NEO4J_URI is unset)
     neo4j_client = Neo4jClient(
         uri=settings.neo4j_uri,
@@ -78,6 +97,7 @@ async def lifespan(app: FastAPI):
     embedding_client = EmbeddingClient(
         base_url=settings.ollama_base_url,
         model=settings.ollama_embed_model,
+        http_client=config_handlers.get_shared_http_client(),
     )
 
     if neo4j_client.is_available():
@@ -92,7 +112,10 @@ async def lifespan(app: FastAPI):
     # Initialize TTS: remote client (shared microservice) or embedded engine
     if settings.tts_service_url:
         logger.info("Using remote TTS service at {}", settings.tts_service_url)
-        tts_engine = TTSRemoteClient(settings.tts_service_url)
+        tts_engine = TTSRemoteClient(
+            settings.tts_service_url,
+            http_client=config_handlers.get_shared_http_client(),
+        )
         logger.info("TTSRemoteClient ready")
     elif settings.tts_enabled and TTS_AVAILABLE:
         logger.info("Initializing embedded TTS engine...")
@@ -248,8 +271,13 @@ async def lifespan(app: FastAPI):
             try:
                 from .stt.factory import get_stt_provider
                 stt_kwargs = {}
-                if settings.stt_endpoint:
-                    stt_kwargs["endpoint"] = settings.stt_endpoint
+                urls = config_handlers.get_effective_service_urls()
+                stt_endpoint = (urls.get("stt_endpoint") or settings.stt_endpoint or "").strip()
+                if stt_endpoint:
+                    stt_kwargs["endpoint"] = stt_endpoint
+                shared_http = config_handlers.get_shared_http_client()
+                if shared_http is not None:
+                    stt_kwargs["http_client"] = shared_http
                 provider = get_stt_provider(stt_method, **stt_kwargs)
                 audio_handlers.set_stt_provider(provider)
             except Exception as exc:
@@ -296,6 +324,8 @@ async def lifespan(app: FastAPI):
         else:
             tts_engine.shutdown()
             logger.info("TTS engine shut down")
+    if embedding_client:
+        await embedding_client.close()
     if ws_router:
         await ws_router.shutdown()
     if neo4j_client:

@@ -32,6 +32,7 @@ class TestTTSRemoteClient:
         mock_post.assert_called_once_with(
             "http://tts-service:8100/generate",
             json={"text": "Hello stalker", "voice_id": "dolg_1", "volume_boost": 8.0},
+            timeout=30,
         )
         assert result == (b"OggS_fake_audio", 1234)
 
@@ -116,12 +117,12 @@ class TestWhisperAPIProviderEndpoint:
     def test_custom_endpoint_sets_base_url(self):
         mock_openai = MagicMock()
         mock_client = MagicMock()
-        mock_openai.OpenAI.return_value = mock_client
+        mock_openai.AsyncOpenAI.return_value = mock_client
         with patch.dict("sys.modules", {"openai": mock_openai}):
             WhisperAPIProvider = _fresh_whisper_api()
             provider = WhisperAPIProvider(endpoint="http://whisper:8200/v1")
 
-        mock_openai.OpenAI.assert_called_once_with(
+        mock_openai.AsyncOpenAI.assert_called_once_with(
             base_url="http://whisper:8200/v1",
             api_key="unused",
         )
@@ -131,22 +132,22 @@ class TestWhisperAPIProviderEndpoint:
     def test_no_endpoint_uses_default_openai(self):
         mock_openai = MagicMock()
         mock_client = MagicMock()
-        mock_openai.OpenAI.return_value = mock_client
+        mock_openai.AsyncOpenAI.return_value = mock_client
         with patch.dict("sys.modules", {"openai": mock_openai}):
             WhisperAPIProvider = _fresh_whisper_api()
             provider = WhisperAPIProvider(api_key="sk-test123")
 
-        mock_openai.OpenAI.assert_called_once_with(api_key="sk-test123")
+        mock_openai.AsyncOpenAI.assert_called_once_with(api_key="sk-test123")
         assert provider._endpoint == ""
 
     def test_custom_endpoint_with_api_key(self):
         mock_openai = MagicMock()
-        mock_openai.OpenAI.return_value = MagicMock()
+        mock_openai.AsyncOpenAI.return_value = MagicMock()
         with patch.dict("sys.modules", {"openai": mock_openai}):
             WhisperAPIProvider = _fresh_whisper_api()
             WhisperAPIProvider(api_key="my-key", endpoint="http://local:8200/v1")
 
-        mock_openai.OpenAI.assert_called_once_with(
+        mock_openai.AsyncOpenAI.assert_called_once_with(
             base_url="http://local:8200/v1",
             api_key="my-key",
         )
@@ -160,7 +161,7 @@ class TestFactoryEndpointForwarding:
 
     def test_endpoint_kwarg_forwarded(self):
         mock_openai = MagicMock()
-        mock_openai.OpenAI.return_value = MagicMock()
+        mock_openai.AsyncOpenAI.return_value = MagicMock()
         with patch.dict("sys.modules", {"openai": mock_openai}):
             for mod_name in list(sys.modules):
                 if "talker_service.stt" in mod_name:
@@ -172,7 +173,7 @@ class TestFactoryEndpointForwarding:
             provider = get_stt_provider("api", endpoint="http://whisper:8200/v1")
 
             assert isinstance(provider, WhisperAPIProvider)
-            mock_openai.OpenAI.assert_called_once_with(
+            mock_openai.AsyncOpenAI.assert_called_once_with(
                 base_url="http://whisper:8200/v1",
                 api_key="unused",
             )

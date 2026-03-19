@@ -26,13 +26,19 @@ local defaults = {
     time_gap                = 4,
 
     -- WebSocket / service
-    service_url             = "ws://127.0.0.1:5557/ws",
-    auth_client_id          = "",
+    service_type            = 0,
+    service_hub_url         = "",
+    branch                  = 0,
+    custom_branch           = "",
+    service_url             = "",
+    service_ws_port         = 5557,
+    ws_token                = "",
+    auth_client_id          = "talker-client",
     auth_client_secret      = "",
     auth_username           = "",
     auth_password           = "",
     llm_timeout             = 60,
-    state_query_timeout     = 30,
+    state_query_timeout     = 10,
 
     -- TTS
     tts_volume_boost        = 8.0,

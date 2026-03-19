@@ -65,6 +65,48 @@
         reverse_proxy talker-main:5557
     }
 
+    # ─── Shared API: TTS (JWT required) ─────────
+    handle /api/tts/* {
+        route {
+            authorize with talker_player_policy
+            request_header X-Player-ID "{http.auth.user.claim.sub}"
+            log_append player_id "{http.auth.user.claim.sub}"
+            log_append request_path "{http.request.uri.path}"
+            uri strip_prefix /api/tts
+            reverse_proxy tts-service:8100
+        }
+    }
+
+    # ─── Shared API: STT (JWT required) ─────────
+    handle /api/stt/* {
+        route {
+            authorize with talker_player_policy
+            request_header X-Player-ID "{http.auth.user.claim.sub}"
+            log_append player_id "{http.auth.user.claim.sub}"
+            log_append request_path "{http.request.uri.path}"
+            uri strip_prefix /api/stt
+            reverse_proxy stt-service:8200
+        }
+    }
+
+    # ─── Shared API: Embeddings (JWT required) ──
+    handle /api/embed/* {
+        route {
+            authorize with talker_player_policy
+            request_header X-Player-ID "{http.auth.user.claim.sub}"
+            log_append player_id "{http.auth.user.claim.sub}"
+            log_append request_path "{http.request.uri.path}"
+
+            @embed_whitelist path /api/embed/api/embeddings /api/embed/api/tags
+            handle @embed_whitelist {
+                uri strip_prefix /api/embed
+                reverse_proxy ollama:11434
+            }
+
+            respond "Forbidden" 403
+        }
+    }
+
     # ─── Branch: dev WS (JWT required) ──────────
     handle /ws/dev {
         # Inner route preserves directive order so request_header runs before authorize

@@ -70,7 +70,9 @@ end
 
 function testReconnectFetchesTokenWhenAuthConfigured()
     setup()
-    mock_engine._set("service_url", "wss://talker.example/ws/dev")
+    mock_engine._set("service_type", 1)
+    mock_engine._set("service_hub_url", "https://talker.example")
+    mock_engine._set("branch", 1)
     mock_engine._set("auth_client_id", "talker-client")
     mock_engine._set("auth_username", "bob")
     mock_engine._set("auth_password", "pass123")
@@ -87,7 +89,9 @@ end
 
 function testReconnectSkipsFetchWhenAuthNotConfigured()
     setup()
-    mock_engine._set("service_url", "ws://127.0.0.1:5557/ws")
+    mock_engine._set("service_type", 0)
+    mock_engine._set("service_url", "")
+    mock_engine._set("service_ws_port", 5557)
     mock_engine._set("auth_client_id", "")
     mock_engine._set("auth_username", "")
     mock_engine._set("auth_password", "")

@@ -1,27 +1,28 @@
-# talker-mcm
+# talker-mcm (delta)
 
-## Purpose
+## ADDED Requirements
 
-Defines the Mod Configuration Menu (MCM) settings and defaults for the TALKER mod.
+### Requirement: MCM Connection tab fields
 
-## Requirements
+The MCM SHALL include a Connection tab with the following new settings: `service_type` (radio: Local=0 / Remote=1, default 0), `service_hub_url` (text, default empty), `branch` (radio: main=0 / dev=1 / custom=2, default 0), `custom_branch` (text, default empty), `auth_username` (text, default empty), `auth_password` (text, default empty), `auth_client_id` (text, default `talker-client`), `auth_client_secret` (text, default empty), `llm_timeout` (numeric, default 60), `state_query_timeout` (numeric, default 10).
 
-### Requirement: MCM defaults available as pure Lua module
+#### Scenario: New Connection fields in config defaults
 
-The MCM defaults table SHALL be extracted to `interface/config_defaults.lua` as a pure Lua module with no engine dependencies. The `talker_mcm.script` defaults and `interface/config.lua` fallback values SHALL both reference this single source of truth.
+- **WHEN** `require("interface.config_defaults")` is called
+- **THEN** the defaults table SHALL include `service_type = 0`, `service_hub_url = ""`, `branch = 0`, `custom_branch = ""`, `auth_username = ""`, `auth_password = ""`, `auth_client_id = "talker-client"`, `auth_client_secret = ""`, `llm_timeout = 60`, `state_query_timeout = 10`
 
-#### Scenario: Config defaults load without engine
-- **WHEN** `require("interface.config_defaults")` is called outside the game engine
-- **THEN** it returns a table of all MCM default values
+#### Scenario: Connection fields included in config.sync
 
-#### Scenario: Config uses defaults as fallback
-- **WHEN** `interface/config.lua` calls `engine.get_mcm_value(key)` and it returns nil
-- **THEN** the config getter returns the default from `config_defaults`
+- **WHEN** `config.get_all_config()` is called on game load
+- **THEN** the resulting table SHALL include all Connection tab fields with their current MCM values
 
-#### Scenario: Defaults table covers all MCM keys
-- **WHEN** the defaults table is loaded
-- **THEN** it contains `service_ws_port` with default value 5557
-- **AND** it does NOT contain `mic_ws_port`
+#### Scenario: Auth fields flow to Python via config.sync
+
+- **WHEN** the player sets `auth_username = "player1"` and `auth_password = "secret"` in MCM
+- **AND** `config.sync` is sent to Python
+- **THEN** Python's `ConfigMirror` SHALL receive `auth_username = "player1"` and `auth_password = "secret"`
+
+## MODIFIED Requirements
 
 ### Requirement: MCM service_url input field
 
@@ -81,23 +82,3 @@ The MCM SHALL include a numeric input field `service_ws_port` (default 5557) in 
 
 - **WHEN** `service_type` is Remote
 - **THEN** `service_ws_port` SHALL be ignored
-
-### Requirement: MCM Connection tab fields
-
-The MCM SHALL include a Connection tab with the following new settings: `service_type` (radio: Local=0 / Remote=1, default 0), `service_hub_url` (text, default empty), `branch` (radio: main=0 / dev=1 / custom=2, default 0), `custom_branch` (text, default empty), `auth_username` (text, default empty), `auth_password` (text, default empty), `auth_client_id` (text, default `talker-client`), `auth_client_secret` (text, default empty), `llm_timeout` (numeric, default 60), `state_query_timeout` (numeric, default 10).
-
-#### Scenario: New Connection fields in config defaults
-
-- **WHEN** `require("interface.config_defaults")` is called
-- **THEN** the defaults table SHALL include `service_type = 0`, `service_hub_url = ""`, `branch = 0`, `custom_branch = ""`, `auth_username = ""`, `auth_password = ""`, `auth_client_id = "talker-client"`, `auth_client_secret = ""`, `llm_timeout = 60`, `state_query_timeout = 10`
-
-#### Scenario: Connection fields included in config.sync
-
-- **WHEN** `config.get_all_config()` is called on game load
-- **THEN** the resulting table SHALL include all Connection tab fields with their current MCM values
-
-#### Scenario: Auth fields flow to Python via config.sync
-
-- **WHEN** the player sets `auth_username = "player1"` and `auth_password = "secret"` in MCM
-- **AND** `config.sync` is sent to Python
-- **THEN** Python's `ConfigMirror` SHALL receive `auth_username = "player1"` and `auth_password = "secret"`

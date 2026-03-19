@@ -24,11 +24,19 @@ class TTSRemoteClient:
     ``DialogueGenerator`` doesn't need to know which backend is active.
     """
 
-    def __init__(self, base_url: str) -> None:
+    def __init__(self, base_url: str, http_client: httpx.AsyncClient | None = None) -> None:
         self.base_url = base_url.rstrip("/")
         self.volume_boost: float = 8.0  # updated by config mirror callback
-        self._client = httpx.AsyncClient(timeout=TTS_TIMEOUT_S)
+        self._client = http_client or httpx.AsyncClient(timeout=TTS_TIMEOUT_S)
+        self._owns_client = http_client is None
         logger.info("TTSRemoteClient initialized (endpoint: {})", self.base_url)
+
+    def set_http_client(self, client: httpx.AsyncClient | None) -> None:
+        """Swap the HTTP client instance used for outgoing requests."""
+        if client is None:
+            return
+        self._client = client
+        self._owns_client = False
 
     async def generate_audio(
         self,
@@ -56,7 +64,7 @@ class TTSRemoteClient:
         }
 
         try:
-            resp = await self._client.post(url, json=payload)
+            resp = await self._client.post(url, json=payload, timeout=TTS_TIMEOUT_S)
             if resp.status_code != 200:
                 body = resp.text[:300]
                 logger.error(
@@ -91,7 +99,8 @@ class TTSRemoteClient:
 
     async def close(self):
         """Close the underlying HTTP client."""
-        await self._client.aclose()
+        if self._owns_client:
+            await self._client.aclose()
 
     def shutdown(self):
         """No-op for API compatibility with TTSEngine.shutdown()."""
