@@ -69,7 +69,7 @@ async def lifespan(app: FastAPI):
     config_handlers.set_session_registry(session_registry)
 
     async def _on_shared_client_update(session_id: str, urls: dict[str, str], client):
-        nonlocal tts_engine, embedding_client
+        global tts_engine, embedding_client
 
         if embedding_client:
             if urls.get("ollama_base_url"):
