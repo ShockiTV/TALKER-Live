@@ -54,10 +54,8 @@ bin/pollnet/
 !bin/pollnet/talker_audio.dll
 
 # ── Voice model files (baked locally via voice triage pipeline) ──
-talker_service/voices/*
-!talker_service/voices/.gitkeep
-talker_bridge/voices/*
-!talker_bridge/voices/.gitkeep
+talker_service/voices/
+talker_bridge/voices/
 
 # ── Voice staging (intermediate audio, reproducible from game files) ──
 voice_staging/
