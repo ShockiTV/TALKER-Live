@@ -44,10 +44,13 @@ A `keycloak` service using `quay.io/keycloak/keycloak:26.0` and a `postgres-keyc
 - **WHEN** an unauthenticated browser navigates to `/auth/realms/talker/...`
 - **THEN** the request reaches Keycloak without 401 rejection
 
-### Requirement: Local dev compose override
+### Requirement: Local dev compose file
 
-A `docker-compose.local.yml` override file SHALL be provided that exposes neo4j ports (7474, 7687) and ollama port (11434) to the host for local debugging, and omits loki/grafana for minimal footprint.
+A `docker-compose.yml` at the repository root SHALL provide a minimal local development setup with Neo4j only. The file SHALL be the default compose file so developers can use `docker compose up -d` without specifying `-f`. The talker_service Python process is run manually (via `launch_talker_service.bat`) for development purposes.
 
-#### Scenario: Local override adds host port bindings
-- **WHEN** `docker compose -f docker-compose.yml -f docker-compose.local.yml up`
-- **THEN** `localhost:7474` and `localhost:7687` are accessible for Neo4j Browser
+#### Scenario: Local dev starts Neo4j with default compose
+- **WHEN** `docker compose up -d` is run from the repository root
+- **THEN** a Neo4j 5.26-community container starts with `NEO4J_AUTH=none`
+- **AND** `localhost:7474` is accessible for Neo4j Browser
+- **AND** `localhost:7687` is accessible for Bolt connections
+- **AND** data and logs persist via named volumes (`neo4j_data`, `neo4j_logs`)

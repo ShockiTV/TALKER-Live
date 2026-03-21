@@ -84,6 +84,26 @@ async def test_create_shared_client_remote_with_credentials_uses_keycloak_auth()
     )
     try:
         auth = _extract_auth(client)
+        # Remote service runs on VPS behind Caddy — no outbound auth needed
+        assert auth is None
+    finally:
+        await client.aclose()
+
+
+@pytest.mark.asyncio
+async def test_create_shared_client_local_with_credentials_uses_keycloak_auth():
+    client = create_shared_http_client(
+        service_type=0,
+        hub_url="https://talker-live.duckdns.org",
+        auth_username="player1",
+        auth_password="pw",
+        auth_client_id="talker-client",
+        auth_client_secret="",
+        timeout=20,
+    )
+    try:
+        auth = _extract_auth(client)
+        # Local service needs Keycloak auth to reach VPS through Caddy
         assert isinstance(auth, KeycloakAuth)
     finally:
         await client.aclose()

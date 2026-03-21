@@ -150,6 +150,16 @@ async def lifespan(app: FastAPI):
         config_mirror.pin("model_name_fast", settings.llm_model_fast)
     if settings.stt_method:
         config_mirror.pin("stt_method", settings.stt_method)
+    if settings.service_type is not None:
+        config_mirror.pin("service_type", settings.service_type)
+    if settings.auth_username:
+        config_mirror.pin("auth_username", settings.auth_username)
+    if settings.auth_password:
+        config_mirror.pin("auth_password", settings.auth_password)
+    if settings.auth_client_id:
+        config_mirror.pin("auth_client_id", settings.auth_client_id)
+    if settings.auth_client_secret:
+        config_mirror.pin("auth_client_secret", settings.auth_client_secret)
 
     if config_mirror._pins:
         logger.info("Active server-authority pins: {}", config_mirror._pins)
@@ -271,24 +281,31 @@ async def lifespan(app: FastAPI):
             try:
                 from .stt.factory import get_stt_provider
                 stt_kwargs = {}
-                urls = config_handlers.get_effective_service_urls()
-                stt_endpoint = (urls.get("stt_endpoint") or settings.stt_endpoint or "").strip()
-                if stt_endpoint:
-                    stt_kwargs["endpoint"] = stt_endpoint
-                shared_http = config_handlers.get_shared_http_client()
-                if shared_http is not None:
-                    stt_kwargs["http_client"] = shared_http
+                # Only WhisperAPIProvider accepts endpoint/auth_factory
+                if stt_method == "api":
+                    urls = config_handlers.get_effective_service_urls()
+                    stt_endpoint = (urls.get("stt_endpoint") or settings.stt_endpoint or "").strip()
+                    if stt_endpoint:
+                        stt_kwargs["endpoint"] = stt_endpoint
+                    # Build an auth_factory that creates a loop-local httpx client
+                    # with Keycloak auth. This avoids cross-event-loop issues when
+                    # WhisperAPIProvider.transcribe() calls asyncio.run() in a thread.
+                    auth_params = config_handlers.get_shared_client_auth_params()
+                    if auth_params is not None:
+                        from .auth.factory import create_shared_http_client
+                        stt_kwargs["auth_factory"] = lambda: create_shared_http_client(**auth_params)
                 provider = get_stt_provider(stt_method, **stt_kwargs)
                 audio_handlers.set_stt_provider(provider)
             except Exception as exc:
                 logger.error("Failed to initialise STT provider: {}", exc)
 
         pinned_stt = config_mirror.get("stt_method")
-        if pinned_stt:
-            # Server-authority pin — init immediately, no need to wait for Lua
+        if pinned_stt and pinned_stt != "api":
+            # Server-authority pin for local/proxy — init immediately
             _init_stt(pinned_stt)
         else:
-            # No pin — init on first config sync
+            # api method needs the shared HTTP client (Keycloak auth) which
+            # doesn't exist until first config.sync from Lua — defer init.
             _stt_initialised = False
 
             def _init_stt_on_config(cfg):

@@ -53,17 +53,19 @@ The config payload SHALL now include connection and auth fields: `service_type`,
 - **AND** `handle_config_sync(payload)` is called without session_id
 - **THEN** the global `config_mirror` singleton SHALL be updated
 
-#### Scenario: Config sync with auth credentials initializes KeycloakAuth
+#### Scenario: Config sync with local service type initializes KeycloakAuth
 
-- **WHEN** session "alice" sends `config.sync` with `service_type=1` (Remote), `auth_username="player1"`, `auth_password="secret"`, `auth_client_id="talker-client"`, `auth_client_secret="cs"`
+- **WHEN** session "alice" sends `config.sync` with `service_type=0` (Local), `auth_username="player1"`, `auth_password="secret"`, `auth_client_id="talker-client"`, `auth_client_secret="cs"`
 - **THEN** alice's session SHALL have a `KeycloakAuth` instance configured with those credentials
 - **AND** the session's shared `httpx.AsyncClient` SHALL use that `KeycloakAuth` for outbound requests
+- **NOTE** Local service type means Python runs on the player's machine and must authenticate through the VPS Caddy reverse proxy
 
-#### Scenario: Config sync with local service type skips KeycloakAuth
+#### Scenario: Config sync with remote service type skips KeycloakAuth
 
-- **WHEN** session "bob" sends `config.sync` with `service_type=0` (Local)
+- **WHEN** session "bob" sends `config.sync` with `service_type=1` (Remote)
 - **THEN** bob's session SHALL NOT have a `KeycloakAuth` instance
 - **AND** the session's shared `httpx.AsyncClient` SHALL have no `auth`
+- **NOTE** Remote service type means Python runs on the VPS behind Caddy, so auth is handled at the proxy layer
 
 ### Requirement: Config update scoped to session
 

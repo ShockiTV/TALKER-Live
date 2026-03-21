@@ -67,3 +67,4 @@ The Neo4j database SHALL have a vector index on the `embedding` property of `Eve
 #### Scenario: Indexes created on startup
 - **WHEN** the Python service starts with Neo4j available
 - **THEN** `schema.py` runs `CREATE VECTOR INDEX IF NOT EXISTS` and `CREATE FULLTEXT INDEX IF NOT EXISTS` for all required indexes
+- **AND** vector index `OPTIONS` use backtick-escaped config keys (e.g. `` `vector.dimensions` ``, `` `vector.similarity_function` ``) as required by Neo4j 5.x Cypher syntax

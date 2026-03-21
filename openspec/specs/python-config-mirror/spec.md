@@ -60,6 +60,25 @@ The config mirror SHALL notify dependent modules when config changes.
 - **WHEN** `config_mirror.on_change(callback)` is called
 - **THEN** the callback is registered for future config changes
 
+### Deferred callbacks
+
+The config mirror SHALL support deferring callback execution during `sync()` so that callers can perform intermediate setup (e.g. creating shared HTTP clients) before callbacks fire.
+
+#### Scenario: sync with defer_callbacks=True
+- **WHEN** `config_mirror.sync(payload, defer_callbacks=True)` is called
+- **THEN** the config is updated but `on_change` callbacks are NOT invoked immediately
+- **AND** calling `config_mirror.fire_deferred_callbacks()` invokes all registered callbacks with the synced config
+
+#### Scenario: sync without defer_callbacks (default)
+- **WHEN** `config_mirror.sync(payload)` is called without `defer_callbacks`
+- **THEN** `on_change` callbacks are invoked immediately as before
+
+#### Scenario: handle_config_sync ordering
+- **WHEN** `handle_config_sync` processes a `config.sync` message
+- **THEN** it calls `mirror.sync(payload, defer_callbacks=True)` first
+- **AND** then creates/updates the shared HTTP client via `_apply_shared_client_config`
+- **AND** then calls `mirror.fire_deferred_callbacks()` so callbacks can access the shared client
+
 ### Initial state
 
 The config mirror SHALL start with sensible defaults until first sync.

@@ -10,25 +10,25 @@ SCHEMA_STATEMENTS = [
     CREATE VECTOR INDEX event_embedding_idx IF NOT EXISTS
     FOR (n:Event)
     ON (n.embedding)
-    OPTIONS {indexConfig: {'vector.dimensions': 768, 'vector.similarity_function': 'cosine'}}
+    OPTIONS {indexConfig: {`vector.dimensions`: 768, `vector.similarity_function`: 'cosine'}}
     """,
     """
     CREATE VECTOR INDEX memory_embedding_idx IF NOT EXISTS
     FOR (n:MemoryNode)
     ON (n.embedding)
-    OPTIONS {indexConfig: {'vector.dimensions': 768, 'vector.similarity_function': 'cosine'}}
+    OPTIONS {indexConfig: {`vector.dimensions`: 768, `vector.similarity_function`: 'cosine'}}
     """,
     """
     CREATE VECTOR INDEX background_embedding_idx IF NOT EXISTS
     FOR (n:Background)
     ON (n.embedding)
-    OPTIONS {indexConfig: {'vector.dimensions': 768, 'vector.similarity_function': 'cosine'}}
+    OPTIONS {indexConfig: {`vector.dimensions`: 768, `vector.similarity_function`: 'cosine'}}
     """,
     """
     CREATE VECTOR INDEX global_event_embedding_idx IF NOT EXISTS
     FOR (n:GlobalEvent)
     ON (n.embedding)
-    OPTIONS {indexConfig: {'vector.dimensions': 768, 'vector.similarity_function': 'cosine'}}
+    OPTIONS {indexConfig: {`vector.dimensions`: 768, `vector.similarity_function`: 'cosine'}}
     """,
     """
     CREATE FULLTEXT INDEX character_name_fulltext IF NOT EXISTS

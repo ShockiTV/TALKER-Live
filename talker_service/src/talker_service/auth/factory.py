@@ -79,7 +79,7 @@ def create_shared_http_client(
     client_id = _trim(auth_client_id)
 
     should_use_auth = (
-        service_type == REMOTE_SERVICE_TYPE
+        service_type != REMOTE_SERVICE_TYPE
         and bool(token_url)
         and bool(username)
         and bool(password)

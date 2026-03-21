@@ -91,10 +91,27 @@ The service SHALL ignore `mic.audio.end` messages whose `session_id` does not ma
 - **WHEN** transcription completes for session 3
 - **THEN** `{"t": "mic.result", "p": {"text": "...", "session_id": 3}}` is sent
 
+### Requirement: Auth factory for API provider
+
+When the STT method is `api` and auth credentials are configured, the `WhisperAPIProvider` SHALL accept an `auth_factory` callable that creates a fresh `httpx.AsyncClient` with `KeycloakAuth` for each transcription request. This avoids cross-event-loop issues since `WhisperAPIProvider._transcribe_file()` runs inside `asyncio.run()` in a thread pool worker, where the main loop's shared client cannot be reused.
+
+#### Scenario: auth_factory creates per-request client
+- **WHEN** `auth_factory` is provided to `WhisperAPIProvider.__init__`
+- **THEN** each call to `_transcribe_file()` creates a fresh `httpx.AsyncClient` via `auth_factory()`
+- **AND** the client is closed in a `finally` block after the request completes
+
+#### Scenario: No auth_factory falls back to default client
+- **WHEN** `auth_factory` is `None`
+- **THEN** `WhisperAPIProvider` creates a default `openai.AsyncOpenAI` client without custom HTTP transport
+
+#### Scenario: Auth params sourced from session mirror
+- **WHEN** `_init_stt()` is called during service startup
+- **THEN** auth params are read from the session-scoped `ConfigMirror` via `get_shared_client_auth_params(session_id)`
+- **AND** the `auth_factory` lambda captures those params to call `create_shared_http_client(**params)` on each invocation
+
 ### Requirement: Dialogue generation from transcript
 The `talker_service` SHALL use the generated transcript as player input to trigger the standard dialogue generation flow, identical to how text input from the chatbox is handled.
 
 #### Scenario: Transcript triggers dialogue
 - **WHEN** the STT provider returns a valid transcript
 - **THEN** the service processes it as a `player.dialogue` or `player.whisper` event based on the `context.type` provided in the `mic.audio.end` message
-```

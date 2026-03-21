@@ -46,6 +46,13 @@ class Settings(BaseSettings):
 
     # Shared remote service hub (derives TTS/STT/embed URLs when set)
     service_hub_url: str = ""
+
+    # Auth settings for remote service hub (Keycloak ROPC)
+    service_type: Optional[int] = None  # 0=local, 1=remote (enables Keycloak auth)
+    auth_username: Optional[str] = None
+    auth_password: Optional[str] = None
+    auth_client_id: Optional[str] = None
+    auth_client_secret: Optional[str] = None
     
     # Server authority pins — when set, MCM cannot override these
     llm_provider: Optional[str] = None  # openai | openrouter | ollama | proxy
