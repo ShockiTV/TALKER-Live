@@ -88,10 +88,11 @@ def test_whisper_provider_uses_shared_auth_client(monkeypatch):
         seen_auth.append(request.headers.get("Authorization"))
         return httpx.Response(200, json={"text": "transcribed text"}, request=request)
 
-    shared_client = httpx.AsyncClient(
-        auth=_ScriptedKeycloakAuth("stt-token"),
-        transport=httpx.MockTransport(_handler),
-    )
+    def _make_client():
+        return httpx.AsyncClient(
+            auth=_ScriptedKeycloakAuth("stt-token"),
+            transport=httpx.MockTransport(_handler),
+        )
 
     class _FakeTranscriptions:
         def __init__(self, base_url: str, http_client: httpx.AsyncClient):
@@ -108,12 +109,12 @@ def test_whisper_provider_uses_shared_auth_client(monkeypatch):
                 transcriptions=_FakeTranscriptions(base_url or "", http_client)
             )
 
+        async def close(self):
+            pass
+
     monkeypatch.setattr("talker_service.stt.whisper_api.openai.AsyncOpenAI", _FakeAsyncOpenAI)
 
-    try:
-        provider = WhisperAPIProvider(endpoint="https://hub/api/stt/v1", http_client=shared_client)
-        text = provider.transcribe((b"\x00\x01") * 256)
-        assert text == "transcribed text"
-        assert seen_auth == ["Bearer stt-token"]
-    finally:
-        asyncio.run(shared_client.aclose())
+    provider = WhisperAPIProvider(endpoint="https://hub/api/stt/v1", auth_factory=_make_client)
+    text = provider.transcribe((b"\x00\x01") * 256)
+    assert text == "transcribed text"
+    assert seen_auth == ["Bearer stt-token"]

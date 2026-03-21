@@ -90,7 +90,7 @@ class ConfigMirror:
             except Exception as e:
                 logger.error(f"Config change callback error: {e}")
 
-    def sync(self, payload: dict[str, Any]) -> None:
+    def sync(self, payload: dict[str, Any], *, defer_callbacks: bool = False) -> None:
         """Apply a full config sync from the game.
 
         Always clears the LLM client cache so that any client created
@@ -99,6 +99,8 @@ class ConfigMirror:
 
         Args:
             payload: Full config dictionary from Lua
+            defer_callbacks: If True, store callbacks to fire later via
+                ``fire_deferred_callbacks()`` instead of firing immediately.
         """
         old_effective = self._effective_llm_values()
         self._config = MCMConfig.from_lua_payload(payload)
@@ -121,10 +123,25 @@ class ConfigMirror:
                 new_effective[0], new_effective[1],
             )
 
-        # Notify callbacks
+        if defer_callbacks:
+            self._deferred_config = self._config
+        else:
+            # Notify callbacks
+            for callback in self._callbacks:
+                try:
+                    callback(self._config)
+                except Exception as e:
+                    logger.error(f"Config change callback error: {e}")
+
+    def fire_deferred_callbacks(self) -> None:
+        """Fire callbacks that were deferred by ``sync(defer_callbacks=True)``."""
+        cfg = getattr(self, "_deferred_config", None)
+        if cfg is None:
+            return
+        self._deferred_config = None
         for callback in self._callbacks:
             try:
-                callback(self._config)
+                callback(cfg)
             except Exception as e:
                 logger.error(f"Config change callback error: {e}")
 
@@ -312,6 +329,35 @@ def get_shared_http_client(session_id: str = "__default__") -> httpx.AsyncClient
     return _global_shared_http_client
 
 
+def get_shared_client_auth_params(session_id: str = "__default__") -> dict | None:
+    """Return kwargs suitable for ``create_shared_http_client()``.
+
+    Returns *None* when no mirror data is available yet (pre-config-sync).
+    Callers can use the returned dict as ``create_shared_http_client(**params)``
+    to build a **new** httpx.AsyncClient with the same auth config — useful
+    when the client must be created in a different event loop (e.g. inside
+    ``asyncio.run()`` in a thread).
+    """
+    mirror = _get_mirror(session_id)
+    if mirror is None:
+        return None
+    service_type = _coerce_int(mirror.get("service_type", 0), 0)
+    llm_timeout = _coerce_float(
+        mirror.get("llm_timeout", settings.llm_timeout),
+        float(settings.llm_timeout),
+    )
+    urls = _compute_effective_service_urls(mirror)
+    return {
+        "service_type": service_type,
+        "hub_url": urls["hub_url"],
+        "auth_username": str(mirror.get("auth_username", "") or ""),
+        "auth_password": str(mirror.get("auth_password", "") or ""),
+        "auth_client_id": str(mirror.get("auth_client_id", "talker-client") or "talker-client"),
+        "auth_client_secret": str(mirror.get("auth_client_secret", "") or ""),
+        "timeout": max(llm_timeout, 1.0),
+    }
+
+
 def get_effective_service_urls(session_id: str = "__default__") -> dict[str, str]:
     """Return effective session service URLs after env/MCM derivation."""
     if _session_registry:
@@ -379,8 +425,11 @@ async def handle_config_sync(payload: dict[str, Any], session_id: str = "__defau
     """
     logger.info("{}Received config sync from game (session={})", log_prefix(req_id, session_id), session_id)
     mirror = _get_mirror(session_id)
-    mirror.sync(payload)
+    # Sync mirror first (populates auth fields), then create shared client,
+    # then fire on_change callbacks so they can access the shared client.
+    mirror.sync(payload, defer_callbacks=True)
     await _apply_shared_client_config(session_id, mirror)
+    mirror.fire_deferred_callbacks()
 
     if _session_registry:
         ctx = _session_registry.get_session(session_id)

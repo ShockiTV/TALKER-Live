@@ -122,12 +122,14 @@ class TestWhisperAPIProviderEndpoint:
             WhisperAPIProvider = _fresh_whisper_api()
             provider = WhisperAPIProvider(endpoint="http://whisper:8200/v1")
 
+        assert provider._endpoint == "http://whisper:8200/v1"
+        assert provider._base_url == "http://whisper:8200/v1"
+        # Client is now created lazily via _make_client()
+        client = provider._make_client()
         mock_openai.AsyncOpenAI.assert_called_once_with(
             base_url="http://whisper:8200/v1",
             api_key="unused",
         )
-        assert provider._endpoint == "http://whisper:8200/v1"
-        assert provider._client is mock_client
 
     def test_no_endpoint_uses_default_openai(self):
         mock_openai = MagicMock()
@@ -137,16 +139,20 @@ class TestWhisperAPIProviderEndpoint:
             WhisperAPIProvider = _fresh_whisper_api()
             provider = WhisperAPIProvider(api_key="sk-test123")
 
-        mock_openai.AsyncOpenAI.assert_called_once_with(api_key="sk-test123")
         assert provider._endpoint == ""
+        # Client is now created lazily via _make_client()
+        client = provider._make_client()
+        mock_openai.AsyncOpenAI.assert_called_once_with(api_key="sk-test123")
 
     def test_custom_endpoint_with_api_key(self):
         mock_openai = MagicMock()
         mock_openai.AsyncOpenAI.return_value = MagicMock()
         with patch.dict("sys.modules", {"openai": mock_openai}):
             WhisperAPIProvider = _fresh_whisper_api()
-            WhisperAPIProvider(api_key="my-key", endpoint="http://local:8200/v1")
+            provider = WhisperAPIProvider(api_key="my-key", endpoint="http://local:8200/v1")
 
+        # Client is now created lazily via _make_client()
+        client = provider._make_client()
         mock_openai.AsyncOpenAI.assert_called_once_with(
             base_url="http://local:8200/v1",
             api_key="my-key",
@@ -173,6 +179,9 @@ class TestFactoryEndpointForwarding:
             provider = get_stt_provider("api", endpoint="http://whisper:8200/v1")
 
             assert isinstance(provider, WhisperAPIProvider)
+            assert provider._base_url == "http://whisper:8200/v1"
+            # Client is now created lazily — verify it's built correctly
+            client = provider._make_client()
             mock_openai.AsyncOpenAI.assert_called_once_with(
                 base_url="http://whisper:8200/v1",
                 api_key="unused",
