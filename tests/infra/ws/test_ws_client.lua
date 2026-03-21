@@ -243,6 +243,23 @@ function testSetSocketFactory_usesInjected()
     luaunit.assertEquals(called_with, "ws://test-url")
 end
 
+function testOpen_forwardsHeadersToFactory()
+    setup()
+    local received_headers = nil
+    ws_client.set_socket_factory(function(url, headers)
+        received_headers = headers
+        return make_mock_socket()
+    end)
+
+    local h = ws_client.open("ws://test-url", {
+        headers = { Authorization = "Bearer abc123" },
+    })
+
+    luaunit.assertNotNil(h)
+    luaunit.assertNotNil(received_headers)
+    luaunit.assertEquals(received_headers.Authorization, "Bearer abc123")
+end
+
 function testReset_clearsState()
     setup()
     inject_factory(make_mock_socket({ status = "open" }))

@@ -3,6 +3,7 @@
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 import httpx
+import openai
 
 from talker_service.llm.models import Message, LLMOptions
 from talker_service.llm.openai_client import OpenAIClient
@@ -36,66 +37,73 @@ def mock_openai_response():
     }
 
 
+def _mock_chat_completion(content="Hello! How can I help you?"):
+    """Build a mock ChatCompletion response object."""
+    msg = MagicMock()
+    msg.content = content
+    choice = MagicMock()
+    choice.message = msg
+    response = MagicMock()
+    response.choices = [choice]
+    return response
+
+
 class TestOpenAIClient:
-    """Tests for OpenAI client."""
-    
+    """Tests for OpenAI client (SDK-based)."""
+
     @pytest.mark.asyncio
-    async def test_complete_success(self, sample_messages, mock_openai_response):
-        """Test successful completion."""
+    async def test_complete_success(self, sample_messages):
+        """Test successful completion via SDK."""
         client = OpenAIClient(api_key="test-key", timeout=10.0)
-        
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = mock_openai_response
-        
-        with patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
-            mock_post.return_value = mock_response
-            
-            result = await client.complete(sample_messages)
-            
-            assert result == "Hello! How can I help you?"
-            mock_post.assert_called_once()
-    
+        mock_resp = _mock_chat_completion("Hello! How can I help you?")
+
+        client._client.chat.completions.create = AsyncMock(return_value=mock_resp)
+        result = await client.complete(sample_messages)
+
+        assert result == "Hello! How can I help you?"
+        client._client.chat.completions.create.assert_called_once()
+
     @pytest.mark.asyncio
     async def test_no_api_key_raises(self, sample_messages):
         """Test that missing API key raises error."""
         client = OpenAIClient(api_key=None, timeout=10.0)
-        client.api_key = None  # Ensure no key
-        
+        client.api_key = None
+
         with pytest.raises(AuthenticationError):
             await client.complete(sample_messages)
-    
+
     @pytest.mark.asyncio
-    async def test_rate_limit_retry(self, sample_messages, mock_openai_response):
-        """Test rate limit triggers retry."""
+    async def test_rate_limit_retry(self, sample_messages):
+        """Test rate limit triggers retry via SDK exception."""
         client = OpenAIClient(api_key="test-key", timeout=10.0, max_retries=2)
-        
-        rate_limit_response = MagicMock()
-        rate_limit_response.status_code = 429
-        rate_limit_response.text = "Rate limited"
-        
-        success_response = MagicMock()
-        success_response.status_code = 200
-        success_response.json.return_value = mock_openai_response
-        
-        with patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
-            # First call rate limited, second succeeds
-            mock_post.side_effect = [rate_limit_response, success_response]
-            
-            with patch("asyncio.sleep", new_callable=AsyncMock):
-                result = await client.complete(sample_messages)
-            
-            assert result == "Hello! How can I help you?"
-            assert mock_post.call_count == 2
+        mock_resp = _mock_chat_completion("Hello! How can I help you?")
+
+        # First call raises RateLimitError, second succeeds
+        mock_request = MagicMock()
+        mock_request.url = "https://api.openai.com"
+        rate_err = openai.RateLimitError(
+            message="Rate limited",
+            response=MagicMock(status_code=429, headers={}),
+            body=None,
+        )
+        client._client.chat.completions.create = AsyncMock(
+            side_effect=[rate_err, mock_resp]
+        )
+
+        with patch("asyncio.sleep", new_callable=AsyncMock):
+            result = await client.complete(sample_messages)
+
+        assert result == "Hello! How can I help you?"
+        assert client._client.chat.completions.create.call_count == 2
 
     def test_default_endpoint(self):
-        """Client uses default api.openai.com URL when no endpoint given."""
+        """Client uses default URL when no endpoint given."""
         client = OpenAIClient(api_key="k", endpoint=None)
-        assert client.api_url == OpenAIClient.DEFAULT_API_URL
+        assert client.api_url == "https://api.openai.com/v1"
 
     def test_custom_endpoint_param(self):
         """Explicit endpoint param is used."""
-        url = "https://my-azure.openai.azure.com/v1/chat/completions"
+        url = "https://my-azure.openai.azure.com/v1"
         client = OpenAIClient(api_key="k", endpoint=url)
         assert client.api_url == url
 
@@ -113,21 +121,35 @@ class TestOpenAIClient:
             assert client.api_url == "https://param.example.com"
 
     @pytest.mark.asyncio
-    async def test_custom_endpoint_used_in_request(self, sample_messages, mock_openai_response):
-        """complete() posts to the custom endpoint."""
-        url = "https://custom.example.com/v1/chat/completions"
+    async def test_sdk_client_uses_custom_endpoint(self):
+        """SDK client is initialized with custom base_url."""
+        url = "https://custom.example.com/v1"
         client = OpenAIClient(api_key="test-key", endpoint=url, timeout=10.0)
+        assert client._client.base_url == url or str(client._client.base_url).startswith(url)
 
-        mock_response = MagicMock()
-        mock_response.status_code = 200
-        mock_response.json.return_value = mock_openai_response
+    @pytest.mark.asyncio
+    async def test_authentication_error(self, sample_messages):
+        """Test that AuthenticationError from SDK maps correctly."""
+        client = OpenAIClient(api_key="bad-key", timeout=10.0)
+        auth_err = openai.AuthenticationError(
+            message="Invalid API key",
+            response=MagicMock(status_code=401, headers={}),
+            body=None,
+        )
+        client._client.chat.completions.create = AsyncMock(side_effect=auth_err)
 
-        with patch("httpx.AsyncClient.post", new_callable=AsyncMock) as mock_post:
-            mock_post.return_value = mock_response
+        with pytest.raises(AuthenticationError):
             await client.complete(sample_messages)
-            # Verify the URL used in the post call
-            call_args = mock_post.call_args
-            assert call_args[0][0] == url
+
+    @pytest.mark.asyncio
+    async def test_timeout_error(self, sample_messages):
+        """Test that APITimeoutError from SDK maps correctly."""
+        client = OpenAIClient(api_key="test-key", timeout=10.0)
+        timeout_err = openai.APITimeoutError(request=MagicMock())
+        client._client.chat.completions.create = AsyncMock(side_effect=timeout_err)
+
+        with pytest.raises(TimeoutError):
+            await client.complete(sample_messages)
 
 
 class TestOpenRouterClient:
@@ -353,7 +375,7 @@ class TestLLMOptions:
     def test_defaults(self):
         """Test default values."""
         opts = LLMOptions()
-        assert opts.temperature == 0.7
+        assert opts.temperature is None
         assert opts.model is None
         assert opts.max_tokens is None
         assert opts.timeout is None

@@ -340,6 +340,9 @@
 <string id="ui_mcm_talker_recent_speech_threshold">
 	<text>����������� ���� ������ (� ������� ���������� ������������) ����� �������� �������� ��������� (�������)</text>
 </string>
+<string id="ui_mcm_talker_general_speaker_pick_max_events">
+	<text>Max recent events included in the speaker selection prompt (per candidate)</text>
+</string>
 <string id="ui_mcm_talker_idle_question_chance">
 	<text>���������� ���� ������ ������ ������ ������ ������ �������� ���������</text>
 </string>
@@ -480,29 +483,35 @@
     <string id="ui_mcm_talker_service_title">
         <text>Настройки Python сервиса</text>
     </string>
-    <string id="ui_mcm_talker_ws_host_title">
-        <text>Хост сервиса</text>
-    </string>
-    <string id="ui_mcm_talker_ws_host">
-        <text>Имя хоста или IP Python сервиса (по умолчанию: 127.0.0.1)</text>
-    </string>
-    <string id="ui_mcm_talker_mic_ws_port_title">
-        <text>Порт микрофонного сервиса</text>
-    </string>
-    <string id="ui_mcm_talker_mic_ws_port">
-        <text>Порт для подключения к сервису микрофона/TTS (по умолчанию: 5558)</text>
-    </string>
     <string id="ui_mcm_talker_service_url_title">
         <text>URL сервиса</text>
     </string>
     <string id="ui_mcm_talker_service_url">
-        <text>WebSocket URL TALKER AI сервиса (напр. wss://talker-live.duckdns.org/ws или ws://127.0.0.1:5557/ws)</text>
+        <text>WebSocket URL TALKER сервиса (по умолчанию: ws://127.0.0.1:5557/ws для локального, или wss://ваш-сервер/ws/ветка для удалённого)</text>
     </string>
-    <string id="ui_mcm_talker_ws_token_title">
-        <text>Токен сервиса</text>
+    <string id="ui_mcm_talker_auth_client_id_title">
+        <text>Auth Client ID</text>
     </string>
-    <string id="ui_mcm_talker_ws_token">
-        <text>Необязательный токен аутентификации для удалённого TALKER сервиса (оставьте пустым, если не требуется)</text>
+    <string id="ui_mcm_talker_general_auth_client_id">
+        <text>ID клиента Keycloak (напр. talker-client). Укажите вместе с Auth Username и Auth Password. URL токена берётся автоматически из Service URL.</text>
+    </string>
+    <string id="ui_mcm_talker_auth_client_secret_title">
+        <text>Auth Client Secret</text>
+    </string>
+    <string id="ui_mcm_talker_general_auth_client_secret">
+        <text>Секрет клиента Keycloak (нужен только для Confidential клиентов). Оставьте пустым, если клиент настроен как Public.</text>
+    </string>
+    <string id="ui_mcm_talker_auth_username_title">
+        <text>Auth Username</text>
+    </string>
+    <string id="ui_mcm_talker_general_auth_username">
+        <text>Ваше имя пользователя Keycloak. Используется вместе с Auth Client ID и Auth Password для автоматического обмена токенов.</text>
+    </string>
+    <string id="ui_mcm_talker_auth_password_title">
+        <text>Auth Password</text>
+    </string>
+    <string id="ui_mcm_talker_general_auth_password">
+        <text>Ваш пароль Keycloak. Используется вместе с Auth Client ID и Auth Username для автоматического обмена токенов.</text>
     </string>
     <string id="ui_mcm_talker_llm_timeout_title">
         <text>������� LLM</text>

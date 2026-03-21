@@ -1,7 +1,7 @@
 """Event handlers for game events, player input, and heartbeat."""
 
 import asyncio
-import random
+import base64
 import time
 from datetime import datetime
 from typing import Any, Optional, Protocol, TYPE_CHECKING
@@ -9,6 +9,7 @@ from typing import Any, Optional, Protocol, TYPE_CHECKING
 from loguru import logger
 
 from ..models.messages import GameEventMessage, PlayerDialogueMessage, HeartbeatMessage
+from ..storage.neo4j_client import render_event_text, compute_event_checksum
 from ._log import log_prefix
 
 # Maximum concurrent dialogue generation tasks
@@ -26,8 +27,7 @@ def _logged_task(coro, *, name: str = "unnamed"):
     return asyncio.create_task(_wrapper(), name=name)
 
 if TYPE_CHECKING:
-    from ..dialogue import DialogueGenerator
-    from ..dialogue.retry_queue import DialogueRetryQueue
+    from ..dialogue.conversation import ConversationManager
 
 
 class PublisherProtocol(Protocol):
@@ -39,24 +39,28 @@ class PublisherProtocol(Protocol):
 _last_heartbeat: Optional[datetime] = None
 _last_heartbeat_game_time: Optional[int] = None
 
-# Dialogue generator (injected by main)
-_dialogue_generator: Optional["DialogueGenerator"] = None
+# Conversation manager (injected by main)
+_conversation_manager: Optional["ConversationManager"] = None
 
 # Publisher for sending heartbeat acks (injected by main)
 _publisher: Optional[PublisherProtocol] = None
 
-# Retry queue for deferred dialogue generation (injected by main)
-_retry_queue: Optional["DialogueRetryQueue"] = None
+# TTS engine (injected by main — TTSRemoteClient, TTSEngine, or None)
+_tts_engine: Any = None
 
-# Base probability for dialogue generation
-BASE_DIALOGUE_CHANCE = 0.25
+# Optional graph memory clients
+_neo4j_client: Any = None
+_embedding_client: Any = None
+
+# Monotonic counter for dialogue_id (correlates Python ↔ Lua logs)
+_dialogue_id: int = 0
 
 
-def set_dialogue_generator(generator: "DialogueGenerator") -> None:
-    """Set the dialogue generator instance."""
-    global _dialogue_generator
-    _dialogue_generator = generator
-    logger.info("Dialogue generator injected into event handlers")
+def set_conversation_manager(manager: "ConversationManager") -> None:
+    """Set the conversation manager instance."""
+    global _conversation_manager
+    _conversation_manager = manager
+    logger.info("Conversation manager injected into event handlers")
 
 
 def set_publisher(publisher: PublisherProtocol) -> None:
@@ -66,11 +70,25 @@ def set_publisher(publisher: PublisherProtocol) -> None:
     logger.info("Publisher injected into event handlers")
 
 
-def set_retry_queue(queue: "DialogueRetryQueue") -> None:
-    """Set the retry queue instance for heartbeat-aware flush."""
-    global _retry_queue
-    _retry_queue = queue
-    logger.info("Retry queue injected into event handlers")
+def set_tts_engine(engine: Any) -> None:
+    """Set the TTS engine instance (TTSRemoteClient, TTSEngine, or None)."""
+    global _tts_engine
+    _tts_engine = engine
+    logger.info("TTS engine injected into event handlers: {}", type(engine).__name__ if engine else None)
+
+
+def set_neo4j_client(client: Any) -> None:
+    """Set the Neo4j client used for realtime event ingest."""
+    global _neo4j_client
+    _neo4j_client = client
+    logger.info("Neo4j client injected into event handlers: {}", type(client).__name__ if client else None)
+
+
+def set_embedding_client(client: Any) -> None:
+    """Set the embedding client used for event vectorization."""
+    global _embedding_client
+    _embedding_client = client
+    logger.info("Embedding client injected into event handlers: {}", type(client).__name__ if client else None)
 
 
 def get_last_heartbeat() -> Optional[str]:
@@ -80,193 +98,294 @@ def get_last_heartbeat() -> Optional[str]:
     return _last_heartbeat.isoformat()
 
 
-def _should_someone_speak(event: GameEventMessage, is_important: bool) -> bool:
-    """Determine if someone should speak in response to an event.
-    
-    Args:
-        event: The game event
-        is_important: Whether the event was marked important
-        
-    Returns:
-        True if dialogue should be generated
-    """
-    # Filter out silent events
-    flags = event.get_flags()
-    if flags.get("is_silent", False):
-        logger.debug("Event is silent, no dialogue")
-        return False
-    
-    # Always respond to important events
-    if is_important:
-        return True
-    
-    # Check if player is the only witness (no one to speak)
-    witnesses = event.witnesses or []
-    non_player_witnesses = [w for w in witnesses if str(w.game_id) != "0"]
-    if len(non_player_witnesses) == 0:
-        logger.debug("No non-player witnesses, no dialogue")
-        return False
-    
-    # Random chance for non-important events
-    return random.random() < BASE_DIALOGUE_CHANCE
-
-
 async def handle_game_event(payload: dict[str, Any], session_id: str = "__default__", req_id: int = 0) -> None:
-    """Handle incoming game event from Lua.
+    """Handle incoming game event from Lua (v2 payload format).
     
-    Parses the event and triggers dialogue generation if appropriate.
+    Parses the event and triggers dialogue generation.
     
-    Payload structure from Lua:
+    Payload structure from Lua (v2):
     {
-        "event": { type, content, game_time_ms, world_context, witnesses, flags, ... },
-        "is_important": bool
+        "event": { type, context, timestamp, ... },
+        "candidates": [ { game_id, name, faction, rank, ... }, ... ],
+        "world": "Location: X. Time: Y. Weather: Z.",
+        "traits": { character_id: { personality_id, backstory_id }, ... }
     }
     """
     try:
-        # Extract event from payload wrapper
-        event_data = payload.get("event", payload)
-        is_important = payload.get("is_important", False)
+        # Parse v2 payload structure
+        event_data = payload.get("event", {})
+        candidates = payload.get("candidates", [])
+        world = payload.get("world", "")
+        traits = payload.get("traits", {})
+        conn_meta = payload.get("_connection", {}) if isinstance(payload, dict) else {}
+        player_id = conn_meta.get("player_id", "local")
+        branch = conn_meta.get("branch", "main")
+        ingest_session_id = conn_meta.get("game_session_id") or session_id
         
-        event = GameEventMessage(**event_data)
+        # Basic validation
+        if not event_data:
+            logger.error("Empty event data in payload")
+            return
         
-        event_type = event.type or "UNKNOWN"
-        witnesses_count = len(event.witnesses)
-        flags = event.get_flags()
+        event_type = event_data.get("type", "UNKNOWN")
+        candidates_count = len(candidates)
+        index_only = bool((event_data.get("flags") or {}).get("index_only"))
         
         # Log event details
         pfx = log_prefix(req_id, session_id)
         logger.info(
-            f"{pfx}Game Event: type={event_type}, "
-            f"witnesses={witnesses_count}, "
-            f"game_time={event.game_time_ms}, "
-            f"important={is_important}, "
-            f"flags={flags}"
+            f"{pfx}Game Event (v2): type={event_type}, "
+            f"candidates={candidates_count}, "
+            f"timestamp={event_data.get('timestamp', 0)}"
         )
         
         # Log context details at debug level
-        if event.context:
-            logger.debug(f"{pfx}Event context: {event.context}")
-        if event.world_context:
-            logger.debug(f"{pfx}World context: {event.world_context}")
-        if event.witnesses:
-            witness_names = [w.name for w in event.witnesses]
-            logger.debug(f"{pfx}Witnesses: {witness_names}")
-        
-        # Check if dialogue should be generated
-        if not _should_someone_speak(event, is_important):
-            logger.debug(f"{pfx}Skipping dialogue generation for this event")
+        if event_data.get("context"):
+            logger.debug(f"{pfx}Event context: {event_data['context']}")
+        if world:
+            logger.debug(f"{pfx}World: {world}")
+        if candidates:
+            candidate_names = [c.get("name", "unknown") for c in candidates]
+            logger.debug(f"{pfx}Candidates: {candidate_names}")
+
+        # Index into Neo4j first (fire-and-forget), then decide whether dialogue runs.
+        if _neo4j_client is not None and getattr(_neo4j_client, "is_available", lambda: False)():
+            _logged_task(
+                _ingest_event(
+                    event_data,
+                    ingest_session_id=ingest_session_id,
+                    player_id=player_id,
+                    branch=branch,
+                    req_id=req_id,
+                    connection_session_id=session_id,
+                ),
+                name=f"ingest-{event_type}",
+            )
+
+        if index_only:
+            logger.debug(f"{pfx}index_only event received — skipping dialogue generation")
+            return
+
+        if not candidates:
+            logger.warning("No candidates in payload — skipping dialogue generation")
             return
         
-        # Handle idle conversation events (direct instruction)
-        if flags.get("is_idle", False):
-            _logged_task(_handle_idle_event(event, session_id=session_id, req_id=req_id), name=f"idle-{event_type}")
-            return
-        
-        # Regular event-triggered dialogue
-        _logged_task(_handle_regular_event(event, session_id=session_id, req_id=req_id), name=f"dialogue-{event_type}")
+        # Trigger dialogue generation
+        _logged_task(
+            _handle_event_v2(event_data, candidates, world, traits, session_id=session_id, req_id=req_id),
+            name=f"dialogue-{event_type}"
+        )
             
     except Exception as e:
         logger.error(f"Error processing game event: {e}")
         logger.debug(f"Raw payload: {payload}")
 
 
-async def _handle_idle_event(event: GameEventMessage, *, session_id: str | None = None, req_id: int = 0) -> None:
-    """Handle idle conversation event (direct instruction to speak)."""
-    if _dialogue_generator is None:
-        logger.warning("Dialogue generator not available for idle event")
+async def _ingest_event(
+    event: dict[str, Any],
+    *,
+    ingest_session_id: str,
+    player_id: str,
+    branch: str,
+    req_id: int,
+    connection_session_id: str,
+) -> None:
+    """Index one event into Neo4j without blocking dialogue generation."""
+    if _neo4j_client is None:
+        return
+
+    try:
+        text = render_event_text(event)
+        ts = int(event.get("ts") or event.get("game_time_ms") or event.get("timestamp") or 0)
+        cs = str(event.get("cs") or compute_event_checksum(event))
+        event["cs"] = cs
+
+        embedding = None
+        already_embedded = await asyncio.to_thread(_neo4j_client.has_event_embedding, ts, cs)
+        if (not already_embedded) and _embedding_client is not None:
+            embedding = await _embedding_client.embed(text)
+
+        await asyncio.to_thread(
+            _neo4j_client.ingest_event,
+            ingest_session_id,
+            event,
+            embedding,
+            player_id=player_id,
+            branch=branch,
+            text=text,
+        )
+    except Exception as exc:
+        pfx = log_prefix(req_id, connection_session_id)
+        logger.opt(exception=True).warning(f"{pfx}Neo4j ingest failed (non-blocking): {exc}")
+
+
+async def _handle_event_v2(
+    event: dict[str, Any],
+    candidates: list[dict[str, Any]],
+    world: str,
+    traits: dict[str, dict[str, str]],
+    *,
+    session_id: str | None = None,
+    req_id: int = 0
+) -> None:
+    """Handle event using ConversationManager (v2 architecture).
+    
+    Args:
+        event: Event data dict
+        candidates: List of candidate speakers (speaker + witnesses)
+        world: World context string
+        traits: Map of character_id → {personality_id, backstory_id}
+        session_id: Session identifier
+        req_id: Request ID for logging correlation
+    """
+    if _conversation_manager is None:
+        logger.warning("Conversation manager not available for event")
         return
     
     if _dialogue_semaphore.locked():
-        logger.debug(f"Skipping idle event — {_MAX_CONCURRENT_DIALOGUES} dialogue tasks already running")
+        pfx = log_prefix(req_id, session_id)
+        logger.debug(f"{pfx}Skipping event — {_MAX_CONCURRENT_DIALOGUES} dialogue tasks already running")
         return
     
     async with _dialogue_semaphore:
-        # Convert context to dict (EventContext is a Pydantic model)
-        context_dict = {}
-        if event.context:
-            if hasattr(event.context, "model_dump"):
-                context_dict = event.context.model_dump()
-            elif isinstance(event.context, dict):
-                context_dict = event.context
-        
-        # Get the speaker from context — idle events use context.speaker, others use context.actor
-        speaker_id = None
-        for key in ("speaker", "actor"):
-            char = context_dict.get(key)
-            if char and isinstance(char, dict):
-                speaker_id = str(char.get("game_id"))
-                break
+        try:
+            pfx = log_prefix(req_id, session_id)
+            logger.debug(f"{pfx}Calling ConversationManager.handle_event()")
+            
+            # Call ConversationManager to generate dialogue
+            speaker_id, dialogue_text = await _conversation_manager.handle_event(
+                event=event,
+                candidates=candidates,
+                world=world,
+                traits=traits,
+                session_id=session_id,
+            )
+            
+            logger.info(f"{pfx}Dialogue generated: speaker={speaker_id}, text={dialogue_text[:60]}...")
 
-        if not speaker_id:
-            logger.error("Idle event has no valid speaker")
-            return
-        
-        logger.info(f"Triggering idle dialogue for speaker {speaker_id}")
-        
-        # Convert to dict format expected by generator
-        event_dict = {
-            "type": event.type,
-            "context": context_dict,
-            "game_time_ms": event.game_time_ms,
-            "world_context": event.world_context,
-            "witnesses": [{"game_id": w.game_id, "name": w.name, "faction": w.faction} 
-                          for w in event.witnesses],
-            "flags": event.get_flags(),
-        }
-        
-        await _dialogue_generator.generate_from_instruction(speaker_id, event_dict, session_id=session_id, req_id=req_id)
+            if _publisher is None:
+                logger.warning(f"{pfx}Publisher not available; cannot send dialogue.display")
+                return
+
+            # Increment monotonic dialogue_id for this dispatch
+            global _dialogue_id
+            _dialogue_id += 1
+            current_dialogue_id = _dialogue_id
+
+            # Resolve voice_id from the speaker's sound_prefix in candidates
+            voice_id = ""
+            for c in candidates:
+                if str(c.get("game_id", "")) == str(speaker_id):
+                    voice_id = c.get("sound_prefix") or ""
+                    break
+
+            # Attempt TTS generation if engine is available
+            await _dispatch_dialogue(
+                speaker_id=str(speaker_id),
+                dialogue_text=dialogue_text,
+                voice_id=voice_id,
+                dialogue_id=current_dialogue_id,
+                session_id=session_id,
+                pfx=pfx,
+            )
+            
+        except Exception as e:
+            logger.opt(exception=True).error(f"{pfx}Failed to generate dialogue: {e}")
 
 
-async def _handle_regular_event(event: GameEventMessage, *, session_id: str | None = None, req_id: int = 0) -> None:
-    """Handle regular event-triggered dialogue."""
-    if _dialogue_generator is None:
-        logger.warning("Dialogue generator not available for event")
-        return
-    
-    if _dialogue_semaphore.locked():
-        logger.debug(f"Skipping event type={event.type} — {_MAX_CONCURRENT_DIALOGUES} dialogue tasks already running")
-        return
-    
-    logger.info(f"Triggering dialogue generation for event type={event.type}")
-    
-    async with _dialogue_semaphore:
-        # Convert context to dict (EventContext is a Pydantic model)
-        context_dict = {}
-        if event.context:
-            if hasattr(event.context, "model_dump"):
-                context_dict = event.context.model_dump()
-            elif isinstance(event.context, dict):
-                context_dict = event.context
-        
-        # Convert to dict format expected by generator
-        event_dict = {
-            "type": event.type,
-            "context": context_dict,
-            "game_time_ms": event.game_time_ms,
-            "world_context": event.world_context,
-            "witnesses": [{"game_id": w.game_id, "name": w.name, "faction": w.faction,
-                           "experience": getattr(w, "experience", ""),
-                           "reputation": getattr(w, "reputation", "")} 
-                          for w in event.witnesses],
-            "flags": event.get_flags(),
-        }
-        
-        await _dialogue_generator.generate_from_event(event_dict, session_id=session_id, req_id=req_id)
+async def _dispatch_dialogue(
+    *,
+    speaker_id: str,
+    dialogue_text: str,
+    voice_id: str,
+    dialogue_id: int,
+    session_id: str | None,
+    pfx: str,
+) -> None:
+    """Dispatch dialogue as TTS audio or text-only, depending on engine availability.
+
+    If ``_tts_engine`` is set, attempts ``generate_audio()``.  On success the
+    OGG bytes are base64-encoded and published as ``tts.audio``.  On failure
+    (or when no engine is injected) the text-only ``dialogue.display`` topic
+    is published as a fallback.
+    """
+    assert _publisher is not None  # caller already checked
+
+    base_payload = {
+        "speaker_id": speaker_id,
+        "dialogue": dialogue_text,
+        "create_event": True,
+        "event_context": {"world_context": None},
+        "voice_id": voice_id,
+        "dialogue_id": dialogue_id,
+    }
+
+    if _tts_engine is not None:
+        try:
+            result = await _tts_engine.generate_audio(dialogue_text, voice_id)
+            if result is not None:
+                ogg_bytes, duration_ms = result
+                audio_b64 = base64.b64encode(ogg_bytes).decode("ascii")
+                tts_payload = {
+                    **base_payload,
+                    "audio_b64": audio_b64,
+                    "duration_ms": duration_ms,
+                }
+                await _publisher.publish("tts.audio", tts_payload, session=session_id)
+                logger.debug(
+                    f"{pfx}Published tts.audio for speaker={speaker_id} "
+                    f"(dialogue_id={dialogue_id}, {len(ogg_bytes)}B ogg, {duration_ms}ms)"
+                )
+                return
+            else:
+                logger.warning(f"{pfx}TTS returned None — falling back to dialogue.display")
+        except Exception:
+            logger.opt(exception=True).warning(
+                f"{pfx}TTS generation failed — falling back to dialogue.display"
+            )
+
+    # Fallback: text-only
+    await _publisher.publish("dialogue.display", base_payload, session=session_id)
+    logger.debug(f"{pfx}Published dialogue.display for speaker={speaker_id} (dialogue_id={dialogue_id})")
 
 
 async def handle_player_dialogue(payload: dict[str, Any], session_id: str = "__default__", req_id: int = 0) -> None:
     """Handle player dialogue input from Lua.
     
-    Phase 1: Just log the input.
-    Phase 2+: Will trigger AI response generation.
+    Supports two payload formats:
+    - v1 (legacy): {text, context} - just logs the input
+    - v2 (future): {event, candidates, world, traits} - calls ConversationManager
     """
     try:
-        msg = PlayerDialogueMessage(**payload)
+        pfx = log_prefix(req_id, session_id)
         
-        pfx = log_prefix(req_id)
-        logger.info(f"{pfx}Player Dialogue: \"{msg.text}\"")
-        if msg.context:
-            logger.debug(f"{pfx}Dialogue context: {msg.context}")
+        # Check if this is a v2 payload (has event + candidates)
+        if "event" in payload and "candidates" in payload:
+            event_data = payload.get("event", {})
+            candidates = payload.get("candidates", [])
+            world = payload.get("world", "")
+            traits = payload.get("traits", {})
+            
+            if not candidates:
+                logger.debug(f"{pfx}Player dialogue: no candidates nearby, skipping")
+                return
+            
+            logger.info(
+                f"{pfx}Player Dialogue (v2): text=\"{event_data.get('context', {}).get('text', '')}\", "
+                f"candidates={len(candidates)}"
+            )
+            
+            # Trigger dialogue generation via ConversationManager
+            _logged_task(
+                _handle_event_v2(event_data, candidates, world, traits, session_id=session_id, req_id=req_id),
+                name=f"player_dialogue_{req_id}"
+            )
+        else:
+            # v1 payload: just log (Phase 1 stub)
+            msg = PlayerDialogueMessage(**payload)
+            logger.info(f"{pfx}Player Dialogue: \"{msg.text}\"")
+            if msg.context:
+                logger.debug(f"{pfx}Dialogue context: {msg.context}")
             
     except Exception as e:
         logger.error(f"Error processing player dialogue: {e}")
@@ -276,16 +395,40 @@ async def handle_player_dialogue(payload: dict[str, Any], session_id: str = "__d
 async def handle_player_whisper(payload: dict[str, Any], session_id: str = "__default__", req_id: int = 0) -> None:
     """Handle player whisper input from Lua.
     
-    Phase 1: Just log the input.
-    Phase 2+: Will trigger AI response generation with whisper mode.
+    Supports two payload formats:
+    - v1 (legacy): {text, target} - just logs the input
+    - v2 (future): {event, candidates, world, traits} - calls ConversationManager
     """
     try:
-        msg = PlayerDialogueMessage(**payload)
+        pfx = log_prefix(req_id, session_id)
         
-        pfx = log_prefix(req_id)
-        logger.info(f"{pfx}Player Whisper: \"{msg.text}\"")
-        if msg.context:
-            logger.debug(f"{pfx}Whisper context: {msg.context}")
+        # Check if this is a v2 payload (has event + candidates)
+        if "event" in payload and "candidates" in payload:
+            event_data = payload.get("event", {})
+            candidates = payload.get("candidates", [])
+            world = payload.get("world", "")
+            traits = payload.get("traits", {})
+            
+            if not candidates:
+                logger.debug(f"{pfx}Player whisper: no candidates nearby, skipping")
+                return
+            
+            logger.info(
+                f"{pfx}Player Whisper (v2): text=\"{event_data.get('context', {}).get('text', '')}\", "
+                f"candidates={len(candidates)}"
+            )
+            
+            # Trigger dialogue generation via ConversationManager
+            _logged_task(
+                _handle_event_v2(event_data, candidates, world, traits, session_id=session_id, req_id=req_id),
+                name=f"player_whisper_{req_id}"
+            )
+        else:
+            # v1 payload: just log (Phase 1 stub)
+            msg = PlayerDialogueMessage(**payload)
+            logger.info(f"{pfx}Player Whisper: \"{msg.text}\"")
+            if msg.context:
+                logger.debug(f"{pfx}Whisper context: {msg.context}")
             
     except Exception as e:
         logger.error(f"Error processing player whisper: {e}")
@@ -323,17 +466,6 @@ async def handle_heartbeat(payload: dict[str, Any], session_id: str = "__default
         if not mirror.is_synced and _publisher:
             logger.info("Config not yet synced — re-requesting config sync via heartbeat")
             await _publisher.publish("config.request", {"reason": "heartbeat_no_sync"}, session=session_id)
-        
-        # Check retry queue for heartbeat gap (Lua recovered from pause)
-        if _retry_queue and _dialogue_generator:
-            should_flush = _retry_queue.notify_heartbeat(time.time())
-            if should_flush:
-                logger.info("Flushing retry queue after heartbeat gap")
-                _retry_queue.flush(_dialogue_generator)
-                # Also re-request config in case the service was restarted during the gap
-                if _publisher:
-                    logger.info("Re-requesting config sync after heartbeat gap recovery")
-                    await _publisher.publish("config.request", {"reason": "heartbeat_gap_recovery"}, session=session_id)
         
         # Send heartbeat acknowledgement back to Lua so it knows we're alive
         if _publisher:

@@ -1,4 +1,11 @@
-"""Tests for prompts module."""
+"""Tests for prompts module.
+
+Tests for deleted prompt builder functions (create_pick_speaker_prompt,
+create_dialogue_request_prompt, create_compress_memories_prompt,
+create_update_narrative_prompt, create_transcription_prompt) were removed
+during tools-based-memory migration — those functions are replaced by
+tool-based conversation in ConversationManager.
+"""
 
 import pytest
 
@@ -6,23 +13,20 @@ from talker_service.prompts import (
     Character,
     Event,
     MemoryContext,
-    Message,
     NarrativeCue,
+    get_faction_description,
+    get_faction_relation,
+    get_faction_relations_text,
+)
+from talker_service.prompts.helpers import (
     describe_character,
     describe_character_with_id,
     describe_event,
     is_junk_event,
     was_witnessed_by,
-    get_faction_description,
-    get_faction_relation,
-    get_faction_relations_text,
-    create_pick_speaker_prompt,
-    create_dialogue_request_prompt,
-    create_compress_memories_prompt,
     inject_time_gaps,
-    create_update_narrative_prompt,
-    create_transcription_prompt,
 )
+from talker_service.llm.models import Message
 
 
 # ============================================================================
@@ -443,323 +447,6 @@ class TestFactions:
         assert "Duty" in text  # dolg resolves to Duty in display
 
 
-# ============================================================================
-# Prompt Builder Tests
-# ============================================================================
-
-class TestCreatePickSpeakerPrompt:
-    """Tests for create_pick_speaker_prompt."""
-    
-    def test_creates_messages(self):
-        witness = Character(game_id="123", name="Hip", faction="stalker", experience="Veteran", reputation=500)
-        event = Event(type="DIALOGUE", context={"text": "Hello"}, game_time_ms=1000)
-        
-        messages = create_pick_speaker_prompt([event], [witness])
-        
-        assert len(messages) > 0
-        assert all(isinstance(m, Message) for m in messages)
-        assert any("SPEAKER" in m.content.upper() for m in messages)
-        assert any("CANDIDATES" in m.content.upper() for m in messages)
-    
-    def test_limits_to_8_events(self):
-        witness = Character(game_id="123", name="Hip", faction="stalker", experience="Veteran", reputation=500)
-        events = [Event(type="DIALOGUE", context={"text": f"Hello {i}"}, game_time_ms=i * 1000) for i in range(15)]
-        
-        messages = create_pick_speaker_prompt(events, [witness])
-        
-        # Should have limited the events, but we can't easily verify the internal count
-        # Just verify it completes without error
-        assert len(messages) > 0
-    
-    def test_raises_on_no_witnesses(self):
-        event = Event(type="DIALOGUE", context={}, game_time_ms=1000)
-        with pytest.raises(ValueError, match="No witnesses"):
-            create_pick_speaker_prompt([event], [])
-    
-    def test_raises_on_no_events(self):
-        witness = Character(game_id="123", name="Hip", faction="stalker", experience="Veteran", reputation=500)
-        with pytest.raises(ValueError, match="No recent events"):
-            create_pick_speaker_prompt([], [witness])
-
-
-class TestCreateDialogueRequestPrompt:
-    """Tests for create_dialogue_request_prompt."""
-    
-    def test_creates_messages(self):
-        speaker = Character(
-            game_id="123",
-            name="Hip",
-            faction="stalker",
-            experience="Veteran",
-            reputation=500,
-        )
-        memory_context = MemoryContext(
-            narrative="Hip met the player in Cordon.",
-            new_events=[Event(type="DIALOGUE", context={"text": "Hello"}, game_time_ms=1000)],
-            last_update_time_ms=500,
-        )
-        
-        messages, timestamp = create_dialogue_request_prompt(
-            speaker, memory_context, speaker_personality="friendly", speaker_backstory="former medic"
-        )
-        
-        assert len(messages) > 0
-        assert all(isinstance(m, Message) for m in messages)
-        assert timestamp is None  # No idle event
-    
-    def test_detects_idle_event(self):
-        speaker = Character(game_id="123", name="Hip", faction="stalker", experience="Veteran", reputation=500)
-        idle_event = Event(
-            type="IDLE",
-            context={},
-            game_time_ms=5000,
-            flags={"is_idle": True},
-        )
-        memory_context = MemoryContext(new_events=[idle_event])
-        
-        messages, timestamp = create_dialogue_request_prompt(
-            speaker, memory_context, speaker_personality="friendly", speaker_backstory="former medic"
-        )
-        
-        assert timestamp == 5000  # Should mark for deletion
-    
-    def test_includes_character_info(self):
-        speaker = Character(
-            game_id="123",
-            name="Hip",
-            faction="stalker",
-            experience="Veteran",
-            reputation=500,
-        )
-        memory_context = MemoryContext()
-        
-        messages, _ = create_dialogue_request_prompt(
-            speaker, memory_context, speaker_personality="friendly", speaker_backstory="former medic"
-        )
-        
-        # Find the character section
-        content = " ".join(m.content for m in messages)
-        assert "Hip" in content
-        assert "stalker" in content
-        assert "friendly" in content
-    
-    def test_includes_scene_context(self):
-        """Test that scene_context adds CURRENT LOCATION section."""
-        speaker = Character(
-            game_id="123",
-            name="Hip",
-            faction="stalker",
-            experience="Veteran",
-            reputation=500,
-        )
-        memory_context = MemoryContext()
-        scene_context = {
-            "loc": "l01_escape",
-            "poi": "Rookie Village",
-            "time": {"h": 14, "m": 30},
-            "weather": "clear",
-            "emission": False,
-            "psy_storm": False,
-        }
-        
-        messages, _ = create_dialogue_request_prompt(
-            speaker, memory_context, scene_context=scene_context
-        )
-        
-        content = " ".join(m.content for m in messages)
-        assert "CURRENT LOCATION" in content
-        assert "Cordon" in content  # Location translated from l01_escape
-        assert "Rookie Village" in content  # POI name
-        assert "afternoon" in content  # Time (14:30)
-    
-    def test_includes_world_state_context_news(self):
-        """Test that world_state_context adds DYNAMIC WORLD STATE / NEWS section."""
-        speaker = Character(
-            game_id="123",
-            name="Hip",
-            faction="stalker",
-            experience="Veteran",
-            reputation=500,
-        )
-        memory_context = MemoryContext()
-        world_state_context = "Sidorovich, the trader in Cordon, is dead."
-        
-        messages, _ = create_dialogue_request_prompt(
-            speaker, memory_context, world_state_context=world_state_context
-        )
-        
-        content = " ".join(m.content for m in messages)
-        assert "NEWS" in content or "DYNAMIC WORLD STATE" in content
-        assert "Sidorovich" in content
-    
-    def test_no_news_section_when_context_empty(self):
-        """Test that empty world_state_context doesn't add NEWS section."""
-        speaker = Character(
-            game_id="123",
-            name="Hip",
-            faction="stalker",
-            experience="Veteran",
-            reputation=500,
-        )
-        memory_context = MemoryContext()
-        
-        messages, _ = create_dialogue_request_prompt(
-            speaker, memory_context, world_state_context=""
-        )
-        
-        content = " ".join(m.content for m in messages)
-        # Should not have NEWS section when context is empty
-        assert "DYNAMIC WORLD STATE" not in content
-
-
-class TestDialoguePromptDisguise:
-    """Tests for disguise awareness injection in dialogue prompts."""
-
-    def _make_speaker(self):
-        return Character(
-            game_id="123",
-            name="Wolf",
-            faction="stalker",
-            experience="Veteran",
-            reputation=500,
-        )
-
-    def _make_disguised_event(self):
-        """Event with an actor wearing a disguise (visual_faction set)."""
-        actor = Character(
-            game_id="1",
-            name="Player",
-            faction="stalker",
-            experience="Veteran",
-            reputation=500,
-            visual_faction="dolg",  # disguised as Duty
-        )
-        return Event(
-            type="TASK",
-            context={"actor": actor.__dict__, "task_status": "completed", "task_name": "Some task"},
-            game_time_ms=1000,
-        )
-
-    def _all_content(self, messages):
-        return " ".join(m.content for m in messages)
-
-    def test_dialogue_prompt_disguise_non_companion(self):
-        """Non-companion: DISGUISE CONTEXT injected with non-companion (didn't know) instructions."""
-        memory_context = MemoryContext(new_events=[self._make_disguised_event()])
-        messages, _ = create_dialogue_request_prompt(
-            self._make_speaker(), memory_context, is_companion=False
-        )
-        content = self._all_content(messages)
-        assert "## DISGUISE CONTEXT" in content
-        assert "DISGUISE NOTATION" in content
-        assert "did NOT know" in content
-
-    def test_dialogue_prompt_disguise_companion(self):
-        """Companion: DISGUISE CONTEXT injected with companion-aware (knew about disguise) instructions."""
-        memory_context = MemoryContext(new_events=[self._make_disguised_event()])
-        messages, _ = create_dialogue_request_prompt(
-            self._make_speaker(), memory_context, is_companion=True
-        )
-        content = self._all_content(messages)
-        assert "## DISGUISE CONTEXT" in content
-        assert "DISGUISE AWARENESS (COMPANION)" in content
-        assert "aware of the disguise" in content
-
-    def test_dialogue_prompt_no_disguise_no_section(self):
-        """Events without disguise should not inject DISGUISE CONTEXT section."""
-        actor = Character(
-            game_id="1",
-            name="Player",
-            faction="stalker",
-            experience="Veteran",
-            reputation=500,
-            visual_faction=None,  # no disguise
-        )
-        event = Event(
-            type="TASK",
-            context={"actor": actor.__dict__, "task_status": "completed", "task_name": "Some task"},
-            game_time_ms=1000,
-        )
-        memory_context = MemoryContext(new_events=[event])
-        messages, _ = create_dialogue_request_prompt(
-            self._make_speaker(), memory_context, is_companion=False
-        )
-        content = self._all_content(messages)
-        assert "## DISGUISE CONTEXT" not in content
-
-
-class TestCreateCompressMemoriesPrompt:
-    """Tests for create_compress_memories_prompt."""
-    
-    def test_creates_messages(self):
-        speaker = Character(game_id="123", name="Hip", faction="stalker", experience="Veteran", reputation=500)
-        events = [
-            Event(type="DIALOGUE", context={"text": "Hello"}, game_time_ms=1000),
-            Event(type="DEATH", context={"victim": {"name": "Bandit"}}, game_time_ms=2000),
-        ]
-        
-        messages = create_compress_memories_prompt(events, speaker)
-        
-        assert len(messages) > 0
-        assert any("COMPRESSION" in m.content.upper() for m in messages)
-    
-    def test_filters_junk_events(self):
-        events = [
-            Event(type="DIALOGUE", context={"text": "Hello"}, game_time_ms=1000),
-            Event(type="ARTIFACT", context={}, game_time_ms=2000),  # Junk
-            Event(type="RELOAD", context={}, game_time_ms=3000),  # Junk
-        ]
-        
-        messages = create_compress_memories_prompt(events)
-        
-        # Junk events should be filtered out, so we shouldn't see ARTIFACT or RELOAD content
-        content = " ".join(m.content for m in messages if m.role == "user")
-        # The junk events shouldn't appear as user messages
-        assert len([m for m in messages if m.role == "user"]) <= 1
-
-
-class TestCreateUpdateNarrativePrompt:
-    """Tests for create_update_narrative_prompt."""
-    
-    def test_creates_bootstrap_prompt(self):
-        speaker = Character(game_id="123", name="Hip", faction="stalker", experience="Veteran", reputation=500)
-        events = [
-            Event(type="DIALOGUE", context={"text": "Hello"}, game_time_ms=1000),
-        ]
-        
-        messages = create_update_narrative_prompt(speaker, None, events)
-        
-        assert len(messages) > 0
-        assert any("MEMORY" in m.content.upper() for m in messages)
-    
-    def test_creates_update_prompt_with_existing_narrative(self):
-        speaker = Character(game_id="123", name="Hip", faction="stalker", experience="Veteran", reputation=500)
-        narrative = "Hip previously met the player in Cordon."
-        events = [
-            Event(type="DIALOGUE", context={"text": "Hello again"}, game_time_ms=5000),
-        ]
-        
-        messages = create_update_narrative_prompt(speaker, narrative, events)
-        
-        assert len(messages) > 0
-        # Should contain the existing narrative
-        content = " ".join(m.content for m in messages)
-        assert "CURRENT_MEMORY" in content
-
-
-class TestCreateTranscriptionPrompt:
-    """Tests for create_transcription_prompt."""
-    
-    def test_creates_prompt(self):
-        names = ["Hip", "Wolf", "Fanatic"]
-        prompt = create_transcription_prompt(names)
-        
-        assert "STALKER" in prompt
-        assert "Hip" in prompt
-        assert "Wolf" in prompt
-        assert "Fanatic" in prompt
-
-
 class TestMessage:
     """Tests for Message class."""
     
@@ -917,3 +604,74 @@ class TestInjectTimeGaps:
         assert cue.is_cue is True
         assert cue.type == "TIME_GAP"
         assert "12 hours" in cue.message
+
+
+# ---------------------------------------------------------------------------
+# build_dialogue_user_message tests
+# ---------------------------------------------------------------------------
+
+from talker_service.prompts.dialogue import build_dialogue_user_message
+
+
+class TestBuildDialogueUserMessage:
+    """Tests for the [ts] pointer dialogue user message builder."""
+
+    def test_with_narrative(self):
+        msg = build_dialogue_user_message(
+            speaker_name="Wolf",
+            speaker_id="12467",
+            ts=1709912345,
+            narrative="[SUMMARIES] Wolf recalls a patrol.",
+        )
+        assert "React to event [1709912345]" in msg
+        assert "Wolf" in msg
+        assert "12467" in msg
+        assert "Personal memories:" in msg
+        assert "[SUMMARIES] Wolf recalls a patrol." in msg
+        assert "just the spoken words" in msg
+
+    def test_without_narrative(self):
+        msg = build_dialogue_user_message(
+            speaker_name="Nobody",
+            speaker_id="99",
+            ts=100,
+            narrative="",
+        )
+        assert "React to event [100]" in msg
+        assert "Nobody" in msg
+        assert "99" in msg
+        assert "Personal memories:" not in msg
+        assert "just the spoken words" in msg
+
+    def test_includes_dynamic_world_line(self):
+        msg = build_dialogue_user_message(
+            speaker_name="Wolf",
+            speaker_id="12467",
+            ts=200,
+            narrative="",
+            dynamic_world_line="Weather: Clear | Time: 14:30 | Location: Rostok",
+        )
+        assert "Weather: Clear" in msg
+        assert "React to event [200]" in msg
+
+    def test_includes_speaker_event_list(self):
+        msg = build_dialogue_user_message(
+            speaker_name="Wolf",
+            speaker_id="12467",
+            ts=5000,
+            narrative="",
+            speaker_event_list_text="[5000] DEATH — A killed B (witnesses: Wolf)",
+        )
+        assert "Recent events witnessed by Wolf:" in msg
+        assert "[5000] DEATH" in msg
+
+    def test_no_dynamic_world_line_when_empty(self):
+        msg = build_dialogue_user_message(
+            speaker_name="Wolf",
+            speaker_id="12467",
+            ts=999,
+            narrative="",
+            dynamic_world_line="",
+        )
+        # First non-empty part should be the react line (no event list, no world line)
+        assert "React to event [999]" in msg

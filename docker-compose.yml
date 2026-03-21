@@ -1,0 +1,24 @@
+# Local dev dependencies — Neo4j for graph memory.
+# Run talker_service manually (launch_talker_service.bat).
+#
+# Usage:
+#   docker compose up -d
+#   docker compose down      # keep data
+#   docker compose down -v    # wipe data
+
+services:
+  neo4j:
+    image: neo4j:5.26-community
+    restart: unless-stopped
+    environment:
+      - NEO4J_AUTH=none
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+
+volumes:
+  neo4j_data:
+  neo4j_logs:

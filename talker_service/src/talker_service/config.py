@@ -1,16 +1,21 @@
 """Service configuration using pydantic-settings."""
 
+import os
 from typing import Optional
 from pathlib import Path
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+_ENV_FILE_OVERRIDE = os.getenv("TALKER_SERVICE_ENV_FILE", "").strip()
+_ENV_FILES = _ENV_FILE_OVERRIDE or (".env.local", ".env")
+
+
 class Settings(BaseSettings):
     """TALKER Service configuration."""
     
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=_ENV_FILES,
         env_file_encoding="utf-8",
         extra="ignore",
     )
@@ -28,6 +33,26 @@ class Settings(BaseSettings):
     # LLM Settings
     default_llm_provider: str = "openai"  # openai, openrouter, ollama, proxy
     llm_timeout: float = 60.0  # seconds
+
+    # Graph memory (Neo4j)
+    neo4j_uri: str = ""
+    neo4j_user: str = "neo4j"
+    neo4j_password: str = ""
+    neo4j_database: str = "neo4j"
+
+    # Embeddings (Ollama)
+    ollama_base_url: str = ""
+    ollama_embed_model: str = "nomic-embed-text"
+
+    # Shared remote service hub (derives TTS/STT/embed URLs when set)
+    service_hub_url: str = ""
+
+    # Auth settings for remote service hub (Keycloak ROPC)
+    service_type: Optional[int] = None  # 0=local, 1=remote (enables Keycloak auth)
+    auth_username: Optional[str] = None
+    auth_password: Optional[str] = None
+    auth_client_id: Optional[str] = None
+    auth_client_secret: Optional[str] = None
     
     # Server authority pins — when set, MCM cannot override these
     llm_provider: Optional[str] = None  # openai | openrouter | ollama | proxy
@@ -60,6 +85,14 @@ class Settings(BaseSettings):
     # Remote STT endpoint (for use with faster-whisper-server or compatible)
     stt_endpoint: str = ""  # Custom STT base_url (e.g. http://whisper:8200/v1); empty = OpenAI cloud
 
+    # Reasoning options (for models that support extended thinking)
+    reasoning_effort: Optional[str] = None  # "low", "medium", "high" — None = provider default
+    reasoning_summary: Optional[str] = None  # "auto", "concise", "detailed" — None = omit
+
+    # Provider Optimization Layers
+    enable_conversation_persistence: bool = True  # Keep conversation history across events (OpenAI)
+    enable_context_pruning: bool = True  # Auto-prune long conversations to stay within context window
+
     @model_validator(mode="after")
     def _resolve_backward_compat(self) -> "Settings":
         """Resolve backward-compat aliases.
@@ -71,6 +104,17 @@ class Settings(BaseSettings):
             self.llm_provider = "proxy"
         if self.stt_method is None and self.force_local_whisper:
             self.stt_method = "local"
+
+        # SERVICE_HUB_URL derives per-service endpoints unless explicitly set.
+        hub_url = (self.service_hub_url or "").strip().rstrip("/")
+        if hub_url:
+            if not (self.tts_service_url or "").strip():
+                self.tts_service_url = f"{hub_url}/api/tts"
+            if not (self.stt_endpoint or "").strip():
+                self.stt_endpoint = f"{hub_url}/api/stt/v1"
+            if not (self.ollama_base_url or "").strip():
+                self.ollama_base_url = f"{hub_url}/api/embed"
+
         return self
 
 

@@ -9,13 +9,19 @@ targets a local faster-whisper-server container instead of OpenAI's cloud.
 
 from __future__ import annotations
 
+import asyncio
 import os
 import tempfile
 import wave
+from typing import TYPE_CHECKING
 
 from loguru import logger
 
 import openai
+import httpx
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 class WhisperAPIProvider:
@@ -25,23 +31,42 @@ class WhisperAPIProvider:
         self,
         api_key: str | None = None,
         endpoint: str | None = None,
+        http_client: httpx.AsyncClient | None = None,
+        auth_factory: "Callable[[], httpx.AsyncClient] | None" = None,
     ) -> None:
         self._api_key = api_key or os.environ.get("OPENAI_API_KEY", "")
         self._endpoint = endpoint or ""
+        self._http_client = http_client
+        self._auth_factory = auth_factory
 
         if self._endpoint:
-            # Local faster-whisper-server — api_key not needed but required by client
-            self._client = openai.OpenAI(
-                base_url=self._endpoint,
-                api_key=self._api_key or "unused",
-            )
-            logger.info("Whisper API provider initialized (endpoint: {})", self._endpoint)
+            base_url = self._endpoint.rstrip("/")
+            if not base_url.endswith("/v1"):
+                base_url += "/v1"
+            self._base_url = base_url
+            logger.info("Whisper API provider initialized (endpoint: {})", base_url)
         else:
-            # Default OpenAI cloud
+            self._base_url = None
             if not self._api_key:
                 logger.warning("No OpenAI API key set — Whisper API transcription will fail")
-            self._client = openai.OpenAI(api_key=self._api_key)
             logger.info("Whisper API provider initialized (OpenAI cloud)")
+
+    def _make_client(self) -> openai.AsyncOpenAI:
+        """Create a fresh AsyncOpenAI client, safe for the current event loop."""
+        client_kwargs = {}
+        # Prefer auth_factory (creates loop-local httpx client with Keycloak auth)
+        if self._auth_factory is not None:
+            client_kwargs["http_client"] = self._auth_factory()
+        elif self._http_client is not None:
+            client_kwargs["http_client"] = self._http_client
+
+        if self._base_url:
+            return openai.AsyncOpenAI(
+                base_url=self._base_url,
+                api_key=self._api_key or "unused",
+                **client_kwargs,
+            )
+        return openai.AsyncOpenAI(api_key=self._api_key, **client_kwargs)
 
     def transcribe(
         self,
@@ -57,13 +82,9 @@ class WhisperAPIProvider:
         wav_path = self._pcm_to_wav(audio_bytes)
 
         try:
-            with open(wav_path, "rb") as audio_file:
-                transcript = self._client.audio.transcriptions.create(
-                    model="whisper-1",
-                    file=audio_file,
-                    prompt=prompt if prompt else None,
-                    language=language if language else None,
-                )
+            transcript = asyncio.run(
+                self._transcribe_file(wav_path, prompt=prompt, language=language)
+            )
             text = transcript.text.strip()
             logger.info("Whisper API transcription: '{}'", text)
             return text
@@ -75,6 +96,25 @@ class WhisperAPIProvider:
                 os.unlink(wav_path)
             except OSError:
                 pass
+
+    async def _transcribe_file(
+        self,
+        wav_path: str,
+        *,
+        prompt: str,
+        language: str,
+    ):
+        client = self._make_client()
+        try:
+            with open(wav_path, "rb") as audio_file:
+                return await client.audio.transcriptions.create(
+                    model="whisper-1",
+                    file=audio_file,
+                    prompt=prompt if prompt else None,
+                    language=language if language else None,
+                )
+        finally:
+            await client.close()
 
     @staticmethod
     def _pcm_to_wav(pcm_bytes: bytes, sample_rate: int = 16000) -> str:

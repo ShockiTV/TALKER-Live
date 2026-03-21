@@ -173,3 +173,139 @@ def get_faction_relations_text(speaker_faction: str, mentioned_factions: set[str
         # Neutral relations omitted for brevity
     
     return "\n".join(lines) if lines else ""
+
+
+# ---------------------------------------------------------------------------
+# Dynamic faction relation thresholds & labels
+# ---------------------------------------------------------------------------
+
+# Faction-pair relation thresholds (from game_relations.script)
+FACTION_RELATION_THRESHOLDS = {
+    "Allied": 1000,   # >= 1000
+    "Hostile": -1000,  # <= -1000
+    # Between = Neutral
+}
+
+# Player goodwill tiers matching PDA display (ordered highest-first)
+# Positive tiers use >= (spec: >= 2000, >= 1500, etc.)
+# Negative tiers use > (spec: > -500, > -1000, etc.) → mapped to >= with +1 for integers
+GOODWILL_TIERS: list[tuple[int, str]] = [
+    (2000, "Excellent"),
+    (1500, "Brilliant"),
+    (1000, "Great"),
+    (500, "Good"),
+    (-499, "Neutral"),   # > -500 → >= -499 for integers
+    (-999, "Bad"),       # > -1000 → >= -999
+    (-1499, "Awful"),    # > -1500 → >= -1499
+    (-1999, "Dreary"),   # > -2000 → >= -1999
+    # <= -2000 → Terrible (fallback)
+]
+
+
+def label_faction_relation(value: int) -> str:
+    """Label a faction-pair relation value.
+
+    Args:
+        value: Raw integer from ``relation_registry.community_relation()``.
+
+    Returns:
+        ``"Allied"``, ``"Hostile"``, or ``"Neutral"``.
+    """
+    if value >= FACTION_RELATION_THRESHOLDS["Allied"]:
+        return "Allied"
+    if value <= FACTION_RELATION_THRESHOLDS["Hostile"]:
+        return "Hostile"
+    return "Neutral"
+
+
+def label_goodwill(value: int) -> str:
+    """Label a player goodwill value using PDA-style tiers.
+
+    Args:
+        value: Raw integer from ``actor:community_goodwill()``.
+
+    Returns:
+        Tier label string (e.g. ``"Excellent"``, ``"Neutral"``, ``"Terrible"``).
+    """
+    for threshold, label in GOODWILL_TIERS:
+        if value >= threshold:
+            return label
+    return "Terrible"
+
+
+# ---------------------------------------------------------------------------
+# Formatters for prompt injection
+# ---------------------------------------------------------------------------
+
+def format_faction_standings(
+    faction_standings: dict[str, int] | None,
+    relevant_factions: set[str] | None = None,
+) -> str:
+    """Format faction-pair standings into prompt text.
+
+    Args:
+        faction_standings: Flat dict of ``"factionA_factionB"`` → int.
+        relevant_factions: If provided, only pairs where at least one
+            faction is in this set are included.
+
+    Returns:
+        Formatted text with one line per pair, or empty string.
+    """
+    if not faction_standings:
+        return ""
+
+    lines: list[str] = []
+    for key in sorted(faction_standings):
+        value = faction_standings[key]
+        parts = key.split("_", 1)
+        if len(parts) != 2:
+            continue
+        a, b = parts
+
+        if relevant_factions is not None:
+            if a not in relevant_factions and b not in relevant_factions:
+                continue
+
+        name_a = resolve_faction_name(a)
+        name_b = resolve_faction_name(b)
+        label = label_faction_relation(value)
+        lines.append(f"{name_a}\u2194{name_b}: {label}")
+
+    return "\n".join(lines)
+
+
+def format_player_goodwill(
+    player_goodwill: dict[str, int] | None,
+    relevant_factions: set[str] | None = None,
+) -> str:
+    """Format per-faction player goodwill into prompt text.
+
+    Args:
+        player_goodwill: Dict of ``faction_id`` → int.
+        relevant_factions: If provided, only matching factions are included.
+
+    Returns:
+        Formatted text with one line per faction, or empty string.
+    """
+    if not player_goodwill:
+        return ""
+
+    lines: list[str] = []
+    for faction_id in sorted(player_goodwill):
+        if relevant_factions is not None and faction_id not in relevant_factions:
+            continue
+        value = player_goodwill[faction_id]
+        name = resolve_faction_name(faction_id)
+        sign = "+" if value >= 0 else ""
+        label = label_goodwill(value)
+        lines.append(f"{name}: {sign}{value} ({label})")
+
+    return "\n".join(lines)
+
+
+# Companion faction tension note — injected into system prompt
+COMPANION_FACTION_TENSION_NOTE = (
+    "Faction hostilities apply to your attitude and dialogue, not just combat. "
+    "Even if you are travelling as a companion and are mechanically safe from a "
+    "hostile faction, you still hold your faction's opinions about them."
+)

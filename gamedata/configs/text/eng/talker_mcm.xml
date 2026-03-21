@@ -7,22 +7,22 @@
     <string id="ui_mcm_menu_talker">
         <text>T.A.L.K.E.R. Expanded</text>
     </string>
-    <string id="ui_mcm_talker_gpt_version">
+    <string id="ui_mcm_talker_general_gpt_version">
         <text>GPT Model for dialogue</text>
     </string>
-    <string id="ui_mcm_talker_ai_model_method">
+    <string id="ui_mcm_talker_general_ai_model_method">
         <text>Which method/site to use for models</text>
     </string>
-    <string id="ui_mcm_talker_custom_ai_model">
+    <string id="ui_mcm_talker_general_custom_ai_model">
         <text>Model for dialogue</text>
     </string>
-    <string id="ui_mcm_talker_custom_ai_model_fast">
+    <string id="ui_mcm_talker_general_custom_ai_model_fast">
         <text>Fast Model for non dialogue</text>
     </string>
-    <string id="ui_mcm_talker_reasoning_level">
+    <string id="ui_mcm_talker_general_reasoning_level">
         <text>(Proxy) Reasoning Level (Best Auto or None)</text>
     </string>
-    <string id="ui_mcm_talker_voice_provider">
+    <string id="ui_mcm_talker_general_voice_provider">
         <text>Voice Provider</text>
     </string>
     <!-- MODEL MODE SLECTION -->
@@ -71,10 +71,10 @@
     <string id="ui_mcm_talker_enable_tts_description">
         <text>Read NPC dialogue aloud via mic_python. Requires mic service launched with --tts flag.</text>
     </string>
-    <string id="ui_mcm_talker_enable_tts">
+    <string id="ui_mcm_talker_general_enable_tts">
         <text>Enable TTS</text>
     </string>
-    <string id="ui_mcm_talker_tts_volume_boost">
+    <string id="ui_mcm_talker_general_tts_volume_boost">
         <text>TTS Volume Boost (1.0 = normal, 5.0 = loudest)</text>
     </string>
     <!-- Input options -->
@@ -84,7 +84,7 @@
     <string id="ui_mcm_talker_input_option_description">
         <text>Choose how to provide input: voice or text.</text>
     </string>
-    <string id="ui_mcm_talker_input_option">
+    <string id="ui_mcm_talker_general_input_option">
         <text>Input Mode</text>
     </string>
     <string id="ui_mcm_lst_voice">
@@ -94,7 +94,7 @@
         <text>Text</text>
     </string>
     <!-- LANGUAGE SELECTION -->
-    <string id="ui_mcm_talker_language">
+    <string id="ui_mcm_talker_general_language">
         <text>Dialogue language</text>
     </string>
     <string id="ui_mcm_lst_Any">
@@ -126,7 +126,7 @@
     <string id="ui_mcm_talker_speak_key_description">
         <text>Configure the key used to initiate speaking.</text>
     </string>
-    <string id="ui_mcm_talker_speak_key">
+    <string id="ui_mcm_talker_general_speak_key">
         <text>Microphone input key.</text>
     </string>
 	    <!-- WHISPER MODIFIER KEY CONFIGURATION -->
@@ -136,7 +136,7 @@
     <string id="ui_mcm_talker_whisper_modifier_description">
         <text>Holding down this button while speaking or sending a message will make it only be heard by your companions.</text>
     </string>
-    <string id="ui_mcm_talker_whisper_modifier">
+    <string id="ui_mcm_talker_general_whisper_modifier">
         <text>Whisper Modifier Key</text>
     </string>
 	    <string id="ui_mcm_lst_Shift">
@@ -152,335 +152,283 @@
     <string id="ui_mcm_talker_reset_personality_title">
         <text>Reset Personalities</text>
     </string>
-    <string id="ui_mcm_talker_reset_personality">
+    <string id="ui_mcm_talker_general_reset_personality">
         <text>Check this box to reset personalities on loading a save. </text>
     </string>
 			    <!-- BACKSTORY RESETTING -->
     <string id="ui_mcm_talker_reset_backstory_title">
         <text>Reset Backstories</text>
     </string>
-    <string id="ui_mcm_talker_reset_backstory">
+    <string id="ui_mcm_talker_general_reset_backstory">
         <text>Check this box to reset backstories on loading a save. </text>
     </string>
         <!-- GENERAL CONFIGURATION -->
     <string id="ui_mcm_talker_general_configuration_title">
         <text>General Configuration</text>
     </string>
-    <string id="ui_mcm_talker_action_descriptions">
+    <string id="ui_mcm_talker_general_action_descriptions">
         <text>Allow the AI to use action descriptions (e.g., *chuckles* or (sighs) etc.).</text>
     </string>
-    <string id="ui_mcm_talker_female_gender">
+    <string id="ui_mcm_talker_general_female_gender">
         <text>Female player (LASS support): Check if playing as a female character to have the AI adress the player as female.</text>
     </string>
-    <string id="ui_mcm_talker_anti_spam_cd">
+    <string id="ui_mcm_talker_general_anti_spam_cd">
         <text>Anti-spam cooldown (seconds). Used for anomaly, artifact, and task triggers. If this cooldown isn't ready, the trigger will abort to prevent spam. If this cooldown is ready but the event cooldown is not, the event is recorded silently.</text>
     </string>
-    <string id="ui_mcm_talker_time_gap">
+    <string id="ui_mcm_talker_general_time_gap">
         <text>Time gap threshold (hours). If this amount of time has passed between two events, a 'time gap' event is injected to help the AI understand the passage of time.</text>
     </string>
-    <string id="ui_mcm_talker_base_dialogue_chance">
-        <text>Base dialogue chance for unimportant events (important events such as the player speaking always generate dialogue)</text>
-    </string>
-    <string id="ui_mcm_talker_witness_distance">
+    <string id="ui_mcm_talker_general_witness_distance">
         <text>NPCs within this distance count as witnesses of an event (meters)</text>
     </string>
-    <string id="ui_mcm_talker_npc_speak_distance">
+    <string id="ui_mcm_talker_general_npc_speak_distance">
         <text>NPCs within this distance can speak to the player (meters)</text>
     </string>
+    <string id="ui_mcm_talker_general_recent_speech_threshold">
+        <text>Seconds before an NPC who recently spoke can speak again</text>
+    </string>
+    <string id="ui_mcm_talker_general_speaker_pick_max_events">
+        <text>Max recent events included in the speaker selection prompt (per candidate)</text>
+    </string>
+    <string id="ui_mcm_talker_general_max_log_entries_per_level">
+        <text>Max log entries per level (0 = unlimited)</text>
+    </string>
+    <!-- Navigation Labels -->
+    <string id="ui_mcm_talker_general_title">
+        <text>General</text>
+    </string>
     <!-- TRIGGERS -->
-    <string id="ui_mcm_talker_instructions_title">
-        <text>Instructions</text>
-    </string>
-    <string id="ui_mcm_talker_instructions_text">
-        <text>'Off' prevents a trigger from firing completely (no entry will be added to the event history, NPCs will not know the event happened at all). 'Silent' registers the event in the event store, but does NOT trigger immediate dialogue. Nearby NPCs will remember seeing it happen, and might bring it up in later dialogue. </text>
-    </string>
     <string id="ui_mcm_talker_triggers_title">
-        <text>Dialogue Triggers Configuration</text>
+        <text>Triggers</text>
     </string>
-    <string id="ui_mcm_talker_trigger_anomalies_title">
-        <text>Anomalies</text>
-    </string>
-    <string id="ui_mcm_talker_enable_trigger_proximity_anomalies">
-        <text>Event handling for getting close to an anomaly</text>
-    </string>
-    <string id="ui_mcm_lst_anomaly_proximity_On">
-        <text>On</text>
-    </string>
-    <string id="ui_mcm_lst_anomaly_proximity_Off">
-        <text>Off</text>
-    </string>
-    <string id="ui_mcm_lst_anomaly_proximity_Silent">
-        <text>Silent</text>
-    </string>
-    <string id="ui_mcm_talker_max_rank_for_warning">
-        <text>Rank above which NPCs IGNORE you getting close to anomalies (0 = rookie, 7 = legend).</text>
-    </string>
-    <string id="ui_mcm_talker_anomaly_proximity_comment_cd">
-        <text>Anomaly Proximity Trigger Cooldown (seconds)</text>
-    </string>
-    <string id="ui_mcm_talker_enable_trigger_damage_anomalies">
-        <text>Event handling for getting hit by an anomaly</text>
-    </string>
-    <string id="ui_mcm_lst_anomaly_damage_On">
-        <text>On</text>
-    </string>
-    <string id="ui_mcm_lst_anomaly_damage_Off">
-        <text>Off</text>
-    </string>
-    <string id="ui_mcm_lst_anomaly_damage_Silent">
-        <text>Silent</text>
-    </string>
-    <string id="ui_mcm_talker_anomaly_damage_comment_cd">
-        <text>Anomaly Damage Trigger Cooldown (seconds)</text>
-    </string>
-    <string id="ui_mcm_talker_trigger_artifacts_title">
-        <text>Artifacts</text>
-    </string>
-    <string id="ui_mcm_talker_enable_trigger_artifact_pickup">
-        <text>Event handling for picking up an artifact</text>
-    </string>
-    <string id="ui_mcm_lst_artifact_pickup_On">
-        <text>On</text>
-    </string>
-    <string id="ui_mcm_lst_artifact_pickup_Off">
-        <text>Off</text>
-    </string>
-    <string id="ui_mcm_lst_artifact_pickup_Silent">
-        <text>Silent</text>
-    </string>
-    <string id="ui_mcm_talker_artifact_pickup_comment_cd">
-        <text>Artifact Pickup Trigger Cooldown (seconds)</text>
-    </string>
-    <string id="ui_mcm_talker_enable_trigger_artifact_use">
-        <text>Event handling for using an artifact</text>
-    </string>
-    <string id="ui_mcm_lst_artifact_use_On">
-        <text>On</text>
-    </string>
-    <string id="ui_mcm_lst_artifact_use_Off">
-        <text>Off</text>
-    </string>
-    <string id="ui_mcm_lst_artifact_use_Silent">
-        <text>Silent</text>
-    </string>
-    <string id="ui_mcm_talker_artifact_use_comment_cd">
-        <text>Artifact Use Trigger Cooldown (seconds)</text>
-    </string>
-	    <string id="ui_mcm_talker_enable_trigger_artifact_equip">
-        <text>Event handling for equipping an artifact</text>
-    </string>
-    <string id="ui_mcm_lst_artifact_equip_On">
-        <text>On</text>
-    </string>
-    <string id="ui_mcm_lst_artifact_equip_Off">
-        <text>Off</text>
-    </string>
-    <string id="ui_mcm_lst_artifact_equip_Silent">
-        <text>Silent</text>
-    </string>
-    <string id="ui_mcm_talker_artifact_equip_comment_cd">
-        <text>Cooldown between comments about equipping artifacts (seconds).</text>
-    </string>
-    <string id="ui_mcm_talker_trigger_callout_title">
-        <text>Callouts</text>
-    </string>
-    <string id="ui_mcm_talker_enable_trigger_callout">
-        <text>Enable dialogue trigger on spotting an enemy</text>
-    </string>
-    <string id="ui_mcm_talker_callout_cooldown">
-        <text>Callout Trigger Cooldown (seconds)</text>
-    </string>
-    <string id="ui_mcm_talker_repeated_callout_cooldown">
-        <text>Cooldown for repeated callouts on enemies with the same name (seconds)</text>
-    </string>
-    <string id="ui_mcm_talker_max_callout_distance">
-        <text>Max Callout Distance (meters)</text>
-    </string>
+    <!-- Death -->
     <string id="ui_mcm_talker_trigger_death_title">
         <text>Deaths</text>
     </string>
-    <string id="ui_mcm_talker_trigger_death_desc">
-        <text>'Silent' mode records death events but does not generate dialogue (witnessing NPCs will remember them and can talk about them later). 'On' requests dialogue when the cooldown is ready, otherwise records deaths silently. No deaths will be ignored in either 'On' or 'Silent' mode.</text>
+    <string id="ui_mcm_talker_triggers_death_enable_player">
+        <text>Enable player kill trigger</text>
     </string>
-    <string id="ui_mcm_talker_enable_trigger_death_player">
-        <text>Event handling for player kills</text>
+    <string id="ui_mcm_talker_triggers_death_cooldown_player">
+        <text>Cooldown between player kill events (seconds)</text>
     </string>
-    <string id="ui_mcm_lst_death_player_On">
-        <text>On</text>
+    <string id="ui_mcm_talker_triggers_death_chance_player">
+        <text>Chance to generate dialogue on player kill (0-100)</text>
     </string>
-    <string id="ui_mcm_lst_death_player_Off">
-        <text>Off</text>
+    <string id="ui_mcm_talker_triggers_death_enable_npc">
+        <text>Enable NPC kill trigger</text>
     </string>
-    <string id="ui_mcm_lst_death_player_Silent">
-        <text>Silent</text>
+    <string id="ui_mcm_talker_triggers_death_cooldown_npc">
+        <text>Cooldown between NPC kill events (seconds)</text>
     </string>
-    <string id="ui_mcm_talker_death_cooldown_player">
-        <text>Cooldown for player kills (seconds)</text>
+    <string id="ui_mcm_talker_triggers_death_chance_npc">
+        <text>Chance to generate dialogue on NPC kill (0-100)</text>
     </string>
-    <string id="ui_mcm_talker_enable_trigger_death_npc">
-        <text>Event handling for NPC kills</text>
-    </string>
-    <string id="ui_mcm_lst_death_npc_On">
-        <text>On</text>
-    </string>
-    <string id="ui_mcm_lst_death_npc_Off">
-        <text>Off</text>
-    </string>
-    <string id="ui_mcm_lst_death_npc_Silent">
-        <text>Silent</text>
-    </string>
-    <string id="ui_mcm_talker_death_cooldown_npc">
-        <text>Cooldown for NPC kills (seconds)</text>
-    </string>
-    <string id="ui_mcm_talker_trigger_emission_title">
-        <text>Emissions</text>
-    </string>
-    <string id="ui_mcm_talker_enable_trigger_emission">
-        <text>Event handling for emissions/psy-storms.</text>
-    </string>
-    <string id="ui_mcm_lst_emission_On">
-        <text>On</text>
-    </string>
-    <string id="ui_mcm_lst_emission_Off">
-        <text>Off</text>
-    </string>
-    <string id="ui_mcm_lst_emission_Silent">
-        <text>Silent</text>
-    </string>
-    <string id="ui_mcm_talker_trigger_idle_title">
-        <text>Idle Conversation</text>
-    </string>
-    <string id="ui_mcm_talker_enable_trigger_idle">
-        <text>Enable idle conversations.</text>
-    </string>
-    <string id="ui_mcm_talker_idle_conversation_cooldown">
-        <text>Minimum time between idle conversations (seconds)</text>
-    </string>
-    <string id="ui_mcm_talker_recent_speech_threshold">
-        <text>Minimum window of silence (since the last time anyone said anything) before idle conversation is attempted (seconds)</text>
-    </string>
-    <string id="ui_mcm_talker_idle_question_chance">
-        <text>Percentage chance to ask the player a question instead of starting idle conversation</text>
-    </string>
+    <!-- Injury -->
     <string id="ui_mcm_talker_trigger_injury_title">
         <text>Injuries</text>
     </string>
-    <string id="ui_mcm_talker_enable_trigger_injury">
-        <text>Event handling for player being critically injured.</text>
+    <string id="ui_mcm_talker_triggers_injury_enable">
+        <text>Enable injury trigger</text>
     </string>
-    <string id="ui_mcm_talker_injury_threshold">
-        <text>Percentage of health at which an injury is considered critical</text>
+    <string id="ui_mcm_talker_triggers_injury_cooldown">
+        <text>Cooldown between injury events (seconds)</text>
     </string>
-    <string id="ui_mcm_lst_injury_On">
-        <text>On</text>
+    <string id="ui_mcm_talker_triggers_injury_chance">
+        <text>Chance to generate dialogue on injury (0-100)</text>
     </string>
-    <string id="ui_mcm_lst_injury_Off">
-        <text>Off</text>
+    <string id="ui_mcm_talker_triggers_injury_threshold">
+        <text>Health threshold below which injury trigger fires (0.0-1.0)</text>
     </string>
-    <string id="ui_mcm_lst_injury_Silent">
-        <text>Silent</text>
+    <!-- Artifact -->
+    <string id="ui_mcm_talker_trigger_artifacts_title">
+        <text>Artifacts</text>
     </string>
-    <string id="ui_mcm_talker_injury_cooldown">
-        <text>Injury comment cooldown (seconds)</text>
+    <string id="ui_mcm_talker_triggers_artifact_enable_pickup">
+        <text>Enable artifact pickup trigger</text>
     </string>
+    <string id="ui_mcm_talker_triggers_artifact_cooldown_pickup">
+        <text>Cooldown between pickup events (seconds)</text>
+    </string>
+    <string id="ui_mcm_talker_triggers_artifact_chance_pickup">
+        <text>Chance to generate dialogue on artifact pickup (0-100)</text>
+    </string>
+    <string id="ui_mcm_talker_triggers_artifact_enable_use">
+        <text>Enable artifact use trigger</text>
+    </string>
+    <string id="ui_mcm_talker_triggers_artifact_cooldown_use">
+        <text>Cooldown between use events (seconds)</text>
+    </string>
+    <string id="ui_mcm_talker_triggers_artifact_chance_use">
+        <text>Chance to generate dialogue on artifact use (0-100)</text>
+    </string>
+    <string id="ui_mcm_talker_triggers_artifact_enable_equip">
+        <text>Enable artifact equip trigger</text>
+    </string>
+    <string id="ui_mcm_talker_triggers_artifact_cooldown_equip">
+        <text>Cooldown between equip events (seconds)</text>
+    </string>
+    <string id="ui_mcm_talker_triggers_artifact_chance_equip">
+        <text>Chance to generate dialogue on artifact equip (0-100)</text>
+    </string>
+    <!-- Anomaly -->
+    <string id="ui_mcm_talker_trigger_anomalies_title">
+        <text>Anomalies</text>
+    </string>
+    <string id="ui_mcm_talker_triggers_anomaly_enable_proximity">
+        <text>Enable anomaly proximity trigger</text>
+    </string>
+    <string id="ui_mcm_talker_triggers_anomaly_cooldown_proximity">
+        <text>Cooldown between proximity events (seconds)</text>
+    </string>
+    <string id="ui_mcm_talker_triggers_anomaly_chance_proximity">
+        <text>Chance to generate dialogue on anomaly proximity (0-100)</text>
+    </string>
+    <string id="ui_mcm_talker_triggers_anomaly_max_rank_for_warning">
+        <text>Max rank to receive anomaly warnings (0=rookie, 7=legend)</text>
+    </string>
+    <string id="ui_mcm_talker_triggers_anomaly_enable_damage">
+        <text>Enable anomaly damage trigger</text>
+    </string>
+    <string id="ui_mcm_talker_triggers_anomaly_cooldown_damage">
+        <text>Cooldown between damage events (seconds)</text>
+    </string>
+    <string id="ui_mcm_talker_triggers_anomaly_chance_damage">
+        <text>Chance to generate dialogue on anomaly damage (0-100)</text>
+    </string>
+    <!-- Callout -->
+    <string id="ui_mcm_talker_trigger_callout_title">
+        <text>Callouts</text>
+    </string>
+    <string id="ui_mcm_talker_triggers_callout_enable">
+        <text>Enable enemy callout trigger</text>
+    </string>
+    <string id="ui_mcm_talker_triggers_callout_cooldown">
+        <text>Cooldown between callouts (seconds)</text>
+    </string>
+    <string id="ui_mcm_talker_triggers_callout_chance">
+        <text>Chance to generate dialogue on callout (0-100)</text>
+    </string>
+    <string id="ui_mcm_talker_triggers_callout_max_distance">
+        <text>Max callout distance (meters)</text>
+    </string>
+    <string id="ui_mcm_talker_triggers_callout_repeated_cooldown">
+        <text>Cooldown for repeated callouts on same enemy (seconds)</text>
+    </string>
+    <!-- Taunt -->
+    <string id="ui_mcm_talker_trigger_taunt_title">
+        <text>Taunts</text>
+    </string>
+    <string id="ui_mcm_talker_triggers_taunt_enable">
+        <text>Enable NPC taunt trigger</text>
+    </string>
+    <string id="ui_mcm_talker_triggers_taunt_cooldown">
+        <text>Cooldown between taunts (seconds)</text>
+    </string>
+    <string id="ui_mcm_talker_triggers_taunt_chance">
+        <text>Chance to generate dialogue on taunt (0-100)</text>
+    </string>
+    <!-- Emission -->
+    <string id="ui_mcm_talker_trigger_emission_title">
+        <text>Emissions</text>
+    </string>
+    <string id="ui_mcm_talker_triggers_emission_enable">
+        <text>Enable emission/psy-storm trigger</text>
+    </string>
+    <string id="ui_mcm_talker_triggers_emission_chance">
+        <text>Chance to generate dialogue on emission (0-100)</text>
+    </string>
+    <!-- Idle -->
+    <string id="ui_mcm_talker_trigger_idle_title">
+        <text>Idle Conversation</text>
+    </string>
+    <string id="ui_mcm_talker_triggers_idle_enable">
+        <text>Enable idle conversations</text>
+    </string>
+    <string id="ui_mcm_talker_triggers_idle_cooldown">
+        <text>Minimum time between idle conversations (seconds)</text>
+    </string>
+    <string id="ui_mcm_talker_triggers_idle_chance">
+        <text>Chance to generate dialogue on idle (0-100)</text>
+    </string>
+    <string id="ui_mcm_talker_triggers_idle_question_chance">
+        <text>Chance to ask the player a question during idle (0-100)</text>
+    </string>
+    <string id="ui_mcm_talker_triggers_idle_enable_during_emission">
+        <text>Enable idle conversations during emissions</text>
+    </string>
+    <string id="ui_mcm_talker_triggers_idle_cooldown_during_emission">
+        <text>Idle cooldown during emissions (seconds)</text>
+    </string>
+    <string id="ui_mcm_talker_triggers_idle_chance_during_emission">
+        <text>Idle dialogue chance during emissions (0-100)</text>
+    </string>
+    <string id="ui_mcm_talker_triggers_idle_enable_during_psy_storm">
+        <text>Enable idle conversations during psy-storms</text>
+    </string>
+    <string id="ui_mcm_talker_triggers_idle_cooldown_during_psy_storm">
+        <text>Idle cooldown during psy-storms (seconds)</text>
+    </string>
+    <string id="ui_mcm_talker_triggers_idle_chance_during_psy_storm">
+        <text>Idle dialogue chance during psy-storms (0-100)</text>
+    </string>
+    <!-- Map Transition -->
     <string id="ui_mcm_talker_trigger_map_transition_title">
         <text>Map Transition</text>
     </string>
-    <string id="ui_mcm_talker_enable_trigger_map_transition">
-        <text>Event handling for moving between areas.</text>
+    <string id="ui_mcm_talker_triggers_map_transition_enable">
+        <text>Enable map transition trigger</text>
     </string>
-    <string id="ui_mcm_lst_map_transition_On">
-        <text>On</text>
+    <string id="ui_mcm_talker_triggers_map_transition_chance">
+        <text>Chance to generate dialogue on map transition (0-100)</text>
     </string>
-    <string id="ui_mcm_lst_map_transition_Off">
-        <text>Off</text>
-    </string>
-    <string id="ui_mcm_lst_map_transition_Silent">
-        <text>Silent</text>
-    </string>
-    <string id="ui_mcm_talker_trigger_reload_title">
-        <text>Reload</text>
-    </string>
-    <string id="ui_mcm_talker_enable_trigger_reload">
-        <text>Event handling for player reloading their weapon.</text>
-    </string>
-    <string id="ui_mcm_lst_reload_On">
-        <text>On</text>
-    </string>
-    <string id="ui_mcm_lst_reload_Off">
-        <text>Off</text>
-    </string>
-    <string id="ui_mcm_lst_reload_Silent">
-        <text>Silent</text>
-    </string>
-    <string id="ui_mcm_talker_reload_notice_chance">
-        <text>Chance to notice player reloading (keep this LOW or it will be too spammy!)</text>
-    </string>
+    <!-- Sleep -->
     <string id="ui_mcm_talker_trigger_sleep_title">
         <text>Sleep</text>
     </string>
-    <string id="ui_mcm_talker_enable_trigger_sleep">
-        <text>Event handling for player waking up from sleep.</text>
+    <string id="ui_mcm_talker_triggers_sleep_enable">
+        <text>Enable sleep trigger</text>
     </string>
-    <string id="ui_mcm_lst_sleep_On">
-        <text>On</text>
+    <string id="ui_mcm_talker_triggers_sleep_chance">
+        <text>Chance to generate dialogue on waking up (0-100)</text>
     </string>
-    <string id="ui_mcm_lst_sleep_Off">
-        <text>Off</text>
+    <!-- Reload -->
+    <string id="ui_mcm_talker_trigger_reload_title">
+        <text>Reload</text>
     </string>
-    <string id="ui_mcm_lst_sleep_Silent">
-        <text>Silent</text>
+    <string id="ui_mcm_talker_triggers_reload_enable">
+        <text>Enable reload trigger</text>
     </string>
+    <string id="ui_mcm_talker_triggers_reload_chance">
+        <text>Chance to generate dialogue on reload (0-100)</text>
+    </string>
+    <!-- Task -->
     <string id="ui_mcm_talker_trigger_task_title">
         <text>Task</text>
     </string>
-    <string id="ui_mcm_talker_enable_trigger_task">
-        <text>Event handling for player completing a task.</text>
+    <string id="ui_mcm_talker_triggers_task_enable">
+        <text>Enable task completion trigger</text>
     </string>
-    <string id="ui_mcm_lst_task_On">
-        <text>On</text>
+    <string id="ui_mcm_talker_triggers_task_cooldown">
+        <text>Cooldown between task events (seconds)</text>
     </string>
-    <string id="ui_mcm_lst_task_Off">
-        <text>Off</text>
+    <string id="ui_mcm_talker_triggers_task_chance">
+        <text>Chance to generate dialogue on task completion (0-100)</text>
     </string>
-    <string id="ui_mcm_lst_task_Silent">
-        <text>Silent</text>
-    </string>
-    <string id="ui_mcm_talker_task_cooldown">
-        <text>Task completion comment cooldown (seconds)</text>
-    </string>
-    <string id="ui_mcm_talker_task_notice_chance">
-        <text>Trigger chance on tasks given by random NPCs (tasks from unique NPCs always trigger an event regardless of this value.)</text>
-    </string>
-    <string id="ui_mcm_talker_trigger_taunt_title">
-        <text>Taunt</text>
-    </string>
-    <string id="ui_mcm_talker_enable_trigger_taunt">
-        <text>Enable NPCs taunting enemies.</text>
-    </string>
-    <string id="ui_mcm_talker_taunt_cooldown">
-        <text>NPC taunt cooldown (seconds)</text>
-    </string>
+    <!-- Weapon Jam -->
     <string id="ui_mcm_talker_trigger_weapon_jam_title">
         <text>Weapon Jam</text>
     </string>
-    <string id="ui_mcm_talker_enable_trigger_weapon_jam">
-        <text>Event handling for player's weapon jamming.</text>
+    <string id="ui_mcm_talker_triggers_weapon_jam_enable">
+        <text>Enable weapon jam trigger</text>
     </string>
-    <string id="ui_mcm_lst_weapon_jam_On">
-        <text>On</text>
-    </string>
-    <string id="ui_mcm_lst_weapon_jam_Off">
-        <text>Off</text>
-    </string>
-    <string id="ui_mcm_lst_weapon_jam_Silent">
-        <text>Silent</text>
+    <string id="ui_mcm_talker_triggers_weapon_jam_chance">
+        <text>Chance to generate dialogue on weapon jam (0-100)</text>
     </string>
     <!-- DEBUG -->
     <string id="ui_mcm_talker_debug_title">
         <text>Debug</text>
     </string>
-    <string id="ui_mcm_talker_debug_logging">
+    <string id="ui_mcm_talker_general_debug_logging">
         <text>Set level of debug logging.</text>
     </string>
     <string id="ui_mcm_lst_logging_Off">
@@ -499,42 +447,259 @@
     <string id="ui_mcm_talker_service_title">
         <text>Python Service Settings</text>
     </string>
-    <string id="ui_mcm_talker_ws_host_title">
-        <text>Service Host</text>
-    </string>
-    <string id="ui_mcm_talker_ws_host">
-        <text>Hostname or IP of the Python service (default: 127.0.0.1)</text>
-    </string>
-    <string id="ui_mcm_talker_mic_ws_port_title">
-        <text>Mic Service Port</text>
-    </string>
-    <string id="ui_mcm_talker_mic_ws_port">
-        <text>Port for microphone/TTS service communication (default: 5558)</text>
-    </string>
     <string id="ui_mcm_talker_service_url_title">
         <text>Service URL</text>
     </string>
-    <string id="ui_mcm_talker_service_url">
-        <text>WebSocket URL of the TALKER AI service (e.g. wss://talker-live.duckdns.org/ws or ws://127.0.0.1:5557/ws)</text>
+    <string id="ui_mcm_talker_general_service_url">
+        <text>WebSocket URL of the TALKER service (default: ws://127.0.0.1:5557/ws for local, or wss://your-server/ws/branch for remote)</text>
     </string>
-    <string id="ui_mcm_talker_ws_token_title">
-        <text>Service Token</text>
+    <string id="ui_mcm_talker_auth_client_id_title">
+        <text>Auth Client ID</text>
     </string>
-    <string id="ui_mcm_talker_ws_token">
-        <text>Optional authentication token for the remote TALKER service (leave empty if not required)</text>
+    <string id="ui_mcm_talker_general_auth_client_id">
+        <text>Keycloak client ID (e.g. talker-client). Set together with Auth Username and Auth Password. Token URL is derived automatically from Service URL.</text>
+    </string>
+    <string id="ui_mcm_talker_auth_client_secret_title">
+        <text>Auth Client Secret</text>
+    </string>
+    <string id="ui_mcm_talker_general_auth_client_secret">
+        <text>Keycloak client secret (required only for Confidential clients). Leave empty if the client is configured as Public.</text>
+    </string>
+    <string id="ui_mcm_talker_auth_username_title">
+        <text>Auth Username</text>
+    </string>
+    <string id="ui_mcm_talker_general_auth_username">
+        <text>Your Keycloak username. Used with Auth Client ID and Auth Password for automatic token exchange.</text>
+    </string>
+    <string id="ui_mcm_talker_auth_password_title">
+        <text>Auth Password</text>
+    </string>
+    <string id="ui_mcm_talker_general_auth_password">
+        <text>Your Keycloak password. Used with Auth Client ID and Auth Username for automatic token exchange.</text>
     </string>
     <string id="ui_mcm_talker_llm_timeout_title">
         <text>LLM Timeout</text>
     </string>
-    <string id="ui_mcm_talker_llm_timeout">
+    <string id="ui_mcm_talker_general_llm_timeout">
         <text>Maximum seconds to wait for LLM response (default: 60)</text>
     </string>
     <string id="ui_mcm_talker_state_query_timeout_title">
         <text>State Query Timeout</text>
     </string>
-    <string id="ui_mcm_talker_state_query_timeout">
-        <text>Maximum seconds to wait for game state queries (default: 30)</text>
+    <string id="ui_mcm_talker_general_state_query_timeout">
+        <text>Maximum seconds to wait for game state queries (default: 10)</text>
     </string>
+
+    <!-- Tab labels (6-tab layout) -->
+    <string id="ui_mcm_talker_tab_general">
+        <text>General</text>
+    </string>
+    <string id="ui_mcm_talker_tab_ai_model">
+        <text>AI Model</text>
+    </string>
+    <string id="ui_mcm_talker_tab_voice">
+        <text>Voice</text>
+    </string>
+    <string id="ui_mcm_talker_tab_connection">
+        <text>Connection</text>
+    </string>
+    <string id="ui_mcm_talker_tab_triggers">
+        <text>Triggers</text>
+    </string>
+    <string id="ui_mcm_talker_tab_debug">
+        <text>Debug</text>
+    </string>
+
+    <!-- Connection sections and titles -->
+    <string id="ui_mcm_talker_service_type_title">
+        <text>Service Type</text>
+    </string>
+    <string id="ui_mcm_talker_remote_section">
+        <text>-- Remote --</text>
+    </string>
+    <string id="ui_mcm_talker_local_section">
+        <text>-- Local --</text>
+    </string>
+    <string id="ui_mcm_talker_auth_section">
+        <text>-- Auth --</text>
+    </string>
+    <string id="ui_mcm_talker_advanced_section">
+        <text>-- Advanced --</text>
+    </string>
+    <string id="ui_mcm_talker_service_hub_url_title">
+        <text>Service Hub URL</text>
+    </string>
+    <string id="ui_mcm_talker_branch_title">
+        <text>Branch</text>
+    </string>
+    <string id="ui_mcm_talker_custom_branch_title">
+        <text>Custom Branch</text>
+    </string>
+    <string id="ui_mcm_talker_service_ws_port_title">
+        <text>Local Service WS Port</text>
+    </string>
+    <string id="ui_mcm_talker_ws_token_title">
+        <text>Static WS Token</text>
+    </string>
+    <string id="ui_mcm_talker_trigger_general_title">
+        <text>General Trigger Settings</text>
+    </string>
+
+    <!-- Option labels for new radios -->
+    <string id="ui_mcm_lst_local">
+        <text>Local</text>
+    </string>
+    <string id="ui_mcm_lst_remote">
+        <text>Remote</text>
+    </string>
+    <string id="ui_mcm_lst_main">
+        <text>Main</text>
+    </string>
+    <string id="ui_mcm_lst_dev">
+        <text>Dev</text>
+    </string>
+    <string id="ui_mcm_lst_custom">
+        <text>Custom</text>
+    </string>
+
+    <!-- Connection tab field labels -->
+    <string id="ui_mcm_talker_connection_subtab_service_type">
+        <text>Select local Python service or remote shared service mode</text>
+    </string>
+    <string id="ui_mcm_talker_connection_subtab_service_hub_url">
+        <text>URL of the shared TALKER service hub (e.g. https://talker-live.duckdns.org)</text>
+    </string>
+    <string id="ui_mcm_talker_connection_subtab_branch">
+        <text>Remote branch to connect: main, dev, or custom</text>
+    </string>
+    <string id="ui_mcm_talker_connection_subtab_custom_branch">
+        <text>Custom branch name used when Branch = custom</text>
+    </string>
+    <string id="ui_mcm_talker_connection_subtab_service_url">
+        <text>Explicit local WebSocket URL override (leave empty to use localhost + port)</text>
+    </string>
+    <string id="ui_mcm_talker_connection_subtab_service_ws_port">
+        <text>Local WebSocket port used when service_url is empty</text>
+    </string>
+    <string id="ui_mcm_talker_connection_subtab_ws_token">
+        <text>Static token appended to remote WS URL when ROPC credentials are not set</text>
+    </string>
+    <string id="ui_mcm_talker_connection_subtab_auth_client_id">
+        <text>Keycloak client ID (default: talker-client)</text>
+    </string>
+    <string id="ui_mcm_talker_connection_subtab_auth_client_secret">
+        <text>Keycloak client secret (required only for confidential clients)</text>
+    </string>
+    <string id="ui_mcm_talker_connection_subtab_auth_username">
+        <text>Keycloak username for automatic JWT token exchange</text>
+    </string>
+    <string id="ui_mcm_talker_connection_subtab_auth_password">
+        <text>Keycloak password for automatic JWT token exchange</text>
+    </string>
+    <string id="ui_mcm_talker_connection_subtab_llm_timeout">
+        <text>Maximum seconds to wait for LLM response (default: 60)</text>
+    </string>
+    <string id="ui_mcm_talker_connection_subtab_state_query_timeout">
+        <text>Maximum seconds to wait for state queries (default: 10)</text>
+    </string>
+
+    <!-- General tab field labels -->
+    <string id="ui_mcm_talker_general_subtab_language">
+        <text>Dialogue language</text>
+    </string>
+    <string id="ui_mcm_talker_general_subtab_action_descriptions">
+        <text>Allow AI action descriptions (e.g. *chuckles*)</text>
+    </string>
+    <string id="ui_mcm_talker_general_subtab_female_gender">
+        <text>Treat player as female for dialogue phrasing</text>
+    </string>
+    <string id="ui_mcm_talker_general_subtab_witness_distance">
+        <text>Witness distance (meters)</text>
+    </string>
+    <string id="ui_mcm_talker_general_subtab_npc_speak_distance">
+        <text>NPC speak distance (meters)</text>
+    </string>
+
+    <!-- AI model tab field labels -->
+    <string id="ui_mcm_talker_ai_model_subtab_gpt_version">
+        <text>GPT model preset</text>
+    </string>
+    <string id="ui_mcm_talker_ai_model_subtab_ai_model_method">
+        <text>AI provider/method</text>
+    </string>
+    <string id="ui_mcm_talker_ai_model_subtab_custom_ai_model">
+        <text>Primary dialogue model name</text>
+    </string>
+    <string id="ui_mcm_talker_ai_model_subtab_custom_ai_model_fast">
+        <text>Fast model name (speaker selection)</text>
+    </string>
+    <string id="ui_mcm_talker_ai_model_subtab_reasoning_level">
+        <text>Proxy reasoning level</text>
+    </string>
+    <string id="ui_mcm_talker_ai_model_subtab_ai_base_url">
+        <text>Custom AI base URL (optional)</text>
+    </string>
+    <string id="ui_mcm_talker_ai_model_subtab_openrouter_api_key">
+        <text>OpenRouter API key (optional)</text>
+    </string>
+    <string id="ui_mcm_talker_ai_model_subtab_openai_api_key">
+        <text>OpenAI API key (optional)</text>
+    </string>
+    <string id="ui_mcm_talker_ai_model_subtab_ollama_base_url">
+        <text>Ollama base URL (optional)</text>
+    </string>
+
+    <!-- Voice tab field labels -->
+    <string id="ui_mcm_talker_voice_subtab_input_option">
+        <text>Input mode (voice or text)</text>
+    </string>
+    <string id="ui_mcm_talker_voice_subtab_speak_key">
+        <text>Push-to-talk key</text>
+    </string>
+    <string id="ui_mcm_talker_voice_subtab_voice_provider">
+        <text>Speech-to-text provider</text>
+    </string>
+    <string id="ui_mcm_talker_voice_subtab_enable_tts">
+        <text>Enable text-to-speech playback</text>
+    </string>
+    <string id="ui_mcm_talker_voice_subtab_tts_voice_method">
+        <text>TTS voice method</text>
+    </string>
+    <string id="ui_mcm_talker_voice_subtab_tts_volume_boost">
+        <text>TTS volume boost</text>
+    </string>
+    <string id="ui_mcm_talker_voice_subtab_whisper_modifier">
+        <text>Whisper modifier key</text>
+    </string>
+
+    <!-- Debug tab field labels -->
+    <string id="ui_mcm_talker_debug_subtab_debug_logging">
+        <text>Debug logging level</text>
+    </string>
+    <string id="ui_mcm_talker_debug_subtab_max_log_entries_per_level">
+        <text>Max log entries per level (0 = unlimited)</text>
+    </string>
+    <string id="ui_mcm_talker_debug_subtab_reset_personality">
+        <text>Reset personalities on next load</text>
+    </string>
+    <string id="ui_mcm_talker_debug_subtab_reset_backstory">
+        <text>Reset backstories on next load</text>
+    </string>
+
+    <!-- Trigger tab general subsection labels -->
+    <string id="ui_mcm_talker_triggers_subtab_time_gap">
+        <text>Time gap threshold (hours) before a synthetic time-gap event is added</text>
+    </string>
+    <string id="ui_mcm_talker_triggers_subtab_recent_speech_threshold">
+        <text>Seconds before an NPC who recently spoke can speak again</text>
+    </string>
+    <string id="ui_mcm_talker_triggers_subtab_anti_spam_cd">
+        <text>Anti-spam cooldown shared by high-frequency trigger types</text>
+    </string>
+    <string id="ui_mcm_talker_triggers_subtab_speaker_pick_max_events">
+        <text>Max recent events included per candidate in speaker selection</text>
+    </string>
+
     <!-- HUD Notifications -->
     <string id="ui_mcm_talker_service_disconnected">
         <text>TALKER: Python service not responding. AI dialogue disabled.</text>

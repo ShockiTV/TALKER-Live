@@ -214,15 +214,49 @@ LOG_FILE=logs/talker_service.log
 
 
 
+Use the Connection tab in MCM to control local-vs-remote behavior:
+
 | Setting | Description | Default |
-
 |---------|-------------|---------|
+| Service Type | `Local` connects directly to local Python service; `Remote` derives URL from hub + branch | `Local` |
+| Service Hub URL | Remote hub domain used to derive `wss://.../ws/<branch>` | empty |
+| Branch | Remote branch selector (`main`, `dev`, `custom`) | `main` |
+| Custom Branch | Branch name used when Branch=`custom` | empty |
+| Service URL | Explicit local WS URL override | empty |
+| Service WS Port | Local WS port used when Service URL is empty | 5557 |
+| Auth Username / Password | Keycloak credentials used for remote ROPC token exchange | empty |
+| Auth Client ID | Keycloak client ID for token exchange | `talker-client` |
+| Auth Client Secret | Keycloak client secret (if required) | empty |
+| WS Token | Optional static fallback token when username/password are empty | empty |
+| LLM Timeout | Max seconds per LLM request | 60 |
+| State Query Timeout | Max seconds for Lua state queries | 10 |
 
-| WS Port | Port for WebSocket communication (bidirectional) | 5557 |
+### SERVICE_HUB_URL Derivation
 
-| WS Token | Authentication token for remote deployments | (empty = local mode) |
+When `SERVICE_HUB_URL` is set in `.env`, Python derives service endpoints automatically **only when explicit per-service URLs are not configured**:
 
-| Heartbeat Interval | Seconds between heartbeat messages | 5 |
+- `tts_service_url = {SERVICE_HUB_URL}/api/tts`
+- `stt_endpoint = {SERVICE_HUB_URL}/api/stt/v1`
+- `ollama_base_url = {SERVICE_HUB_URL}/api/embed`
+
+Precedence order:
+
+1. Explicit per-service URLs (`TTS_SERVICE_URL`, `STT_ENDPOINT`, `OLLAMA_BASE_URL`)
+2. MCM `service_hub_url` (from `config.sync`)
+3. `.env` `SERVICE_HUB_URL`
+
+This lets local Python consume VPS-hosted shared services while still allowing advanced overrides.
+
+### Local Python + Remote Shared Services
+
+1. Start local Python service as usual (`launch_talker_service.bat`).
+2. In MCM Connection tab, set `Service Type = Remote`.
+3. Set `Service Hub URL` to your VPS domain (for example `https://talker-live.duckdns.org`).
+4. Choose `Branch` (`main`, `dev`, or `custom`).
+5. Enter Keycloak `Auth Username` / `Auth Password` (and client credentials if required).
+6. Keep `Service URL` empty unless you need a direct override.
+
+Lua then connects to derived WS URL (`wss://<hub>/ws/<branch>`), while Python can call remote TTS/STT/embed APIs through the authenticated gateway routes.
 
 
 
@@ -268,6 +302,64 @@ LOG_FILE=logs/talker_service.log
 
 
 
+### Conversation Growing Too Large
+
+
+
+If you see "Pruning conversation" in the logs frequently, the context window is being managed automatically. This is normal for long play sessions. If you experience issues:
+
+1. Check logs for `Pruning conversation: X tokens > Y threshold` messages
+2. The service automatically prunes to 50% of context when reaching 75% capacity (96k/128k tokens)
+3. System prompts and recent dialogue are always preserved
+4. To disable pruning, set `ENABLE_CONTEXT_PRUNING=false` in `.env`
+5. To disable conversation persistence entirely, set `ENABLE_CONVERSATION_PERSISTENCE=false`
+
+
+
+## Conversation Persistence
+
+
+
+Each connected game session maintains its own persistent conversation history with the LLM. This means NPCs retain context from previous events within the same session — the LLM remembers what dialogue it generated earlier and can reference past interactions.
+
+
+
+### How It Works
+
+
+
+- When a game connects via WebSocket, a **per-session LLM client** is created
+- Each event (death, artifact found, etc.) appends messages to the session's conversation
+- The LLM sees the full conversation history, enabling it to generate more contextual dialogue
+- When the session disconnects (game closes), the conversation is discarded
+
+
+
+### Context Window Management
+
+
+
+The LLM has a finite context window (128k tokens for GPT-4o). To prevent exceeding it:
+
+- **Threshold**: At 75% capacity (~96k tokens), automatic pruning triggers
+- **Target**: Conversation is pruned down to 50% capacity (~64k tokens)
+- **Priority**: System prompts and recent messages are always kept; older dialogue and tool results are removed first
+
+Pruning events are logged at INFO level in the service logs.
+
+
+
+### Feature Flags
+
+
+
+| Environment Variable | Description | Default |
+|---------------------|-------------|---------|
+| `ENABLE_CONVERSATION_PERSISTENCE` | Keep conversation history across events | `true` |
+| `ENABLE_CONTEXT_PRUNING` | Auto-prune when context window fills up | `true` |
+
+
+
 ## Architecture
 
 ```
@@ -275,21 +367,20 @@ LOG_FILE=logs/talker_service.log
 │                    STALKER Anomaly (Lua)                    │
 ├─────────────────────────────────────────────────────────────┤
 │  talker_ws_integration.script                               │
-│    └─► bridge/channel.lua (single WebSocket via pollnet)     │
+│    └─► infra/bridge/channel.lua (WebSocket via pollnet)      │
 │                              │                               │
 │                         pollnet.dll                         │
 └──────────────────────────────┼──────────────────────────────┘
-                               │ WebSocket (ws:5558)
+                               │ WebSocket (ws:5557)
                                ▼
 ┌─────────────────────────────────────────────────────────────┐
-│              talker_bridge (WS proxy + audio)               │
+│              talker_service (AI processing + TTS)          │
 ├─────────────────────────────────────────────────────────────┤
-│  Handles locally: mic.start/stop, tts.speak/started/done    │
-│  Proxies all other topics to/from talker_service             │
-│  Audio capture → energy VAD → base64 chunk streaming         │
-└──────────────────────────────┼──────────────────────────────┘
-                               │ WebSocket (ws:5557/ws)
-                               ▼
+│  Dialogue generation, memory compression, speaker selection │
+│  TTS audio generation and streaming                          │
+│  Speech-to-text via native microphone DLL                    │
+└─────────────────────────────────────────────────────────────┘
+```
 ┌─────────────────────────────────────────────────────────────┐
 │                   talker_service (Python)                   │
 ├─────────────────────────────────────────────────────────────┤
@@ -320,91 +411,3 @@ The game will show HUD notifications if the Python service becomes unavailable:
 
 
 This helps you know if you forgot to start the service or if it crashed.
-
-
-
----
-
-
-
-## TTS (Text-to-Speech) Setup
-
-talker_bridge supports NPC voice synthesis via [Pocket TTS](https://github.com/kyutai-labs/pocket-tts). When enabled, dialogue is queued in Lua, sent to talker_bridge which streams audio playback, and the HUD subtitle appears in sync with the voice.
-
-### How voice IDs are resolved
-
-Lua calls `npc:sound_prefix()` on each NPC game object, which returns the NPC's engine voice theme path (e.g. `characters_voice\human\stalker_1\`). The last path component (`stalker_1`) is used as the `voice_id` and must match a folder (or flat file stem) under `talker_bridge/voices/`. If the NPC object is not loaded, a fallback pool from `voice_data.lua` is used.
-
-### Requirements
-
-- `talker_bridge/.venv` with `pocket-tts` installed (added automatically by `export_voices.bat`)
-- A GPU or patient CPU (first chunk from CPU is ~1-3 seconds)
-- Anomaly voice files copied into `talker_bridge/voices/` (see Step 1)
-
-### Step 1 - Copy Anomaly voice theme folders
-
-Copy the entire `gamedata/sounds/characters_voice/human/` directory from your Anomaly installation into `talker_bridge/voices/`, preserving the subfolder structure:
-
-```
-talker_bridge/voices/
-  stalker_1/talk/jokes/   <- source audio picked from here
-  stalker_2/talk/jokes/
-  bandit_1/talk/jokes/
-  dolg_1/talk/jokes/
-  ... (all ~28 theme folders)
-```
-
-The script automatically selects the longest file from `talk/jokes/` (best voice clone quality), falling back to `states/idle/` for themes that lack jokes (e.g. `monolith_3`, `zombied_1`, `woman`).
-
-### Step 2 - (Optional) Manual voice override
-
-If the auto-selected file gives poor quality (e.g. `stalker_2` or `stalker_4` have drunk/slurred joke lines), place a better `.ogg` directly in the theme root:
-
-```
-talker_bridge/voices/stalker_2/stalker_2.ogg   <- manually placed, never overwritten
-```
-
-The script detects and uses this file automatically, skipping subfolder selection.
-
-### Step 3 - Bake voice profiles (run once)
-
-```bat
-export_voices.bat
-```
-
-For best quality, use DeepFilterNet denoising (requires ~500 MB one-time download of PyTorch):
-
-```bat
-export_voices.bat --denoise
-```
-
-This will:
-1. Install `pocket-tts` into `talker_bridge/python/.venv`
-2. Install `deepfilternet + torch + torchaudio` into a separate `talker_bridge/python/.venv_df` (avoids numpy conflicts)
-3. For each theme: copy the source `.ogg`, optionally denoise it to `<stem>__clean.wav`, export `<stem>.safetensors`
-
-Re-run with `--force` to re-export (e.g. after replacing a manual source file). `--force` never overwrites a manually placed source file.
-
-Skipped folders: `music/`, `story/`, `no_speach/` (no usable voice audio).
-
-### Step 4 - Launch talker_bridge
-
-Run `launch_talker_bridge.bat` to start the bridge service. TTS is automatically available if voice profiles have been baked.
-
-```bat
-launch_talker_bridge.bat
-```
-
-### Step 5 - Enable TTS in MCM
-
-In the Mod Configuration Menu, enable the **TTS** toggle (`enable_tts = true`). This tells Lua to queue dialogue through talker_bridge instead of showing it immediately.
-
-### WebSocket topics for TTS
-
-| Topic | Direction | Channel | Purpose |
-|-------|-----------|---------|--------|
-| `tts.speak` | Lua -> talker_bridge | bridge (ws:5558) | Request voice synthesis + playback |
-| `tts.started` | talker_bridge -> Lua | bridge (ws:5558) | Playback has begun; show HUD subtitle |
-| `tts.done` | talker_bridge -> Lua | bridge (ws:5558) | Playback complete; dequeue next item |
-
-See [ws-api.yaml](ws-api.yaml) for full payload schemas.

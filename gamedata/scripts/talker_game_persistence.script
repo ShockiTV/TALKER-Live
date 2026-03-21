@@ -2,15 +2,105 @@
 
 package.path = package.path .. ";./bin/lua/?.lua;"
 local memory_store = require("domain.repo.memory_store")
-local event_store = require("domain.repo.event_store")
+local memory_store_v2 = require("domain.repo.memory_store_v2")
 local personality_store = require("domain.repo.personalities")
 local backstories_store = require("domain.repo.backstories")
 local levels_store = require("domain.repo.levels")
 local timers_store = require("domain.repo.timers")
 local log = require("framework.logger")
+local utils = require("framework.utils")
 
 -- WS integration reference (lazy-loaded)
 local ws_integration = nil
+local current_session_id = nil
+
+local function ensure_session_id(saved_data)
+    if saved_data and type(saved_data.session_id) == "string" and saved_data.session_id ~= "" then
+        current_session_id = saved_data.session_id
+    else
+        current_session_id = utils.uuid_v4()
+        if saved_data and type(saved_data) == "table" then
+            saved_data.session_id = current_session_id
+        end
+    end
+    return current_session_id
+end
+
+function get_session_id()
+    return current_session_id
+end
+
+--------------------------------------------------------------------------------
+-- Unique NPC background seeding (one-time on brand new save)
+--------------------------------------------------------------------------------
+
+--- Resolve a tech_name to a numeric game_id.
+-- 1. story_objects.object_id_by_story_id[tech_name] — O(1) lookup
+-- 2. Fallback: scan alife() server objects matching section_name()
+-- Returns game_id (number) or nil.
+local function resolve_game_id(tech_name)
+    -- Primary: story_objects lookup
+    if _G.story_objects and _G.story_objects.object_id_by_story_id then
+        local id = _G.story_objects.object_id_by_story_id[tech_name]
+        if id then return id end
+    end
+
+    -- Fallback: alife scan for MLR/addon NPCs without story_ids
+    local sim = _G.alife and _G.alife()
+    if sim then
+        for i = 0, 65534 do
+            local se_obj = sim:object(i)
+            if se_obj and se_obj.section_name and se_obj:section_name() == tech_name then
+                return se_obj.id
+            end
+        end
+    end
+
+    return nil
+end
+
+--- One-time background seeding for unique NPCs.
+-- Iterates the static seed table, resolves tech_name → game_id,
+-- and populates memory_store_v2 backgrounds.
+function seed_unique_backgrounds()
+    local unique_backgrounds = require("domain.data.unique_backgrounds")
+    local data = unique_backgrounds.data
+
+    local seeded = 0
+    local skipped = 0
+
+    for tech_name, entry in pairs(data) do
+        -- Skip actor
+        if tech_name == "actor" then
+            skipped = skipped + 1
+        else
+            local game_id = resolve_game_id(tech_name)
+            if game_id then
+                -- Check if character already has a background (don't overwrite)
+                local existing = memory_store_v2:query(tostring(game_id), "memory.background")
+                if not existing then
+                    memory_store_v2:mutate({
+                        op = "set",
+                        resource = "memory.background",
+                        params = { character_id = tostring(game_id) },
+                        data = {
+                            backstory = entry.backstory,
+                            traits = entry.traits,
+                            connections = entry.connections,
+                        },
+                    })
+                    seeded = seeded + 1
+                else
+                    skipped = skipped + 1
+                end
+            else
+                skipped = skipped + 1
+            end
+        end
+    end
+
+    log.info("Persistence: Seeded " .. seeded .. " unique NPC backgrounds (" .. skipped .. " skipped)")
+end
 
 local function get_ws_integration()
     if ws_integration == nil then
@@ -22,8 +112,12 @@ end
 -- Save the data
 function save_state(saved_data)
     log.info("Saving state...")
+    if not current_session_id or current_session_id == "" then
+        current_session_id = utils.uuid_v4()
+    end
+    saved_data.session_id = current_session_id
     saved_data.compressed_memories = memory_store:get_save_data()
-    saved_data.events = event_store:get_save_data()
+    saved_data.tool_memories = memory_store_v2:get_save_data()
     saved_data.personalities = personality_store:get_save_data()
     saved_data.backstories = backstories_store:get_save_data()
     saved_data.levels = levels_store.get_save_data()
@@ -34,13 +128,21 @@ end
 function load_state(saved_data)
     log.info("Loading state...")
     if not saved_data or type(saved_data) ~= "table" then
+        current_session_id = utils.uuid_v4()
+        log.info("Persistence: New session_id generated for fresh save: " .. tostring(current_session_id))
         return
     end
+
+    local session_id = ensure_session_id(saved_data)
+    log.info("Persistence: Active session_id = " .. tostring(session_id))
+
     if (saved_data.compressed_memories) then
          memory_store:load_save_data(saved_data.compressed_memories)
     end
-    if (saved_data.events) then
-        event_store:load_save_data(saved_data.events)
+    if saved_data.tool_memories then
+        memory_store_v2:load_save_data(saved_data.tool_memories)
+    else
+        memory_store_v2:load_save_data(nil)
     end
     if (saved_data.personalities) then
         personality_store.load_save_data(saved_data.personalities)
@@ -77,6 +179,12 @@ function load_state(saved_data)
         timers_store.load_save_data(nil)
     end
     
+    -- Seed unique NPC backgrounds on every load (idempotent — skips NPCs
+    -- that already have a background). Previously gated on is_brand_new_save,
+    -- but get_save_data() returns truthy tables even when stores are empty,
+    -- so the brand-new check falsely skipped seeding.
+    seed_unique_backgrounds()
+
     -- Trigger WS config sync after a 2-second delay (allows MCM to fully initialize)
     CreateTimeEvent("talker_persistence_ws", "config_sync", 2, function()
         local ws = get_ws_integration()
@@ -98,6 +206,7 @@ function on_game_start()
 end
 
 return {
-    save_state,
-    load_state
+    save_state = save_state,
+    load_state = load_state,
+    get_session_id = get_session_id,
 }

@@ -1,7 +1,7 @@
-"""E2e test harness — wires WSRouter + LuaSimulator + DialogueGenerator.
+"""E2e test harness - wires WSRouter + LuaSimulator + ConversationManager.
 
 Uses a MockWebSocket (in-memory asyncio queues, no TCP ports needed) and
-respx for HTTP interception.  All external payloads are captured for deep
+SDK-level mocking for LLM calls.  All external payloads are captured for deep
 assertion.
 
 Startup order:
@@ -16,15 +16,14 @@ import asyncio
 import json
 from dataclasses import dataclass, field
 from typing import Any
+from unittest.mock import AsyncMock, MagicMock
 
-import httpx
-import respx
 from fastapi import WebSocketDisconnect
 
 from talker_service.transport.ws_router import WSRouter
 from talker_service.state.client import StateQueryClient
-from talker_service.dialogue.generator import DialogueGenerator
-from talker_service.llm.openai_client import OpenAIClient
+from talker_service.dialogue.conversation import ConversationManager
+from talker_service.llm.factory import get_llm_client
 from talker_service.handlers import events as event_handlers
 
 from .lua_simulator import LuaSimulator
@@ -47,9 +46,49 @@ class RunResult:
     state_queries: list[dict] = field(default_factory=list)
     """state.query.* messages sent by the service, request_id stripped."""
     http_calls: list[HttpCall] = field(default_factory=list)
-    """HTTP requests captured by respx."""
+    """LLM request payloads captured from SDK mock calls."""
     ws_published: list[dict] = field(default_factory=list)
     """Non-state-query messages published by the service to Lua."""
+
+
+def _mock_output_message(text: str):
+    """Build a mock ResponseOutputMessage for the Responses API."""
+    content_item = MagicMock()
+    content_item.type = "output_text"
+    content_item.text = text
+    msg = MagicMock()
+    msg.type = "message"
+    msg.content = [content_item]
+    return msg
+
+
+def _mock_responses_api_result(response_id: str, text: str):
+    """Build a mock Responses API Response object."""
+    resp = MagicMock()
+    resp.id = response_id
+    resp.output = [_mock_output_message(text)]
+    return resp
+
+
+def _serialize_sdk_kwargs(kwargs: dict) -> dict:
+    """Convert SDK kwargs into a JSON-serializable dict for payload capture.
+
+    Message objects and other non-primitive types are converted to dicts.
+    """
+    result = {}
+    for key, value in kwargs.items():
+        if key in ("input", "messages") and isinstance(value, list):
+            # Message dicts are already serializable (from to_dict())
+            result[key] = value
+        elif isinstance(value, (str, int, float, bool, type(None))):
+            result[key] = value
+        elif isinstance(value, list):
+            result[key] = value
+        elif isinstance(value, dict):
+            result[key] = value
+        else:
+            result[key] = str(value)
+    return result
 
 
 class E2eHarness:
@@ -63,10 +102,10 @@ class E2eHarness:
         self._router: WSRouter | None = None
         self._mock_ws: MockWebSocket | None = None
         self._lua_sim: LuaSimulator | None = None
-        self._generator: DialogueGenerator | None = None
         self._ws_task: asyncio.Task | None = None
         self._started = False
         self.last_result: RunResult | None = None
+        self._captured_calls: list[HttpCall] = []
 
     async def _setup(self, state_mocks: dict) -> None:
         """Internal setup called once per scenario."""
@@ -80,18 +119,22 @@ class E2eHarness:
         # Wire up production handlers exactly as __main__.py does
         state_client = StateQueryClient(router=self._router, timeout=5.0)
 
-        # Real OpenAI client — respx intercepts at httpx transport layer
-        llm_client = OpenAIClient(api_key="test-key-respx-will-intercept")
+        # Create LLM client — SDK methods will be mocked before running
+        llm_client = get_llm_client(
+            provider=0,
+            api_key="test-key-sdk-mocked",
+            force_new=True,
+        )
 
-        self._generator = DialogueGenerator(
+        self._llm_client = llm_client
+
+        conversation_manager = ConversationManager(
             llm_client=llm_client,
             state_client=state_client,
-            publisher=self._router,
-            llm_timeout=5.0,
         )
 
         # Inject into event handler globals (same path as production)
-        event_handlers.set_dialogue_generator(self._generator)
+        event_handlers.set_conversation_manager(conversation_manager)
         event_handlers.set_publisher(self._router)
 
         # Register handlers on router
@@ -123,58 +166,80 @@ class E2eHarness:
 
         await self._setup(state_mocks)
 
-        # Build respx route list from llm_mocks (ordered — first call gets first mock)
+        # Build ordered mock responses from scenario llm_mocks
         mock_responses = [m["response"] for m in llm_mocks]
+        self._captured_calls = []
 
-        with respx.mock(assert_all_called=False) as mock_router:
-            call_index = 0
+        call_index = 0
 
-            def side_effect(request: httpx.Request) -> httpx.Response:
-                nonlocal call_index
-                if call_index < len(mock_responses):
-                    content = mock_responses[call_index]
-                    call_index += 1
-                else:
-                    content = "Fallback response."
+        async def responses_create_side_effect(**kwargs):
+            nonlocal call_index
+            # Capture the request payload
+            self._captured_calls.append(HttpCall(
+                url="responses.create",
+                body=_serialize_sdk_kwargs(kwargs),
+            ))
+            if call_index < len(mock_responses):
+                content = mock_responses[call_index]
+                call_index += 1
+            else:
+                content = "Fallback response."
+            return _mock_responses_api_result(f"resp_e2e_{call_index}", content)
 
-                return httpx.Response(
-                    200,
-                    json={
-                        "choices": [
-                            {"message": {"content": content}}
-                        ]
-                    },
-                )
+        async def completions_create_side_effect(**kwargs):
+            nonlocal call_index
+            # Capture the request payload
+            self._captured_calls.append(HttpCall(
+                url="chat.completions.create",
+                body=_serialize_sdk_kwargs(kwargs),
+            ))
+            if call_index < len(mock_responses):
+                content = mock_responses[call_index]
+                call_index += 1
+            else:
+                content = "Fallback response."
+            # Return mock ChatCompletion
+            msg = MagicMock()
+            msg.content = content
+            choice = MagicMock()
+            choice.message = msg
+            resp = MagicMock()
+            resp.choices = [choice]
+            return resp
 
-            mock_router.post("https://api.openai.com/v1/chat/completions").mock(
-                side_effect=side_effect
+        # Mock SDK methods on the client instance
+        self._llm_client._client.responses.create = AsyncMock(
+            side_effect=responses_create_side_effect
+        )
+        self._llm_client._client.chat.completions.create = AsyncMock(
+            side_effect=completions_create_side_effect
+        )
+
+        # Publish the input event
+        await self._lua_sim.publish(
+            topic=input_cfg["topic"],
+            payload=input_cfg["payload"],
+        )
+
+        # Wait for done_event (dialogue.display received by LuaSimulator)
+        try:
+            await asyncio.wait_for(
+                self._lua_sim.done_event.wait(),
+                timeout=timeout,
+            )
+        except asyncio.TimeoutError:
+            raise asyncio.TimeoutError(
+                f"dialogue.display not received within {timeout}s"
             )
 
-            # Publish the input event
-            await self._lua_sim.publish(
-                topic=input_cfg["topic"],
-                payload=input_cfg["payload"],
-            )
+        # Allow any in-flight background tasks (e.g. memory compression) to settle
+        await asyncio.sleep(0.05)
 
-            # Wait for done_event (dialogue.display received by LuaSimulator)
-            try:
-                await asyncio.wait_for(
-                    self._lua_sim.done_event.wait(),
-                    timeout=timeout,
-                )
-            except asyncio.TimeoutError:
-                raise asyncio.TimeoutError(
-                    f"dialogue.display not received within {timeout}s"
-                )
+        result = self._collect_result()
+        self.last_result = result
+        return result
 
-            # Allow any in-flight background tasks (e.g. memory compression) to settle
-            await asyncio.sleep(0.05)
-
-            result = self._collect_result(mock_router)
-            self.last_result = result
-            return result
-
-    def _collect_result(self, mock_router: respx.MockRouter) -> RunResult:
+    def _collect_result(self) -> RunResult:
         """Build RunResult from captured data."""
         # State queries: received_from_service entries where topic starts with state.query.
         # Strip request_id (non-deterministic UUID) before asserting.
@@ -188,19 +253,17 @@ class E2eHarness:
             if topic == "state.query" or topic.startswith("state.query."):
                 payload.pop("request_id", None)
                 state_queries.append({"topic": topic, "payload": payload})
-            elif topic != "state.response":
+            elif topic == "state.response":
+                pass  # Internal plumbing — skip
+            elif topic == "state.mutate" or topic.startswith("state.mutate."):
+                pass  # Mutation acks — skip (infrastructure, not app-level)
+            else:
                 # Everything else (dialogue.display, memory.update, etc.)
                 ws_published.append({"topic": topic, "payload": payload})
 
-        # HTTP calls: parse exact request body from respx
-        http_calls = []
-        for call in mock_router.calls:
-            body = json.loads(call.request.content)
-            http_calls.append(HttpCall(url=str(call.request.url), body=body))
-
         return RunResult(
             state_queries=state_queries,
-            http_calls=http_calls,
+            http_calls=self._captured_calls,
             ws_published=ws_published,
         )
 
@@ -210,7 +273,7 @@ class E2eHarness:
             return
 
         # Reset event handler globals
-        event_handlers.set_dialogue_generator(None)
+        event_handlers.set_conversation_manager(None)
         event_handlers.set_publisher(None)
 
         # Signal MockWebSocket to disconnect (breaks WSRouter receive loop)

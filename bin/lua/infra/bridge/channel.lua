@@ -1,14 +1,13 @@
 -- infra/bridge/channel.lua
 -- Unified communication channel over WebSocket to talker_bridge.
--- Combines service-channel features (request/response correlation,
--- on_reconnect callback) with mic-channel features (session-scoped
--- handlers for mic.status / mic.result).
+-- Handles service-channel features (request/response correlation,
+-- on_reconnect callback).
 --
 -- State machine: DISCONNECTED → CONNECTING → CONNECTED → RECONNECTING
 -- Handles outbound queue, exponential backoff, topic handlers, and
 -- tick-based message drain.
 --
--- All game traffic (events, config, dialogue, mic, TTS) flows through
+-- All game traffic (events, config, dialogue, mic audio, TTS) flows through
 -- this single connection to talker_bridge, which proxies to talker_service.
 
 local log       = require("framework.logger")
@@ -38,19 +37,18 @@ local STATE = {
 
 local _state            = STATE.DISCONNECTED
 local _url              = nil
+local _url_provider     = nil
+local _connect_options  = nil
 local _handle           = nil
 local _queue            = {}   -- outbound message queue (encoded strings)
 local _handlers         = {}   -- topic → { fn, fn, ... }
 local _pending          = {}   -- r → callback  (request/response correlation)
 local _on_reconnect     = nil  -- callback
+local _before_connect   = nil  -- callback fired before each ws_client.open attempt
 local _was_connected    = false
 local _backoff_attempt  = 0
 local _backoff_deadline = 0
 local _initialized      = false
-
--- Session-scoped mic handlers (auto-cleaned on mic.result)
-local _mic_on_status    = nil
-local _mic_on_result    = nil
 
 -- ── ID generation ────────────────────────────────────────────────────────────
 
@@ -76,6 +74,38 @@ local function calculate_backoff(attempt)
     if base > BACKOFF_CAP then base = BACKOFF_CAP end
     local jitter = base * BACKOFF_JITTER * (2 * math.random() - 1)
     return base + jitter
+end
+
+local function resolve_url()
+    if _url_provider then
+        local ok, value = pcall(_url_provider)
+        if not ok then
+            log.warn("bridge_channel: url provider failed: %s", tostring(value))
+            return nil
+        end
+        if type(value) == "string" and value ~= "" then
+            return value
+        end
+        log.warn("bridge_channel: url provider returned invalid URL")
+        return nil
+    end
+    return _url
+end
+
+local function attempt_open()
+    if _before_connect then
+        local ok, err = pcall(_before_connect)
+        if not ok then
+            log.warn("bridge_channel: before-connect hook failed: %s", tostring(err))
+        end
+    end
+
+    local target_url = resolve_url()
+    if type(target_url) ~= "string" or target_url == "" then
+        return nil
+    end
+
+    return ws_client.open(target_url, _connect_options)
 end
 
 -- ── Queue management ─────────────────────────────────────────────────────────
@@ -110,20 +140,7 @@ local function dispatch(envelope)
         return
     end
 
-    -- 2. Session-scoped mic handlers
-    if envelope.t == "mic.result" and _mic_on_result then
-        local fn = _mic_on_result
-        _mic_on_status = nil
-        _mic_on_result = nil
-        pcall(fn, envelope.p)
-        return
-    end
-    if envelope.t == "mic.status" and _mic_on_status then
-        pcall(_mic_on_status, envelope.p)
-        return
-    end
-
-    -- 3. General topic handlers
+    -- 2. General topic handlers
     local handlers = _handlers[envelope.t]
     if handlers then
         for _, fn in ipairs(handlers) do
@@ -156,21 +173,28 @@ end
 
 --- Initialize the channel with the bridge URL.
 -- Resets all state. Call tick() to begin connecting.
--- @param url  string  WebSocket URL (e.g. "ws://localhost:5558/ws")
-function M.init(url)
+-- @param url      string     WebSocket URL (e.g. "ws://localhost:5558/ws")
+-- @param options  table|nil  Optional connect options passed to ws_client.open
+function M.init(url, options)
     if _handle then
         ws_client.close(_handle)
         _handle = nil
     end
-    _url             = url
+    _url_provider    = nil
+    if type(url) == "function" then
+        _url = nil
+        _url_provider = url
+    else
+        _url = url
+    end
+    _connect_options = options
     _state           = STATE.DISCONNECTED
     _queue           = {}
     _handlers        = {}
     _pending         = {}
     _on_reconnect    = nil
+    _before_connect  = nil
     _was_connected   = false
-    _mic_on_status   = nil
-    _mic_on_result   = nil
     _backoff_attempt = 0
     _backoff_deadline = 0
     _initialized     = true
@@ -181,9 +205,16 @@ function M.tick()
     if not _initialized then return end
 
     if _state == STATE.DISCONNECTED then
-        _handle = ws_client.open(_url)
+        _handle = attempt_open()
         if _handle then
             _state = STATE.CONNECTING
+        else
+            if _backoff_attempt == 0 then
+                log.warn("bridge_channel: initial connection failed (url provider returned nil)")
+            end
+            _state = STATE.RECONNECTING
+            _backoff_deadline = os.clock() + calculate_backoff(_backoff_attempt)
+            _backoff_attempt = _backoff_attempt + 1
         end
 
     elseif _state == STATE.CONNECTING then
@@ -191,6 +222,7 @@ function M.tick()
         local status = ws_client.status(_handle)
         if status == "connected" then
             _state = STATE.CONNECTED
+            log.info("bridge_channel: connected")
             flush_queue()
             if _was_connected and _on_reconnect then
                 pcall(_on_reconnect)
@@ -198,6 +230,9 @@ function M.tick()
             _was_connected = true
             _backoff_attempt = 0
         elseif status == "closed" or status == "error" then
+            if _backoff_attempt == 0 then
+                log.warn("bridge_channel: connection %s (will retry with backoff)", status)
+            end
             _state = STATE.RECONNECTING
             _backoff_deadline = os.clock() + calculate_backoff(_backoff_attempt)
             _backoff_attempt = _backoff_attempt + 1
@@ -207,6 +242,7 @@ function M.tick()
         drain_messages()
         local status = ws_client.status(_handle)
         if status == "closed" or status == "error" then
+            log.warn("bridge_channel: disconnected (%s), reconnecting...", status)
             _state = STATE.RECONNECTING
             _backoff_deadline = os.clock() + calculate_backoff(_backoff_attempt)
             _backoff_attempt = _backoff_attempt + 1
@@ -218,9 +254,12 @@ function M.tick()
                 ws_client.close(_handle)
                 _handle = nil
             end
-            _handle = ws_client.open(_url)
+            _handle = attempt_open()
             if _handle then
                 _state = STATE.CONNECTING
+            else
+                _backoff_deadline = os.clock() + calculate_backoff(_backoff_attempt)
+                _backoff_attempt = _backoff_attempt + 1
             end
         end
     end
@@ -267,20 +306,16 @@ function M.request(topic, payload, callback)
     end
 end
 
---- Register session-scoped handlers for one recording session.
--- Clears any previous session handlers before registering new ones.
--- on_result auto-cleans up session handlers when mic.result is received.
--- @param on_status  function  Handler for mic.status: fn(payload)
--- @param on_result  function  Handler for mic.result: fn(payload)
-function M.start_session(on_status, on_result)
-    _mic_on_status = on_status
-    _mic_on_result = on_result
-end
-
 --- Register a callback fired on reconnect (not first connect).
 -- @param fn  function  Callback: fn()
 function M.set_on_reconnect(fn)
     _on_reconnect = fn
+end
+
+--- Register a callback fired before each ws_client.open attempt.
+-- @param fn  function  Callback: fn()
+function M.set_before_connect(fn)
+    _before_connect = fn
 end
 
 --- Close the connection and reset state.
@@ -292,8 +327,6 @@ function M.shutdown()
     _state = STATE.DISCONNECTED
     _queue = {}
     _pending = {}
-    _mic_on_status = nil
-    _mic_on_result = nil
     _initialized = false
 end
 
@@ -309,14 +342,15 @@ function M._reset()
     if _handle then pcall(ws_client.close, _handle) end
     _state            = STATE.DISCONNECTED
     _url              = nil
+    _url_provider     = nil
+    _connect_options  = nil
     _handle           = nil
     _queue            = {}
     _handlers         = {}
     _pending          = {}
     _on_reconnect     = nil
+    _before_connect   = nil
     _was_connected    = false
-    _mic_on_status    = nil
-    _mic_on_result    = nil
     _backoff_attempt  = 0
     _backoff_deadline = 0
     _initialized      = false

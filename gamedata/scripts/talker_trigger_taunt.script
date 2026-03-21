@@ -1,59 +1,48 @@
 ---@diagnostic disable: undefined-global
 package.path = package.path .. ";./bin/lua/?.lua;"
 
-local trigger = require("interface.trigger")
-local game = require("infra.game_adapter")
-local log = require("framework.logger")
-local mcm = talker_mcm
+local trigger    = require("interface.trigger")
+local game       = require("infra.game_adapter")
+local log        = require("framework.logger")
+local config     = require("interface.config")
+local Cooldown   = require("domain.service.cooldown")
+local chance     = require("domain.service.chance")
+local importance = require("domain.service.importance")
 
--- Import game interface modules
-local queries = talker_game_queries
+local queries    = talker_game_queries
+local EventType  = trigger.EventType
 
--- EventType shorthand for cleaner code
-local EventType = trigger.EventType
 ----------------------------------------------------------------------------------------------------
 -- INFO
 ----------------------------------------------------------------------------------------------------
 -- NPCS taunting other NPCs
 -- on_enemy_eval occurs at high frequency, so we limit the amount of calls
 
----------------------------------------------------------------------------------------------
--- CONDITIONS
---------------------------------------------------------------------------------------------
-local last_taunt_time_ms = 0
-local TAUNT_COOLDOWN_CD = mcm.get("taunt_cooldown") * 1000 -- default 5 minutes
-
-function someone_should_taunt(npc_obj)
-    is_valid =
-        (queries.get_game_time_ms() - last_taunt_time_ms) > TAUNT_COOLDOWN_CD and
-        queries.is_living_character(npc_obj) and
-        queries.is_in_combat(npc_obj)
-    -- reset cooldown
-    if is_valid then last_taunt_time_ms = queries.get_game_time_ms() end
-    return is_valid
-end
+-- CooldownManager replaces manual last_taunt_time_ms tracking
+local cd = Cooldown.new({ cooldown_ms = config.get("triggers/taunt/cooldown") * 1000 })
 
 ---------------------------------------------------------------------------------------------
--- ENEMY CALLOUTS
+-- TAUNTS
 --------------------------------------------------------------------------------------------
-function on_enemy_eval(npc_obj, enemy_obj) -- could check for human enemy if we wanted
-    if not mcm.get("enable_trigger_taunt") then return end
+function on_enemy_eval(npc_obj, enemy_obj)
+    if not config.get("triggers/taunt/enable") then return end
 
-    -- determine if it's a taunt
-    if not someone_should_taunt(npc_obj) then return end
+    -- Cheap domain guards before cooldown (avoid consuming cooldown on invalid events)
+    if not queries.is_living_character(npc_obj) then return end
+    if not queries.is_in_combat(npc_obj) then return end
+
+    -- Cooldown check (resets timer on pass)
+    local cd_result = cd:check("default", queries.get_game_time_ms(), 0)
+    if cd_result == nil then return end
 
     local taunter = game.create_character(npc_obj)
-    -- If the character object couldn't be created (e.g., NPC was despawned), abort. Also abort for monsters and zombied (they shouldn't be taunting).
     if not taunter or taunter.faction == "Monster" or taunter.faction == "Zombied" then return end
 
     local enemy = game.create_character(enemy_obj)
-    -- If the character object couldn't be created (e.g., NPC was despawned), abort.
     if not enemy then return end
-    
-    -- Prevent edge cases where taunter and enemy are the same faction, while still allowing hostile faction companions to taunt their own faction.
+
     if enemy.faction == taunter.faction and not queries.is_companion(npc_obj) then return end
 
-    -- Safety check for companions, preventing taunt spam in friendly bases while using companions from a hostile faction.
     if queries.is_companion(npc_obj) and not queries.are_enemies(db.actor, enemy_obj) then
         return
     end
@@ -61,23 +50,30 @@ function on_enemy_eval(npc_obj, enemy_obj) -- could check for human enemy if we 
         return
     end
 
-    -- create taunt event
     local witnesses = {taunter}
-
-    -- Create typed event context
     local context = {
-        taunter = taunter,
+        actor = taunter,
         target = enemy
     }
 
-    -- Use new typed event system
-    trigger.talker_event(
-        EventType.TAUNT,
-        context,
-        witnesses,
-        true, -- important
-        {}
-    )
+    if cd_result == true then
+        trigger.store_event(EventType.TAUNT, context, witnesses)
+        return
+    end
+
+    -- NPC-driven event: importance of taunter or chance
+    local taunter_flags = {
+        is_player    = false,
+        is_companion = queries.is_companion(npc_obj),
+        is_unique    = queries.is_unique_character_by_id(npc_obj:id()),
+        rank         = queries.get_rank(npc_obj),
+    }
+
+    if importance.is_important_person(taunter_flags) or chance.check("triggers/taunt/chance") then
+        trigger.publish_event(EventType.TAUNT, context, witnesses)
+    else
+        trigger.store_event(EventType.TAUNT, context, witnesses)
+    end
 end
 
 --------------------------------------------------------------------------------------------
@@ -85,9 +81,7 @@ end
 --------------------------------------------------------------------------------------------
 
 local function safe_on_enemy_eval(observer_obj, enemy_obj)
-    local status, err = pcall(function()
-        on_enemy_eval(observer_obj, enemy_obj)
-    end)
+    local status, err = pcall(on_enemy_eval, observer_obj, enemy_obj)
     if not status then
         log.error("Error in on_enemy_eval: " .. err)
     end

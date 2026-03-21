@@ -5,9 +5,8 @@
 -- so WSRouter can resolve the pending future.
 
 package.path = package.path .. ";./bin/lua/?.lua;"
-local logger        = require("framework.logger")
-local memory_store  = require("domain.repo.memory_store")
-local event_store   = require("domain.repo.event_store")
+local logger         = require("framework.logger")
+local memory_store_v2 = require("domain.repo.memory_store_v2")
 local game_adapter  = require("infra.game_adapter")
 local filter_engine = require("infra.query.filter_engine")
 local personalities = require("domain.repo.personalities")
@@ -74,56 +73,6 @@ local function is_sobj_alive(sobj)
     return true
 end
 
---------------------------------------------------------------------------------
--- Event Iterator with Binary-Search Pre-Scan
---------------------------------------------------------------------------------
-
-local function create_events_iterator(filter)
-    local start_ms = nil
-    local inclusive = false
-
-    if filter and filter.game_time_ms and type(filter.game_time_ms) == "table" then
-        if filter.game_time_ms["$gt"] then
-            start_ms = filter.game_time_ms["$gt"]
-            inclusive = false
-        elseif filter.game_time_ms["$gte"] then
-            start_ms = filter.game_time_ms["$gte"]
-            inclusive = true
-        end
-    end
-
-    local sorted_keys = event_store.sorted_keys
-    local events = event_store.events
-    local i
-
-    if start_ms then
-        local low, high = 1, #sorted_keys
-        while low <= high do
-            local mid = math.floor((low + high) / 2)
-            if sorted_keys[mid] < start_ms then
-                low = mid + 1
-            else
-                high = mid - 1
-            end
-        end
-        i = low
-        if not inclusive then
-            while i <= #sorted_keys and sorted_keys[i] == start_ms do
-                i = i + 1
-            end
-        end
-    else
-        i = 1
-    end
-
-    return function()
-        if i > #sorted_keys then return nil end
-        local key = sorted_keys[i]
-        i = i + 1
-        return events[key]
-    end
-end
-
 local function apply_pipeline_and_projection(source_iter, query)
     local results = filter_engine.execute_pipeline(
         source_iter,
@@ -171,27 +120,110 @@ local function extract_character_ids_from_query(query)
     return ids
 end
 
-resource_registry["store.events"] = function(query)
-    local iter = create_events_iterator(query.filter)
-    local results = apply_pipeline_and_projection(iter, query)
-    local serialized = {}
-    for _, event in ipairs(results) do
-        serialized[#serialized + 1] = serialize_event(event)
-    end
-    return serialized
-end
+-- Old flat-narrative resolvers removed: replaced by memory.events, memory.summaries, memory.digests, memory.cores, memory.background
 
-resource_registry["store.memories"] = function(query)
+resource_registry["memory.events"] = function(query)
     local character_id = query.params and query.params.character_id
     if not character_id then
-        error("store.memories requires params.character_id")
+        error("memory.events requires params.character_id")
     end
-    local mem = memory_store:get_narrative(character_id)
+    local params = query.params or {}
+    return memory_store_v2:query(character_id, "memory.events", params)
+end
+
+resource_registry["memory.summaries"] = function(query)
+    local character_id = query.params and query.params.character_id
+    if not character_id then
+        error("memory.summaries requires params.character_id")
+    end
+    local params = query.params or {}
+    return memory_store_v2:query(character_id, "memory.summaries", params)
+end
+
+resource_registry["memory.digests"] = function(query)
+    local character_id = query.params and query.params.character_id
+    if not character_id then
+        error("memory.digests requires params.character_id")
+    end
+    local params = query.params or {}
+    return memory_store_v2:query(character_id, "memory.digests", params)
+end
+
+resource_registry["memory.cores"] = function(query)
+    local character_id = query.params and query.params.character_id
+    if not character_id then
+        error("memory.cores requires params.character_id")
+    end
+    local params = query.params or {}
+    return memory_store_v2:query(character_id, "memory.cores", params)
+end
+
+resource_registry["memory.background"] = function(query)
+    local character_id = query.params and query.params.character_id
+    if not character_id then
+        error("memory.background requires params.character_id")
+    end
+    local params = query.params or {}
+    return memory_store_v2:query(character_id, "memory.background", params)
+end
+
+resource_registry["memory.global_events"] = function(_query)
+    return memory_store_v2:get_global_event_buffer()
+end
+
+resource_registry["memory.tiers"] = function(query)
+    local character_id = query.params and query.params.character_id
+    if not character_id then
+        error("memory.tiers requires params.character_id")
+    end
+    local counts = memory_store_v2:get_tier_counts(character_id)
+    if not counts then
+        return { tiers = { events = 0, summaries = 0, digests = 0, cores = 0 } }
+    end
+    return { tiers = counts }
+end
+
+local function to_manifest_pairs(items)
+    local out = {}
+    for _, item in ipairs(items or {}) do
+        out[#out + 1] = {
+            ts = item.ts,
+            cs = item.cs,
+        }
+    end
+    return out
+end
+
+function build_sync_manifest()
+    local characters_manifest = {}
+    local ids = memory_store_v2:get_all_character_ids()
+
+    for _, character_id in ipairs(ids) do
+        local entry = memory_store_v2:get_entry(character_id) or {}
+        characters_manifest[#characters_manifest + 1] = {
+            id = tostring(character_id),
+            tiers = {
+                events = to_manifest_pairs(entry.events),
+                summaries = to_manifest_pairs(entry.summaries),
+                digests = to_manifest_pairs(entry.digests),
+                cores = to_manifest_pairs(entry.cores),
+            },
+            background = entry.background and { cs = entry.background.cs } or nil,
+        }
+    end
+
+    local globals = to_manifest_pairs(memory_store_v2:get_global_event_buffer())
+
     return {
-        narrative = mem and mem.narrative or nil,
-        last_update_time_ms = mem and mem.last_update_time_ms or 0,
+        characters = characters_manifest,
+        global_events = globals,
     }
 end
+
+resource_registry["memory.sync_manifest"] = function(_query)
+    return build_sync_manifest()
+end
+
 
 resource_registry["store.personalities"] = function(query)
     local requested_ids = extract_character_ids_from_query(query)
@@ -291,6 +323,49 @@ resource_registry["query.character"] = function(query)
     return result
 end
 
+--- Ensure a character has a memory entry, creating one with global backfill if needed.
+-- Squad discovery side-effect: called for each squad member when query.character_info
+-- is processed. Idempotent — no-op if entry already exists.
+local function ensure_entry_with_backfill(character_id)
+    memory_store_v2:ensure_entry(tostring(character_id))
+end
+
+resource_registry["query.character_info"] = function(query)
+    local id = query.params and query.params.id
+    if not id then
+        error("query.character_info requires params.id")
+    end
+
+    local queries_mod = talker_game_queries
+    if not queries_mod then
+        error("talker_game_queries not available")
+    end
+
+    -- Resolve character via game adapter (returns Character domain object)
+    local char = game_adapter.get_character_by_id(id)
+    if not char then
+        error("Character not found: " .. tostring(id))
+    end
+
+    -- Resolve squad members via game object
+    local game_obj = queries_mod.get_obj_by_id(id)
+    local squad_game_objs = game_obj and queries_mod.get_squad_members(game_obj) or {}
+
+    -- Convert game objects to Character domain objects
+    local squad_members = {}
+    for _, member_obj in ipairs(squad_game_objs) do
+        local member_char = game_adapter.create_character(member_obj)
+        if member_char then
+            -- Squad discovery side-effect: ensure memory entry for each squad member
+            ensure_entry_with_backfill(member_char.game_id)
+            squad_members[#squad_members + 1] = member_char
+        end
+    end
+
+    -- Serialize with gender and background using serializer
+    return serializer.serialize_character_info(char, squad_members, memory_store_v2)
+end
+
 resource_registry["query.characters_nearby"] = function(query)
     local queries_mod = talker_game_queries
     if not queries_mod then
@@ -384,6 +459,8 @@ resource_registry["query.world"] = function(query)
         campfire = queries_mod.get_nearby_campfire_state and queries_mod.get_nearby_campfire_state() or nil,
         brain_scorcher_disabled = brain_scorcher_disabled,
         miracle_machine_disabled = miracle_machine_disabled,
+        faction_standings = queries_mod.build_faction_matrix(),
+        player_goodwill = queries_mod.build_player_goodwill(),
     }
 
     if query.fields and #query.fields > 0 then
@@ -395,6 +472,42 @@ end
 --------------------------------------------------------------------------------
 -- Batch Dispatcher
 --------------------------------------------------------------------------------
+
+--- Handle a batch mutation request (state.mutate.batch).
+-- Dispatches mutations to memory_store_v2:mutate() and collects results.
+local function handle_batch_mutation(payload, request_r)
+    local request_id = payload.request_id -- Also in payload for backward compat
+    local mutations = payload.mutations or {}
+
+    logger.debug("Handling batch mutation with %d mutations (r=%s, request_id=%s)",
+        #mutations, tostring(request_r), tostring(request_id))
+
+    local results = {}
+
+    for idx, mutation in ipairs(mutations) do
+        local mutation_id = mutation.id or tostring(idx)
+        local ok, result = pcall(memory_store_v2.mutate, memory_store_v2, mutation)
+        if ok then
+            results[mutation_id] = result
+        else
+            results[mutation_id] = { ok = false, error = tostring(result) }
+        end
+    end
+
+    -- Publish batch response with the r-field echoed back
+    local ws = get_ws_integration()
+    local channel = ws and ws.get_service_channel and ws.get_service_channel()
+    if channel then
+        local response_payload = {
+            request_id = request_id or request_r,
+            results    = results,
+            timestamp  = os.time() * 1000,
+        }
+        channel.publish("state.response", response_payload, request_r)
+    else
+        logger.warn("Bridge channel not available for mutation response")
+    end
+end
 
 --- Handle a batch query request.
 -- The handler receives (payload, request_r) where request_r is the r-field
@@ -409,45 +522,53 @@ local function handle_batch_query(payload, request_r)
 
     local results = {}
 
-    for _, query in ipairs(sub_queries) do
-        local qid = query.id
-        local resource = query.resource
+    for idx, query in ipairs(sub_queries) do
+        local qid = query.id or ("_auto_" .. tostring(idx))
+        local resource = query.resource or query.query  -- legacy compat: "query" field
+        local should_skip = false
+
+        if not query.id then
+            logger.warn("Sub-query #%d missing 'id' field, auto-assigned '%s'", idx, qid)
+        end
+        if not query.resource and query.query then
+            logger.warn("Sub-query '%s' uses legacy 'query' field instead of 'resource'", qid)
+        end
 
         -- Resolve $ref strings in filter and params
         if query.filter then
             local _, ref_err = filter_engine.resolve_refs(query.filter, results)
             if ref_err then
                 results[qid] = { ok = false, error = ref_err }
-                goto continue
+                should_skip = true
             end
         end
-        if query.params then
+        if (not should_skip) and query.params then
             local _, ref_err = filter_engine.resolve_refs(query.params, results)
             if ref_err then
                 results[qid] = { ok = false, error = ref_err }
-                goto continue
+                should_skip = true
             end
         end
 
-        local resolver = resource_registry[resource]
-        if not resolver then
-            results[qid] = { ok = false, error = "unknown resource: " .. tostring(resource) }
-            goto continue
+        if not should_skip then
+            local resolver = resource_registry[resource]
+            if not resolver then
+                results[qid] = { ok = false, error = "unknown resource: " .. tostring(resource) }
+                should_skip = true
+            else
+                local ok, data = pcall(resolver, query)
+                if ok then
+                    results[qid] = { ok = true, data = data }
+                else
+                    results[qid] = { ok = false, error = tostring(data) }
+                end
+            end
         end
-
-        local ok, data = pcall(resolver, query)
-        if ok then
-            results[qid] = { ok = true, data = data }
-        else
-            results[qid] = { ok = false, error = tostring(data) }
-        end
-
-        ::continue::
     end
 
     -- Publish batch response with the r-field echoed back
     local ws = get_ws_integration()
-    local channel = ws and ws.get_bridge_channel and ws.get_bridge_channel()
+    local channel = ws and ws.get_service_channel and ws.get_service_channel()
     if channel then
         local response_payload = {
             request_id = request_id or request_r,
@@ -471,9 +592,10 @@ local function register_handlers()
         return false
     end
 
-    logger.info("Registering WS query handlers...")
+    logger.info("Registering WS query/mutation handlers...")
     ws.register_command_handler("state.query.batch", handle_batch_query)
-    logger.info("WS query handlers registered successfully")
+    ws.register_command_handler("state.mutate.batch", handle_batch_mutation)
+    logger.info("WS query/mutation handlers registered successfully")
     return true
 end
 

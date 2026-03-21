@@ -1,39 +1,145 @@
 # Multi-branch TALKER Caddyfile — template for VPS deployment
 #
-# Replace {$DOMAIN} with your actual domain or set the DOMAIN env var.
-# Caddy auto-provisions TLS via Let's Encrypt.
-#
-# Routing:
-#   /ws/main   → talker-main:5557/ws   (main branch WebSocket)
-#   /ws/dev    → talker-dev:5557/ws     (dev branch WebSocket)
-#   /health/*  → per-branch health check
-#   /grafana/* → Grafana dashboard
+# Requires a Caddy image with the caddy-security plugin.
+# JWT bearer tokens are validated against Keycloak JWKS.
+
+{
+    order authenticate before respond
+    order authorize before basicauth
+
+    security {
+        oauth identity provider keycloak {
+            realm talker
+            driver generic
+            metadata_url http://keycloak:8080/auth/realms/talker/.well-known/openid-configuration
+            client_id {$KEYCLOAK_CLIENT_ID}
+            client_secret {$KEYCLOAK_CLIENT_SECRET}
+            scopes openid profile email
+        }
+
+        authorization policy talker_player_policy {
+            set auth url /auth/realms/talker/account/
+            validate bearer header
+            crypto key verify from file /etc/caddy/keycloak.pub.pem
+            allow roles player admin
+        }
+
+        authorization policy talker_admin_policy {
+            set auth url /auth/realms/talker/account/
+            validate bearer header
+            crypto key verify from file /etc/caddy/keycloak.pub.pem
+            allow roles admin
+        }
+    }
+}
 
 {$DOMAIN} {
-    # ─── Branch: main ──────────────────────────
-    handle_path /ws/main {
-        reverse_proxy talker-main:5557
+    # ─── Keycloak (no JWT gate) ─────────────────
+    handle /auth/* {
+        reverse_proxy keycloak:8080 {
+            # Force Host to internal address so Keycloak embeds the correct
+            # issuer in tokens (http://keycloak:8080/...) which matches what
+            # caddy-security reads from the internal metadata endpoint.
+            header_up Host keycloak:8080
+        }
+    }
+
+    # ─── Branch: main WS (JWT required) ─────────
+    handle /ws/main {
+        # Inner route preserves directive order so request_header runs before authorize
+        route {
+            # pollnet WS client can't set headers; pull JWT from ?token= query param
+            @has_token query token=*
+            request_header @has_token Authorization "Bearer {http.request.uri.query.token}"
+
+            authorize with talker_player_policy
+            request_header X-Branch "main"
+            request_header X-Player-ID "{http.auth.user.claim.sub}"
+            rewrite * /ws
+            reverse_proxy talker-main:5557
+        }
     }
 
     handle /health/main {
+        rewrite * /health
         reverse_proxy talker-main:5557
     }
 
-    # ─── Branch: dev ───────────────────────────
-    handle_path /ws/dev {
-        reverse_proxy talker-dev:5557
+    # ─── Shared API: TTS (JWT required) ─────────
+    handle /api/tts/* {
+        route {
+            authorize with talker_player_policy
+            request_header X-Player-ID "{http.auth.user.claim.sub}"
+            log_append player_id "{http.auth.user.claim.sub}"
+            log_append request_path "{http.request.uri.path}"
+            uri strip_prefix /api/tts
+            reverse_proxy tts-service:8100
+        }
+    }
+
+    # ─── Shared API: STT (JWT required) ─────────
+    handle /api/stt/* {
+        route {
+            authorize with talker_player_policy
+            request_header X-Player-ID "{http.auth.user.claim.sub}"
+            log_append player_id "{http.auth.user.claim.sub}"
+            log_append request_path "{http.request.uri.path}"
+            uri strip_prefix /api/stt
+            reverse_proxy stt-service:8200
+        }
+    }
+
+    # ─── Shared API: Embeddings (JWT required) ──
+    handle /api/embed/* {
+        route {
+            authorize with talker_player_policy
+            request_header X-Player-ID "{http.auth.user.claim.sub}"
+            log_append player_id "{http.auth.user.claim.sub}"
+            log_append request_path "{http.request.uri.path}"
+
+            @embed_whitelist path /api/embed/api/embeddings /api/embed/api/tags
+            handle @embed_whitelist {
+                uri strip_prefix /api/embed
+                reverse_proxy ollama:11434
+            }
+
+            respond "Forbidden" 403
+        }
+    }
+
+    # ─── Branch: dev WS (JWT required) ──────────
+    handle /ws/dev {
+        # Inner route preserves directive order so request_header runs before authorize
+        route {
+            # pollnet WS client can't set headers; pull JWT from ?token= query param
+            @has_token query token=*
+            request_header @has_token Authorization "Bearer {http.request.uri.query.token}"
+
+            authorize with talker_player_policy
+            request_header X-Branch "dev"
+            request_header X-Player-ID "{http.auth.user.claim.sub}"
+            rewrite * /ws
+            reverse_proxy talker-dev:5557
+        }
     }
 
     handle /health/dev {
+        rewrite * /health
         reverse_proxy talker-dev:5557
     }
 
-    # ─── Grafana dashboard ─────────────────────
-    handle_path /grafana/* {
+    # ─── Neo4j Browser (admin JWT required) ─────
+    handle_path /neo4j/* {
+        authorize with talker_admin_policy
+        reverse_proxy neo4j:7474
+    }
+
+    # ─── Grafana dashboard ──────────────────────
+    handle /grafana/* {
         reverse_proxy grafana:3000
     }
 
-    # ─── Default: 404 ──────────────────────────
+    # ─── Default: 404 ───────────────────────────
     handle {
         respond "Not found" 404
     }

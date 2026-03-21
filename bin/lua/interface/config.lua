@@ -64,10 +64,17 @@ local c = {}
 -- static values
 c.EVENT_WITNESS_RANGE  = cfg("witness_distance")
 c.NPC_SPEAK_DISTANCE   = cfg("npc_speak_distance")
-c.BASE_DIALOGUE_CHANCE = cfg("base_dialogue_chance")
 c.player_speaks = false
 c.SHOW_HUD_MESSAGES = true
 c.PROXY_API_KEY = "VerysecretKey"
+
+--- Public generic getter for any MCM key (dynamic read).
+-- Used by domain/service/chance.lua and trigger scripts.
+-- @param key  string  MCM key (e.g. "triggers/death/chance_player")
+-- @return any  The config value, with defaults fallback
+function c.get(key)
+	return cfg(key)
+end
 
 function c.get_openai_api_key()
 	if not c._openai_api_key then
@@ -145,22 +152,56 @@ function c.is_gemini()
 	return false
 end
 
--- WebSocket / Python Service configuration
+-- Speaker picker
 
-function c.ws_host()
-	return cfg("ws_host") or "127.0.0.1"
+function c.speaker_pick_max_events()
+	return tonumber(cfg("speaker_pick_max_events")) or 20
 end
 
-function c.mic_ws_port()
-	return tonumber(cfg("mic_ws_port"))
+-- WebSocket / Python Service configuration
+
+function c.service_type()
+	return tonumber(cfg("service_type")) or 0
+end
+
+function c.service_hub_url()
+	return cfg("service_hub_url") or ""
+end
+
+function c.branch()
+	return tonumber(cfg("branch")) or 0
+end
+
+function c.custom_branch()
+	return cfg("custom_branch") or ""
+end
+
+function c.service_ws_port()
+	return tonumber(cfg("service_ws_port")) or 5557
 end
 
 function c.ws_token()
 	return cfg("ws_token") or ""
 end
 
+function c.auth_client_id()
+	return cfg("auth_client_id") or ""
+end
+
+function c.auth_client_secret()
+	return cfg("auth_client_secret") or ""
+end
+
+function c.auth_username()
+	return cfg("auth_username") or ""
+end
+
+function c.auth_password()
+	return cfg("auth_password") or ""
+end
+
 function c.service_url()
-	return cfg("service_url") or "wss://talker-live.duckdns.org/ws"
+	return cfg("service_url") or ""
 end
 
 function c.llm_timeout()
@@ -169,7 +210,7 @@ function c.llm_timeout()
 end
 
 function c.state_query_timeout()
-	-- Maximum seconds to wait for game state queries (default 30s)
+	-- Maximum seconds to wait for game state queries (default 10s)
 	return tonumber(cfg("state_query_timeout"))
 end
 
@@ -201,15 +242,25 @@ function c.get_all_config()
 		-- General settings
 		action_descriptions     = cfg("action_descriptions"),
 		female_gender           = cfg("female_gender"),
-		base_dialogue_chance    = cfg("base_dialogue_chance"),
 		witness_distance        = cfg("witness_distance"),
 		npc_speak_distance      = cfg("npc_speak_distance"),
 		time_gap                = cfg("time_gap"),
 
+		-- Speaker picker
+		speaker_pick_max_events = tonumber(cfg("speaker_pick_max_events")),
+
 		-- WebSocket settings
-		ws_host                 = cfg("ws_host"),
+		service_type            = tonumber(cfg("service_type")),
+		service_hub_url         = cfg("service_hub_url"),
+		branch                  = tonumber(cfg("branch")),
+		custom_branch           = cfg("custom_branch"),
 		service_url             = cfg("service_url"),
+		service_ws_port         = tonumber(cfg("service_ws_port")),
 		ws_token                = cfg("ws_token"),
+		auth_client_id          = cfg("auth_client_id"),
+		auth_client_secret      = cfg("auth_client_secret"),
+		auth_username           = cfg("auth_username"),
+		auth_password           = cfg("auth_password"),
 		llm_timeout             = tonumber(cfg("llm_timeout")),
 		state_query_timeout     = tonumber(cfg("state_query_timeout")),
 

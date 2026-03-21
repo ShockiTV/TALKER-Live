@@ -1,23 +1,28 @@
 package.path = package.path .. ";./bin/lua/?.lua;"
 local logger = require("framework.logger")
 local game = require("infra.game_adapter")
-local Event = require("domain.model.event")
 local trigger = require("interface.trigger")
 local EventType = trigger.EventType
-local queries = talker_game_queries
 
 AddScriptCallback("talker_player_speaks")
 
 function talker_on_player_speaks(dialogue)
     local player = game.get_player_character()
     game.display_dialogue(player.game_id, dialogue)
-    
-    -- Create typed dialogue event for player speech
+
+    -- Gather witnesses near the player
+    local witnesses = game.get_characters_near_player()
+    if #witnesses == 0 then
+        logger.debug("TALKER: Player speaks but no NPCs nearby, skipping")
+        return
+    end
+
+    -- Create typed dialogue event and publish (always — player chose to speak)
     local context = {
-        speaker = player,
-        text = dialogue
+        actor = player,
+        text = dialogue,
     }
-    trigger.talker_event_near_player(EventType.DIALOGUE, context, true, { is_dialogue = true })
+    trigger.publish_event(EventType.DIALOGUE, context, witnesses)
 end
 
 function talker_safely_on_player_speaks(dialogue)

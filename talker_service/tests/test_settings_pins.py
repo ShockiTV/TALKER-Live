@@ -66,3 +66,49 @@ class TestSettingsBackwardCompat:
         """openai_endpoint can be set via env."""
         s = self._make_settings({"OPENAI_ENDPOINT": "https://my-azure.openai.azure.com/v1/chat/completions"})
         assert "azure" in s.openai_endpoint
+
+
+class TestServiceHubDerivation:
+    """SERVICE_HUB_URL derives per-service endpoints unless explicitly overridden."""
+
+    def _make_settings(self, env_overrides: dict):
+        import os
+
+        env = {**os.environ, **env_overrides}
+        with patch.dict(os.environ, env, clear=True):
+            from talker_service.config import Settings
+
+            return Settings(
+                _env_file=None,
+                **{
+                    k.lower(): v
+                    for k, v in env_overrides.items()
+                    if k.lower() in Settings.model_fields
+                },
+            )
+
+    def test_service_hub_derives_all_service_urls(self):
+        s = self._make_settings({"SERVICE_HUB_URL": "https://talker-live.duckdns.org"})
+        assert s.tts_service_url == "https://talker-live.duckdns.org/api/tts"
+        assert s.stt_endpoint == "https://talker-live.duckdns.org/api/stt/v1"
+        assert s.ollama_base_url == "https://talker-live.duckdns.org/api/embed"
+
+    def test_explicit_urls_override_hub_derivation(self):
+        s = self._make_settings(
+            {
+                "SERVICE_HUB_URL": "https://talker-live.duckdns.org",
+                "TTS_SERVICE_URL": "http://127.0.0.1:8100",
+                "STT_ENDPOINT": "http://127.0.0.1:8200/v1",
+                "OLLAMA_BASE_URL": "http://127.0.0.1:11434",
+            }
+        )
+        assert s.tts_service_url == "http://127.0.0.1:8100"
+        assert s.stt_endpoint == "http://127.0.0.1:8200/v1"
+        assert s.ollama_base_url == "http://127.0.0.1:11434"
+
+    def test_empty_hub_leaves_service_urls_unset(self):
+        s = self._make_settings({})
+        assert s.service_hub_url == ""
+        assert s.tts_service_url == ""
+        assert s.stt_endpoint == ""
+        assert s.ollama_base_url == ""

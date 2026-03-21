@@ -10,6 +10,7 @@ websockets>=11.0
 # LLM / STT
 openai>=1.0.0
 httpx>=0.24.0
+neo4j>=5.26.0
 faster-whisper>=1.0.0
 soundfile>=0.12.0
 

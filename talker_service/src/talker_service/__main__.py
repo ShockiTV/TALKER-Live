@@ -8,6 +8,7 @@ import os
 import signal
 import threading
 from contextlib import asynccontextmanager
+from typing import Any
 
 import uvicorn
 from fastapi import FastAPI, WebSocket
@@ -18,13 +19,16 @@ from .transport.ws_router import WSRouter
 from .handlers import events as event_handlers
 from .handlers import config as config_handlers
 from .handlers import audio as audio_handlers
-from .dialogue import DialogueGenerator, SpeakerSelector
-from .dialogue.retry_queue import DialogueRetryQueue
+from .dialogue.conversation import ConversationManager
 from .state.client import StateQueryClient
 from .llm import get_llm_client
+from .llm.models import ReasoningOptions
+from .memory.compaction import CompactionEngine
+from .memory.scheduler import CompactionScheduler
 from .tts import TTS_AVAILABLE, TTSEngine, TTSRemoteClient
 from .stt import STT_AVAILABLE
 from .transport.session_registry import SessionRegistry
+from .storage import Neo4jClient, EmbeddingClient, init_schema, SessionSyncService
 
 
 def _force_exit():
@@ -42,14 +46,17 @@ atexit.register(_force_exit)
 
 # Global instances
 ws_router: WSRouter | None = None
-dialogue_generator: DialogueGenerator | None = None
+conversation_manager: ConversationManager | None = None
 tts_engine: TTSEngine | None = None
+session_registry: SessionRegistry | None = None
+neo4j_client: Neo4jClient | None = None
+embedding_client: EmbeddingClient | None = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Manage application lifespan - startup and shutdown."""
-    global ws_router, dialogue_generator, tts_engine
+    global ws_router, conversation_manager, tts_engine, session_registry, neo4j_client, embedding_client
     
     # Startup
     logger.info("Starting TALKER Service v0.4.0 (WebSocket transport)")
@@ -60,11 +67,55 @@ async def lifespan(app: FastAPI):
     session_registry = SessionRegistry()
     ws_router.set_session_registry(session_registry)
     config_handlers.set_session_registry(session_registry)
+
+    async def _on_shared_client_update(session_id: str, urls: dict[str, str], client):
+        global tts_engine, embedding_client
+
+        if embedding_client:
+            if urls.get("ollama_base_url"):
+                embedding_client.base_url = urls["ollama_base_url"].rstrip("/")
+            embedding_client.set_http_client(client)
+
+        tts_url = (urls.get("tts_service_url") or "").strip()
+        if isinstance(tts_engine, TTSRemoteClient):
+            if tts_url:
+                tts_engine.base_url = tts_url.rstrip("/")
+            tts_engine.set_http_client(client)
+        elif tts_engine is None and tts_url:
+            tts_engine = TTSRemoteClient(tts_url, http_client=client)
+            event_handlers.set_tts_engine(tts_engine)
+
+    config_handlers.set_shared_client_update_hook(_on_shared_client_update)
+
+    # Initialize graph memory clients (graceful no-op when NEO4J_URI is unset)
+    neo4j_client = Neo4jClient(
+        uri=settings.neo4j_uri,
+        user=settings.neo4j_user,
+        password=settings.neo4j_password,
+        database=settings.neo4j_database,
+    )
+    embedding_client = EmbeddingClient(
+        base_url=settings.ollama_base_url,
+        model=settings.ollama_embed_model,
+        http_client=config_handlers.get_shared_http_client(),
+    )
+
+    if neo4j_client.is_available():
+        try:
+            init_schema(neo4j_client)
+        except Exception as exc:
+            logger.warning("Neo4j schema init failed: {}", exc)
+        await embedding_client.ensure_model_pulled()
+    else:
+        logger.info("Neo4j unavailable (NEO4J_URI not set) - graph memory disabled")
     
     # Initialize TTS: remote client (shared microservice) or embedded engine
     if settings.tts_service_url:
         logger.info("Using remote TTS service at {}", settings.tts_service_url)
-        tts_engine = TTSRemoteClient(settings.tts_service_url)
+        tts_engine = TTSRemoteClient(
+            settings.tts_service_url,
+            http_client=config_handlers.get_shared_http_client(),
+        )
         logger.info("TTSRemoteClient ready")
     elif settings.tts_enabled and TTS_AVAILABLE:
         logger.info("Initializing embedded TTS engine...")
@@ -99,6 +150,16 @@ async def lifespan(app: FastAPI):
         config_mirror.pin("model_name_fast", settings.llm_model_fast)
     if settings.stt_method:
         config_mirror.pin("stt_method", settings.stt_method)
+    if settings.service_type is not None:
+        config_mirror.pin("service_type", settings.service_type)
+    if settings.auth_username:
+        config_mirror.pin("auth_username", settings.auth_username)
+    if settings.auth_password:
+        config_mirror.pin("auth_password", settings.auth_password)
+    if settings.auth_client_id:
+        config_mirror.pin("auth_client_id", settings.auth_client_id)
+    if settings.auth_client_secret:
+        config_mirror.pin("auth_client_secret", settings.auth_client_secret)
 
     if config_mirror._pins:
         logger.info("Active server-authority pins: {}", config_mirror._pins)
@@ -117,33 +178,78 @@ async def lifespan(app: FastAPI):
             timeout=settings.llm_timeout,
             model=model_name if model_name else None,
         )
+
+    def get_current_fast_llm_client():
+        """Build an LLM client using the fast model name (falls back to the main model)."""
+        model_method = config_mirror.get("model_method", 0)
+        model_name_fast = config_mirror.get("model_name_fast", "")
+        if not model_name_fast:
+            # No fast model configured — fall back to main client
+            return get_current_llm_client()
+        logger.debug(f"Getting fast LLM client for model_method={model_method}, model_name_fast={model_name_fast}")
+        return get_llm_client(
+            model_method,
+            timeout=settings.llm_timeout,
+            model=model_name_fast,
+            force_new=True,
+        )
     
     # Create state query client
     state_client = StateQueryClient(
         router=ws_router,
         timeout=settings.state_query_timeout,
     )
-    
-    # Create retry queue for deferred dialogue generation
-    retry_queue = DialogueRetryQueue(
-        max_retries=5,
-        heartbeat_interval=5.0,
+
+    config_handlers.set_session_sync_service(
+        SessionSyncService(state_client=state_client, neo4j_client=neo4j_client)
     )
     
-    # Create dialogue generator with factory function and TTS engine
-    dialogue_generator = DialogueGenerator(
-        llm_client=get_current_llm_client,  # Pass factory, not client
+    # Create compaction engine + budget-pool scheduler
+    compaction_engine = CompactionEngine(
         state_client=state_client,
-        publisher=ws_router,
+        llm_client=get_current_llm_client(),
+    )
+    compaction_scheduler = CompactionScheduler(compaction_engine)
+
+    # Build reasoning options from settings (if configured)
+    reasoning_opts: ReasoningOptions | None = None
+    if settings.reasoning_effort:
+        reasoning_opts = ReasoningOptions(
+            effort=settings.reasoning_effort,  # type: ignore[arg-type]
+            summary=settings.reasoning_summary or None,  # type: ignore[arg-type]
+        )
+        logger.info("Reasoning options: effort={}, summary={}", reasoning_opts.effort, reasoning_opts.summary)
+
+    # Apply feature flags from settings to the session-scoped LLM factory
+    _enable_persistence = settings.enable_conversation_persistence
+    _enable_pruning = settings.enable_context_pruning
+
+    def _session_llm_factory() -> Any:
+        client = get_current_llm_client()
+        # Wire pruning flag into per-session clients
+        if hasattr(client, "enable_pruning"):
+            client.enable_pruning = _enable_pruning
+        return client
+
+    # Create conversation manager for tool-based dialogue
+    conversation_manager = ConversationManager(
+        llm_client=get_current_llm_client(),  # Fallback client
+        state_client=state_client,
+        session_registry=session_registry if _enable_persistence else None,
+        llm_client_factory=_session_llm_factory if _enable_persistence else None,
+        fast_llm_client=get_current_fast_llm_client(),
+        compaction_engine=compaction_engine,
+        compaction_scheduler=compaction_scheduler,
         llm_timeout=settings.llm_timeout,
-        retry_queue=retry_queue,
-        tts_engine=tts_engine,  # Pass TTS engine if available
+        reasoning=reasoning_opts,
     )
     
-    # Inject generator into event handlers
-    event_handlers.set_dialogue_generator(dialogue_generator)
+    # Inject conversation manager into event handlers
+    event_handlers.set_conversation_manager(conversation_manager)
     event_handlers.set_publisher(ws_router)  # For heartbeat acks
-    event_handlers.set_retry_queue(retry_queue)
+    event_handlers.set_tts_engine(tts_engine)  # For TTS audio dispatch
+    event_handlers.set_neo4j_client(neo4j_client)
+    event_handlers.set_embedding_client(embedding_client)
     
     # Wire config changes to TTS engine volume
     if tts_engine:
@@ -152,7 +258,7 @@ async def lifespan(app: FastAPI):
             if vol is not None:
                 tts_engine.volume_boost = float(vol)
                 logger.info(f"TTS volume boost updated to {tts_engine.volume_boost}")
-        config_mirror.on_change(_on_config_change)
+        session_registry.on_any_config_change(_on_config_change)
     
     # Register handlers
     ws_router.on("game.event", event_handlers.handle_game_event)
@@ -169,29 +275,48 @@ async def lifespan(app: FastAPI):
         ws_router.on("mic.audio.end", audio_handlers.handle_audio_end)
         logger.info("STT audio handlers registered")
         
-        # Lazily initialise the STT provider on first config sync so we know
-        # which method the user picked (local / api / proxy).
-        _stt_initialised = False
-        
-        def _init_stt_on_config(cfg):
-            nonlocal _stt_initialised
-            if _stt_initialised:
-                return
-            _stt_initialised = True
+        # Eagerly initialise the STT provider if stt_method is pinned;
+        # otherwise lazily on first config sync so we know the user's choice.
+        def _init_stt(stt_method: str) -> None:
             try:
                 from .stt.factory import get_stt_provider
-                stt_method = config_mirror.get("stt_method", "local")
-                # Pass stt_endpoint so WhisperAPIProvider can target a local
-                # faster-whisper-server container instead of OpenAI cloud.
                 stt_kwargs = {}
-                if settings.stt_endpoint:
-                    stt_kwargs["endpoint"] = settings.stt_endpoint
+                # Only WhisperAPIProvider accepts endpoint/auth_factory
+                if stt_method == "api":
+                    urls = config_handlers.get_effective_service_urls()
+                    stt_endpoint = (urls.get("stt_endpoint") or settings.stt_endpoint or "").strip()
+                    if stt_endpoint:
+                        stt_kwargs["endpoint"] = stt_endpoint
+                    # Build an auth_factory that creates a loop-local httpx client
+                    # with Keycloak auth. This avoids cross-event-loop issues when
+                    # WhisperAPIProvider.transcribe() calls asyncio.run() in a thread.
+                    auth_params = config_handlers.get_shared_client_auth_params()
+                    if auth_params is not None:
+                        from .auth.factory import create_shared_http_client
+                        stt_kwargs["auth_factory"] = lambda: create_shared_http_client(**auth_params)
                 provider = get_stt_provider(stt_method, **stt_kwargs)
                 audio_handlers.set_stt_provider(provider)
             except Exception as exc:
                 logger.error("Failed to initialise STT provider: {}", exc)
-        
-        config_mirror.on_change(_init_stt_on_config)
+
+        pinned_stt = config_mirror.get("stt_method")
+        if pinned_stt and pinned_stt != "api":
+            # Server-authority pin for local/proxy — init immediately
+            _init_stt(pinned_stt)
+        else:
+            # api method needs the shared HTTP client (Keycloak auth) which
+            # doesn't exist until first config.sync from Lua — defer init.
+            _stt_initialised = False
+
+            def _init_stt_on_config(cfg):
+                nonlocal _stt_initialised
+                if _stt_initialised:
+                    return
+                _stt_initialised = True
+                stt_method = config_mirror.get("stt_method", "local")
+                _init_stt(stt_method)
+
+            session_registry.on_any_config_change(_init_stt_on_config)
     else:
         logger.info("STT not available — mic.audio.* topics will be ignored")
     
@@ -216,8 +341,12 @@ async def lifespan(app: FastAPI):
         else:
             tts_engine.shutdown()
             logger.info("TTS engine shut down")
+    if embedding_client:
+        await embedding_client.close()
     if ws_router:
         await ws_router.shutdown()
+    if neo4j_client:
+        neo4j_client.close()
     logger.info("TALKER Service stopped")
 
 
@@ -267,6 +396,22 @@ async def debug_config():
     }
     if settings.openai_endpoint:
         data["effective"]["openai_endpoint"] = settings.openai_endpoint
+
+    # Conversation / pruning stats from active session LLM clients
+    if session_registry:
+        conv_stats: list[dict[str, Any]] = []
+        for sid, session in session_registry.all_sessions().items():
+            client = session.llm_client
+            if client and hasattr(client, "pruning_events_count"):
+                conv_stats.append({
+                    "session_id": sid,
+                    "conversation_len": len(client.get_conversation()) if hasattr(client, "get_conversation") else None,
+                    "pruning_events_count": client.pruning_events_count,
+                    "tokens_removed_total": client.tokens_removed_total,
+                    "avg_conversation_tokens": round(client.avg_conversation_tokens, 1),
+                })
+        if conv_stats:
+            data["conversation_stats"] = conv_stats
 
     return data
 

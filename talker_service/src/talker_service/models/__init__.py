@@ -6,6 +6,9 @@ from .messages import (
     PlayerDialogueMessage,
     ConfigMessage,
     HeartbeatMessage,
+    BatchQueryMessage,
+    BatchMutationMessage,
+    BatchResponseMessage,
 )
 from .config import MCMConfig
 
@@ -15,5 +18,8 @@ __all__ = [
     "PlayerDialogueMessage",
     "ConfigMessage",
     "HeartbeatMessage",
+    "BatchQueryMessage",
+    "BatchMutationMessage",
+    "BatchResponseMessage",
     "MCMConfig",
 ]

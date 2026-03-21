@@ -1,0 +1,9 @@
+{
+  "name": "talker-audio",
+  "version": "1.0.0",
+  "description": "Native audio capture DLL for TALKER Expanded (PortAudio + Opus)",
+  "dependencies": [
+    "portaudio",
+    "opus"
+  ]
+}

@@ -1,37 +1,32 @@
 package.path = package.path .. ";./bin/lua/?.lua;"
-local log        = require("framework.logger")
-local config     = require("interface.config")
-local Cooldown   = require("domain.service.cooldown")
-local queries    = talker_game_queries
-local trigger    = require("interface.trigger")
--- Game interface
+local log          = require("framework.logger")
+local config       = require("interface.config")
+local Cooldown     = require("domain.service.cooldown")
+local chance       = require("domain.service.chance")
+local importance   = require("domain.service.importance")
+local trigger      = require("interface.trigger")
 local game_adapter = require("infra.game_adapter")
-local mcm = talker_mcm
 
--- EventType shorthand for cleaner code
-local EventType = trigger.EventType
+local queries      = talker_game_queries
+local EventType    = trigger.EventType
 
 local script_name = "TALKER Trigger Task"
 local original_task_callback = nil
 
-local TASK_COOLDOWN_CD = mcm.get("task_cooldown") * 1000 -- default 40 seconds cooldown
-local ANTI_SPAM_CD = mcm.get("anti_spam_cd") * 1000
-local mode_task = tonumber(mcm.get("enable_trigger_task") or "0")
+local ANTI_SPAM_CD = config.get("anti_spam_cd") * 1000
 
 -- CooldownManager replaces LAST_TASK_TIME + LAST_TASK_SPAM + get_silence_status()
-local cd = Cooldown.new({ cooldown_ms = TASK_COOLDOWN_CD, anti_spam_ms = ANTI_SPAM_CD })
+local cd = Cooldown.new({ cooldown_ms = config.get("triggers/task/cooldown") * 1000, anti_spam_ms = ANTI_SPAM_CD })
 
 function on_game_start()
     -- Hook the task_callback function to intercept task completion
-    -- We must capture task info BEFORE the original callback runs, because some mods/tasks 
-    -- delete the task info immediately upon completion (race condition).
     if task_manager and task_manager.task_callback then
         original_task_callback = task_manager.task_callback
         task_manager.task_callback = function(tsk, stage)
-            
+
             -- 1. Pre-capture task info
             local cached_info = nil
-            local success, err = pcall(function() 
+            local success, err = pcall(function()
                 local task_id = tsk:get_id()
                 local tm = task_manager.get_task_manager()
                 if tm and tm.task_info and tm.task_info[task_id] then
@@ -44,8 +39,8 @@ function on_game_start()
 
             -- 2. Call original callback
             original_task_callback(tsk, stage)
-            
-            -- 3. Trigger our event if task was completed, using cached info
+
+            -- 3. Trigger our event if task was completed
             if stage == task.completed then
                 on_task_completed_event(tsk, cached_info)
             end
@@ -57,13 +52,13 @@ function on_game_start()
 end
 
 function on_task_completed_event(tsk, cached_info)
-    if mode_task == 1 then return end
+    if not config.get("triggers/task/enable") then return end
     if not tsk then return end
-    
+
     local task_id = tsk:get_id()
     local task_info = cached_info
-    
-    -- Fallback to live info if cache failed/missing (unlikely if hook works, but safe)
+
+    -- Fallback to live info if cache failed
     if not task_info then
         local tm = task_manager.get_task_manager()
         if tm and tm.task_info and tm.task_info[task_id] then
@@ -75,38 +70,24 @@ function on_task_completed_event(tsk, cached_info)
         log.info("%s: Cannot access task info for task %s", script_name, task_id)
         return
     end
-    
+
     local task_giver_id = task_info.task_giver_id
-    
-    if not task_giver_id then 
-        -- Some auto-tasks have no giver (nil), we might want to support them later, 
-        -- but for "someone completed a task FOR someone", we need a giver.
-        return 
-    end
-    
-    -- Check if task giver is valid
+    if not task_giver_id then return end
+
     local server_entity = alife_object(task_giver_id)
     if not server_entity then
         log.info("%s: task giver server object not found, returning", script_name)
         return
     end
 
-    -- Proceed with event: determine if it's silent based on cooldown and chance
-    local is_silent = cd:check("default", queries.get_game_time_ms(), mode_task)
-    if is_silent == nil then return end
-    
+    -- Cooldown check
+    local cd_result = cd:check("default", queries.get_game_time_ms(), 0)
+    if cd_result == nil then return end
+
+    -- Build task giver character info
     local is_unique = queries.is_unique_character_by_id(task_giver_id)
-    if not is_unique and mode_task == 0 and not is_silent then
-        if math.random() > mcm.get("task_notice_chance") then
-            is_silent = true
-        end
-    end
-    
-    -- Capture story_id via section_name() — available on all cse_alife_object descendants, never crashes.
-    -- This is the stable identifier used by Python to identify unique NPCs.
     local story_id = server_entity:section_name()
 
-    -- Safe-access character properties — modded entities / traders may not implement these methods.
     local char_name = (type(server_entity.character_name) == "function" and server_entity:character_name())
                       or "Unknown"
     local char_rank = (type(server_entity.rank) == "function" and server_entity:rank())
@@ -114,25 +95,20 @@ function on_task_completed_event(tsk, cached_info)
     local char_community = (type(server_entity.community) == "function" and tostring(server_entity:community()))
                            or "stalker"
 
-    -- Reputation Fetching
-    -- Try to get online object first as it has reliable reputation methods
     local rep_val = 0
     local client_obj = level.object_by_id(task_giver_id)
     if client_obj and client_obj.character_reputation then
         rep_val = client_obj:character_reputation()
     elseif server_entity.reputation then
-        -- This property availability on server objects varies by engine version/mod
-        -- but usually cse_alife_trader_abstract has it.
         if type(server_entity.reputation) == "function" then
             rep_val = server_entity:reputation()
         else
             rep_val = server_entity.reputation
         end
     end
-    
+
     local rep_tier = queries.get_reputation_tier(rep_val)
 
-    -- Manually create character info
     local task_giver_character = {
         story_id   = story_id,
         name       = char_name,
@@ -141,16 +117,13 @@ function on_task_completed_event(tsk, cached_info)
         reputation = rep_tier
     }
 
-    -- Try to get text rank name
     if ranks and type(ranks.get_se_obj_rank_name) == "function" then
          task_giver_character.experience = ranks.get_se_obj_rank_name(server_entity)
     end
 
-    -- Task Title from task object
+    -- Task Title
     local task_title = tsk:get_title()
     if not task_title or task_title == "" then
-        -- fallback
-        local task_id = tsk:get_id()
         if task_manager and task_manager.task_ini and task_manager.task_ini.r_string_ex then
              local title_key = task_manager.task_ini:r_string_ex(task_id, "title")
              if title_key then
@@ -162,9 +135,6 @@ function on_task_completed_event(tsk, cached_info)
              task_title = game.translate_string(task_id)
         end
     else
-        -- Smart translation fallback:
-        -- If the title looks like a technical key (has underscore, no spaces), try to translate it
-        -- This handles cases where get_title() returns the key instead of the text due to engine quirks
         if string.find(task_title, "_") and not string.find(task_title, " ") then
             local translated = game.translate_string(task_title)
             if translated ~= task_title then
@@ -177,15 +147,10 @@ function on_task_completed_event(tsk, cached_info)
     local player = game_adapter.get_player_character()
     local companions = game_adapter.get_companions() or {}
 
-    if #companions > 0 then 
-        local names_list = {}
-        for _, companion in ipairs(companions) do
-            names_list[#names_list+1] = companion.name
-            witnesses[#witnesses+1] = companion
-        end
+    for _, companion in ipairs(companions) do
+        witnesses[#witnesses+1] = companion
     end
 
-    -- Create typed event context
     local context = {
         actor = player,
         action = "completed",
@@ -194,17 +159,29 @@ function on_task_completed_event(tsk, cached_info)
         companions = companions
     }
 
-    -- Use new typed event system
-    trigger.talker_event(
-        EventType.TASK,
-        context,
-        witnesses,
-        true, -- important
-        { is_silent = is_silent }
-    )
-    
-    if is_silent then
-        log.info("TALKER: Task event registered (silent)")
+    if cd_result == true then
+        trigger.store_event(EventType.TASK, context, witnesses)
+        log.info("TALKER: Task event stored (on cooldown)")
+        return
+    end
+
+    -- Task giver importance check (unique NPCs, high rank)
+    local giver_rank_name = task_giver_character.experience
+    if type(giver_rank_name) == "number" then giver_rank_name = nil end
+
+    local giver_flags = {
+        is_player    = false,
+        is_companion = false,
+        is_unique    = is_unique,
+        rank         = giver_rank_name,
+    }
+
+    if importance.is_important_person(giver_flags) or chance.check("triggers/task/chance") then
+        trigger.publish_event(EventType.TASK, context, witnesses)
+        log.info("TALKER: Task event published")
+    else
+        trigger.store_event(EventType.TASK, context, witnesses)
+        log.info("TALKER: Task event stored (chance failed)")
     end
 end
 

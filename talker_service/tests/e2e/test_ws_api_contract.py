@@ -154,7 +154,7 @@ class TestLuaToServiceMessages:
 
     @pytest.mark.parametrize("topic", TOPICS)
     def test_direction_lua_to_service(self, messages, topic):
-        assert messages[topic]["direction"] == "lua→bridge→service"
+        assert messages[topic]["direction"] == "lua→service"
 
     @pytest.mark.parametrize("topic", TOPICS)
     def test_has_payload(self, messages, topic):
@@ -165,17 +165,30 @@ class TestGameEventMessage:
     """Scenario: game.event message is fully defined."""
 
     def test_direction(self, messages):
-        assert messages["game.event"]["direction"] == "lua→bridge→service"
+        assert messages["game.event"]["direction"] == "lua→service"
 
     def test_event_ref_required(self, messages):
         payload = messages["game.event"]["payload"]
         assert payload["event"]["$ref"] == "Event"
         assert payload["event"].get("required") is True
 
-    def test_is_important_bool_default_false(self, messages):
-        field = messages["game.event"]["payload"]["is_important"]
-        assert field["type"] == "bool"
-        assert field["default"] is False
+    def test_candidates_array_required(self, messages):
+        payload = messages["game.event"]["payload"]
+        assert "candidates" in payload
+        assert payload["candidates"]["type"] == "array"
+        assert payload["candidates"].get("required") is True
+
+    def test_world_string_required(self, messages):
+        payload = messages["game.event"]["payload"]
+        assert "world" in payload
+        assert payload["world"]["type"] == "string"
+        assert payload["world"].get("required") is True
+
+    def test_traits_object_required(self, messages):
+        payload = messages["game.event"]["payload"]
+        assert "traits" in payload
+        assert payload["traits"]["type"] == "object"
+        assert payload["traits"].get("required") is True
 
 
 class TestPlayerDialogueMessage:
@@ -210,7 +223,7 @@ class TestServiceToLuaMessages:
     """All Service→Lua topics present with correct direction."""
 
     TOPICS = [
-        "dialogue.display", "memory.update", "event.store",
+        "dialogue.display", "event.store",
         "config.request", "service.heartbeat.ack",
     ]
 
@@ -220,14 +233,14 @@ class TestServiceToLuaMessages:
 
     @pytest.mark.parametrize("topic", TOPICS)
     def test_direction_service_to_lua(self, messages, topic):
-        assert messages[topic]["direction"] == "service→bridge→lua"
+        assert messages[topic]["direction"] == "service→lua"
 
 
 class TestDialogueDisplayMessage:
     """Scenario: dialogue.display message is fully defined."""
 
     def test_direction(self, messages):
-        assert messages["dialogue.display"]["direction"] == "service→bridge→lua"
+        assert messages["dialogue.display"]["direction"] == "service→lua"
 
     def test_speaker_id_required(self, messages):
         field = messages["dialogue.display"]["payload"]["speaker_id"]
@@ -250,24 +263,6 @@ class TestDialogueDisplayMessage:
         assert field.get("required") is not True
 
 
-class TestMemoryUpdateMessage:
-    """Scenario: memory.update message is fully defined."""
-
-    def test_character_id_required(self, messages):
-        field = messages["memory.update"]["payload"]["character_id"]
-        assert field["type"] == "string"
-        assert field.get("required") is True
-
-    def test_narrative_optional(self, messages):
-        field = messages["memory.update"]["payload"]["narrative"]
-        assert field["type"] == "string"
-        assert field.get("required") is not True
-
-    def test_last_event_time_ms_optional(self, messages):
-        field = messages["memory.update"]["payload"]["last_event_time_ms"]
-        assert field["type"] == "int"
-        assert field.get("required") is not True
-
 
 # ── Requirement: State query definitions ─────────────────────
 
@@ -279,7 +274,7 @@ class TestStateQueryBatch:
         assert "state.query.batch" in messages
 
     def test_direction_bidirectional(self, messages):
-        assert messages["state.query.batch"]["direction"] == "service→bridge→lua→bridge→service"
+        assert messages["state.query.batch"]["direction"] == "service→lua→service"
 
     def test_has_request_and_response(self, messages):
         assert "request" in messages["state.query.batch"]
@@ -302,10 +297,8 @@ class TestStateQueryBatch:
     def test_resource_registry_has_core_resources(self, messages):
         registry = messages["state.query.batch"]["resource_registry"]
         expected = [
-            "store.memories", "store.events",
-            "query.character", "query.characters_nearby",
-            "query.world", "query.characters_alive",
-            "query.events_recent",
+            "memory.events", "memory.summaries", "memory.digests", "memory.cores", "memory.background",
+            "query.character", "query.characters_nearby", "query.world", "query.characters_alive",
         ]
         for resource in expected:
             assert resource in registry, f"Missing resource: {resource}"
@@ -350,7 +343,7 @@ class TestStateResponseEnvelope:
     """Scenario: state.response envelope is documented."""
 
     def test_direction(self, messages):
-        assert messages["state.response"]["direction"] == "lua→bridge→service"
+        assert messages["state.response"]["direction"] == "lua→service"
 
     def test_request_id_required(self, messages):
         field = messages["state.response"]["payload"]["request_id"]
@@ -362,7 +355,7 @@ class TestStateResponseEnvelope:
 
     def test_data_present(self, messages):
         field = messages["state.response"]["payload"]["data"]
-        assert field["type"] == "object"
+        assert field["type"] == "any"
 
     def test_error_present(self, messages):
         field = messages["state.response"]["payload"]["error"]

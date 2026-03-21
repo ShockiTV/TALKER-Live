@@ -18,28 +18,10 @@ class MCMConfig(BaseModel):
     api_key: str = ""
     model_name: str = ""
     model_name_fast: str = ""  # Fast model for speaker selection
+    session_id: Optional[str] = None
     
     # Behavior settings
     witness_distance: int = 30
-    idle_conversation_cooldown: int = 300
-    base_dialogue_chance: float = 0.25
-    
-    # Feature flags (triggers)
-    enable_trigger_death: int = 0
-    enable_trigger_injury: int = 0
-    enable_trigger_artifact_pickup: int = 0
-    enable_trigger_artifact_use: int = 0
-    enable_trigger_artifact_equip: int = 0
-    enable_trigger_callout: int = 0
-    enable_trigger_emission: int = 0
-    enable_trigger_map_transition: int = 0
-    enable_trigger_sleep: int = 0
-    enable_trigger_task: int = 0
-    enable_trigger_taunt: int = 0
-    enable_trigger_weapon_jam: int = 0
-    enable_trigger_reload: int = 0
-    enable_trigger_anomalies: int = 0
-    enable_trigger_idle_conversation: int = 0
     
     # ZMQ settings
     zmq_port: int = 5555
@@ -48,10 +30,29 @@ class MCMConfig(BaseModel):
     # TTS settings
     tts_volume_boost: float = 8.0  # Volume multiplier for TTS audio (1.0-15.0)
 
+    # Reasoning settings (for models that support extended thinking)
+    reasoning_effort: str = ""  # "low", "medium", "high" — empty = provider default
+    reasoning_summary: str = ""  # "auto", "concise", "detailed" — empty = omit
+
     # Timeout settings (Phase 2)
     llm_timeout: int = 60  # LLM request timeout in seconds
-    state_query_timeout: int = 30  # State query timeout in seconds
-    
+    state_query_timeout: int = 10  # State query timeout in seconds
+
+    # Connection/auth settings
+    service_type: int = 0  # 0=local, 1=remote
+    service_hub_url: str = ""
+    branch: int = 0  # 0=main, 1=dev, 2=custom
+    custom_branch: str = ""
+    service_ws_port: int = 5557
+    ws_token: str = ""
+    auth_username: str = ""
+    auth_password: str = ""
+    auth_client_id: str = "talker-client"
+    auth_client_secret: str = ""
+
+    # Speaker picker
+    speaker_pick_max_events: int = 20  # Max recent events per candidate in picker prompt
+
     # Other common settings
     action_descriptions: bool = False
     female_gender: bool = False

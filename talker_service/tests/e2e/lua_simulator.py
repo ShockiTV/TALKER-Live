@@ -99,6 +99,9 @@ class LuaSimulator:
                 if topic == "state.query" or topic.startswith("state.query."):
                     await self._respond_to_state_query(topic, payload, r)
 
+                if topic == "state.mutate" or topic.startswith("state.mutate."):
+                    await self._respond_to_mutation(topic, payload, r)
+
                 if topic == "dialogue.display":
                     self.done_event.set()
 
@@ -113,9 +116,18 @@ class LuaSimulator:
         "store.memories": "state.query.memories",
         "store.events": "state.query.events",
         "query.character": "state.query.character",
+        "query.character_info": "state.query.character_info",
         "query.world": "state.query.world",
         "query.characters_alive": "state.query",
         "query.characters_nearby": "state.query.nearby",
+        # Two-step dialogue resources (ConversationManager + BackgroundGenerator)
+        "memory.events": "state.query.events",
+        "memory.summaries": "state.query.summaries",
+        "memory.digests": "state.query.digests",
+        "memory.cores": "state.query.cores",
+        "memory.background": "state.query.background",
+        "personality": "state.query.personality",
+        "backstory": "state.query.backstory",
     }
 
     async def _respond_to_state_query(
@@ -194,3 +206,28 @@ class LuaSimulator:
         """Cancel poll task. Does NOT close the MockWebSocket."""
         if self._poll_task and not self._poll_task.done():
             self._poll_task.cancel()
+
+    async def _respond_to_mutation(
+        self, topic: str, payload: dict[str, Any], r: str | None
+    ) -> None:
+        """Auto-respond to state.mutate.* messages with success.
+
+        Mutations are fire-and-acknowledge in tests — we just confirm receipt.
+        """
+        request_id = payload.get("request_id") or r
+        if not request_id:
+            logger.warning(f"LuaSimulator: mutation with no request_id on {topic}")
+            return
+
+        response_payload = {
+            "request_id": request_id,
+            "data": {"success": True},
+        }
+        envelope = {
+            "t": "state.response",
+            "p": response_payload,
+            "r": request_id,
+            "ts": int(time.time() * 1000),
+        }
+        await self._ws.inject(json.dumps(envelope))
+        logger.debug(f"LuaSimulator: acknowledged mutation {topic} (request_id={request_id})")

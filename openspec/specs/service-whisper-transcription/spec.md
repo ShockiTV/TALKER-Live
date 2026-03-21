@@ -1,31 +1,41 @@
-```markdown
 # service-whisper-transcription
 
 ## Purpose
 
-Defines how `talker_service` receives streamed audio from `talker_bridge`, transcribes it using an STT provider (Whisper local, API, or proxy), and routes the resulting transcript into the dialogue generation pipeline.
+Defines how talker_service receives streamed audio from Lua (via pollnet WebSocket) or from talker_bridge (legacy), transcribes it using an STT provider (Whisper local, API, or proxy), and routes the resulting transcript into the dialogue generation pipeline.
 
 ## Requirements
 
 ### Requirement: Audio stream reception
-The `talker_service` SHALL accept incoming audio stream chunks (`mic.audio.chunk`) and end-of-stream signals (`mic.audio.end`) over the WebSocket connection from `talker_bridge`.
+The `talker_service` SHALL accept incoming audio stream chunks (`mic.audio.chunk`) and end-of-stream signals (`mic.audio.end`) over the WebSocket connection from Lua (via pollnet) or from `talker_bridge` (legacy). Chunks may be Opus-encoded (`format: "opus"`) or OGG/Vorbis-encoded (`format: "ogg"`).
 
-#### Scenario: Receiving audio chunks
-- **WHEN** `talker_bridge` sends `mic.audio.chunk` messages during a recording session
-- **THEN** the `talker_service` buffers the base64-decoded audio data in order (by `seq`)
+#### Scenario: Receiving Opus audio chunks
+- **WHEN** Lua sends `mic.audio.chunk` messages with `format: "opus"` during a recording session
+- **THEN** the `talker_service` buffers the base64-decoded Opus frames in order (by `seq`)
+- **AND** if the `session_id` differs from `_active_session_id`, the old buffer is discarded first
+
+#### Scenario: Receiving OGG audio chunks (legacy)
+- **WHEN** `talker_bridge` sends `mic.audio.chunk` messages with `format: "ogg"` during a recording session
+- **THEN** the `talker_service` buffers the base64-decoded OGG data in order (by `seq`)
 - **AND** if the `session_id` differs from `_active_session_id`, the old buffer is discarded first
 
 #### Scenario: End of stream
-- **WHEN** `talker_bridge` sends `mic.audio.end`
+- **WHEN** a `mic.audio.end` message is received
 - **AND** the `session_id` matches `_active_session_id`
 - **THEN** the `talker_service` finalizes the audio buffer and triggers transcription
 
 ### Requirement: Whisper transcription integration
-The `talker_service` SHALL integrate a Speech-to-Text (STT) provider (e.g., Whisper local model or API) to transcribe the received audio buffer into text. The local Whisper provider SHALL use the model name and beam size from service configuration rather than hardcoded defaults.
+The `talker_service` SHALL integrate a Speech-to-Text (STT) provider (e.g., Whisper local model or API) to transcribe the received audio buffer into text. The service SHALL decode Opus frames to raw PCM before passing to the STT provider when `format` is `"opus"`. The local Whisper provider SHALL use the model name and beam size from service configuration rather than hardcoded defaults.
 
-#### Scenario: Successful transcription
-- **WHEN** a complete audio buffer is finalized and processed by the STT provider
-- **THEN** the service generates a text transcript of the audio
+#### Scenario: Successful transcription from Opus
+- **WHEN** a complete Opus audio buffer is finalized
+- **THEN** the service decodes Opus frames to 16kHz mono PCM
+- **AND** the PCM audio is passed to the STT provider for transcription
+
+#### Scenario: Successful transcription from OGG (legacy)
+- **WHEN** a complete OGG audio buffer is finalized
+- **THEN** the service decodes OGG/Vorbis to PCM
+- **AND** the PCM audio is passed to the STT provider for transcription
 
 #### Scenario: Transcription uses configured model
 - **WHEN** `WHISPER_MODEL` is set in the environment
@@ -36,12 +46,25 @@ The `talker_service` SHALL integrate a Speech-to-Text (STT) provider (e.g., Whis
 - **THEN** the local STT provider uses the configured beam size during decoding
 
 ### Requirement: Transcription result delivery
-The `talker_service` SHALL send the transcription result back through the WebSocket as a `mic.result` message, which `talker_bridge` proxies to Lua.
+The `talker_service` SHALL send the transcription result back through the WebSocket as a `mic.result` message to whichever client sent the audio (Lua directly or via bridge proxy).
 
 #### Scenario: Result sent back
 - **WHEN** the STT provider returns a valid transcript
 - **THEN** `talker_service` sends `{"t":"mic.result","p":{"text":"...","session_id":<id>}}` over the WS connection
-- **AND** `talker_bridge` proxies it to Lua
+
+### Requirement: Opus audio decoding
+The `talker_service` audio handler SHALL decode Opus-encoded audio frames to raw 16kHz mono PCM before passing to the STT provider. Decoding SHALL use an appropriate Python Opus library (e.g., `opuslib`, `pyogg`, or equivalent).
+
+#### Scenario: Opus frames decoded to PCM
+- **WHEN** `mic.audio.end` is received for a session with `format: "opus"` chunks
+- **THEN** each buffered Opus frame is decoded to 16kHz 16-bit mono PCM
+- **AND** the decoded PCM is concatenated in sequence order
+- **AND** the resulting PCM buffer is passed to the STT provider
+
+#### Scenario: Opus decode failure
+- **WHEN** an Opus frame fails to decode
+- **THEN** the frame is skipped with a warning log
+- **AND** transcription proceeds with the remaining frames
 
 ### Requirement: Active session tracking
 The service audio handler SHALL track an `_active_session_id`. When a `mic.audio.chunk` arrives with a new `session_id`, the handler SHALL discard the existing audio buffer and start a fresh buffer for the new session.
@@ -68,10 +91,27 @@ The service SHALL ignore `mic.audio.end` messages whose `session_id` does not ma
 - **WHEN** transcription completes for session 3
 - **THEN** `{"t": "mic.result", "p": {"text": "...", "session_id": 3}}` is sent
 
+### Requirement: Auth factory for API provider
+
+When the STT method is `api` and auth credentials are configured, the `WhisperAPIProvider` SHALL accept an `auth_factory` callable that creates a fresh `httpx.AsyncClient` with `KeycloakAuth` for each transcription request. This avoids cross-event-loop issues since `WhisperAPIProvider._transcribe_file()` runs inside `asyncio.run()` in a thread pool worker, where the main loop's shared client cannot be reused.
+
+#### Scenario: auth_factory creates per-request client
+- **WHEN** `auth_factory` is provided to `WhisperAPIProvider.__init__`
+- **THEN** each call to `_transcribe_file()` creates a fresh `httpx.AsyncClient` via `auth_factory()`
+- **AND** the client is closed in a `finally` block after the request completes
+
+#### Scenario: No auth_factory falls back to default client
+- **WHEN** `auth_factory` is `None`
+- **THEN** `WhisperAPIProvider` creates a default `openai.AsyncOpenAI` client without custom HTTP transport
+
+#### Scenario: Auth params sourced from session mirror
+- **WHEN** `_init_stt()` is called during service startup
+- **THEN** auth params are read from the session-scoped `ConfigMirror` via `get_shared_client_auth_params(session_id)`
+- **AND** the `auth_factory` lambda captures those params to call `create_shared_http_client(**params)` on each invocation
+
 ### Requirement: Dialogue generation from transcript
 The `talker_service` SHALL use the generated transcript as player input to trigger the standard dialogue generation flow, identical to how text input from the chatbox is handled.
 
 #### Scenario: Transcript triggers dialogue
 - **WHEN** the STT provider returns a valid transcript
 - **THEN** the service processes it as a `player.dialogue` or `player.whisper` event based on the `context.type` provided in the `mic.audio.end` message
-```

@@ -1,12 +1,13 @@
 """Ollama local LLM client implementation."""
 
 import os
+from typing import Any
 
 import httpx
 from loguru import logger
 
 from .base import BaseLLMClient, LLMError, ConnectionError as LLMConnectionError
-from .models import Message, LLMOptions
+from .models import LLMOptions, LLMToolResponse, Message
 
 
 class OllamaClient(BaseLLMClient):
@@ -85,6 +86,56 @@ class OllamaClient(BaseLLMClient):
         except httpx.RequestError as e:
             raise LLMError(f"Ollama request failed: {e}") from e
     
+    async def complete_with_tools(
+        self,
+        messages: list[Message],
+        tools: list[dict[str, Any]],
+        opts: LLMOptions | None = None,
+    ) -> LLMToolResponse:
+        """Generate completion with tool/function calling support.
+
+        Ollama supports OpenAI-compatible tool calling since v0.3+.
+        If the model doesn't support tools it simply returns text.
+        """
+        opts = opts or LLMOptions()
+        timeout = self._get_timeout(opts)
+
+        url = f"{self.endpoint}/api/chat"
+
+        request_body: dict[str, Any] = {
+            "model": opts.model or self.default_model,
+            "messages": [m.to_dict() for m in messages],
+            "stream": False,
+            "tools": tools,
+            "options": {
+                "temperature": opts.temperature,
+            },
+        }
+
+        if opts.max_tokens:
+            request_body["options"]["num_predict"] = opts.max_tokens
+
+        try:
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                response = await client.post(url, json=request_body)
+
+            if response.status_code == 200:
+                data = response.json()
+                return self._build_tool_response(data)
+
+            else:
+                raise LLMError(f"Ollama API error {response.status_code}: {response.text}")
+
+        except httpx.ConnectError as e:
+            raise LLMConnectionError(
+                f"Failed to connect to Ollama at {self.endpoint}. "
+                "Is Ollama running? Start with: ollama serve"
+            ) from e
+        except httpx.TimeoutException as e:
+            raise TimeoutError(f"Ollama request timed out after {timeout}s") from e
+        except httpx.RequestError as e:
+            raise LLMError(f"Ollama request failed: {e}") from e
+
     async def is_available(self) -> bool:
         """Check if Ollama is running and accessible."""
         try:

@@ -2,31 +2,42 @@
 
 ## Purpose
 
-Extends `bin/lua/infra/zmq/publisher.lua` to handle state query responses and integrate with command handlers.
+Extends `bin/lua/infra/ws/publisher.lua` to handle state query responses and integrate with command handlers.
 
 ## Requirements
 
-### Publisher Module
+### Requirement: send_game_event function
 
-The publisher module MUST provide event publishing and state response capabilities for ZMQ communication.
+`send_game_event(event, candidates, world, traits)` SHALL serialize and send a `game.event` WebSocket message with:
+- `event` – serialized event object (type, context, game_time_ms, **ts**, witnesses)
+- `candidates` – array of serialized nearby NPC Character objects
+- `world` – serialized scene context (location, time, weather, etc.)
+- `traits` – map of `character_id` → `{personality_id, backstory_id}` for all candidates
 
-#### Scenario: Publish game event
-- **WHEN** send_game_event(event, is_important) is called
-- **THEN** event SHALL be serialized and published to game.event topic
+The serialized event object SHALL include the `ts` field from the source event.
 
-### State Response Function
+#### Scenario: Publish death event with ts included
+- **WHEN** `send_game_event(death_event, {npc1, npc2}, world_ctx, traits_map)` is called
+- **THEN** a WS message SHALL be sent with topic `game.event`
+- **AND** `payload.event.ts` SHALL equal the source event's `ts` value
+- **AND** payload SHALL contain `event`, `candidates`, `world`, `traits`
 
-The system MUST provide `send_state_response(request_id, type, data)` that publishes to `state.response` topic with correlation ID.
+#### Scenario: ts is the unique timestamp from event creation
+- **WHEN** the source event was created with `ts = unique_ts()`
+- **THEN** `payload.event.ts` SHALL be that exact integer timestamp
+- **AND** it SHALL match the `ts` stored in all witnesses' memory via `memory_store_v2:store_event()`
 
-#### Scenario: Send successful memory response
-- **WHEN** Lua queries memory_store successfully
-- **THEN** send_state_response is called with memory context
-- **AND** message includes request_id
-- **AND** success=true in payload
+### Requirement: State response function
 
-### Error Response Function
+`send_state_response(request_id, results)` SHALL serialize and send a `state.response` WebSocket message. This function handles responses to both `state.query.batch` and `state.mutate.batch` requests.
 
-The system MUST provide `send_error_response(request_id, type, error_msg)` for reporting query failures.
+#### Scenario: Respond to mutation batch
+- **WHEN** `send_state_response("mut-1", {{ok=true}, {ok=true}})` is called
+- **THEN** a WS message SHALL be sent with topic `state.response` and the `r` field set to `"mut-1"`
+
+### Requirement: Error response function
+
+The error response function SHALL remain unchanged.
 
 #### Scenario: Send error response
 - **WHEN** character query fails (not found)
@@ -34,7 +45,7 @@ The system MUST provide `send_error_response(request_id, type, error_msg)` for r
 - **AND** message includes request_id
 - **AND** success=false with error message
 
-### Query Response Topic Constant
+### Requirement: Query Response Topic Constant
 
 The system MUST define topic constant `publisher.topics.STATE_RESPONSE = "state.response"`.
 
@@ -42,14 +53,14 @@ The system MUST define topic constant `publisher.topics.STATE_RESPONSE = "state.
 - **WHEN** publisher module is loaded
 - **THEN** STATE_RESPONSE topic constant SHALL be defined
 
-### Serialization Helpers
+### Requirement: Serialization Helpers
 
-The serialization helpers MUST handle memory context, event lists, and character objects.
+The serialization helpers MUST handle memory context, event lists, and character objects. The event serializer SHALL include the `ts` field.
 
-#### Scenario: Serialize event list
-- **WHEN** events.recent query returns 10 events
-- **THEN** all events are serialized to JSON
-- **AND** typed events preserve type + context fields
+#### Scenario: Serialize event includes ts
+- **WHEN** `serialize_event(event)` is called on a typed event with `ts=1709912345`
+- **THEN** the returned table SHALL include `ts = 1709912345`
+- **AND** all other fields (type, context, game_time_ms, world_context, witnesses, flags) SHALL remain unchanged
 
 #### Scenario: Response includes request_id
 - **WHEN** any state response is sent

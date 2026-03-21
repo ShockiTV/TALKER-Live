@@ -15,7 +15,7 @@ local M = {}
 local _socket_factory = nil -- lazily resolved to pollnet.open_ws
 
 --- Inject a custom socket factory (for tests).
--- The factory signature is: factory(url) → Socket-like object with
+-- The factory signature is: factory(url, headers) → Socket-like object with
 --   :poll()   → (ok: bool, msg: string|nil)
 --   :send(msg)
 --   :close()
@@ -50,8 +50,9 @@ local _sockets = {} -- id → pollnet Socket
 
 --- Open a WebSocket connection.  Non-blocking — returns immediately.
 -- @param url  string  The ws:// or wss:// URL to connect to.
+-- @param options table|nil Optional connect options. Supported: { headers = table|string }
 -- @return handle  number|nil  Opaque integer handle, or nil on failure.
-function M.open(url)
+function M.open(url, options)
     if type(url) ~= "string" or url == "" then
         log.error("ws_client.open: invalid URL")
         return nil
@@ -60,7 +61,8 @@ function M.open(url)
     local factory = get_factory()
     if not factory then return nil end
 
-    local sock = factory(url)
+    local headers = options and options.headers or nil
+    local sock = factory(url, headers)
     if not sock then
         log.error("ws_client.open: factory returned nil for %s", url)
         return nil

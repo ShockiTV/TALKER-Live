@@ -6,7 +6,8 @@ import time
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from talker_service.transport.ws_router import WSRouter, parse_tokens
+from talker_service.transport.ws_router import WSRouter, parse_tokens, _decode_jwt_claims
+from talker_service.transport.session_registry import SessionRegistry
 
 
 # ── Token parsing ─────────────────────────────────────────────────────────────
@@ -48,6 +49,7 @@ def _make_mock_ws(query_params=None, accepted=True):
     """Create a mock WebSocket with configurable query params."""
     ws = AsyncMock()
     ws.query_params = query_params or {}
+    ws.headers = {}
     ws.client_state = MagicMock()
     # Make close a no-op coroutine
     ws.close = AsyncMock()
@@ -306,3 +308,124 @@ class TestWSRouterAuth:
         await router.websocket_endpoint(ws)
 
         ws.accept.assert_awaited_once()
+
+
+class TestWSRouterHeaders:
+    @pytest.mark.asyncio
+    async def test_header_extraction_sets_session_context(self):
+        router = WSRouter(tokens={})
+        registry = SessionRegistry()
+        router.set_session_registry(registry)
+
+        ws = _make_mock_ws(query_params={})
+        ws.headers = {"x-player-id": "player1", "x-branch": "dev"}
+        ws.receive_text = AsyncMock(side_effect=Exception("disconnect"))
+
+        await router.websocket_endpoint(ws)
+
+        ctx = registry.get_session("player1")
+        assert ctx.player_id == "player1"
+        assert ctx.branch == "dev"
+
+    @pytest.mark.asyncio
+    async def test_missing_headers_use_defaults(self):
+        router = WSRouter(tokens={})
+        registry = SessionRegistry()
+        router.set_session_registry(registry)
+
+        ws = _make_mock_ws(query_params={})
+        ws.headers = {}
+        ws.receive_text = AsyncMock(side_effect=Exception("disconnect"))
+
+        await router.websocket_endpoint(ws)
+
+        ctx = registry.get_session("__default__")
+        assert ctx.player_id == "local"
+        assert ctx.branch == "main"
+
+
+# ── JWT decode ────────────────────────────────────────────────────────────────
+
+import base64
+
+
+def _make_jwt(payload: dict) -> str:
+    """Build a fake JWT (header.payload.signature) with the given claims."""
+    header = base64.urlsafe_b64encode(json.dumps({"alg": "RS256"}).encode()).rstrip(b"=").decode()
+    body = base64.urlsafe_b64encode(json.dumps(payload).encode()).rstrip(b"=").decode()
+    sig = base64.urlsafe_b64encode(b"fake-signature").rstrip(b"=").decode()
+    return f"{header}.{body}.{sig}"
+
+
+class TestDecodeJwtClaims:
+    def test_valid_jwt(self):
+        token = _make_jwt({"sub": "user-123", "preferred_username": "alice"})
+        claims = _decode_jwt_claims(token)
+        assert claims is not None
+        assert claims["sub"] == "user-123"
+        assert claims["preferred_username"] == "alice"
+
+    def test_not_a_jwt(self):
+        assert _decode_jwt_claims("plain-token") is None
+        assert _decode_jwt_claims("only.two") is None
+
+    def test_invalid_base64(self):
+        assert _decode_jwt_claims("a.!!!.c") is None
+
+    def test_invalid_json_payload(self):
+        bad_payload = base64.urlsafe_b64encode(b"not-json").rstrip(b"=").decode()
+        assert _decode_jwt_claims(f"a.{bad_payload}.c") is None
+
+
+class TestJwtAuth:
+    @pytest.mark.asyncio
+    async def test_jwt_query_param_sets_player_id(self):
+        """JWT ?token= should set player_id and session_id from sub claim."""
+        jwt = _make_jwt({"sub": "keycloak-uuid-42"})
+        router = WSRouter(tokens={})
+        registry = SessionRegistry()
+        router.set_session_registry(registry)
+
+        ws = _make_mock_ws(query_params={"token": jwt})
+        ws.receive_text = AsyncMock(side_effect=Exception("disconnect"))
+
+        await router.websocket_endpoint(ws)
+
+        ctx = registry.get_session("keycloak-uuid-42")
+        assert ctx.player_id == "keycloak-uuid-42"
+
+    @pytest.mark.asyncio
+    async def test_jwt_preferred_username_fallback(self):
+        """When sub is absent, preferred_username is used."""
+        jwt = _make_jwt({"preferred_username": "alice"})
+        router = WSRouter(tokens={})
+        registry = SessionRegistry()
+        router.set_session_registry(registry)
+
+        ws = _make_mock_ws(query_params={"token": jwt})
+        ws.receive_text = AsyncMock(side_effect=Exception("disconnect"))
+
+        await router.websocket_endpoint(ws)
+
+        ctx = registry.get_session("alice")
+        assert ctx.player_id == "alice"
+
+    @pytest.mark.asyncio
+    async def test_proxy_headers_override_jwt(self):
+        """Caddy X-Player-ID header takes priority over JWT sub."""
+        jwt = _make_jwt({"sub": "from-jwt"})
+        router = WSRouter(tokens={})
+        registry = SessionRegistry()
+        router.set_session_registry(registry)
+
+        ws = _make_mock_ws(query_params={"token": jwt})
+        ws.headers = {"x-player-id": "from-caddy", "x-branch": "dev"}
+        ws.receive_text = AsyncMock(side_effect=Exception("disconnect"))
+
+        await router.websocket_endpoint(ws)
+
+        # session_id comes from JWT sub (set before headers), but player_id
+        # is overridden by the trusted proxy header
+        ctx = registry.get_session("from-jwt")
+        assert ctx.player_id == "from-caddy"
+        assert ctx.branch == "dev"

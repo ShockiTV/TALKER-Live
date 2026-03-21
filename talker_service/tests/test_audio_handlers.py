@@ -291,3 +291,87 @@ class TestRunTranscription:
         audio_mod.set_stt_provider(provider)
         result = await audio_mod._run_transcription(b"\x00\x00")
         assert result == "hello world"
+
+
+# ── Opus format end-to-end (chunk → finalize → STT) ──────────────────────────
+
+
+class TestOpusEndToEnd:
+    """Verify the full Opus flow: chunk → buffer → decode → STT → mic.result."""
+
+    @pytest.mark.asyncio
+    async def test_opus_chunks_forwarded_with_format(self):
+        """handle_audio_chunk passes format='opus' to AudioBuffer.add_chunk."""
+        fake_opus = base64.b64encode(b"\x01\x02\x03").decode("ascii")
+        with patch.object(AudioBuffer, "add_chunk") as mock_add:
+            await audio_mod.handle_audio_chunk({
+                "audio_b64": fake_opus,
+                "seq": 1,
+                "format": "opus",
+                "session_id": 42,
+            })
+            mock_add.assert_called_once_with(1, fake_opus, fmt="opus")
+
+    @pytest.mark.asyncio
+    async def test_opus_end_to_end_transcribes(self):
+        """Full flow: Opus chunks → handle_audio_end → STT → mic.result."""
+        publisher = AsyncMock()
+        provider = MagicMock()
+        provider.transcribe.return_value = "get out of here stalker"
+        audio_mod.set_audio_publisher(publisher)
+        audio_mod.set_stt_provider(provider)
+
+        fake_opus = base64.b64encode(b"\xab\xcd\xef").decode("ascii")
+
+        # Send Opus-format chunks
+        for seq in (1, 2, 3):
+            await audio_mod.handle_audio_chunk({
+                "audio_b64": fake_opus,
+                "seq": seq,
+                "format": "opus",
+                "session_id": 10,
+            })
+
+        assert audio_mod._audio_buffer is not None
+        assert audio_mod._audio_buffer.chunk_count == 3
+
+        # Mock the Opus decode path (PyAV may not be installed in CI)
+        fake_pcm = b"\x00\x01" * 960  # 3 frames × 320 samples
+        with patch("talker_service.stt.audio_buffer.OPUS_AVAILABLE", True), \
+             patch("talker_service.stt.audio_buffer.create_decoder", return_value=object()), \
+             patch("talker_service.stt.audio_buffer.decode_frames", return_value=fake_pcm), \
+             patch("talker_service.handlers.events.handle_player_dialogue",
+                   new_callable=AsyncMock):
+            await audio_mod.handle_audio_end({
+                "context": {"type": "dialogue"},
+                "session_id": 10,
+            })
+
+        # STT provider should have been called with decoded PCM
+        provider.transcribe.assert_called_once()
+        pcm_arg = provider.transcribe.call_args[0][0]
+        assert pcm_arg == fake_pcm
+
+        # mic.result should contain the transcription
+        calls = publisher.publish.call_args_list
+        assert any(
+            c.args[0] == "mic.result" and c.args[1].get("text") == "get out of here stalker"
+            for c in calls
+        )
+
+    @pytest.mark.asyncio
+    async def test_session_id_mismatch_discards_old_opus_buffer(self):
+        """New session_id replaces old buffer (even with Opus chunks)."""
+        fake_opus = base64.b64encode(b"\x01").decode("ascii")
+
+        await audio_mod.handle_audio_chunk({
+            "audio_b64": fake_opus, "seq": 1, "format": "opus", "session_id": 1,
+        })
+        assert audio_mod._audio_buffer.chunk_count == 1
+
+        # New session — old buffer discarded
+        await audio_mod.handle_audio_chunk({
+            "audio_b64": fake_opus, "seq": 1, "format": "opus", "session_id": 2,
+        })
+        assert audio_mod._audio_buffer.chunk_count == 1
+        assert audio_mod._active_session_id == 2

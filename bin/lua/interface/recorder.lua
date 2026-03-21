@@ -8,6 +8,12 @@
 --
 -- The mic device is the only exclusive resource.
 -- Transcription, LLM, and TTS all run concurrently in the background.
+--
+-- VAD auto-stop:  audio_tick.lua calls recorder.on_vad_stopped() when the
+--   native DLL detects silence.  This replaces the old bridge_channel
+--   "mic.stopped" handler.
+-- Transcription results:  mic.result arrives from the service via
+--   bridge_channel (proxied).
 
 package.path = package.path .. ";./bin/lua/?.lua"
 local logger         = require("framework.logger")
@@ -60,6 +66,7 @@ local function register_handlers()
     if _handlers_registered then return end
     _handlers_registered = true
 
+    -- mic.status — HUD display for transcription progress (from service via bridge)
     bridge_channel.on("mic.status", function(payload)
         local status = (type(payload) == "table" and payload.status) or tostring(payload)
         -- Capturing has highest HUD priority — don't let background
@@ -71,19 +78,7 @@ local function register_handlers()
         engine.display_hud_message(status, 15)
     end)
 
-    bridge_channel.on("mic.stopped", function(payload)
-        -- Bridge reports the mic hardware stopped capturing.
-        -- For manual stop() we already transitioned to TRANSCRIBING.
-        -- For VAD auto-stop we need to transition now.
-        if _state == STATE_CAPTURING then
-            mic.on_stopped()   -- sync mic._recording = false
-            _state = STATE_TRANSCRIBING
-            engine.display_hud_message("TRANSCRIBING", 15)
-            local reason = (type(payload) == "table" and payload.reason) or "unknown"
-            logger.info("recorder: mic.stopped received (reason=%s) → transcribing", reason)
-        end
-    end)
-
+    -- mic.result — final transcription text (from service via bridge)
     bridge_channel.on("mic.result", function(payload)
         local text = (type(payload) == "table" and payload.text) or ""
         logger.info("mic.result received: '%s' (state=%s)", text, _state)
@@ -99,10 +94,27 @@ local function register_handlers()
         end
     end)
 
-    logger.info("recorder: permanent mic handlers registered")
+    -- Wire up VAD callback from audio_tick
+    local ok_at, audio_tick = pcall(require, "infra.mic.audio_tick")
+    if ok_at and audio_tick then
+        audio_tick.set_on_vad_stopped(function()
+            recorder.on_vad_stopped()
+        end)
+    end
+
+    logger.info("recorder: permanent handlers registered")
 end
 
 -- ── Public API ────────────────────────────────────────────────────────────────
+
+--- Called by audio_tick when VAD auto-stop is detected (poll returned -1).
+-- Replaces the old bridge_channel "mic.stopped" handler.
+function recorder.on_vad_stopped()
+    if _state ~= STATE_CAPTURING then return end
+    _state = STATE_TRANSCRIBING
+    engine.display_hud_message("TRANSCRIBING", 15)
+    logger.info("recorder: VAD auto-stopped → transcribing")
+end
 
 --- Toggle the recording session.
 -- Call on each key press.  Cycles: idle → capture → stop+transcribe → idle.
@@ -123,11 +135,16 @@ function recorder.toggle(callback)
 
     -- idle or transcribing → start new capture
     -- (if transcribing, old result will still be delivered via mic.result handler)
-    _state = STATE_CAPTURING
     local names  = get_names_of_nearby_characters()
     local prompt = create_transcription_prompt(names)
+    local started = mic.start_capture("dialogue")
+    if not started then
+        engine.display_hud_message("MIC NOT AVAILABLE", 5)
+        logger.warn("recorder: mic.start_capture failed — DLL not loaded or init error")
+        return
+    end
+    _state = STATE_CAPTURING
     engine.display_hud_message("RECORDING", 15)
-    mic.start_capture("dialogue")
     logger.info("recorder: capture started (state was %s)", _state)
 end
 

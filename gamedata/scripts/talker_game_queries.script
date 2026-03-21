@@ -199,6 +199,28 @@ function get_squad(obj)
     return try(get_object_squad, obj)
 end
 
+--- Return an array of game objects for all squad members excluding the given NPC.
+-- Handles edge cases: character not in squad, squad nil, single-member squad.
+-- @param obj  game object of the character whose squad to enumerate
+-- @return     array of game objects (may be empty)
+function get_squad_members(obj)
+    if not obj then return {} end
+    local squad = get_squad(obj)
+    if not squad then return {} end
+
+    local my_id = try(obj.id, obj)
+    local members = {}
+    for member_se in squad:squad_members() do
+        if member_se and member_se.id ~= my_id then
+            local game_obj = try(get_object_by_id, member_se.id)
+            if game_obj and try(game_obj.alive, game_obj) then
+                members[#members + 1] = game_obj
+            end
+        end
+    end
+    return members
+end
+
 function is_companion(npc)
     if not npc then return false end
     return npc:has_info("npcx_is_companion")
@@ -315,11 +337,13 @@ end
 function get_nearby_smart_terrain_name(obj)
     local obj = obj or db.actor
     if not obj then return nil end
-    local pos = obj:position()
+    local pos = try(obj.position, obj)
+    if not pos then return nil end
     local nearest_smart = nil
     
     -- 1. Try to get smart by assignment (for NPCs)
-    if obj:id() ~= 0 then
+    local obj_id = try(obj.id, obj)
+    if obj_id and obj_id ~= 0 then
         local smart = xr_gulag.get_npc_smart(obj)
         if smart then
             nearest_smart = smart
@@ -379,18 +403,22 @@ end
 function get_nearby_campfire_status(obj)
     local obj = obj or db.actor
     if not obj then return nil end
-    local pos = obj:position()
+    local pos = try(obj.position, obj)
+    if not pos then return nil end
     local range = 5 -- 5 meters is a reasonable "next to" distance
     
     if bind_campfire and bind_campfire.campfires_all then
         for id, binder in pairs(bind_campfire.campfires_all) do
             if binder and binder.object then
-                local dist = pos:distance_to(binder.object:position())
-                if dist < range then
-                    if binder.campfire and binder.campfire:is_on() then
-                        return "lit"
-                    else
-                        return "unlit"
+                local campfire_pos = try(binder.object.position, binder.object)
+                if campfire_pos then
+                    local dist = pos:distance_to(campfire_pos)
+                    if dist < range then
+                        if binder.campfire and binder.campfire:is_on() then
+                            return "lit"
+                        else
+                            return "unlit"
+                        end
                     end
                 end
             end
@@ -714,6 +742,52 @@ end
 -- The accumulator is persisted via the timers store (domain.repo.timers)
 function get_game_time_ms()
     return time_global() + timers.get_game_time_accumulator()
+end
+
+--------------------------------------------------------------------------------
+-- FACTION DATA BUILDERS
+--------------------------------------------------------------------------------
+
+-- All gameplay factions that participate in the relation matrix
+GAMEPLAY_FACTIONS = {
+    "stalker", "dolg", "freedom", "csky", "ecolog", "killer",
+    "army", "bandit", "monolith", "renegade", "greh", "isg",
+}
+
+--- Build a flat dict of faction-pair relation values from the live engine data.
+-- Keys are alphabetically-sorted underscore-delimited pairs (e.g. "dolg_freedom").
+-- Values are raw integers from relation_registry.community_relation().
+-- Returns empty table if relation_registry is unavailable.
+function build_faction_matrix()
+    if not relation_registry then return {} end
+
+    local matrix = {}
+    for i = 1, #GAMEPLAY_FACTIONS do
+        for j = i + 1, #GAMEPLAY_FACTIONS do
+            local a, b = GAMEPLAY_FACTIONS[i], GAMEPLAY_FACTIONS[j]
+            -- Ensure alphabetical order for the key
+            if a > b then a, b = b, a end
+            local key = a .. "_" .. b
+            local ok, val = pcall(relation_registry.community_relation, a, b)
+            matrix[key] = ok and val or 0
+        end
+    end
+    return matrix
+end
+
+--- Build a dict of per-faction player goodwill values.
+-- Keys are faction technical IDs. Values are raw integers.
+-- Returns empty table if db.actor is unavailable.
+function build_player_goodwill()
+    local actor = db.actor
+    if not actor then return {} end
+
+    local goodwill = {}
+    for _, faction in ipairs(GAMEPLAY_FACTIONS) do
+        local ok, val = pcall(actor.community_goodwill, actor, faction)
+        goodwill[faction] = ok and val or 0
+    end
+    return goodwill
 end
 
 --------------------------------------------------------------------------------

@@ -153,6 +153,8 @@ class SceneContext:
     campfire: str | None = None  # "lit" | "unlit" | None
     brain_scorcher_disabled: bool = False
     miracle_machine_disabled: bool = False
+    faction_standings: dict[str, int] | None = None
+    player_goodwill: dict[str, int] | None = None
     
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "SceneContext":
@@ -168,6 +170,8 @@ class SceneContext:
             campfire=data.get("campfire"),
             brain_scorcher_disabled=data.get("brain_scorcher_disabled", False),
             miracle_machine_disabled=data.get("miracle_machine_disabled", False),
+            faction_standings=data.get("faction_standings"),
+            player_goodwill=data.get("player_goodwill"),
         )
 
 

@@ -69,69 +69,53 @@ The following topics SHALL be sent by the Python service to the Lua game client:
 - **THEN** the Lua client receives the envelope with `t = "tts.audio"`
 - **AND** the payload contains base64-encoded OGG Vorbis audio
 
-### Requirement: Lua connects only to talker_bridge
+### Requirement: Lua connects directly to talker_service
 
-Lua SHALL connect to `talker_bridge` (localhost, port 5558) via a single WebSocket connection. The existing `service-channel` (direct Lua → `talker_service` on port 5557) is removed. All topics previously sent directly to `talker_service` are now sent to `talker_bridge`, which proxies them upstream.
+Lua SHALL connect directly to `talker_service` via a single WebSocket connection. There is no intermediate bridge process. The connection target is determined by MCM `service_url` (default: `ws://127.0.0.1:5557/ws`).
 
-#### Scenario: Single connection architecture
+#### Scenario: Single direct connection architecture
 - **WHEN** Lua initializes the WS connection
-- **THEN** it connects only to `ws://localhost:5558` (the bridge)
-- **AND** does NOT maintain a separate connection to `talker_service`
+- **THEN** it connects directly to `talker_service` (default `ws://127.0.0.1:5557/ws`)
+- **AND** there is no `talker_bridge` process in the architecture
 
-### Requirement: Mic control topics (Lua → talker_bridge)
+### Requirement: Mic control via native DLL
 
-The following mic control topics SHALL be handled locally by `talker_bridge` and are NOT proxied to `talker_service`:
+Mic control (`start`, `stop`) SHALL be handled entirely by the native `talker_audio.dll` via LuaJIT FFI. There SHALL be no `mic.start` or `mic.stop` WebSocket topics. Audio frames are streamed as `mic.audio.chunk` directly from Lua to `talker_service`.
 
-| Topic | Payload | Purpose |
-|-------|---------|----------|
-| `mic.start` | `{ context_type }` | Start recording |
-| `mic.stop` | `{}` | Stop recording (trigger transcription) |
+#### Scenario: Mic start uses native DLL
+- **WHEN** the player presses the mic key
+- **THEN** `talker_audio.dll` begins capturing audio via PortAudio
+- **AND** no `mic.start` WS message is sent
 
-#### Scenario: mic.start triggers recording
-- **WHEN** `{"t":"mic.start","p":{"lang":"en","prompt":"..."}}` is received by `talker_bridge`
-- **THEN** audio capture begins locally in the bridge
-
-### Requirement: Mic status topics (talker_bridge → Lua)
-The following mic status topics SHALL be sent by `talker_bridge` to the Lua client:
+### Requirement: Mic status topics (talker_service → Lua)
+The following mic status topics SHALL be sent by `talker_service` to the Lua client:
 | Topic | Payload fields | Purpose |
 |-------|---------------|---------|
-| `mic.status` | `status` (string: "RECORDING"\|"TRANSCRIBING"), `session_id` (int) | HUD status update |
-| `mic.stopped` | `reason` (string: "vad"), `session_id` (int) | Bridge reports mic hardware stopped (VAD auto-stop) |
 | `mic.result` | `text` (string), `session_id` (int) | Transcription result |
 
-`mic.status` originates from `talker_bridge` (for RECORDING state). TRANSCRIBING status and `mic.result` originate from `talker_service` and are proxied through the bridge to Lua.
+`mic.status` with `RECORDING` state originates from the native DLL (not a WS topic). `mic.result` originates from `talker_service` and is sent directly to Lua.
 
 #### Scenario: mic.result delivered with transcript
-
 - **WHEN** transcription completes in `talker_service`
-- **AND** `{"t":"mic.result","p":{"text":"Check six, stalker"}}` is sent back through the bridge
-- **THEN** the Lua client receives the transcript text
+- **AND** `{"t":"mic.result","p":{"text":"Check six, stalker"}}` is sent to Lua
+- **THEN** the Lua client receives the transcript text directly from the service
 
-### Requirement: Audio streaming topics (talker_bridge → talker_service)
+### Requirement: Audio streaming topics (Lua → talker_service)
 
-The following audio streaming topics SHALL be sent by `talker_bridge` directly to `talker_service` over the upstream WS connection. These never pass through Lua.
+The following audio streaming topics SHALL be sent by the Lua game client directly to `talker_service` over the WebSocket connection:
 
 | Topic | Payload fields | Purpose |
 |-------|---------------|---------|
-| `mic.audio.chunk` | `audio_b64` (string), `seq` (int) | Stream a chunk of captured audio |
-| `mic.audio.end` | `context` (object: `{type: "dialogue"\|"whisper"}`) | Signal end of audio stream; includes context for dialogue routing |
+| `mic.audio.chunk` | `audio_b64` (string), `seq` (int), `format` (string: "opus"), `session_id` (int) | Stream a chunk of captured audio |
+| `mic.audio.end` | `context` (object: `{type: "dialogue"\|"whisper"}`), `session_id` (int) | Signal end of audio stream |
 
 #### Scenario: mic.audio.chunk sent during recording
-- **WHEN** `talker_bridge` captures a chunk of audio data
-- **THEN** it sends `{"t":"mic.audio.chunk","p":{"audio_b64":"...","seq":1}}` to `talker_service`
+- **WHEN** the native DLL captures an Opus frame and Lua polls it
+- **THEN** Lua sends `{"t":"mic.audio.chunk","p":{"audio_b64":"...","seq":1,"format":"opus","session_id":1}}` directly to `talker_service`
 
 #### Scenario: mic.audio.end sent after VAD silence
-- **WHEN** local VAD detects end of speech
-- **THEN** `talker_bridge` sends `{"t":"mic.audio.end","p":{"context":{"type":"dialogue"}}}` to `talker_service`
-
-### Requirement: Proxied topics (transparent relay)
-
-All other topics (e.g., `game.event`, `player.dialogue`, `config.update`, `dialogue.display`, `memory.update`, `state.query.batch`, etc.) SHALL pass through `talker_bridge` transparently. The bridge SHALL NOT inspect, modify, or route these messages — it forwards them as-is between Lua and `talker_service`.
-
-#### Scenario: Transparent proxying
-- **WHEN** Lua sends `{"t":"game.event","p":{...}}` to the bridge
-- **THEN** `talker_bridge` forwards the message unchanged to `talker_service`
-- **AND** any response from `talker_service` is forwarded unchanged to Lua
+- **WHEN** native DLL VAD detects end of speech
+- **THEN** Lua sends `{"t":"mic.audio.end","p":{"context":{"type":"dialogue"},"session_id":1}}` directly to `talker_service`
 
 ### Requirement: State query protocol
 
@@ -148,10 +132,10 @@ State queries SHALL use request/response correlation via the `r` field:
 
 ### Requirement: Documentation in ws-api.yaml
 
-The file `docs/ws-api.yaml` SHALL describe all topics, envelope format, close codes, and auth requirements. It SHALL replace `docs/zmq-api.yaml` as the canonical wire protocol reference. This includes the `tts.audio` topic (Python→Lua) and mic channel TTS topics (`tts.speak`, `tts.started`, `tts.done`).
+The file `docs/ws-api.yaml` SHALL describe all topics, envelope format, close codes, and auth requirements. It SHALL be the canonical wire protocol reference for the direct Lua ↔ `talker_service` architecture with no bridge intermediary. All direction labels SHALL use `lua→service` and `service→lua` (not `lua→bridge→service`).
 
-#### Scenario: ws-api.yaml documents service topics
+#### Scenario: ws-api.yaml documents direct architecture
 
 - **WHEN** `docs/ws-api.yaml` is opened
-- **THEN** all topics from the service and mic channels are documented with their payload schemas
-- **AND** the `tts.audio` topic is documented with `speaker_id`, `audio_b64`, `voice_id`, `dialogue`, and `dialogue_id` fields
+- **THEN** all topics are documented with direction `lua→service` or `service→lua`
+- **AND** there are no references to `talker_bridge` as an intermediary

@@ -219,4 +219,134 @@ function testSerializeEvents_array()
     luaunit.assertEquals(result[2].type, "INJURY")
 end
 
+-- ── serialize_character_with_gender ───────────────────────────────────────────
+
+function testSerializeCharacterWithGender_nil()
+    luaunit.assertNil(serializer.serialize_character_with_gender(nil))
+end
+
+function testSerializeCharacterWithGender_femaleSoundPrefix()
+    local char   = make_char({ sound_prefix = "woman" })
+    local result = serializer.serialize_character_with_gender(char)
+    luaunit.assertEquals(result.gender, "female")
+    luaunit.assertEquals(result.name,   "Wolf")
+    luaunit.assertEquals(type(result.game_id), "string")
+end
+
+function testSerializeCharacterWithGender_maleSoundPrefix()
+    local char   = make_char({ sound_prefix = "stalker_1" })
+    local result = serializer.serialize_character_with_gender(char)
+    luaunit.assertEquals(result.gender, "male")
+end
+
+function testSerializeCharacterWithGender_banditSoundPrefix()
+    local char   = make_char({ sound_prefix = "bandit_2" })
+    local result = serializer.serialize_character_with_gender(char)
+    luaunit.assertEquals(result.gender, "male")
+end
+
+function testSerializeCharacterWithGender_nilSoundPrefix()
+    -- A character with no sound_prefix at all should default to "male"
+    local char = {
+        game_id    = 7,
+        name       = "Generic Stalker",
+        faction    = "Loner",
+        experience = "rookie",
+        reputation = 0,
+    }
+    local result = serializer.serialize_character_with_gender(char)
+    luaunit.assertEquals(result.gender, "male")
+end
+
+-- ── serialize_event ts field ──────────────────────────────────────────────────
+
+function testSerializeEvent_includesTs()
+    local event = make_event({ ts = 1709912345 })
+    local result = serializer.serialize_event(event)
+    luaunit.assertEquals(result.ts, 1709912345)
+end
+
+function testSerializeEvent_tsNilWhenAbsent()
+    local event = make_event()  -- no ts field
+    local result = serializer.serialize_event(event)
+    luaunit.assertNil(result.ts)
+end
+
+function testSerializeCharacterWithGender_preservesAllBaseFields()
+    local char   = make_char({ sound_prefix = "woman" })
+    local result = serializer.serialize_character_with_gender(char)
+    luaunit.assertEquals(result.name,         "Wolf")
+    luaunit.assertEquals(result.faction,      "Loner")
+    luaunit.assertEquals(result.experience,   "veteran")
+    luaunit.assertEquals(result.sound_prefix, "woman")
+    luaunit.assertEquals(result.gender,       "female")
+end
+
+-- ── serialize_character_info ──────────────────────────────────────────────────
+
+-- Mock memory_store that returns preset backgrounds
+local function make_mock_memory_store(backgrounds)
+    return {
+        query = function(self, char_id, resource)
+            if resource == "memory.background" and backgrounds then
+                return backgrounds[char_id]
+            end
+            return nil
+        end,
+    }
+end
+
+function testSerializeCharacterInfo_singleCharacterNoSquad()
+    local char   = make_char({ game_id = 100, sound_prefix = "stalker_1" })
+    local result = serializer.serialize_character_info(char, {}, nil)
+    luaunit.assertNotNil(result.character)
+    luaunit.assertEquals(result.character.game_id, "100")
+    luaunit.assertEquals(result.character.gender,  "male")
+    luaunit.assertNil(result.character.background)
+    luaunit.assertEquals(#result.squad_members, 0)
+end
+
+function testSerializeCharacterInfo_characterWithSquad()
+    local char  = make_char({ game_id = 100, name = "Leader", sound_prefix = "stalker_1" })
+    local squad = {
+        make_char({ game_id = 200, name = "Member1", sound_prefix = "woman" }),
+        make_char({ game_id = 300, name = "Member2", sound_prefix = "bandit_3" }),
+    }
+    local result = serializer.serialize_character_info(char, squad, nil)
+    luaunit.assertEquals(result.character.name,           "Leader")
+    luaunit.assertEquals(result.character.gender,         "male")
+    luaunit.assertEquals(#result.squad_members, 2)
+    luaunit.assertEquals(result.squad_members[1].name,    "Member1")
+    luaunit.assertEquals(result.squad_members[1].gender,  "female")
+    luaunit.assertEquals(result.squad_members[2].name,    "Member2")
+    luaunit.assertEquals(result.squad_members[2].gender,  "male")
+end
+
+function testSerializeCharacterInfo_backgroundsPresent()
+    local char  = make_char({ game_id = 100, sound_prefix = "stalker_1" })
+    local squad = { make_char({ game_id = 200, sound_prefix = "woman" }) }
+    local mock_store = make_mock_memory_store({
+        ["100"] = { traits = {"brave"}, backstory = "A veteran", connections = {} },
+        ["200"] = { traits = {"cautious"}, backstory = "A newcomer", connections = {} },
+    })
+    local result = serializer.serialize_character_info(char, squad, mock_store)
+    luaunit.assertNotNil(result.character.background)
+    luaunit.assertEquals(result.character.background.traits[1], "brave")
+    luaunit.assertNotNil(result.squad_members[1].background)
+    luaunit.assertEquals(result.squad_members[1].background.traits[1], "cautious")
+end
+
+function testSerializeCharacterInfo_backgroundAbsent()
+    local char   = make_char({ game_id = 100, sound_prefix = "stalker_1" })
+    local mock_store = make_mock_memory_store({})  -- no backgrounds
+    local result = serializer.serialize_character_info(char, {}, mock_store)
+    luaunit.assertNil(result.character.background)
+end
+
+function testSerializeCharacterInfo_nilSquadMembers()
+    local char   = make_char({ game_id = 100, sound_prefix = "stalker_1" })
+    local result = serializer.serialize_character_info(char, nil, nil)
+    luaunit.assertEquals(#result.squad_members, 0)
+end
+
 os.exit(luaunit.LuaUnit.run())

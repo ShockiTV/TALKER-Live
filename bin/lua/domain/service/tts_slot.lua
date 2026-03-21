@@ -61,8 +61,10 @@ function M.allocate()
     -- This flushes the NEXT batch of slots we'll overwrite, giving
     -- ~100 slots of lead time before we reuse them.
     if slot % CACHE_FLUSH_INTERVAL == 0 then
+        local next_start = (slot % SLOT_COUNT) + 1
+        local next_end = math.min(next_start + CACHE_FLUSH_INTERVAL - 1, SLOT_COUNT)
         log.info("TTS slot %d reached, issuing snd_restart (next batch: %d-%d)",
-            slot, slot + 1, math.min(slot + CACHE_FLUSH_INTERVAL, SLOT_COUNT))
+            slot, next_start, next_end)
         engine.exec_console_cmd("snd_restart")
     end
     

@@ -23,9 +23,13 @@ local mic_start_calls = 0
 local mic_stop_calls  = 0
 local mock_mic = {}
 function mock_mic.is_recording() return mic_recording end
+function mock_mic.is_available() return true end
+function mock_mic.session_id() return 1 end
+function mock_mic.context_type() return "dialogue" end
 function mock_mic.start_capture(ctx)
     mic_start_calls = mic_start_calls + 1
     mic_recording = true
+    return true
 end
 function mock_mic.stop_capture()
     mic_stop_calls = mic_stop_calls + 1
@@ -33,6 +37,17 @@ function mock_mic.stop_capture()
 end
 function mock_mic.on_stopped()
     mic_recording = false
+end
+
+-- mock audio_tick — capture the VAD callback for tests
+local vad_stopped_callback = nil
+local mock_audio_tick = {}
+function mock_audio_tick.set_on_vad_stopped(fn)
+    vad_stopped_callback = fn
+end
+function mock_audio_tick.tick() end
+function mock_audio_tick._reset()
+    vad_stopped_callback = nil
 end
 
 -- mock engine
@@ -56,14 +71,16 @@ local mock_logger = {}
 function mock_logger.info(...) end
 function mock_logger.debug(...) end
 function mock_logger.error(...) end
+function mock_logger.warn(...) end
 
 -- Wire up mocks
-package.preload["infra.bridge.channel"]  = function() return mock_channel end
-package.preload["infra.mic.microphone"]  = function() return mock_mic end
-package.preload["interface.engine"]      = function() return mock_engine end
-package.preload["infra.game_adapter"]    = function() return mock_game_adapter end
-package.preload["infra.HTTP.json"]       = function() return mock_json end
-package.preload["framework.logger"]      = function() return mock_logger end
+package.preload["infra.bridge.channel"]     = function() return mock_channel end
+package.preload["infra.mic.microphone"]     = function() return mock_mic end
+package.preload["infra.mic.audio_tick"]     = function() return mock_audio_tick end
+package.preload["interface.engine"]         = function() return mock_engine end
+package.preload["infra.game_adapter"]       = function() return mock_game_adapter end
+package.preload["infra.HTTP.json"]          = function() return mock_json end
+package.preload["framework.logger"]         = function() return mock_logger end
 
 local recorder = require('interface.recorder')
 
@@ -75,10 +92,11 @@ local function reset()
     mic_start_calls = 0
     mic_stop_calls  = 0
     mic_recording   = false
+    vad_stopped_callback = nil
     recorder._reset()  -- reset internal state to idle
 end
 
---- Simulate mic.result arriving from bridge
+--- Simulate mic.result arriving from service via bridge
 local function deliver_mic_result(text)
     local fns = on_handlers["mic.result"]
     if fns then
@@ -86,19 +104,11 @@ local function deliver_mic_result(text)
     end
 end
 
---- Simulate mic.status arriving from bridge
+--- Simulate mic.status arriving from service via bridge
 local function deliver_mic_status(status)
     local fns = on_handlers["mic.status"]
     if fns then
         for _, fn in ipairs(fns) do fn({ status = status }) end
-    end
-end
-
---- Simulate mic.stopped arriving from bridge (VAD auto-stop)
-local function deliver_mic_stopped(reason)
-    local fns = on_handlers["mic.stopped"]
-    if fns then
-        for _, fn in ipairs(fns) do fn({ reason = reason or "vad" }) end
     end
 end
 
@@ -260,9 +270,8 @@ end
 function testVadStoppedTransitionsToTranscribing()
     reset()
     recorder.toggle(function() end)           -- idle → capturing
-    deliver_mic_stopped("vad")
+    recorder.on_vad_stopped()
     luaunit.assertEquals(recorder.state(), "transcribing")
-    luaunit.assertFalse(mock_mic.is_recording())
 end
 
 function testVadStoppedThenResultDeliversCallback()
@@ -270,7 +279,7 @@ function testVadStoppedThenResultDeliversCallback()
     local received = nil
     local cb = function(text) received = text end
     recorder.toggle(cb)                       -- idle → capturing
-    deliver_mic_stopped("vad")                -- VAD → transcribing
+    recorder.on_vad_stopped()                 -- VAD → transcribing
     deliver_mic_result("VAD transcription")
     luaunit.assertEquals(received, "VAD transcription")
     luaunit.assertEquals(recorder.state(), "idle")
@@ -279,7 +288,7 @@ end
 function testVadThenKeyPressStartsNewCapture()
     reset()
     recorder.toggle(function() end)           -- idle → capturing
-    deliver_mic_stopped("vad")                -- VAD → transcribing
+    recorder.on_vad_stopped()                 -- VAD → transcribing
     mic_start_calls = 0
     recorder.toggle(function() end)           -- transcribing → capturing
     luaunit.assertEquals(recorder.state(), "capturing")
@@ -293,12 +302,12 @@ function testVadFullCycle()
     local cb = function(text) table.insert(results, text) end
 
     recorder.toggle(cb)                       -- idle → capturing
-    deliver_mic_stopped("vad")                -- VAD → transcribing
+    recorder.on_vad_stopped()                 -- VAD → transcribing
     deliver_mic_result("first")               -- → idle
     luaunit.assertEquals(recorder.state(), "idle")
 
     recorder.toggle(cb)                       -- idle → capturing
-    deliver_mic_stopped("vad")                -- VAD → transcribing
+    recorder.on_vad_stopped()                 -- VAD → transcribing
     deliver_mic_result("second")              -- → idle
     luaunit.assertEquals(#results, 2)
     luaunit.assertEquals(results[1], "first")
@@ -313,19 +322,19 @@ function testVadOverlapWithNewCapture()
     local cb = function(text) table.insert(results, text) end
 
     recorder.toggle(cb)                       -- idle → capturing
-    deliver_mic_stopped("vad")                -- VAD → transcribing
+    recorder.on_vad_stopped()                 -- VAD → transcribing
     recorder.toggle(cb)                       -- transcribing → capturing (new)
     deliver_mic_result("from session 1")      -- old transcription finishes
     luaunit.assertEquals(#results, 1)
     luaunit.assertEquals(recorder.state(), "capturing")  -- still in new capture
 end
 
-function testMicStoppedShowsTranscribingHud()
+function testVadStoppedShowsTranscribingHud()
     reset()
     hud_messages = {}
     recorder.toggle(function() end)           -- idle → capturing
     hud_messages = {}  -- clear RECORDING
-    deliver_mic_stopped("vad")
+    recorder.on_vad_stopped()
     local found = false
     for _, msg in ipairs(hud_messages) do
         if msg == "TRANSCRIBING" then found = true end

@@ -1,29 +1,56 @@
 -- domain/service/importance.lua
--- Pure predicate for determining whether a character is "important" enough to
--- always generate AI dialogue (bypassing the base dialogue-chance filter).
--- Extracted from the inline is_important_person() function in talker_trigger_death.script.
--- Zero engine dependencies — all flags are resolved by the caller before passing.
+-- Pure predicate: determines whether a character is "important" enough
+-- to override the chance roll in trigger scripts.
+--
+-- An important person always triggers dialogue (publish_event) regardless
+-- of the per-trigger chance setting.
+--
+-- Usage:
+--   local importance = require("domain.service.importance")
+--   local flags = { is_player = true, is_companion = false, is_unique = false, rank = "novice" }
+--   if importance.is_important_person(flags) then ... end
+
+local unique_npcs = require("domain.data.unique_npcs")
+
 local M = {}
 
---- Returns true if the character is considered an important person.
--- The caller is responsible for resolving engine-level properties and passing
--- pre-computed boolean flags.
---
--- @param flags  table:
---   is_player    (bool) — true if the character is the player
---   is_companion (bool) — true if the character is in the player's squad
---   is_unique    (bool) — true if the character is a named/story NPC
---   rank         (string, optional) — experience rank name (e.g. "master")
--- @return  boolean
+-- Ranks at or above this threshold are considered "important"
+local IMPORTANT_RANK_THRESHOLD = "master"
+
+-- Rank ordering for comparison (higher index = higher rank)
+local RANK_ORDER = {
+    novice    = 1,
+    trainee   = 2,
+    rookie    = 3,
+    experienced = 4,
+    professional = 5,
+    veteran   = 6,
+    expert    = 7,
+    master    = 8,
+    legend    = 9,
+}
+
+--- Check if a rank string is at or above the importance threshold.
+-- @param rank  string  Rank name (e.g. "master", "veteran")
+-- @return boolean
+local function is_high_rank(rank)
+    if not rank then return false end
+    local val = RANK_ORDER[string.lower(rank)]
+    local threshold = RANK_ORDER[IMPORTANT_RANK_THRESHOLD]
+    if not val or not threshold then return false end
+    return val >= threshold
+end
+
+--- Determine if a character is important based on pure data flags.
+-- Important characters always get dialogue (bypass chance roll).
+-- @param flags  table  { is_player=bool, is_companion=bool, is_unique=bool, rank=string }
+-- @return boolean  true if the character is considered important
 function M.is_important_person(flags)
     if not flags then return false end
-    if flags.is_player    then return true end
+    if flags.is_player then return true end
     if flags.is_companion then return true end
-    if flags.is_unique    then return true end
-    if flags.rank then
-        local rank = string.lower(flags.rank)
-        if rank == "master" or rank == "legend" then return true end
-    end
+    if flags.is_unique then return true end
+    if is_high_rank(flags.rank) then return true end
     return false
 end
 

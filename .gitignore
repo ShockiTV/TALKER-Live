@@ -35,6 +35,7 @@ talker_mic.exe
 # ── Secrets ──
 *.key
 .env
+.env.local
 openai_api_key.txt
 
 # ── Python environments & caches ──
@@ -50,6 +51,7 @@ talker.log
 
 # ── Binary DLLs (shipped separately) ──
 bin/pollnet/
+!bin/pollnet/talker_audio.dll
 
 # ── Voice model files (baked locally via voice triage pipeline) ──
 talker_service/voices/*
